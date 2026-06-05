@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   Activity,
+  BarChart3,
   BookOpen,
   Brain,
   ClipboardList,
+  Database,
   FileText,
   RefreshCw,
+  ShieldCheck,
   Stethoscope,
   Tags,
   Users,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 type CountMap = {
   patients: number;
@@ -87,82 +90,85 @@ async function getCount(
   const { count, error } = await query;
 
   if (error) {
-    console.error(`Erro ao contar ${table}:`, error.message);
+    console.warn(`Erro ao contar ${table}:`, error.message);
     return 0;
   }
 
   return count ?? 0;
 }
 
-function StatCard({
+function MainMetricCard({
   title,
   value,
+  description,
   icon: Icon,
-  tone = "blue",
 }: {
   title: string;
   value: number;
+  description: string;
   icon: React.ComponentType<{ className?: string }>;
-  tone?: "blue" | "emerald" | "violet" | "amber";
 }) {
-  const toneClasses = {
-    blue: "bg-blue-50 border-blue-100 text-blue-700",
-    emerald: "bg-emerald-50 border-emerald-100 text-emerald-700",
-    violet: "bg-violet-50 border-violet-100 text-violet-700",
-    amber: "bg-amber-50 border-amber-100 text-amber-700",
-  };
-
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             {title}
           </p>
+
           <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
+            {value}
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            {description}
+          </p>
+        </div>
+
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CompactMetric({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <article className="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            {label}
+          </p>
+
+          <p className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900">
             {value}
           </p>
         </div>
 
-        <div
-          className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${toneClasses[tone]}`}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
+        <Icon className="h-4 w-4 text-slate-400" />
       </div>
-    </div>
+    </article>
   );
 }
 
-function MiniStat({
-  title,
-  value,
-}: {
-  title: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-        {title}
-      </p>
-      <p className="mt-2 text-xl font-semibold tracking-tight text-slate-900">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function ProgressRow({
+function ProgressLine({
   label,
   value,
   total,
-  colorClass,
 }: {
   label: string;
   value: number;
   total: number;
-  colorClass: string;
 }) {
   const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
 
@@ -173,14 +179,13 @@ function ProgressRow({
           <p className="text-sm font-medium text-slate-800">{label}</p>
           <p className="text-xs text-slate-500">{value} registros</p>
         </div>
-        <span className="text-sm font-semibold text-slate-700">
-          {percentage}%
-        </span>
+
+        <p className="text-sm font-semibold text-slate-700">{percentage}%</p>
       </div>
 
-      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
         <div
-          className={`h-full rounded-full ${colorClass}`}
+          className="h-full rounded-full bg-slate-800"
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -188,19 +193,19 @@ function ProgressRow({
   );
 }
 
-function RecentItemCard({ item }: { item: RecentItem }) {
-  const badgeStyles: Record<RecentItem["type"], string> = {
+function RecentCard({ item }: { item: RecentItem }) {
+  const styles: Record<RecentItem["type"], string> = {
     Paciente: "border-emerald-200 bg-emerald-50 text-emerald-700",
     Prescrição: "border-blue-200 bg-blue-50 text-blue-700",
     Evolução: "border-violet-200 bg-violet-50 text-violet-700",
   };
 
   return (
-    <article className="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+    <article className="rounded-[18px] border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <span
-            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badgeStyles[item.type]}`}
+            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${styles[item.type]}`}
           >
             {item.type}
           </span>
@@ -209,14 +214,14 @@ function RecentItemCard({ item }: { item: RecentItem }) {
             {item.title}
           </h3>
 
-          <p className="mt-1 text-sm leading-6 text-slate-600">
+          <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600">
             {item.subtitle}
           </p>
         </div>
 
-        <span className="shrink-0 text-xs text-slate-400">
+        <p className="shrink-0 text-xs font-medium text-slate-400">
           {formatDate(item.created_at)}
-        </span>
+        </p>
       </div>
     </article>
   );
@@ -314,7 +319,7 @@ export default function MetricasPage() {
         type: "Paciente",
         title: item.nome || "Paciente sem nome",
         subtitle:
-          item.especialidade || item.queixa || "Cadastro clínico realizado",
+          item.especialidade || item.queixa || "Cadastro clínico registrado",
         created_at: item.created_at,
       }));
 
@@ -327,17 +332,15 @@ export default function MetricasPage() {
         created_at: item.created_at,
       }));
 
-      const mappedNotes: RecentItem[] = ((notesRes.data || []) as NoteRow[]).map(
-        (item) => ({
-          id: `note-${item.id}`,
-          type: "Evolução",
-          title: item.titulo || item.tipo || "Evolução clínica",
-          subtitle:
-            item.conteudo?.slice(0, 110) ||
-            "Registro clínico no prontuário",
-          created_at: item.created_at,
-        })
-      );
+      const mappedNotes: RecentItem[] = ((notesRes.data ||
+        []) as NoteRow[]).map((item) => ({
+        id: `note-${item.id}`,
+        type: "Evolução",
+        title: item.titulo || item.tipo || "Evolução clínica",
+        subtitle:
+          item.conteudo?.slice(0, 120) || "Registro clínico no prontuário",
+        created_at: item.created_at,
+      }));
 
       const merged = [
         ...mappedPatients,
@@ -369,44 +372,43 @@ export default function MetricasPage() {
     return counts.patients + counts.prescriptions + counts.notes;
   }, [counts]);
 
-  const studyTotal = useMemo(() => {
+  const libraryTotal = useMemo(() => {
     return counts.exams + counts.topicos + counts.flashcards + counts.cids;
   }, [counts]);
 
-  const overallTotal = useMemo(() => {
-    return clinicalTotal + studyTotal;
-  }, [clinicalTotal, studyTotal]);
+  const totalSystem = clinicalTotal + libraryTotal;
 
   return (
     <div className="space-y-6">
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-5 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
-                Métricas
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+                Painel clínico
               </span>
 
-              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                Visão geral do sistema
+              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                Dados operacionais
               </span>
             </div>
 
             <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
-              Painel de métricas
+              Métricas assistenciais
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Resumo mais limpo e objetivo da operação clínica e da biblioteca
-              de estudo do ResiBook.
+              Acompanhamento objetivo da base clínica, registros de prontuário,
+              prescrições e materiais de apoio do ResiBook.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-right">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Última atualização
+                Atualizado em
               </p>
+
               <p className="mt-1 text-sm font-medium text-slate-800">
                 {updatedAt ? formatDate(updatedAt) : "—"}
               </p>
@@ -437,115 +439,120 @@ export default function MetricasPage() {
             {Array.from({ length: 4 }).map((_, index) => (
               <div
                 key={index}
-                className="h-[128px] animate-pulse rounded-[24px] border border-slate-200 bg-slate-100"
+                className="h-[130px] animate-pulse rounded-[22px] border border-slate-200 bg-slate-100"
               />
             ))}
           </div>
         ) : (
-          <>
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                title="Pacientes"
-                value={counts.patients}
-                icon={Users}
-                tone="emerald"
-              />
-              <StatCard
-                title="Prescrições"
-                value={counts.prescriptions}
-                icon={ClipboardList}
-                tone="blue"
-              />
-              <StatCard
-                title="Evoluções"
-                value={counts.notes}
-                icon={FileText}
-                tone="violet"
-              />
-              <StatCard
-                title="Flashcards"
-                value={counts.flashcards}
-                icon={Brain}
-                tone="amber"
-              />
-            </div>
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MainMetricCard
+              title="Pacientes ativos"
+              value={counts.patients}
+              description="Pacientes cadastrados na base clínica."
+              icon={Users}
+            />
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MiniStat title="Exames / modelos" value={counts.exams} />
-              <MiniStat title="Tópicos médicos" value={counts.topicos} />
-              <MiniStat title="Flashcards difíceis" value={counts.flashcardsDificeis} />
-              <MiniStat title="CIDs" value={counts.cids} />
-            </div>
-          </>
+            <MainMetricCard
+              title="Prescrições"
+              value={counts.prescriptions}
+              description="Prescrições registradas no sistema."
+              icon={ClipboardList}
+            />
+
+            <MainMetricCard
+              title="Evoluções"
+              value={counts.notes}
+              description="Notas e evoluções de prontuário."
+              icon={FileText}
+            />
+
+            <MainMetricCard
+              title="Flashcards"
+              value={counts.flashcards}
+              description="Itens ativos na biblioteca de revisão."
+              icon={Brain}
+            />
+          </div>
         )}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_1.15fr]">
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="border-b border-slate-200 pb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Composição da base
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Distribuição geral entre operação clínica e conteúdo de estudo.
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Distribuição da base
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Separação entre uso clínico e biblioteca médica.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Total geral
+                  Registros totais
                 </p>
+
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
-                  {overallTotal}
+                  {totalSystem}
                 </p>
               </div>
 
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
-                <Activity className="h-5 w-5" />
+                <Database className="h-5 w-5" />
               </div>
             </div>
 
             <div className="mt-6 space-y-5">
-              <ProgressRow
+              <ProgressLine
                 label="Núcleo clínico"
                 value={clinicalTotal}
-                total={overallTotal}
-                colorClass="bg-emerald-500"
+                total={totalSystem}
               />
 
-              <ProgressRow
-                label="Biblioteca de estudo"
-                value={studyTotal}
-                total={overallTotal}
-                colorClass="bg-blue-500"
+              <ProgressLine
+                label="Biblioteca médica"
+                value={libraryTotal}
+                total={totalSystem}
               />
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                  Núcleo clínico
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-emerald-900">
-                  {clinicalTotal}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-emerald-800">
-                  Pacientes, prescrições e evoluções.
-                </p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Clínico
+                    </p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {clinicalTotal}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
-                  Estudo e apoio
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-blue-900">
-                  {studyTotal}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-blue-800">
-                  Exames, tópicos, flashcards e CIDs.
-                </p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Estudo
+                    </p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {libraryTotal}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -553,12 +560,20 @@ export default function MetricasPage() {
 
         <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="border-b border-slate-200 pb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Atividade recente
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Últimos registros criados no sistema.
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                <Activity className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Atividade recente
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Últimos registros clínicos criados no sistema.
+                </p>
+              </div>
+            </div>
           </div>
 
           {loading ? (
@@ -566,7 +581,7 @@ export default function MetricasPage() {
               {Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-[96px] animate-pulse rounded-[20px] border border-slate-200 bg-slate-100"
+                  className="h-[90px] animate-pulse rounded-[18px] border border-slate-200 bg-slate-100"
                 />
               ))}
             </div>
@@ -577,76 +592,44 @@ export default function MetricasPage() {
           ) : (
             <div className="mt-5 space-y-3">
               {recentItems.map((item) => (
-                <RecentItemCard key={item.id} item={item} />
+                <RecentCard key={item.id} item={item} />
               ))}
             </div>
           )}
         </section>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-              <Stethoscope className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Exames
-              </p>
-              <p className="text-base font-semibold text-slate-900">
-                {counts.exams}
-              </p>
-            </div>
-          </div>
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="border-b border-slate-200 pb-4">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Indicadores complementares
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Métricas da biblioteca clínica e módulos de apoio.
+          </p>
         </div>
 
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-              <BookOpen className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Tópicos
-              </p>
-              <p className="text-base font-semibold text-slate-900">
-                {counts.topicos}
-              </p>
-            </div>
-          </div>
-        </div>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <CompactMetric
+            label="Exames / modelos"
+            value={counts.exams}
+            icon={Stethoscope}
+          />
 
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-              <Brain className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Difíceis
-              </p>
-              <p className="text-base font-semibold text-slate-900">
-                {counts.flashcardsDificeis}
-              </p>
-            </div>
-          </div>
-        </div>
+          <CompactMetric
+            label="Tópicos médicos"
+            value={counts.topicos}
+            icon={BookOpen}
+          />
 
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-              <Tags className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                CIDs
-              </p>
-              <p className="text-base font-semibold text-slate-900">
-                {counts.cids}
-              </p>
-            </div>
-          </div>
+          <CompactMetric
+            label="Difíceis"
+            value={counts.flashcardsDificeis}
+            icon={Brain}
+          />
+
+          <CompactMetric label="CIDs" value={counts.cids} icon={Tags} />
         </div>
       </section>
     </div>
