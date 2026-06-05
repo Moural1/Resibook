@@ -5,7 +5,12 @@ import AppShell from "../components/app-shell";
 
 export const metadata: Metadata = {
   title: "ResiBook",
-  description: "Sistema médico premium",
+  description: "Sistema clínico ResiBook",
+  icons: {
+    icon: "/logo-resibook.png",
+    shortcut: "/logo-resibook.png",
+    apple: "/logo-resibook.png",
+  },
 };
 
 export default function RootLayout({
