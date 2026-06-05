@@ -13,7 +13,6 @@ import {
   ClipboardList,
   FlaskConical,
   Brain,
-  BookOpen,
   Tags,
   Stethoscope,
   Settings,
@@ -230,12 +229,6 @@ function SidebarContent({
       label: "Difíceis",
       icon: Brain,
       badge: counts.flashcardsDificeis,
-    },
-    {
-      href: "/revisao-topicos",
-      label: "Revisão",
-      icon: BookOpen,
-      badge: counts.topicos,
     },
     {
       href: "/cids",
