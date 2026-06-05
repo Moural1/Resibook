@@ -1,10 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+"use client";
 
-type SearchParams = Promise<{
-  q?: string;
-  grupo?: string;
-  area?: string;
-}>;
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
 type CidItem = {
   id: number;
@@ -27,67 +25,107 @@ function getSupabase() {
   return createClient(supabaseUrl, supabaseAnonKey);
 }
 
-async function getCids() {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-
-  const { data, error } = await supabase
-    .from("cids")
-    .select("*")
-    .order("grupo", { ascending: true })
-    .order("codigo", { ascending: true });
-
-  if (error) {
-    console.error("Erro ao carregar CIDs:", error.message);
-    return [];
-  }
-
-  return (data as CidItem[]) || [];
-}
-
 function normalize(value: string) {
-  return value.toLowerCase().trim();
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
-export default async function CidsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const params = await searchParams;
-  const allCids = await getCids();
+export default function CidsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const q = params.q?.trim() || "";
-  const grupo = params.grupo?.trim() || "";
-  const area = params.area?.trim() || "";
+  const [allCids, setAllCids] = useState<CidItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const grupos = Array.from(
-    new Set(allCids.map((item) => item.grupo).filter(Boolean))
-  ) as string[];
+  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [grupo, setGrupo] = useState(searchParams.get("grupo") || "");
+  const [area, setArea] = useState(searchParams.get("area") || "");
 
-  const areas = Array.from(
-    new Set(allCids.map((item) => item.area).filter(Boolean))
-  ) as string[];
+  useEffect(() => {
+    async function load() {
+      const supabase = getSupabase();
+      if (!supabase) {
+        setError("Supabase não configurado.");
+        setAllCids([]);
+        setLoading(false);
+        return;
+      }
 
-  const filtered = allCids.filter((item) => {
-    const matchesQuery =
-      !q ||
-      normalize(item.codigo).includes(normalize(q)) ||
-      normalize(item.descricao).includes(normalize(q)) ||
-      normalize(item.tags || "").includes(normalize(q));
+      const { data, error } = await supabase
+        .from("cids")
+        .select("*")
+        .order("grupo", { ascending: true })
+        .order("codigo", { ascending: true });
 
-    const matchesGrupo = !grupo || item.grupo === grupo;
-    const matchesArea = !area || item.area === area;
+      if (error) {
+        console.error("Erro ao carregar CIDs:", error.message);
+        setError(error.message);
+        setAllCids([]);
+      } else {
+        setError("");
+        setAllCids((data as CidItem[]) || []);
+      }
 
-    return matchesQuery && matchesGrupo && matchesArea;
-  });
+      setLoading(false);
+    }
 
-  const grouped = filtered.reduce<Record<string, CidItem[]>>((acc, item) => {
-    const key = item.grupo || "Sem grupo";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
-    return acc;
-  }, {});
+    load();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (query.trim()) params.set("q", query.trim());
+    if (grupo) params.set("grupo", grupo);
+    if (area) params.set("area", area);
+
+    const next = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+
+    router.replace(next, { scroll: false });
+  }, [query, grupo, area, pathname, router]);
+
+  const grupos = useMemo(() => {
+    return Array.from(
+      new Set(allCids.map((item) => item.grupo).filter(Boolean))
+    ) as string[];
+  }, [allCids]);
+
+  const areas = useMemo(() => {
+    return Array.from(
+      new Set(allCids.map((item) => item.area).filter(Boolean))
+    ) as string[];
+  }, [allCids]);
+
+  const filtered = useMemo(() => {
+    return allCids.filter((item) => {
+      const matchesQuery =
+        !query ||
+        normalize(item.codigo).includes(normalize(query)) ||
+        normalize(item.descricao).includes(normalize(query)) ||
+        normalize(item.tags || "").includes(normalize(query));
+
+      const matchesGrupo = !grupo || item.grupo === grupo;
+      const matchesArea = !area || item.area === area;
+
+      return matchesQuery && matchesGrupo && matchesArea;
+    });
+  }, [allCids, query, grupo, area]);
+
+  const grouped = useMemo(() => {
+    return filtered.reduce<Record<string, CidItem[]>>((acc, item) => {
+      const key = item.grupo || "Sem grupo";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+  }, [filtered]);
 
   return (
     <div className="space-y-6">
@@ -105,27 +143,35 @@ export default async function CidsPage({
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
             CIDs
           </h1>
+
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Busca por código, descrição ou tag. Base conectada ao banco.
+            Busca instantânea por código, descrição ou tag.
           </p>
+
           <p className="mt-3 text-sm font-medium text-slate-700">
-            Total carregado do banco: {allCids.length}
+            {loading ? "Carregando..." : `Total carregado do banco: ${allCids.length}`}
           </p>
+
+          {error ? (
+            <p className="mt-2 text-sm font-medium text-rose-600">
+              Erro: {error}
+            </p>
+          ) : null}
         </div>
 
-        <form className="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+        <div className="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
           <input
             type="text"
-            name="q"
-            defaultValue={q}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por código (ex.: I10) ou nome (ex.: pneumonia, diabetes, HAS)..."
             className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
           />
 
           <div className="grid gap-3 md:grid-cols-3">
             <select
-              name="grupo"
-              defaultValue={grupo}
+              value={grupo}
+              onChange={(e) => setGrupo(e.target.value)}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             >
               <option value="">— todos os grupos —</option>
@@ -137,8 +183,8 @@ export default async function CidsPage({
             </select>
 
             <select
-              name="area"
-              defaultValue={area}
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             >
               <option value="">— todas as áreas —</option>
@@ -150,20 +196,29 @@ export default async function CidsPage({
             </select>
 
             <button
-              type="submit"
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setGrupo("");
+                setArea("");
+              }}
               className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
             >
-              Buscar
+              Limpar filtros
             </button>
           </div>
-        </form>
+        </div>
 
         <p className="mt-5 text-sm text-slate-600">
-          {filtered.length} resultado(s).
+          {loading ? "Carregando resultados..." : `${filtered.length} resultado(s).`}
         </p>
       </section>
 
-      {Object.keys(grouped).length === 0 ? (
+      {loading ? (
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
+          Carregando CIDs...
+        </section>
+      ) : Object.keys(grouped).length === 0 ? (
         <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
           Nenhum CID encontrado.
         </section>

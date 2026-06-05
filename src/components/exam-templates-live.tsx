@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import CopyButton from "./copy-button";
 import { showToast } from "../lib/toast";
 
@@ -75,6 +76,9 @@ export default function ExamTemplatesLive({
   onUseTemplate,
   initialQuery = "",
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
@@ -82,6 +86,16 @@ export default function ExamTemplatesLive({
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (query.trim()) params.set("q", query.trim());
+    if (selectedCategory) params.set("categoria", selectedCategory);
+
+    const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(next, { scroll: false });
+  }, [query, selectedCategory, pathname, router]);
 
   useEffect(() => {
     try {
@@ -270,7 +284,7 @@ export default function ExamTemplatesLive({
             Modelos de exames e evolução
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Filtre, favorite e clique em usar para preencher o formulário.
+            Busca instantânea, favoritos e uso direto no formulário.
           </p>
         </div>
 

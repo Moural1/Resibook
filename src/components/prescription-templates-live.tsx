@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import CopyButton from "./copy-button";
 import { showToast } from "../lib/toast";
 
@@ -46,10 +47,7 @@ function includesSearch(parts: Array<string | null | undefined>, query: string) 
 
 function formatLabel(value?: string | null) {
   if (!value) return "Sem categoria";
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function groupTemplates(items: PrescriptionTemplate[]) {
@@ -72,9 +70,8 @@ function parseTemplateToDraft(item: PrescriptionTemplate): PrescriptionDraft {
     lines.find((line) => /^\d+\)/.test(line)) || item.titulo || "";
 
   const posologiaLine =
-    lines.find(
-      (line) =>
-        /tomar|aplicar|pingar|inalar|usar|fazer|diluir|colocar/i.test(line)
+    lines.find((line) =>
+      /tomar|aplicar|pingar|inalar|usar|fazer|diluir|colocar/i.test(line)
     ) || "";
 
   const viaLine =
@@ -104,6 +101,9 @@ export default function PrescriptionTemplatesLive({
   onUseTemplate,
   initialQuery = "",
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
@@ -111,6 +111,16 @@ export default function PrescriptionTemplatesLive({
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (query.trim()) params.set("q", query.trim());
+    if (selectedCategory) params.set("categoria", selectedCategory);
+
+    const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(next, { scroll: false });
+  }, [query, selectedCategory, pathname, router]);
 
   useEffect(() => {
     try {
@@ -302,7 +312,7 @@ export default function PrescriptionTemplatesLive({
               Modelos prontos
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Filtre por categoria, favorite os mais usados e clique em usar para preencher o formulário.
+              Busca instantânea, favoritos e uso direto no formulário.
             </p>
           </div>
         </div>

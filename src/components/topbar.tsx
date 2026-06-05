@@ -108,22 +108,22 @@ export function Topbar() {
       const patientsPromise = supabase
         .from("patients")
         .select("id, nome, especialidade, queixa")
-        .limit(8);
+        .limit(12);
 
       const prescriptionsPromise = supabase
         .from("prescriptions")
         .select("id, paciente_nome, medicamento")
-        .limit(8);
+        .limit(12);
 
       const examsPromise = supabase
         .from("exam_templates")
         .select("id, titulo, categoria")
-        .limit(8);
+        .limit(12);
 
       const cidsPromise = supabase
         .from("cids")
         .select("id, codigo, descricao")
-        .limit(8);
+        .limit(20);
 
       const [patientsRes, prescriptionsRes, examsRes, cidsRes] =
         await Promise.all([
@@ -147,7 +147,7 @@ export function Topbar() {
           title: item.nome || "Paciente sem nome",
           subtitle:
             item.especialidade || item.queixa || "Cadastro de paciente",
-          href: "/pacientes",
+          href: `/pacientes?q=${encodeURIComponent(item.nome || q)}`,
           type: "paciente",
         }));
 
@@ -162,7 +162,7 @@ export function Topbar() {
           id: `prescricao-${item.id}`,
           title: item.medicamento || "Prescrição sem medicamento",
           subtitle: item.paciente_nome || "Prescrição clínica",
-          href: "/prescricao",
+          href: `/prescricao?q=${encodeURIComponent(item.medicamento || q)}`,
           type: "prescricao",
         }));
 
@@ -176,7 +176,7 @@ export function Topbar() {
           id: `exame-${item.id}`,
           title: item.titulo || "Bloco sem título",
           subtitle: item.categoria || "Exames e evolução",
-          href: "/exames-evolucao",
+          href: `/exames-evolucao?q=${encodeURIComponent(item.titulo || q)}`,
           type: "exame",
         }));
 
@@ -190,7 +190,7 @@ export function Topbar() {
           id: `cid-${item.id}`,
           title: item.codigo || "CID",
           subtitle: item.descricao || "Consulta CID",
-          href: "/cids",
+          href: `/cids?q=${encodeURIComponent(item.codigo || item.descricao || q)}`,
           type: "cid",
         }));
 
