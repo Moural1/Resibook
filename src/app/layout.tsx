@@ -5,11 +5,25 @@ import AppShell from "../components/app-shell";
 
 export const metadata: Metadata = {
   title: "ResiBook",
-  description: "Sistema clínico ResiBook",
+  description: "Sistema médico premium",
   icons: {
-    icon: "/logo-resibook.png",
-    shortcut: "/logo-resibook.png",
-    apple: "/logo-resibook.png",
+    icon: [
+      {
+        url: "/icon.png",
+        type: "image/png",
+      },
+      {
+        url: "/favicon.png",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/apple-icon.png",
+        type: "image/png",
+      },
+    ],
+    shortcut: ["/icon.png"],
   },
 };
 
