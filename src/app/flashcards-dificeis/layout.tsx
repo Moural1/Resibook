@@ -1,4 +1,4 @@
-export default function SectionLayout({
+export default function FlashcardsDificeisLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -1,26 +1,41 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  const body = await request.json()
-  const nome = String(body.nome || 'Paciente')
-  const queixa = String(body.queixa || 'queixa não informada')
+  try {
+    const body = await request.json().catch(() => null);
 
+    const nome = body?.nome || body?.paciente || "Paciente";
+    const queixa = body?.queixa || body?.queixa_principal || "";
+    const informacoes = body?.informacoes || body?.observacoes || "";
+
+    const resumo = [
+      `Paciente: ${nome}`,
+      queixa ? `Queixa principal: ${queixa}` : "",
+      informacoes ? `Informações adicionais: ${informacoes}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    return NextResponse.json({
+      ok: true,
+      analysis: resumo || "Nenhuma informação clínica enviada para análise.",
+      message:
+        "Rota de análise ativa. Integração com IA pode ser adicionada depois.",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Não foi possível processar a análise.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET() {
   return NextResponse.json({
-    resumo: `Resumo do caso de ${nome}: queixa principal de ${queixa}. Informações adicionais foram registradas para análise clínica.`,
-    hipoteses:
-      '1. Hipótese primária relevante ao quadro clínico
-2. Hipótese secundária a ser considerada com base em sinais e sintomas',
-    diferenciais:
-      '1. Diagnóstico diferencial A
-2. Diagnóstico diferencial B
-3. Diagnóstico diferencial C',
-    exames:
-      'Hemograma completo, eletrólitos, imagem conforme suspeita clínica, função renal/hídrica se indicado.',
-    conduta:
-      'Conduta inicial baseada em suporte, monitorização e investigação complementar conforme necessidade.',
-    redFlags:
-      'Sinais de alerta: dispneia, dor torácica intensa, alteração do nível de consciência, hipotensão.',
-    prescricao:
-      'Prescrição inicial sugerida com medicamentos de primeira linha, ajustada ao quadro clínico.',
-  })
+    ok: true,
+    message: "API de análise do ResiBook ativa.",
+  });
 }

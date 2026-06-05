@@ -26,11 +26,20 @@ type ExamTemplate = {
   created_at: string;
 };
 
+type TopicoMedico = {
+  id: number;
+  area: string;
+  titulo: string;
+  atualizado_em: string | null;
+};
+
 type DashboardCounts = {
   patients: number;
   prescriptions: number;
   examTemplates: number;
+  topicosMedicos: number;
   flashcards: number;
+  flashcardsDificeis: number;
   cids: number;
 };
 
@@ -41,7 +50,39 @@ function getSupabase(): SupabaseClient | null {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!url || !key) return null;
+
   return createClient(url, key);
+}
+
+async function getTableCount(
+  supabase: SupabaseClient,
+  tableName: string,
+  filter?: {
+    column: string;
+    value: string | number | boolean;
+  }
+): Promise<number> {
+  try {
+    let query = supabase
+      .from(tableName)
+      .select("id", { count: "exact", head: true });
+
+    if (filter) {
+      query = query.eq(filter.column, filter.value);
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      console.warn(`Erro ao contar ${tableName}:`, error.message);
+      return 0;
+    }
+
+    return count ?? 0;
+  } catch (error) {
+    console.warn(`Erro inesperado ao contar ${tableName}:`, error);
+    return 0;
+  }
 }
 
 function formatDate(value?: string | null) {
@@ -62,7 +103,9 @@ export default function DashboardPage() {
     patients: 0,
     prescriptions: 0,
     examTemplates: 0,
+    topicosMedicos: 0,
     flashcards: 0,
+    flashcardsDificeis: 0,
     cids: 0,
   });
 
@@ -73,30 +116,51 @@ export default function DashboardPage() {
   const [recentExamTemplates, setRecentExamTemplates] = useState<ExamTemplate[]>(
     []
   );
+  const [recentTopicos, setRecentTopicos] = useState<TopicoMedico[]>([]);
 
   const [favoritePrescriptionCount, setFavoritePrescriptionCount] = useState(0);
   const [favoriteExamCount, setFavoriteExamCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    let mounted = true;
+
     async function load() {
       const supabase = getSupabase();
-      if (!supabase) return;
+
+      if (!supabase) {
+        setError("Supabase não configurado.");
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError("");
 
       const [
-        patientsCountRes,
-        prescriptionsCountRes,
-        examTemplatesCountRes,
-        flashcardsCountRes,
-        cidsCountRes,
+        patientsCount,
+        prescriptionsCount,
+        examTemplatesCount,
+        topicosMedicosCount,
+        flashcardsCount,
+        flashcardsDificeisCount,
+        cidsCount,
         patientsRes,
         prescriptionsRes,
         examTemplatesRes,
+        topicosRes,
       ] = await Promise.all([
-        supabase.from("patients").select("*", { count: "exact", head: true }),
-        supabase.from("prescriptions").select("*", { count: "exact", head: true }),
-        supabase.from("exam_templates").select("*", { count: "exact", head: true }),
-        supabase.from("flashcards").select("*", { count: "exact", head: true }),
-        supabase.from("cids").select("*", { count: "exact", head: true }),
+        getTableCount(supabase, "patients"),
+        getTableCount(supabase, "prescriptions"),
+        getTableCount(supabase, "exam_templates"),
+        getTableCount(supabase, "topicos_medicos"),
+        getTableCount(supabase, "flashcards"),
+        getTableCount(supabase, "flashcards", {
+          column: "dificil",
+          value: true,
+        }),
+        getTableCount(supabase, "cids"),
 
         supabase
           .from("patients")
@@ -115,19 +179,52 @@ export default function DashboardPage() {
           .select("id, categoria, titulo, created_at")
           .order("created_at", { ascending: false })
           .limit(5),
+
+        supabase
+          .from("topicos_medicos")
+          .select("id, area, titulo, atualizado_em")
+          .order("atualizado_em", { ascending: false, nullsFirst: false })
+          .limit(5),
       ]);
 
+      if (!mounted) return;
+
       setCounts({
-        patients: patientsCountRes.count || 0,
-        prescriptions: prescriptionsCountRes.count || 0,
-        examTemplates: examTemplatesCountRes.count || 0,
-        flashcards: flashcardsCountRes.count || 0,
-        cids: cidsCountRes.count || 0,
+        patients: patientsCount,
+        prescriptions: prescriptionsCount,
+        examTemplates: examTemplatesCount,
+        topicosMedicos: topicosMedicosCount,
+        flashcards: flashcardsCount,
+        flashcardsDificeis: flashcardsDificeisCount,
+        cids: cidsCount,
       });
+
+      if (patientsRes.error) {
+        console.warn("Erro ao carregar pacientes recentes:", patientsRes.error.message);
+      }
+
+      if (prescriptionsRes.error) {
+        console.warn(
+          "Erro ao carregar prescrições recentes:",
+          prescriptionsRes.error.message
+        );
+      }
+
+      if (examTemplatesRes.error) {
+        console.warn(
+          "Erro ao carregar exames/evoluções recentes:",
+          examTemplatesRes.error.message
+        );
+      }
+
+      if (topicosRes.error) {
+        console.warn("Erro ao carregar tópicos recentes:", topicosRes.error.message);
+      }
 
       setRecentPatients((patientsRes.data as Patient[]) || []);
       setRecentPrescriptions((prescriptionsRes.data as Prescription[]) || []);
       setRecentExamTemplates((examTemplatesRes.data as ExamTemplate[]) || []);
+      setRecentTopicos((topicosRes.data as TopicoMedico[]) || []);
 
       try {
         const prescriptionFavorites = JSON.parse(
@@ -147,9 +244,15 @@ export default function DashboardPage() {
         setFavoritePrescriptionCount(0);
         setFavoriteExamCount(0);
       }
+
+      setLoading(false);
     }
 
     load();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -159,8 +262,13 @@ export default function DashboardPage() {
           <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
             ResiBook
           </span>
+
           <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
             Painel principal
+          </span>
+
+          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            Dados reais
           </span>
         </div>
 
@@ -169,39 +277,77 @@ export default function DashboardPage() {
         </h1>
 
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-          Visão geral com contadores, atalhos rápidos, favoritos e atividade recente.
+          Visão geral com contadores, atalhos rápidos, favoritos e atividade
+          recente dos principais módulos do sistema.
         </p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {error ? (
+          <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            Erro: {error}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <p className="mt-5 text-sm font-medium text-slate-500">
+            Carregando dados do dashboard...
+          </p>
+        ) : null}
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             title="Pacientes"
             value={counts.patients}
             description="Cadastros ativos"
             href="/pacientes"
           />
+
           <MetricCard
             title="Prescrições"
             value={counts.prescriptions}
             description="Itens salvos"
             href="/prescricao"
           />
+
           <MetricCard
             title="Exames / Evolução"
             value={counts.examTemplates}
             description="Blocos clínicos"
             href="/exames-evolucao"
           />
+
+          <MetricCard
+            title="Tópicos"
+            value={counts.topicosMedicos}
+            description="Biblioteca médica"
+            href="/topicos"
+          />
+
           <MetricCard
             title="Flashcards"
             value={counts.flashcards}
             description="Revisão clínica"
             href="/flashcards"
           />
+
+          <MetricCard
+            title="Difíceis"
+            value={counts.flashcardsDificeis}
+            description="Flashcards marcados"
+            href="/flashcards-dificeis"
+          />
+
           <MetricCard
             title="CIDs"
             value={counts.cids}
             description="Base de consulta"
             href="/cids"
+          />
+
+          <MetricCard
+            title="Revisão"
+            value={counts.topicosMedicos}
+            description="Modo estudo"
+            href="/revisao-topicos"
           />
         </div>
       </section>
@@ -224,35 +370,54 @@ export default function DashboardPage() {
               title="Abrir pacientes"
               description="Cadastro, busca e edição rápida."
             />
+
             <ShortcutCard
               href="/prescricao"
               emoji="📋"
               title="Abrir prescrição"
               description="Biblioteca, formulário e histórico."
             />
+
             <ShortcutCard
               href="/exames-evolucao"
               emoji="🧪"
               title="Abrir exames"
               description="Blocos clínicos e evolução."
             />
+
+            <ShortcutCard
+              href="/topicos"
+              emoji="📚"
+              title="Abrir tópicos"
+              description="Editar e consultar biblioteca médica."
+            />
+
+            <ShortcutCard
+              href="/revisao-topicos"
+              emoji="🎯"
+              title="Revisão de tópicos"
+              description="Modo rápido para prova e plantão."
+            />
+
             <ShortcutCard
               href="/flashcards"
               emoji="🧠"
               title="Abrir flashcards"
               description="Revisão médica rápida."
             />
+
+            <ShortcutCard
+              href="/flashcards-dificeis"
+              emoji="🔥"
+              title="Revisar difíceis"
+              description="Foco no que precisa repetir."
+            />
+
             <ShortcutCard
               href="/cids"
               emoji="🏷️"
               title="Consultar CIDs"
               description="Buscar códigos e descrições."
-            />
-            <ShortcutCard
-              href="/usuario"
-              emoji="👤"
-              title="Abrir usuário"
-              description="Conta, preferências e perfil."
             />
           </div>
         </section>
@@ -263,7 +428,7 @@ export default function DashboardPage() {
               Favoritos salvos
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Seus modelos favoritos para acesso rápido.
+              Modelos favoritos para acesso rápido.
             </p>
           </div>
 
@@ -284,17 +449,17 @@ export default function DashboardPage() {
 
             <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-5">
               <p className="text-sm font-semibold text-slate-900">
-                Dica de uso
+                Fluxo recomendado
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Marque estrela nos modelos que você usa mais. Isso acelera muito o plantão.
+                Paciente → Prescrição → Exames/Evolução → Tópicos → Flashcards.
               </p>
             </div>
           </div>
         </section>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-3">
+      <section className="grid gap-6 xl:grid-cols-2">
         <RecentPanel
           title="Pacientes recentes"
           actionHref="/pacientes"
@@ -310,7 +475,9 @@ export default function DashboardPage() {
                   title={item.nome}
                   subtitle={
                     item.especialidade
-                      ? `${item.especialidade}${item.queixa ? ` • ${item.queixa}` : ""}`
+                      ? `${item.especialidade}${
+                          item.queixa ? ` • ${item.queixa}` : ""
+                        }`
                       : item.queixa || "Sem observação"
                   }
                   meta={formatDate(item.created_at)}
@@ -342,7 +509,7 @@ export default function DashboardPage() {
         </RecentPanel>
 
         <RecentPanel
-          title="Exames recentes"
+          title="Exames / evolução recentes"
           actionHref="/exames-evolucao"
           actionLabel="Abrir módulo"
         >
@@ -356,6 +523,27 @@ export default function DashboardPage() {
                   title={item.titulo}
                   subtitle={item.categoria || "Sem categoria"}
                   meta={formatDate(item.created_at)}
+                />
+              ))}
+            </div>
+          )}
+        </RecentPanel>
+
+        <RecentPanel
+          title="Tópicos atualizados"
+          actionHref="/topicos"
+          actionLabel="Abrir tópicos"
+        >
+          {recentTopicos.length === 0 ? (
+            <EmptyState text="Nenhum tópico recente." />
+          ) : (
+            <div className="space-y-3">
+              {recentTopicos.map((item) => (
+                <RecentRow
+                  key={item.id}
+                  title={item.titulo}
+                  subtitle={item.area}
+                  meta={formatDate(item.atualizado_em)}
                 />
               ))}
             </div>

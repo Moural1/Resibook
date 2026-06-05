@@ -1,4 +1,4 @@
-export default function SectionLayout({
+export default function RevisaoTopicosLayout({
   children,
 }: {
   children: React.ReactNode;

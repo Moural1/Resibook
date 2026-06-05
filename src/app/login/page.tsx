@@ -1,12 +1,14 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
-  const router = useRouter();
+function LoginContent() {
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -36,36 +38,46 @@ export default function LoginPage() {
 
       if (error) {
         setErro("E-mail ou senha inválidos.");
+        setLoading(false);
         return;
       }
 
-      router.push("/prescricao");
-      router.refresh();
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        setErro(
+          "Login realizado, mas a sessão não foi confirmada. Tente novamente."
+        );
+        setLoading(false);
+        return;
+      }
+
+      window.location.replace(redirectTo);
     } catch {
       setErro("Não foi possível entrar. Tente novamente.");
-    } finally {
       setLoading(false);
     }
   }
 
-  function handleGuestLogin() {
-    router.push("/prescricao");
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 px-4">
-      <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-8 border border-white/40">
-        <div className="flex flex-col items-center mb-6">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+        <div className="mb-6 flex flex-col items-center">
           <img
             src="/logo-resibook.png"
             alt="ResiBook"
-            className="w-16 h-16 mb-3 object-contain"
+            className="mb-3 h-16 w-16 object-contain"
           />
 
           <h1 className="text-3xl font-bold tracking-tight">
             <span className="text-blue-900">RESI</span>
             <span className="text-teal-500">BOOK</span>
           </h1>
+
+          <p className="mt-2 text-center text-sm text-slate-500">
+            Entre para acessar o sistema clínico.
+          </p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -86,7 +98,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
-              className="w-full mt-1 h-11 px-4 rounded-lg border border-gray-300 bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="mt-1 h-11 w-full rounded-lg border border-gray-300 bg-white/70 px-4 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -100,37 +112,39 @@ export default function LoginPage() {
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               autoComplete="current-password"
-              className="w-full mt-1 h-11 px-4 rounded-lg border border-gray-300 bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="mt-1 h-11 w-full rounded-lg border border-gray-300 bg-white/70 px-4 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <button
             type="submit"
             disabled={!formValido || loading}
-            className="w-full h-11 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 text-white font-semibold shadow-md hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-11 w-full rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 font-semibold text-white shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
-
-          <div className="flex items-center gap-3 py-2">
-            <div className="flex-1 h-px bg-gray-300"></div>
-            <span className="text-xs text-gray-500">OU</span>
-            <div className="flex-1 h-px bg-gray-300"></div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGuestLogin}
-            className="w-full h-11 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition text-gray-700 font-medium"
-          >
-            👤 Entrar como convidado
-          </button>
         </form>
 
-        <p className="text-xs text-gray-500 text-center mt-6">
+        <p className="mt-6 text-center text-xs text-gray-500">
           Acesso restrito • Conteúdo profissional médico
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+          <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-medium text-slate-600 shadow-sm">
+            Carregando login...
+          </div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

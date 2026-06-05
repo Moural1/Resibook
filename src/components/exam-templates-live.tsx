@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 import CopyButton from "./copy-button";
 import { showToast } from "../lib/toast";
 
@@ -30,6 +31,17 @@ type Props = {
 };
 
 const FAVORITES_KEY = "resibook-exam-template-favorites";
+
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!url || !key) return null;
+
+  return createClient(url, key);
+}
 
 function normalize(value?: string | null) {
   return (value || "")
@@ -82,6 +94,8 @@ export default function ExamTemplatesLive({
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [deletedIds, setDeletedIds] = useState<number[]>([]);
+  const [deletingIds, setDeletingIds] = useState<number[]>([]);
 
   useEffect(() => {
     setQuery(initialQuery);
@@ -93,7 +107,10 @@ export default function ExamTemplatesLive({
     if (query.trim()) params.set("q", query.trim());
     if (selectedCategory) params.set("categoria", selectedCategory);
 
-    const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    const next = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+
     router.replace(next, { scroll: false });
   }, [query, selectedCategory, pathname, router]);
 
@@ -101,6 +118,7 @@ export default function ExamTemplatesLive({
     try {
       const raw = localStorage.getItem(FAVORITES_KEY);
       if (!raw) return;
+
       const parsed = JSON.parse(raw) as number[];
       if (Array.isArray(parsed)) setFavoriteIds(parsed);
     } catch {}
@@ -111,6 +129,10 @@ export default function ExamTemplatesLive({
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds));
     } catch {}
   }, [favoriteIds]);
+
+  const visibleTemplates = useMemo(() => {
+    return templates.filter((item) => !deletedIds.includes(item.id));
+  }, [templates, deletedIds]);
 
   function toggleFavorite(id: number, title: string) {
     const isAlreadyFavorite = favoriteIds.includes(id);
@@ -128,14 +150,61 @@ export default function ExamTemplatesLive({
     });
   }
 
+  async function handleDelete(item: ExamTemplate) {
+    const confirmed = window.confirm(
+      `Tem certeza que deseja apagar "${item.titulo}"?`
+    );
+
+    if (!confirmed) return;
+
+    const supabase = getSupabase();
+
+    if (!supabase) {
+      showToast({
+        title: "Erro ao apagar",
+        description: "Supabase não configurado.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setDeletingIds((current) => [...current, item.id]);
+
+    const { error } = await supabase
+      .from("exam_templates")
+      .delete()
+      .eq("id", item.id);
+
+    if (error) {
+      showToast({
+        title: "Erro ao apagar",
+        description: error.message,
+        variant: "error",
+      });
+
+      setDeletingIds((current) => current.filter((id) => id !== item.id));
+      return;
+    }
+
+    setDeletedIds((current) => [...current, item.id]);
+    setFavoriteIds((current) => current.filter((id) => id !== item.id));
+    setDeletingIds((current) => current.filter((id) => id !== item.id));
+
+    showToast({
+      title: "Bloco apagado",
+      description: item.titulo,
+      variant: "success",
+    });
+  }
+
   const categories = useMemo(() => {
     return Array.from(
-      new Set(templates.map((item) => item.categoria || "Sem categoria"))
+      new Set(visibleTemplates.map((item) => item.categoria || "Sem categoria"))
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [templates]);
+  }, [visibleTemplates]);
 
   const filteredTemplates = useMemo(() => {
-    return templates.filter((item) => {
+    return visibleTemplates.filter((item) => {
       const itemCategory = item.categoria || "Sem categoria";
 
       const matchesQuery = includesSearch(
@@ -154,14 +223,15 @@ export default function ExamTemplatesLive({
 
       return matchesQuery && matchesCategory;
     });
-  }, [templates, query, selectedCategory]);
+  }, [visibleTemplates, query, selectedCategory]);
 
   const favorites = useMemo(() => {
-    const map = new Map(templates.map((item) => [item.id, item]));
+    const map = new Map(visibleTemplates.map((item) => [item.id, item]));
+
     return favoriteIds
       .map((id) => map.get(id))
       .filter(Boolean) as ExamTemplate[];
-  }, [templates, favoriteIds]);
+  }, [visibleTemplates, favoriteIds]);
 
   const filteredFavorites = useMemo(() => {
     return favorites.filter((item) => {
@@ -204,6 +274,7 @@ export default function ExamTemplatesLive({
 
   function Card(item: ExamTemplate, compact = false) {
     const isFavorite = favoriteIds.includes(item.id);
+    const isDeleting = deletingIds.includes(item.id);
 
     return (
       <article
@@ -239,7 +310,8 @@ export default function ExamTemplatesLive({
             <button
               type="button"
               onClick={() => toggleFavorite(item.id, item.titulo)}
-              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+              disabled={isDeleting}
+              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                 isFavorite
                   ? "border-amber-200 bg-amber-50 text-amber-700"
                   : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -251,12 +323,22 @@ export default function ExamTemplatesLive({
             <button
               type="button"
               onClick={() => handleUse(item)}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+              disabled={isDeleting}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Usar no formulário
             </button>
 
             <CopyButton text={item.conteudo} />
+
+            <button
+              type="button"
+              onClick={() => handleDelete(item)}
+              disabled={isDeleting}
+              className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? "Apagando..." : "Apagar"}
+            </button>
           </div>
         </div>
 
@@ -324,7 +406,7 @@ export default function ExamTemplatesLive({
 
         <div className="mt-4 flex items-center justify-between">
           <span className="text-sm font-medium text-slate-400">
-            {filteredTemplates.length} de {templates.length} modelos
+            {filteredTemplates.length} de {visibleTemplates.length} modelos
           </span>
 
           <div className="flex items-center gap-2">
@@ -374,7 +456,8 @@ export default function ExamTemplatesLive({
                   {formatLabel(categoria)}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  {items.length} modelo{items.length > 1 ? "s" : ""} nesta categoria
+                  {items.length} modelo{items.length > 1 ? "s" : ""} nesta
+                  categoria
                 </p>
               </div>
 

@@ -1,181 +1,197 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import {
+  Home,
+  Users,
+  ClipboardList,
+  FlaskConical,
+  Brain,
+  BookOpen,
+  Tags,
+  Settings,
+  UserCircle2,
+  BarChart3,
+  LogIn,
+  ChevronRight,
+} from "lucide-react";
+import LogoutButton from "./logout-button";
 
 type NavItem = {
-  label: string;
   href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
   badge?: string;
-  emoji: string;
 };
 
-type NavSection = {
-  title: string;
-  items: NavItem[];
-};
+const principalItems: NavItem[] = [
+  { href: "/dashboard", label: "Visão geral", icon: Home },
+  { href: "/pacientes", label: "Pacientes", icon: Users, badge: "LIVE" },
+  { href: "/prescricao", label: "Prescrição", icon: ClipboardList, badge: "PREMIUM" },
+  { href: "/exames-evolucao", label: "Exames / Evolução", icon: FlaskConical, badge: "BASE" },
+];
 
-const sections: NavSection[] = [
-  {
-    title: "Principal",
-    items: [
-      { label: "Visão geral", href: "/dashboard", emoji: "🏠" },
-      { label: "Pacientes", href: "/pacientes", badge: "LIVE", emoji: "🧑‍⚕️" },
-      { label: "Prescrição", href: "/prescricao", badge: "PREMIUM", emoji: "📋" },
-      { label: "Exames / Evolução", href: "/exames-evolucao", badge: "BASE", emoji: "🧪" },
-    ],
-  },
-  {
-    title: "Biblioteca médica",
-    items: [
-      { label: "Flashcards", href: "/flashcards", badge: "NEW", emoji: "🧠" },
-      { label: "Revisão dos tópicos", href: "/revisao-topicos", badge: "BASE", emoji: "📚" },
-      { label: "CIDs", href: "/cids", badge: "CID-10", emoji: "🏷️" },
-    ],
-  },
-  {
-    title: "Conta e acesso",
-    items: [
-      { label: "Dados da conta", href: "/dados-da-conta", badge: "BASE", emoji: "⚙️" },
-      { label: "Usuário", href: "/usuario", badge: "NEW", emoji: "👤" },
-      { label: "Login", href: "/login", emoji: "🔐" },
-    ],
-  },
-  {
-    title: "Clínico",
-    items: [
-      { label: "Casos com IA", href: "/exames-evolucao", badge: "SOON", emoji: "🤖" },
-      { label: "Métricas", href: "/dashboard", emoji: "📊" },
-    ],
-  },
+const bibliotecaItems: NavItem[] = [
+  { href: "/flashcards", label: "Flashcards", icon: Brain, badge: "NEW" },
+  { href: "/revisao-topicos", label: "Revisão", icon: BookOpen, badge: "BASE" },
+  { href: "/cids", label: "CIDs", icon: Tags, badge: "CID-10" },
+];
+
+const contaItems: NavItem[] = [
+  { href: "/dados-da-conta", label: "Dados da conta", icon: Settings, badge: "BASE" },
+  { href: "/usuario", label: "Usuário", icon: UserCircle2, badge: "NEW" },
+  { href: "/metricas", label: "Métricas", icon: BarChart3, badge: "INFO" },
+  { href: "/login", label: "Login", icon: LogIn },
 ];
 
 function isActive(pathname: string, href: string) {
-  if (href === "/dashboard") return pathname === "/dashboard";
-  return pathname.startsWith(href);
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function Badge({ text }: { text: string }) {
+  const color =
+    text === "LIVE"
+      ? "border-violet-400/30 bg-violet-500/15 text-violet-200"
+      : text === "PREMIUM"
+      ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-200"
+      : text === "NEW"
+      ? "border-pink-400/30 bg-pink-500/15 text-pink-200"
+      : text === "CID-10"
+      ? "border-cyan-400/30 bg-cyan-500/15 text-cyan-200"
+      : "border-sky-400/30 bg-sky-500/15 text-sky-200";
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${color}`}
+    >
+      {text}
+    </span>
+  );
+}
+
+function NavSection({
+  title,
+  items,
+  pathname,
+}: {
+  title: string;
+  items: NavItem[];
+  pathname: string;
+}) {
+  return (
+    <section className="mt-6">
+      <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.30em] text-slate-400">
+        {title}
+      </p>
+
+      <div className="mt-3 space-y-3">
+        {items.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(pathname, item.href);
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`group flex items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                active
+                  ? "border-cyan-400/40 bg-cyan-500/12 shadow-[0_0_0_1px_rgba(34,211,238,0.08)]"
+                  : "border-white/8 bg-white/4 hover:border-white/15 hover:bg-white/7"
+              }`}
+            >
+              <div
+                className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${
+                  active
+                    ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-200"
+                    : "border-white/10 bg-white/5 text-slate-200"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[15px] font-semibold text-white">
+                    {item.label}
+                  </span>
+                  {item.badge ? <Badge text={item.badge} /> : null}
+                </div>
+              </div>
+
+              <ChevronRight
+                className={`h-4 w-4 shrink-0 transition ${
+                  active ? "text-cyan-200" : "text-slate-500 group-hover:text-slate-300"
+                }`}
+              />
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-  const [logoError, setLogoError] = useState(false);
-  const [iconError, setIconError] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
-    <aside className="flex min-h-screen w-full flex-col bg-slate-800 text-white">
-      <div className="border-b border-white/10 px-6 py-6">
-        <Link href="/dashboard" className="block">
-          {!logoError ? (
-            <img
-              src="/logo-resibook-horizontal.png"
-              alt="ResiBook"
-              className="h-12 w-auto max-w-full object-contain"
-              onError={() => setLogoError(true)}
-            />
-          ) : (
-            <p className="text-3xl font-semibold tracking-tight text-white">
-              ResiBook
-            </p>
-          )}
-
-          <p className="mt-3 text-sm text-slate-300">
-            Sistema clínico premium
-          </p>
-        </Link>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 py-5">
-        <div className="rounded-[24px] border border-white/10 bg-slate-700/50 p-5">
+    <aside className="hidden h-screen w-[320px] shrink-0 border-r border-[#18325f] bg-[#07183d] text-white lg:flex lg:flex-col">
+      <div className="flex h-full flex-col overflow-y-auto px-4 py-5">
+        <div className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(17,38,84,0.96),rgba(9,24,61,0.96))] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
           <div className="flex items-center gap-3">
-            {!iconError ? (
-              <img
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/20 bg-white/5 p-2">
+              <Image
                 src="/logo-resibook.png"
-                alt="ResiBook ícone"
-                className="h-11 w-11 rounded-2xl object-cover"
-                onError={() => setIconError(true)}
+                alt="ResiBook"
+                width={40}
+                height={40}
+                className="h-auto w-auto max-h-10 max-w-10 object-contain"
+                priority
               />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500/20 text-lg font-bold text-cyan-200">
-                RB
-              </div>
-            )}
+            </div>
 
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">
-                Ambiente
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.34em] text-cyan-300">
+                ResiBook
               </p>
-              <p className="mt-1 text-xl font-semibold text-white">
-                Operação clínica
+              <h2 className="mt-1 text-[20px] font-bold leading-tight text-white">
+                Sistema clínico
+              </h2>
+              <p className="mt-1 text-sm text-slate-300">
+                Navegação rápida entre módulos.
               </p>
             </div>
           </div>
 
-          <p className="mt-4 text-base leading-7 text-slate-200">
-            Pacientes, prescrição, revisão, exames e fluxo assistido por IA.
-          </p>
-        </div>
-
-        <div className="mt-8 space-y-8">
-          {sections.map((section) => (
-            <div key={section.title}>
-              <p className="px-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">
-                {section.title}
-              </p>
-
-              <div className="mt-3 space-y-2">
-                {section.items.map((item) => {
-                  const active = mounted ? isActive(pathname, item.href) : false;
-
-                  return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      className={`flex items-center justify-between rounded-2xl px-4 py-3 text-base font-medium transition ${
-                        active
-                          ? "bg-cyan-500/20 text-white ring-1 ring-cyan-300/30"
-                          : "text-slate-100 hover:bg-slate-700 hover:text-white"
-                      }`}
-                    >
-                      <span className="flex items-center gap-3">
-                        <span className="text-lg">{item.emoji}</span>
-                        <span>{item.label}</span>
-                      </span>
-
-                      {item.badge ? (
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.18em] ${
-                            active
-                              ? "bg-cyan-400/20 text-cyan-100"
-                              : "border border-white/10 bg-slate-700 text-slate-200"
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="border-t border-white/10 p-4">
-        <div className="rounded-[24px] border border-white/10 bg-slate-700/50 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">
-            Status
-          </p>
-          <div className="mt-4 flex items-center gap-3">
-            <div className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_20px_rgba(74,222,128,0.6)]" />
-            <p className="text-base font-medium text-slate-100">
-              Database conectado
+          <div className="mt-5 rounded-3xl border border-cyan-400/12 bg-[linear-gradient(180deg,rgba(17,46,100,0.75),rgba(12,31,74,0.8))] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-emerald-300">
+              Ambiente
             </p>
+            <h3 className="mt-2 text-[17px] font-bold text-white">
+              Operação clínica
+            </h3>
+            <p className="mt-2 text-[13px] leading-6 text-slate-300">
+              Pacientes, prescrição, revisão, exames e fluxo assistido por IA.
+            </p>
+          </div>
+        </div>
+
+        <NavSection title="Principal" items={principalItems} pathname={pathname} />
+        <NavSection title="Biblioteca médica" items={bibliotecaItems} pathname={pathname} />
+        <NavSection title="Conta e acesso" items={contaItems} pathname={pathname} />
+
+        <div className="mt-6 rounded-3xl border border-white/8 bg-white/5 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+            Fluxo recomendado
+          </p>
+          <p className="mt-3 text-sm leading-7 text-slate-200">
+            Paciente → Prescrição → Exames → CIDs → Flashcards.
+          </p>
+
+          <div className="mt-4">
+            <LogoutButton />
           </div>
         </div>
       </div>

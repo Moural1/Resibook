@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Toaster from "../components/toaster";
+import AppShell from "../components/app-shell";
 
 export const metadata: Metadata = {
   title: "ResiBook",
@@ -15,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body>
-        {children}
+        <AppShell>{children}</AppShell>
         <Toaster />
       </body>
     </html>

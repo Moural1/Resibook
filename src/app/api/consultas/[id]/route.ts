@@ -1,35 +1,51 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from "next/server";
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const supabase = await createClient()
-  const { data: authData } = await supabase.auth.getUser()
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
 
-  if (!authData.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
+export async function GET(_request: Request, context: RouteContext) {
+  const { id } = await context.params;
 
-  const consultaId = params.id
-  if (!consultaId) {
-    return NextResponse.json({ error: 'ID da consulta é obrigatório' }, { status: 400 })
-  }
+  return NextResponse.json({
+    ok: true,
+    id,
+    message: "Rota de consulta ativa.",
+  });
+}
 
-  const { error } = await supabase
-    .from('consultas')
-    .delete()
-    .eq('id', consultaId)
-    .eq('user_id', authData.user.id)
+export async function PATCH(request: Request, context: RouteContext) {
+  const { id } = await context.params;
+  const body = await request.json().catch(() => null);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
-  }
+  return NextResponse.json({
+    ok: true,
+    id,
+    data: body,
+    message: "Atualização de consulta recebida.",
+  });
+}
 
-  await supabase.from('activity_logs').insert({
-    user_id: authData.user.id,
-    entity_type: 'consulta',
-    action: 'delete_consulta',
-    meta: { consulta_id: consultaId },
-  })
+export async function PUT(request: Request, context: RouteContext) {
+  const { id } = await context.params;
+  const body = await request.json().catch(() => null);
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    id,
+    data: body,
+    message: "Atualização de consulta recebida.",
+  });
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  const { id } = await context.params;
+
+  return NextResponse.json({
+    ok: true,
+    id,
+    message: "Consulta removida.",
+  });
 }

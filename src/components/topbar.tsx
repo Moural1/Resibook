@@ -1,15 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  BookOpen,
+  ClipboardList,
+  FlaskConical,
+  Search,
+  Sparkles,
+  Stethoscope,
+  Tags,
+  Users,
+  X,
+  Brain,
+} from "lucide-react";
 
 type SearchResult = {
   id: string;
   title: string;
   subtitle: string;
   href: string;
-  type: "paciente" | "prescricao" | "exame" | "cid";
+  type:
+    | "paciente"
+    | "prescricao"
+    | "exame"
+    | "topico"
+    | "cid"
+    | "flashcard";
 };
 
 type PatientRow = {
@@ -17,24 +36,47 @@ type PatientRow = {
   nome: string | null;
   especialidade: string | null;
   queixa: string | null;
+  diagnostico_principal?: string | null;
 };
 
 type PrescriptionRow = {
   id: number;
   paciente_nome: string | null;
   medicamento: string | null;
+  posologia?: string | null;
 };
 
 type ExamRow = {
   id: number;
   titulo: string | null;
   categoria: string | null;
+  conteudo?: string | null;
+};
+
+type TopicoRow = {
+  id: number;
+  area: string | null;
+  titulo: string | null;
+  resumo: string | null;
+  diagnostico: string | null;
+  exames: string | null;
+  tratamento: string | null;
+  pegadinhas: string | null;
 };
 
 type CidRow = {
   id: number;
   codigo: string | null;
   descricao: string | null;
+  grupo?: string | null;
+};
+
+type FlashcardRow = {
+  id: string;
+  area: string | null;
+  materia: string | null;
+  frente: string | null;
+  verso?: string | null;
 };
 
 function getSupabase(): SupabaseClient | null {
@@ -44,11 +86,12 @@ function getSupabase(): SupabaseClient | null {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!url || !key) return null;
+
   return createClient(url, key);
 }
 
-function normalize(value: string) {
-  return value
+function normalize(value?: string | null) {
+  return (value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
@@ -59,6 +102,8 @@ function badgeLabel(type: SearchResult["type"]) {
   if (type === "paciente") return "Paciente";
   if (type === "prescricao") return "Prescrição";
   if (type === "exame") return "Exame";
+  if (type === "topico") return "Tópico";
+  if (type === "flashcard") return "Flashcard";
   return "CID";
 }
 
@@ -75,16 +120,91 @@ function badgeClass(type: SearchResult["type"]) {
     return "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700";
   }
 
+  if (type === "topico") {
+    return "border-cyan-200 bg-cyan-50 text-cyan-700";
+  }
+
+  if (type === "flashcard") {
+    return "border-pink-200 bg-pink-50 text-pink-700";
+  }
+
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
+function ResultIcon({ type }: { type: SearchResult["type"] }) {
+  const className = "h-4 w-4";
+
+  if (type === "paciente") return <Users className={className} />;
+  if (type === "prescricao") return <ClipboardList className={className} />;
+  if (type === "exame") return <FlaskConical className={className} />;
+  if (type === "topico") return <BookOpen className={className} />;
+  if (type === "flashcard") return <Brain className={className} />;
+
+  return <Tags className={className} />;
+}
+
+const quickLinks = [
+  {
+    href: "/pacientes",
+    label: "Pacientes",
+    icon: Users,
+  },
+  {
+    href: "/prescricao",
+    label: "Prescrição",
+    icon: ClipboardList,
+  },
+  {
+    href: "/exames-evolucao",
+    label: "Exames",
+    icon: FlaskConical,
+  },
+  {
+    href: "/topicos",
+    label: "Tópicos",
+    icon: Stethoscope,
+  },
+  {
+    href: "/revisao-topicos",
+    label: "Revisão",
+    icon: BookOpen,
+  },
+  {
+    href: "/flashcards",
+    label: "Flashcards",
+    icon: Brain,
+  },
+  {
+    href: "/cids",
+    label: "CIDs",
+    icon: Tags,
+  },
+];
+
 export function Topbar() {
+  const router = useRouter();
+
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const firstResult = useMemo(() => results[0], [results]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!wrapperRef.current) return;
+
+      if (!wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const q = query.trim();
@@ -97,6 +217,7 @@ export function Topbar() {
       }
 
       const supabase = getSupabase();
+
       if (!supabase) {
         setResults([]);
         setLoading(false);
@@ -105,33 +226,43 @@ export function Topbar() {
 
       setLoading(true);
 
-      const patientsPromise = supabase
-        .from("patients")
-        .select("id, nome, especialidade, queixa")
-        .limit(12);
+      const [
+        patientsRes,
+        prescriptionsRes,
+        examsRes,
+        topicosRes,
+        cidsRes,
+        flashcardsRes,
+      ] = await Promise.all([
+        supabase
+          .from("patients")
+          .select("id, nome, especialidade, queixa, diagnostico_principal")
+          .limit(40),
 
-      const prescriptionsPromise = supabase
-        .from("prescriptions")
-        .select("id, paciente_nome, medicamento")
-        .limit(12);
+        supabase
+          .from("prescriptions")
+          .select("id, paciente_nome, medicamento, posologia")
+          .limit(40),
 
-      const examsPromise = supabase
-        .from("exam_templates")
-        .select("id, titulo, categoria")
-        .limit(12);
+        supabase
+          .from("exam_templates")
+          .select("id, titulo, categoria, conteudo")
+          .limit(40),
 
-      const cidsPromise = supabase
-        .from("cids")
-        .select("id, codigo, descricao")
-        .limit(20);
+        supabase
+          .from("topicos_medicos")
+          .select(
+            "id, area, titulo, resumo, diagnostico, exames, tratamento, pegadinhas"
+          )
+          .limit(60),
 
-      const [patientsRes, prescriptionsRes, examsRes, cidsRes] =
-        await Promise.all([
-          patientsPromise,
-          prescriptionsPromise,
-          examsPromise,
-          cidsPromise,
-        ]);
+        supabase.from("cids").select("id, codigo, descricao, grupo").limit(60),
+
+        supabase
+          .from("flashcards")
+          .select("id, area, materia, frente, verso")
+          .limit(60),
+      ]);
 
       const normalizedQuery = normalize(q);
 
@@ -139,14 +270,19 @@ export function Topbar() {
         []) as PatientRow[])
         .filter((item) =>
           normalize(
-            `${item.nome || ""} ${item.especialidade || ""} ${item.queixa || ""}`
+            `${item.nome || ""} ${item.especialidade || ""} ${
+              item.queixa || ""
+            } ${item.diagnostico_principal || ""}`
           ).includes(normalizedQuery)
         )
         .map((item) => ({
           id: `paciente-${item.id}`,
           title: item.nome || "Paciente sem nome",
           subtitle:
-            item.especialidade || item.queixa || "Cadastro de paciente",
+            item.especialidade ||
+            item.queixa ||
+            item.diagnostico_principal ||
+            "Cadastro de paciente",
           href: `/pacientes?q=${encodeURIComponent(item.nome || q)}`,
           type: "paciente",
         }));
@@ -155,22 +291,26 @@ export function Topbar() {
         []) as PrescriptionRow[])
         .filter((item) =>
           normalize(
-            `${item.medicamento || ""} ${item.paciente_nome || ""}`
+            `${item.medicamento || ""} ${item.paciente_nome || ""} ${
+              item.posologia || ""
+            }`
           ).includes(normalizedQuery)
         )
         .map((item) => ({
           id: `prescricao-${item.id}`,
           title: item.medicamento || "Prescrição sem medicamento",
-          subtitle: item.paciente_nome || "Prescrição clínica",
+          subtitle: item.paciente_nome || item.posologia || "Prescrição clínica",
           href: `/prescricao?q=${encodeURIComponent(item.medicamento || q)}`,
           type: "prescricao",
         }));
 
       const examResults: SearchResult[] = ((examsRes.data || []) as ExamRow[])
         .filter((item) =>
-          normalize(`${item.titulo || ""} ${item.categoria || ""}`).includes(
-            normalizedQuery
-          )
+          normalize(
+            `${item.titulo || ""} ${item.categoria || ""} ${
+              item.conteudo || ""
+            }`
+          ).includes(normalizedQuery)
         )
         .map((item) => ({
           id: `exame-${item.id}`,
@@ -180,26 +320,66 @@ export function Topbar() {
           type: "exame",
         }));
 
+      const topicoResults: SearchResult[] = ((topicosRes.data ||
+        []) as TopicoRow[])
+        .filter((item) =>
+          normalize(
+            `${item.area || ""} ${item.titulo || ""} ${item.resumo || ""} ${
+              item.diagnostico || ""
+            } ${item.exames || ""} ${item.tratamento || ""} ${
+              item.pegadinhas || ""
+            }`
+          ).includes(normalizedQuery)
+        )
+        .map((item) => ({
+          id: `topico-${item.id}`,
+          title: item.titulo || "Tópico sem título",
+          subtitle: item.area || item.resumo || "Tópico médico",
+          href: `/topicos?q=${encodeURIComponent(item.titulo || q)}`,
+          type: "topico",
+        }));
+
       const cidResults: SearchResult[] = ((cidsRes.data || []) as CidRow[])
         .filter((item) =>
-          normalize(`${item.codigo || ""} ${item.descricao || ""}`).includes(
-            normalizedQuery
-          )
+          normalize(
+            `${item.codigo || ""} ${item.descricao || ""} ${item.grupo || ""}`
+          ).includes(normalizedQuery)
         )
         .map((item) => ({
           id: `cid-${item.id}`,
           title: item.codigo || "CID",
-          subtitle: item.descricao || "Consulta CID",
-          href: `/cids?q=${encodeURIComponent(item.codigo || item.descricao || q)}`,
+          subtitle: item.descricao || item.grupo || "Consulta CID",
+          href: `/cids?q=${encodeURIComponent(
+            item.codigo || item.descricao || q
+          )}`,
           type: "cid",
+        }));
+
+      const flashcardResults: SearchResult[] = ((flashcardsRes.data ||
+        []) as FlashcardRow[])
+        .filter((item) =>
+          normalize(
+            `${item.frente || ""} ${item.verso || ""} ${item.area || ""} ${
+              item.materia || ""
+            }`
+          ).includes(normalizedQuery)
+        )
+        .map((item) => ({
+          id: `flashcard-${item.id}`,
+          title: item.frente || "Flashcard",
+          subtitle: item.materia || item.area || "Revisão rápida",
+          href: `/flashcards?q=${encodeURIComponent(item.frente || q)}`,
+          type: "flashcard",
         }));
 
       const merged = [
         ...patientResults,
+        ...topicoResults,
         ...prescriptionResults,
         ...examResults,
         ...cidResults,
-      ].slice(0, 10);
+        ...flashcardResults,
+      ].slice(0, 12);
 
       setResults(merged);
       setLoading(false);
@@ -207,98 +387,170 @@ export function Topbar() {
 
     const timer = window.setTimeout(() => {
       runSearch();
-    }, 250);
+    }, 220);
 
     return () => window.clearTimeout(timer);
   }, [query]);
 
+  function handleSubmitSearch() {
+    const q = query.trim();
+
+    if (!q) {
+      setOpen(false);
+      return;
+    }
+
+    if (firstResult) {
+      router.push(firstResult.href);
+    } else {
+      router.push(`/topicos?q=${encodeURIComponent(q)}`);
+    }
+
+    setOpen(false);
+  }
+
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="relative flex items-center gap-3 px-4 py-4 md:px-6 lg:px-8">
+      <div
+        ref={wrapperRef}
+        className="relative flex items-center gap-3 px-4 py-4 md:px-6 lg:px-8"
+      >
         <div className="min-w-0 flex-1">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setOpen(true);
-            }}
-            onFocus={() => {
-              if (query.trim()) setOpen(true);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setOpen(false);
-              }
+          <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4">
+            <Search className="h-4 w-4 text-slate-400" />
 
-              if (e.key === "Enter" && firstResult) {
-                window.location.href = firstResult.href;
-              }
-            }}
-            placeholder="Buscar pacientes, prescrições, exames, CIDs..."
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400"
-          />
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setOpen(true);
+              }}
+              onFocus={() => {
+                if (query.trim()) setOpen(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setOpen(false);
+                }
+
+                if (event.key === "Enter") {
+                  handleSubmitSearch();
+                }
+              }}
+              placeholder="Buscar pacientes, tópicos, prescrições, exames, CIDs, flashcards..."
+              className="h-full w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            />
+
+            {query ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setResults([]);
+                  setOpen(false);
+                }}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                aria-label="Limpar busca"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
 
           {open && query.trim() ? (
-            <div className="absolute left-4 right-4 top-[76px] z-50 rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl md:left-6 md:right-6 lg:left-8 lg:right-8">
+            <div className="absolute left-4 right-4 top-[76px] z-50 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl md:left-6 md:right-6 lg:left-8 lg:right-8">
+              <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Busca global
+                </div>
+              </div>
+
               {loading ? (
-                <div className="rounded-2xl px-4 py-6 text-sm text-slate-500">
+                <div className="px-4 py-6 text-sm text-slate-500">
                   Buscando...
                 </div>
               ) : results.length === 0 ? (
-                <div className="rounded-2xl px-4 py-6 text-sm text-slate-500">
-                  Nenhum resultado encontrado.
+                <div className="space-y-4 px-4 py-6">
+                  <p className="text-sm text-slate-500">
+                    Nenhum resultado direto encontrado.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleSubmitSearch}
+                    className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white"
+                  >
+                    Buscar em tópicos
+                  </button>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {results.map((item) => (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      onClick={() => {
-                        setOpen(false);
-                        setQuery("");
-                      }}
-                      className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-slate-300 hover:bg-white"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {item.title}
-                          </p>
-                          <p className="mt-1 text-sm text-slate-500">
-                            {item.subtitle}
-                          </p>
-                        </div>
+                <div className="max-h-[420px] overflow-y-auto p-3">
+                  <div className="space-y-2">
+                    {results.map((item) => (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        onClick={() => {
+                          setOpen(false);
+                          setQuery("");
+                        }}
+                        className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-slate-300 hover:bg-white"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div
+                              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${badgeClass(
+                                item.type
+                              )}`}
+                            >
+                              <ResultIcon type={item.type} />
+                            </div>
 
-                        <span
-                          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass(
-                            item.type
-                          )}`}
-                        >
-                          {badgeLabel(item.type)}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-900">
+                                {item.title}
+                              </p>
+                              <p className="mt-1 truncate text-sm text-slate-500">
+                                {item.subtitle}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold ${badgeClass(
+                              item.type
+                            )}`}
+                          >
+                            {badgeLabel(item.type)}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           ) : null}
         </div>
 
-        {open && query.trim() ? (
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              setQuery("");
-            }}
-            className="hidden rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 md:inline-flex"
-          >
-            Fechar
-          </button>
-        ) : null}
+        <div className="hidden items-center gap-2 xl:flex">
+          {quickLinks.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="inline-flex h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </header>
   );
