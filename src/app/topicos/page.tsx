@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 
 type TopicoMedico = {
@@ -38,6 +38,8 @@ type TopicoForm = {
   fonte: string;
 };
 
+const GUEST_EMAIL = "convidado@resibook.com";
+
 const emptyForm: TopicoForm = {
   area: "",
   titulo: "",
@@ -53,17 +55,6 @@ const emptyForm: TopicoForm = {
   prioridade: "1",
   fonte: "ResiBook",
 };
-
-function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) return null;
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-}
 
 function normalize(value?: string | null) {
   return (value || "")
@@ -188,6 +179,11 @@ function TextAreaField({
 }
 
 export default function TopicosPage() {
+  const supabase = createClient();
+
+  const [isGuest, setIsGuest] = useState(false);
+  const [checkingUser, setCheckingUser] = useState(true);
+
   const [topicos, setTopicos] = useState<TopicoMedico[]>([]);
   const [query, setQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
@@ -201,15 +197,15 @@ export default function TopicosPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  async function checkUser() {
+    const { data } = await supabase.auth.getSession();
+    const email = data.session?.user?.email?.trim().toLowerCase() || "";
+
+    setIsGuest(email === GUEST_EMAIL);
+    setCheckingUser(false);
+  }
+
   async function loadTopicos() {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError("");
 
@@ -232,6 +228,7 @@ export default function TopicosPage() {
   }
 
   useEffect(() => {
+    checkUser();
     loadTopicos();
   }, []);
 
@@ -305,10 +302,8 @@ export default function TopicosPage() {
   }
 
   async function handleCreate() {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (isGuest) {
+      setError("Usuário convidado não pode criar tópicos.");
       return;
     }
 
@@ -347,6 +342,8 @@ export default function TopicosPage() {
   }
 
   function startEdit(item: TopicoMedico) {
+    if (isGuest) return;
+
     setEditingId(item.id);
     setEditForms((current) => ({
       ...current,
@@ -364,12 +361,7 @@ export default function TopicosPage() {
   }
 
   async function handleUpdate(id: number) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
-      return;
-    }
+    if (isGuest) return;
 
     const editForm = editForms[id];
 
@@ -416,12 +408,7 @@ export default function TopicosPage() {
   }
 
   async function handleDelete(id: number, title: string) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
-      return;
-    }
+    if (isGuest) return;
 
     const confirmed = window.confirm(
       `Tem certeza que deseja apagar o tópico "${title}"?`
@@ -433,7 +420,10 @@ export default function TopicosPage() {
     setSuccess("");
     setSavingIds((current) => [...current, id]);
 
-    const { error } = await supabase.from("topicos_medicos").delete().eq("id", id);
+    const { error } = await supabase
+      .from("topicos_medicos")
+      .delete()
+      .eq("id", id);
 
     if (error) {
       setError(error.message);
@@ -463,60 +453,40 @@ export default function TopicosPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Área
-            </label>
-            <input
-              value={editForm.area}
-              onChange={(event) =>
-                updateEditForm(item.id, "area", event.target.value)
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
+          <input
+            value={editForm.area}
+            onChange={(event) =>
+              updateEditForm(item.id, "area", event.target.value)
+            }
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          />
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Título
-            </label>
-            <input
-              value={editForm.titulo}
-              onChange={(event) =>
-                updateEditForm(item.id, "titulo", event.target.value)
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
+          <input
+            value={editForm.titulo}
+            onChange={(event) =>
+              updateEditForm(item.id, "titulo", event.target.value)
+            }
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          />
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Prioridade
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="5"
-              value={editForm.prioridade}
-              onChange={(event) =>
-                updateEditForm(item.id, "prioridade", event.target.value)
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
+          <input
+            type="number"
+            min="1"
+            max="5"
+            value={editForm.prioridade}
+            onChange={(event) =>
+              updateEditForm(item.id, "prioridade", event.target.value)
+            }
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          />
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Fonte
-            </label>
-            <input
-              value={editForm.fonte}
-              onChange={(event) =>
-                updateEditForm(item.id, "fonte", event.target.value)
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
+          <input
+            value={editForm.fonte}
+            onChange={(event) =>
+              updateEditForm(item.id, "fonte", event.target.value)
+            }
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          />
         </div>
 
         <div className="mt-4 grid gap-4">
@@ -616,7 +586,7 @@ export default function TopicosPage() {
             </span>
 
             <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-              CRUD completo
+              {isGuest ? "Somente leitura" : "CRUD completo"}
             </span>
           </div>
 
@@ -625,9 +595,9 @@ export default function TopicosPage() {
           </h1>
 
           <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-            Biblioteca médica estruturada por área, com diagnóstico, critérios,
-            exames, tratamento, urgência, internação/referência e pegadinhas de
-            prova.
+            {isGuest
+              ? "Biblioteca médica para consulta e cópia rápida. O modo convidado não permite criar, editar ou apagar tópicos."
+              : "Biblioteca médica estruturada por área, com diagnóstico, critérios, exames, tratamento, urgência, internação/referência e pegadinhas de prova."}
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
@@ -635,6 +605,12 @@ export default function TopicosPage() {
             <span>•</span>
             <span>Exibindo: {filtered.length}</span>
           </div>
+
+          {isGuest ? (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              Convidado: leitura e cópia liberadas. Edição bloqueada.
+            </div>
+          ) : null}
 
           {error ? (
             <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
@@ -685,45 +661,32 @@ export default function TopicosPage() {
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-            Novo tópico médico
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Crie tópicos novos ou complemente a biblioteca já importada.
-          </p>
-        </div>
+      {!isGuest ? (
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="border-b border-slate-200 pb-5">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900">
+              Novo tópico médico
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Crie tópicos novos ou complemente a biblioteca já importada.
+            </p>
+          </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Área
-            </label>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
             <input
               value={form.area}
               onChange={(event) => updateForm("area", event.target.value)}
-              placeholder="Ex.: Clínica Médica"
+              placeholder="Área"
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             />
-          </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Título
-            </label>
             <input
               value={form.titulo}
               onChange={(event) => updateForm("titulo", event.target.value)}
-              placeholder="Ex.: Tromboembolismo Pulmonar"
+              placeholder="Título"
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             />
-          </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Prioridade
-            </label>
             <input
               type="number"
               min="1"
@@ -732,108 +695,94 @@ export default function TopicosPage() {
               onChange={(event) => updateForm("prioridade", event.target.value)}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             />
-          </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Fonte
-            </label>
             <input
               value={form.fonte}
               onChange={(event) => updateForm("fonte", event.target.value)}
-              placeholder="Ex.: ResiBook"
+              placeholder="Fonte"
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             />
           </div>
-        </div>
 
-        <div className="mt-4 grid gap-4">
-          <TextAreaField
-            label="Resumo"
-            value={form.resumo}
-            onChange={(value) => updateForm("resumo", value)}
-            placeholder="Resumo específico e objetivo do tema."
-          />
+          <div className="mt-4 grid gap-4">
+            <TextAreaField
+              label="Resumo"
+              value={form.resumo}
+              onChange={(value) => updateForm("resumo", value)}
+            />
 
-          <TextAreaField
-            label="Diagnóstico"
-            value={form.diagnostico}
-            onChange={(value) => updateForm("diagnostico", value)}
-            placeholder="Como suspeitar, confirmar e diferenciar."
-          />
+            <TextAreaField
+              label="Diagnóstico"
+              value={form.diagnostico}
+              onChange={(value) => updateForm("diagnostico", value)}
+            />
 
-          <TextAreaField
-            label="Critérios / classificação"
-            value={form.criterios}
-            onChange={(value) => updateForm("criterios", value)}
-            placeholder="Critérios diagnósticos, gravidade, classificação ou escore."
-          />
+            <TextAreaField
+              label="Critérios / classificação"
+              value={form.criterios}
+              onChange={(value) => updateForm("criterios", value)}
+            />
 
-          <TextAreaField
-            label="Exames"
-            value={form.exames}
-            onChange={(value) => updateForm("exames", value)}
-            placeholder="Exames iniciais, confirmatórios e seguimento."
-          />
+            <TextAreaField
+              label="Exames"
+              value={form.exames}
+              onChange={(value) => updateForm("exames", value)}
+            />
 
-          <TextAreaField
-            label="Tratamento / conduta"
-            value={form.tratamento}
-            onChange={(value) => updateForm("tratamento", value)}
-            placeholder="Conduta prática, primeira linha, doses se necessário."
-          />
+            <TextAreaField
+              label="Tratamento / conduta"
+              value={form.tratamento}
+              onChange={(value) => updateForm("tratamento", value)}
+            />
 
-          <TextAreaField
-            label="Conduta na urgência"
-            value={form.conduta_urgencia}
-            onChange={(value) => updateForm("conduta_urgencia", value)}
-            placeholder="O que fazer no PS, estabilização e red flags."
-          />
+            <TextAreaField
+              label="Conduta na urgência"
+              value={form.conduta_urgencia}
+              onChange={(value) => updateForm("conduta_urgencia", value)}
+            />
 
-          <TextAreaField
-            label="Internação / referência"
-            value={form.internacao_referencia}
-            onChange={(value) => updateForm("internacao_referencia", value)}
-            placeholder="Critérios de internação, UTI, encaminhamento ou referência."
-          />
+            <TextAreaField
+              label="Internação / referência"
+              value={form.internacao_referencia}
+              onChange={(value) => updateForm("internacao_referencia", value)}
+            />
 
-          <TextAreaField
-            label="Pegadinhas de prova"
-            value={form.pegadinhas}
-            onChange={(value) => updateForm("pegadinhas", value)}
-            placeholder="Armadilhas frequentes de prova."
-          />
+            <TextAreaField
+              label="Pegadinhas de prova"
+              value={form.pegadinhas}
+              onChange={(value) => updateForm("pegadinhas", value)}
+            />
 
-          <TextAreaField
-            label="Tags"
-            value={form.tags}
-            onChange={(value) => updateForm("tags", value)}
-            placeholder="Ex.: urgência, antibiótico, prova, plantão"
-            rows={2}
-          />
-        </div>
+            <TextAreaField
+              label="Tags"
+              value={form.tags}
+              onChange={(value) => updateForm("tags", value)}
+              rows={2}
+            />
+          </div>
 
-        <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
-          <button
-            type="button"
-            onClick={handleCreate}
-            disabled={saving}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? "Salvando..." : "Criar tópico"}
-          </button>
+          <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={saving}
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Salvando..." : "Criar tópico"}
+            </button>
 
-          <button
-            type="button"
-            onClick={resetForm}
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-          >
-            Limpar formulário
-          </button>
-        </div>
-      </section>
+            <button
+              type="button"
+              onClick={resetForm}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+            >
+              Limpar formulário
+            </button>
+          </div>
+        </section>
+      ) : null}
 
-      {loading ? (
+      {loading || checkingUser ? (
         <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
           Carregando tópicos médicos...
         </section>
@@ -909,23 +858,31 @@ export default function TopicosPage() {
                       <div className="flex flex-wrap gap-2">
                         <CopyButton text={buildFullText(item)} />
 
-                        <button
-                          type="button"
-                          onClick={() => startEdit(item)}
-                          disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          Editar
-                        </button>
+                        {!isGuest ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(item)}
+                              disabled={savingItem}
+                              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Editar
+                            </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id, item.titulo)}
-                          disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {savingItem ? "Apagando..." : "Apagar"}
-                        </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(item.id, item.titulo)}
+                              disabled={savingItem}
+                              className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {savingItem ? "Apagando..." : "Apagar"}
+                            </button>
+                          </>
+                        ) : (
+                          <span className="inline-flex h-10 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-800">
+                            Somente leitura
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -968,7 +925,7 @@ export default function TopicosPage() {
                       </div>
                     ) : null}
 
-                    {editing ? renderEditForm(item) : null}
+                    {editing && !isGuest ? renderEditForm(item) : null}
                   </article>
                 );
               })}
