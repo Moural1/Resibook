@@ -1,21 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
-import ExamTemplatesLive from "../../components/exam-templates-live";
+import {
+  ClipboardCopy,
+  Edit3,
+  FlaskConical,
+  Lock,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 
 type ExamTemplate = {
   id: number;
   categoria: string | null;
-  titulo: string;
+  titulo: string | null;
   sexo: string | null;
   arquivo_origem: string | null;
-  conteudo: string;
-  created_at: string;
+  source_file?: string | null;
+  conteudo: string | null;
+  created_at?: string | null;
 };
 
-type ExamDraft = {
+type FormState = {
   categoria: string;
   titulo: string;
   sexo: string;
@@ -23,32 +33,15 @@ type ExamDraft = {
   conteudo: string;
 };
 
-type ExamForm = {
-  categoria: string;
-  titulo: string;
-  sexo: string;
-  arquivo_origem: string;
-  conteudo: string;
-};
+const GUEST_EMAIL = "convidado@resibook.com";
 
-const emptyForm: ExamForm = {
+const emptyForm: FormState = {
   categoria: "",
   titulo: "",
   sexo: "",
   arquivo_origem: "",
   conteudo: "",
 };
-
-function getSupabase(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !key) return null;
-
-  return createClient(url, key);
-}
 
 function normalize(value?: string | null) {
   return (value || "")
@@ -58,276 +51,340 @@ function normalize(value?: string | null) {
     .trim();
 }
 
-function buildPayload(form: ExamForm) {
+function formatTemplateText(item: ExamTemplate) {
+  return [
+    item.titulo || "Exame / evolução",
+    item.categoria ? `Categoria: ${item.categoria}` : "",
+    item.sexo ? `Sexo: ${item.sexo}` : "",
+    item.arquivo_origem || item.source_file
+      ? `Origem: ${item.arquivo_origem || item.source_file}`
+      : "",
+    "",
+    item.conteudo || "",
+  ]
+    .filter((line) => line !== null && line !== undefined)
+    .join("\n");
+}
+
+function buildPayload(form: FormState) {
   return {
     categoria: form.categoria.trim() || null,
-    titulo: form.titulo.trim() || "Bloco sem título",
+    titulo: form.titulo.trim() || null,
     sexo: form.sexo.trim() || null,
     arquivo_origem: form.arquivo_origem.trim() || null,
-    conteudo: form.conteudo.trim(),
+    conteudo: form.conteudo.trim() || null,
   };
 }
 
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 8,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        {label}
+      </label>
+
+      <textarea
+        rows={rows}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+      />
+    </div>
+  );
+}
+
+function InputField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        {label}
+      </label>
+
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+      />
+    </div>
+  );
+}
+
 export default function ExamesEvolucaoPage() {
-  const [initialQuery, setInitialQuery] = useState("");
+  const supabase = createClient();
 
-  const [templates, setTemplates] = useState<ExamTemplate[]>([]);
-  const [form, setForm] = useState<ExamForm>(emptyForm);
-  const [editForms, setEditForms] = useState<Record<number, ExamForm>>({});
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [checkingUser, setCheckingUser] = useState(true);
 
-  const [query, setQuery] = useState("");
+  const [items, setItems] = useState<ExamTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingIds, setSavingIds] = useState<number[]>([]);
+
+  const [query, setQuery] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [sexo, setSexo] = useState("");
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ExamTemplate | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get("q") || "";
+  async function checkUser() {
+    const { data } = await supabase.auth.getSession();
+    const email = data.session?.user?.email?.trim().toLowerCase() || "";
 
-    setInitialQuery(q);
-    setQuery(q);
-  }, []);
+    setIsGuest(email === GUEST_EMAIL);
+    setCheckingUser(false);
+  }
 
-  async function loadTemplates() {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
-      setTemplates([]);
-      setLoading(false);
-      return;
-    }
-
+  async function loadItems() {
     setLoading(true);
     setError("");
 
     const { data, error } = await supabase
       .from("exam_templates")
-      .select("id, categoria, titulo, sexo, arquivo_origem, conteudo, created_at")
-      .order("created_at", { ascending: false });
+      .select("id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at")
+      .order("categoria", { ascending: true })
+      .order("titulo", { ascending: true });
 
     if (error) {
       setError(error.message);
-      setTemplates([]);
+      setItems([]);
     } else {
-      setTemplates((data as ExamTemplate[]) || []);
+      setItems((data as ExamTemplate[]) || []);
     }
 
     setLoading(false);
   }
 
   useEffect(() => {
-    loadTemplates();
+    checkUser();
+    loadItems();
   }, []);
 
-  const total = templates.length;
+  const categorias = useMemo(() => {
+    return Array.from(
+      new Set(items.map((item) => item.categoria).filter(Boolean))
+    ).sort((a, b) => String(a).localeCompare(String(b), "pt-BR")) as string[];
+  }, [items]);
 
-  const filteredTemplates = useMemo(() => {
-    const normalizedQuery = normalize(query);
+  const sexos = useMemo(() => {
+    return Array.from(
+      new Set(items.map((item) => item.sexo).filter(Boolean))
+    ).sort((a, b) => String(a).localeCompare(String(b), "pt-BR")) as string[];
+  }, [items]);
 
-    if (!normalizedQuery) return templates;
+  const filtered = useMemo(() => {
+    const q = normalize(query);
 
-    return templates.filter((item) => {
-      return (
-        normalize(item.categoria).includes(normalizedQuery) ||
-        normalize(item.titulo).includes(normalizedQuery) ||
-        normalize(item.sexo).includes(normalizedQuery) ||
-        normalize(item.arquivo_origem).includes(normalizedQuery) ||
-        normalize(item.conteudo).includes(normalizedQuery)
-      );
+    return items.filter((item) => {
+      const matchesQuery =
+        !q ||
+        normalize(item.titulo).includes(q) ||
+        normalize(item.categoria).includes(q) ||
+        normalize(item.sexo).includes(q) ||
+        normalize(item.arquivo_origem || item.source_file).includes(q) ||
+        normalize(item.conteudo).includes(q);
+
+      const matchesCategoria = !categoria || item.categoria === categoria;
+      const matchesSexo = !sexo || item.sexo === sexo;
+
+      return matchesQuery && matchesCategoria && matchesSexo;
     });
-  }, [templates, query]);
+  }, [items, query, categoria, sexo]);
 
-  function updateForm<K extends keyof ExamForm>(key: K, value: ExamForm[K]) {
+  function updateForm<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({
       ...current,
       [key]: value,
     }));
   }
 
-  function resetForm() {
+  function openCreateModal() {
+    if (isGuest) return;
+
+    setEditingItem(null);
+    setForm(emptyForm);
+    setModalOpen(true);
+    setError("");
+    setSuccess("");
+  }
+
+  function openEditModal(item: ExamTemplate) {
+    if (isGuest) return;
+
+    setEditingItem(item);
+    setForm({
+      categoria: item.categoria || "",
+      titulo: item.titulo || "",
+      sexo: item.sexo || "",
+      arquivo_origem: item.arquivo_origem || item.source_file || "",
+      conteudo: item.conteudo || "",
+    });
+    setModalOpen(true);
+    setError("");
+    setSuccess("");
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingItem(null);
     setForm(emptyForm);
   }
 
-  function handleUseTemplate(draft: ExamDraft) {
-    setForm({
-      categoria: draft.categoria || "",
-      titulo: draft.titulo || "",
-      sexo: draft.sexo || "",
-      arquivo_origem: draft.arquivo_origem || "",
-      conteudo: draft.conteudo || "",
-    });
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  }
-
-  async function handleCreate() {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+  async function handleSave() {
+    if (isGuest) {
+      setError("Usuário convidado não pode criar ou editar exames.");
       return;
     }
 
-    if (!form.conteudo.trim()) {
-      setError("O conteúdo do bloco é obrigatório.");
+    if (!form.titulo.trim() && !form.conteudo.trim()) {
+      setError("Preencha pelo menos título ou conteúdo.");
       return;
     }
 
     setSaving(true);
     setError("");
+    setSuccess("");
 
-    const { data, error } = await supabase
-      .from("exam_templates")
-      .insert(buildPayload(form))
-      .select("id, categoria, titulo, sexo, arquivo_origem, conteudo, created_at")
-      .single();
+    const payload = buildPayload(form);
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
-      setTemplates((current) => [data as ExamTemplate, ...current]);
-      resetForm();
+    const response = editingItem
+      ? await supabase
+          .from("exam_templates")
+          .update(payload)
+          .eq("id", editingItem.id)
+          .select("id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at")
+          .single()
+      : await supabase
+          .from("exam_templates")
+          .insert(payload)
+          .select("id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at")
+          .single();
+
+    if (response.error) {
+      setError(response.error.message);
+    } else if (response.data) {
+      const saved = response.data as ExamTemplate;
+
+      if (editingItem) {
+        setItems((current) =>
+          current.map((item) => (item.id === saved.id ? saved : item))
+        );
+        setSuccess("Modelo atualizado com sucesso.");
+      } else {
+        setItems((current) => [saved, ...current]);
+        setSuccess("Modelo criado com sucesso.");
+      }
+
+      closeModal();
     }
 
     setSaving(false);
   }
 
-  function startEdit(item: ExamTemplate) {
-    setEditingId(item.id);
-    setEditForms((current) => ({
-      ...current,
-      [item.id]: {
-        categoria: item.categoria || "",
-        titulo: item.titulo || "",
-        sexo: item.sexo || "",
-        arquivo_origem: item.arquivo_origem || "",
-        conteudo: item.conteudo || "",
-      },
-    }));
-  }
+  async function handleDelete(item: ExamTemplate) {
+    if (isGuest) return;
 
-  function cancelEdit(id: number) {
-    setEditingId(null);
-    setEditForms((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
-  }
-
-  function updateEditForm<K extends keyof ExamForm>(
-    id: number,
-    key: K,
-    value: ExamForm[K]
-  ) {
-    setEditForms((current) => ({
-      ...current,
-      [id]: {
-        ...(current[id] || emptyForm),
-        [key]: value,
-      },
-    }));
-  }
-
-  async function handleUpdate(id: number) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
-      return;
-    }
-
-    const editForm = editForms[id];
-
-    if (!editForm) {
-      setError("Formulário de edição não encontrado.");
-      return;
-    }
-
-    if (!editForm.conteudo.trim()) {
-      setError("O conteúdo do bloco é obrigatório.");
-      return;
-    }
-
-    setError("");
-    setSavingIds((current) => [...current, id]);
-
-    const { data, error } = await supabase
-      .from("exam_templates")
-      .update(buildPayload(editForm))
-      .eq("id", id)
-      .select("id, categoria, titulo, sexo, arquivo_origem, conteudo, created_at")
-      .single();
-
-    if (error) {
-      setError(error.message);
-    } else if (data) {
-      setTemplates((current) =>
-        current.map((item) => (item.id === id ? (data as ExamTemplate) : item))
-      );
-      cancelEdit(id);
-    }
-
-    setSavingIds((current) => current.filter((item) => item !== id));
-  }
-
-  async function handleDelete(id: number) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
-      return;
-    }
-
-    const confirmed = window.confirm("Tem certeza que deseja apagar este bloco?");
+    const confirmed = window.confirm(
+      `Tem certeza que deseja apagar "${item.titulo || "este modelo"}"?`
+    );
 
     if (!confirmed) return;
 
     setError("");
-    setSavingIds((current) => [...current, id]);
+    setSuccess("");
 
     const { error } = await supabase
       .from("exam_templates")
       .delete()
-      .eq("id", id);
+      .eq("id", item.id);
 
     if (error) {
       setError(error.message);
     } else {
-      setTemplates((current) => current.filter((item) => item.id !== id));
-      cancelEdit(id);
+      setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+      setSuccess("Modelo apagado com sucesso.");
     }
-
-    setSavingIds((current) => current.filter((item) => item !== id));
   }
+
+  const hasFilters = Boolean(query || categoria || sexo);
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-        <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
-              Exames para solicitar
-            </p>
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-5 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-700">
+                Exames / Evolução
+              </span>
 
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-4xl">
-              Exames e evolução clínica
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                {isGuest ? "Somente leitura" : "Modelos clínicos"}
+              </span>
+            </div>
+
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
+              Exames e evolução
             </h1>
 
-            <p className="mt-2 text-sm text-slate-500 md:text-base">
-              Biblioteca prática com blocos estruturados para uso clínico real.
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Biblioteca de blocos clínicos para consulta, cópia rápida e uso
+              como apoio em evolução ou solicitação de exames.
             </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
+              <span>
+                {loading ? "Carregando..." : `Total carregado: ${items.length}`}
+              </span>
+              <span>•</span>
+              <span>Exibindo: {filtered.length}</span>
+            </div>
           </div>
 
-          <div className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
-            {total} {total === 1 ? "item" : "itens"}
-          </div>
+          {!isGuest ? (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Novo modelo
+            </button>
+          ) : (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Convidado: leitura e cópia liberadas.
+              </div>
+            </div>
+          )}
         </div>
 
         {error ? (
@@ -336,333 +393,236 @@ export default function ExamesEvolucaoPage() {
           </div>
         ) : null}
 
-        <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Novo bloco
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Clique em um modelo da biblioteca ou preencha manualmente.
-            </p>
+        {success ? (
+          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            {success}
           </div>
+        ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Categoria
-              </label>
-              <input
-                value={form.categoria}
-                onChange={(e) => updateForm("categoria", e.target.value)}
-                placeholder="Ex.: Exames, Evolução, Conduta"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Título
-              </label>
-              <input
-                value={form.titulo}
-                onChange={(e) => updateForm("titulo", e.target.value)}
-                placeholder="Ex.: Dor abdominal — exames iniciais"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Sexo
-              </label>
-              <input
-                value={form.sexo}
-                onChange={(e) => updateForm("sexo", e.target.value)}
-                placeholder="Opcional"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Arquivo origem / contexto
-              </label>
-              <input
-                value={form.arquivo_origem}
-                onChange={(e) => updateForm("arquivo_origem", e.target.value)}
-                placeholder="Ex.: plantão, clínica médica, revisão"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Conteúdo do bloco
-            </label>
-            <textarea
-              rows={10}
-              value={form.conteudo}
-              onChange={(e) => updateForm("conteudo", e.target.value)}
-              placeholder="Digite o conteúdo clínico..."
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+        <div className="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por título, categoria, conteúdo, origem..."
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none"
             />
           </div>
 
-          <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-            <button
-              type="button"
-              onClick={resetForm}
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+          <div className="grid gap-3 md:grid-cols-3">
+            <select
+              value={categoria}
+              onChange={(event) => setCategoria(event.target.value)}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             >
-              Limpar formulário
-            </button>
+              <option value="">— todas as categorias —</option>
+              {categorias.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={sexo}
+              onChange={(event) => setSexo(event.target.value)}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+            >
+              <option value="">— todos os sexos —</option>
+              {sexos.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
 
             <button
               type="button"
-              onClick={handleCreate}
-              disabled={saving}
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => {
+                setQuery("");
+                setCategoria("");
+                setSexo("");
+              }}
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
             >
-              {saving ? "Salvando..." : "Adicionar bloco"}
+              {hasFilters ? "Limpar filtros" : "Filtros"}
             </button>
           </div>
         </div>
       </section>
 
-      <ExamTemplatesLive
-        templates={templates}
-        onUseTemplate={handleUseTemplate}
-        initialQuery={initialQuery}
-      />
+      {loading || checkingUser ? (
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
+          Carregando exames e evoluções...
+        </section>
+      ) : filtered.length === 0 ? (
+        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
+          Nenhum modelo encontrado.
+        </section>
+      ) : (
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 xl:grid-cols-2">
+            {filtered.map((item) => (
+              <article
+                key={item.id}
+                className="rounded-[24px] border border-slate-200 bg-slate-50 p-5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                        {item.categoria || "Sem categoria"}
+                      </span>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-              Blocos salvos
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Histórico completo vindo da base de dados.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2 md:items-end">
-            <span className="text-sm font-medium text-slate-400">
-              {filteredTemplates.length} de {templates.length} registros
-            </span>
-
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar exame, evolução, categoria..."
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none md:w-80"
-            />
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-            Carregando blocos...
-          </div>
-        ) : filteredTemplates.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-            Nenhum bloco encontrado.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredTemplates.map((item) => {
-              const editing = editingId === item.id;
-              const savingItem = savingIds.includes(item.id);
-              const editForm = editForms[item.id] || {
-                categoria: item.categoria || "",
-                titulo: item.titulo || "",
-                sexo: item.sexo || "",
-                arquivo_origem: item.arquivo_origem || "",
-                conteudo: item.conteudo || "",
-              };
-
-              return (
-                <article
-                  key={item.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                          {item.categoria || "Sem categoria"}
+                      {item.sexo ? (
+                        <span className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3 py-1 text-xs font-semibold text-fuchsia-700">
+                          {item.sexo}
                         </span>
+                      ) : null}
 
-                        {item.sexo ? (
-                          <span className="rounded-full bg-fuchsia-50 px-3 py-1 text-xs font-semibold text-fuchsia-700">
-                            {item.sexo}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <h3 className="mt-3 text-lg font-semibold tracking-tight text-slate-900">
-                        {item.titulo || "Bloco sem título"}
-                      </h3>
-
-                      {item.arquivo_origem ? (
-                        <p className="mt-1 text-sm text-slate-500">
-                          {item.arquivo_origem}
-                        </p>
+                      {item.arquivo_origem || item.source_file ? (
+                        <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                          {item.arquivo_origem || item.source_file}
+                        </span>
                       ) : null}
                     </div>
 
-                    <CopyButton text={item.conteudo} />
+                    <h3 className="mt-4 text-lg font-semibold text-slate-900">
+                      {item.titulo || "Sem título"}
+                    </h3>
                   </div>
 
-                  <div className="mt-4 rounded-2xl bg-[#07183d] px-4 py-4">
-                    <pre className="whitespace-pre-wrap font-mono text-[15px] leading-7 text-slate-100">
-                      {item.conteudo}
-                    </pre>
+                  <CopyButton text={formatTemplateText(item)} />
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                  <pre className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                    {item.conteudo || "Sem conteúdo"}
+                  </pre>
+                </div>
+
+                {!isGuest ? (
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(item)}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Editar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item)}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Apagar
+                    </button>
                   </div>
-
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    {!editing ? (
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(item)}
-                          className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-                        >
-                          Editar
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id)}
-                          disabled={savingItem}
-                          className="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {savingItem ? "Apagando..." : "Apagar"}
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="mb-4">
-                          <p className="text-sm font-semibold text-slate-900">
-                            Editando bloco
-                          </p>
-                          <p className="mt-1 text-sm text-slate-500">
-                            Altere os campos abaixo e salve.
-                          </p>
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Categoria
-                            </label>
-                            <input
-                              value={editForm.categoria}
-                              onChange={(e) =>
-                                updateEditForm(
-                                  item.id,
-                                  "categoria",
-                                  e.target.value
-                                )
-                              }
-                              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Título
-                            </label>
-                            <input
-                              value={editForm.titulo}
-                              onChange={(e) =>
-                                updateEditForm(
-                                  item.id,
-                                  "titulo",
-                                  e.target.value
-                                )
-                              }
-                              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Sexo
-                            </label>
-                            <input
-                              value={editForm.sexo}
-                              onChange={(e) =>
-                                updateEditForm(item.id, "sexo", e.target.value)
-                              }
-                              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Arquivo origem
-                            </label>
-                            <input
-                              value={editForm.arquivo_origem}
-                              onChange={(e) =>
-                                updateEditForm(
-                                  item.id,
-                                  "arquivo_origem",
-                                  e.target.value
-                                )
-                              }
-                              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mt-4">
-                          <label className="mb-2 block text-sm font-medium text-slate-700">
-                            Conteúdo
-                          </label>
-                          <textarea
-                            rows={10}
-                            value={editForm.conteudo}
-                            onChange={(e) =>
-                              updateEditForm(
-                                item.id,
-                                "conteudo",
-                                e.target.value
-                              )
-                            }
-                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
-                          />
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap gap-3">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdate(item.id)}
-                            disabled={savingItem}
-                            className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {savingItem ? "Salvando..." : "Salvar edição"}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => cancelEdit(item.id)}
-                            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                    Somente leitura: use o botão de copiar para reutilizar este
+                    modelo.
                   </div>
-                </article>
-              );
-            })}
+                )}
+              </article>
+            ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
+
+      {modalOpen && !isGuest ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/40 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-900">
+                  {editingItem ? "Editar modelo" : "Novo modelo"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Preencha o bloco clínico para consulta e cópia rápida.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeModal}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <InputField
+                label="Categoria"
+                value={form.categoria}
+                onChange={(value) => updateForm("categoria", value)}
+                placeholder="Ex.: Exames laboratoriais"
+              />
+
+              <InputField
+                label="Título"
+                value={form.titulo}
+                onChange={(value) => updateForm("titulo", value)}
+                placeholder="Ex.: Check-up inicial"
+              />
+
+              <InputField
+                label="Sexo"
+                value={form.sexo}
+                onChange={(value) => updateForm("sexo", value)}
+                placeholder="Ex.: Todos, Feminino, Masculino"
+              />
+
+              <InputField
+                label="Arquivo de origem"
+                value={form.arquivo_origem}
+                onChange={(value) => updateForm("arquivo_origem", value)}
+                placeholder="Ex.: protocolo.pdf"
+              />
+            </div>
+
+            <div className="mt-4">
+              <TextAreaField
+                label="Conteúdo"
+                value={form.conteudo}
+                onChange={(value) => updateForm("conteudo", value)}
+                placeholder="Digite o conteúdo do modelo..."
+                rows={10}
+              />
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <ClipboardCopy className="h-4 w-4" />
+                {saving
+                  ? "Salvando..."
+                  : editingItem
+                  ? "Salvar edição"
+                  : "Criar modelo"}
+              </button>
+
+              <button
+                type="button"
+                onClick={closeModal}
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

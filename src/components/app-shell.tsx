@@ -43,7 +43,12 @@ type CountMap = {
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
-const GUEST_ALLOWED_PATHS = ["/prescricao", "/topicos", "/cids"];
+const GUEST_ALLOWED_PATHS = [
+  "/prescricao",
+  "/topicos",
+  "/cids",
+  "/exames-evolucao",
+];
 
 function isGuestAllowedPath(pathname: string) {
   return GUEST_ALLOWED_PATHS.some((path) => {
@@ -249,6 +254,12 @@ function SidebarContent({
       badge: null,
     },
     {
+      href: "/exames-evolucao",
+      label: "Exames / Evolução",
+      icon: FlaskConical,
+      badge: null,
+    },
+    {
       href: "/topicos",
       label: "Tópicos",
       icon: Stethoscope,
@@ -325,7 +336,7 @@ function SidebarContent({
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-300">
               {isGuest
-                ? "Prescrição, tópicos e CIDs liberados."
+                ? "Prescrição, exames, tópicos e CIDs liberados."
                 : "Pacientes, prescrição, revisão e exames."}
             </p>
           </div>
@@ -595,8 +606,8 @@ export default function AppShell({ children }: Props) {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Este usuário convidado tem acesso apenas a Prescrição, Tópicos e
-            CIDs.
+            Este usuário convidado tem acesso apenas a Prescrição, Exames /
+            Evolução, Tópicos e CIDs.
           </p>
 
           <button
