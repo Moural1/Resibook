@@ -295,15 +295,15 @@ function SidebarContent({
         </div>
 
         {!isMobile ? (
-          <div className="mt-5 rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(8,15,44,0.55))] p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-emerald-300">
+          <div className="mt-4 rounded-[20px] border border-white/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(8,15,44,0.45))] p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
               Ambiente
             </p>
-            <h2 className="mt-2 text-3xl font-bold leading-none text-white">
+            <h2 className="mt-1.5 text-xl font-bold leading-tight text-white">
               Operação clínica
             </h2>
-            <p className="mt-3 text-base leading-7 text-slate-300">
-              Pacientes, prescrição, revisão, exames e fluxo assistido por IA.
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Pacientes, prescrição, revisão e exames.
             </p>
           </div>
         ) : (
@@ -470,17 +470,17 @@ export default function AppShell({ children }: Props) {
       <button
         type="button"
         onClick={() => setDesktopSidebarOpen((current) => !current)}
-        className={`fixed top-4 z-[65] hidden h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-lg shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
-          desktopSidebarOpen ? "left-[336px]" : "left-4"
+        className={`fixed top-1/2 z-[65] hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
+          desktopSidebarOpen ? "left-[296px]" : "left-4"
         }`}
         aria-label={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
+        title={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
       >
         {desktopSidebarOpen ? (
-          <PanelLeftClose className="h-4 w-4" />
+          <PanelLeftClose className="h-5 w-5" />
         ) : (
-          <PanelLeftOpen className="h-4 w-4" />
+          <PanelLeftOpen className="h-5 w-5" />
         )}
-        {desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
       </button>
 
       <div className="lg:hidden print:hidden">
