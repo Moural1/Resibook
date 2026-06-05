@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
   Menu,
@@ -20,6 +20,7 @@ import {
   BarChart3,
   PanelLeftClose,
   PanelLeftOpen,
+  Lock,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
 import { Topbar } from "./topbar";
@@ -39,6 +40,10 @@ type CountMap = {
   cids: number | null;
 };
 
+const GUEST_EMAIL = "convidado@resibook.com";
+
+const GUEST_ALLOWED_PATHS = ["/prescricao", "/topicos", "/cids"];
+
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
@@ -48,6 +53,12 @@ function getSupabase() {
   if (!url || !key) return null;
 
   return createClient(url, key);
+}
+
+function isGuestAllowedPath(pathname: string) {
+  return GUEST_ALLOWED_PATHS.some((path) => {
+    return pathname === path || pathname.startsWith(`${path}/`);
+  });
 }
 
 async function getTableCount(
@@ -181,13 +192,15 @@ function SidebarContent({
   counts,
   onNavigate,
   isMobile = false,
+  isGuest = false,
 }: {
   pathname: string;
   counts: CountMap;
   onNavigate?: () => void;
   isMobile?: boolean;
+  isGuest?: boolean;
 }) {
-  const primaryItems = [
+  const fullPrimaryItems = [
     {
       href: "/dashboard",
       label: "Visão geral",
@@ -238,6 +251,27 @@ function SidebarContent({
     },
   ];
 
+  const guestPrimaryItems = [
+    {
+      href: "/prescricao",
+      label: "Prescrição",
+      icon: ClipboardList,
+      badge: null,
+    },
+    {
+      href: "/topicos",
+      label: "Tópicos",
+      icon: Stethoscope,
+      badge: null,
+    },
+    {
+      href: "/cids",
+      label: "CIDs",
+      icon: Tags,
+      badge: null,
+    },
+  ];
+
   const secondaryItems = [
     {
       href: "/dados-da-conta",
@@ -258,6 +292,8 @@ function SidebarContent({
       badge: null,
     },
   ];
+
+  const primaryItems = isGuest ? guestPrimaryItems : fullPrimaryItems;
 
   return (
     <div className="flex h-full flex-col bg-[#07183d] text-white">
@@ -282,7 +318,9 @@ function SidebarContent({
               Sistema clínico
             </h1>
             <p className="mt-1 text-sm text-slate-300">
-              Navegação rápida entre módulos.
+              {isGuest
+                ? "Acesso convidado limitado."
+                : "Navegação rápida entre módulos."}
             </p>
           </div>
         </div>
@@ -290,20 +328,26 @@ function SidebarContent({
         {!isMobile ? (
           <div className="mt-4 rounded-[20px] border border-white/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(8,15,44,0.45))] p-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
-              Ambiente
+              {isGuest ? "Modo convidado" : "Ambiente"}
             </p>
             <h2 className="mt-1.5 text-xl font-bold leading-tight text-white">
-              Operação clínica
+              {isGuest ? "Acesso limitado" : "Operação clínica"}
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              Pacientes, prescrição, revisão e exames.
+              {isGuest
+                ? "Prescrição, tópicos e CIDs liberados."
+                : "Pacientes, prescrição, revisão e exames."}
             </p>
           </div>
         ) : (
           <div className="mt-4 rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-sm font-semibold text-white">Operação clínica</p>
+            <p className="text-sm font-semibold text-white">
+              {isGuest ? "Modo convidado" : "Operação clínica"}
+            </p>
             <p className="mt-1 text-sm leading-6 text-slate-300">
-              Fluxo rápido para plantão e estudo.
+              {isGuest
+                ? "Acesso restrito a módulos liberados."
+                : "Fluxo rápido para plantão e estudo."}
             </p>
           </div>
         )}
@@ -311,25 +355,45 @@ function SidebarContent({
 
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
         <NavSection
-          title="Principal"
+          title={isGuest ? "Acesso liberado" : "Principal"}
           items={primaryItems}
           pathname={pathname}
           onNavigate={onNavigate}
         />
 
-        <NavSection
-          title="Conta e acesso"
-          items={secondaryItems}
-          pathname={pathname}
-          onNavigate={onNavigate}
-        />
+        {!isGuest ? (
+          <NavSection
+            title="Conta e acesso"
+            items={secondaryItems}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
+        ) : (
+          <div className="rounded-[22px] border border-amber-300/20 bg-amber-400/10 p-4">
+            <div className="flex items-start gap-3">
+              <Lock className="mt-0.5 h-4 w-4 text-amber-200" />
+              <div>
+                <p className="text-sm font-semibold text-amber-100">
+                  Perfil convidado
+                </p>
+                <p className="mt-1 text-sm leading-6 text-amber-100/80">
+                  As demais áreas do sistema estão bloqueadas para este usuário.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-white/10 p-4">
         <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-          <p className="text-sm font-semibold text-white">Fluxo recomendado</p>
+          <p className="text-sm font-semibold text-white">
+            {isGuest ? "Sessão convidado" : "Fluxo recomendado"}
+          </p>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Paciente → Prescrição → Exames → Tópicos → Flashcards.
+            {isGuest
+              ? "Use apenas os módulos liberados pelo administrador."
+              : "Paciente → Prescrição → Exames → Tópicos → Flashcards."}
           </p>
 
           <div className="mt-4">
@@ -342,9 +406,13 @@ function SidebarContent({
 }
 
 export default function AppShell({ children }: Props) {
+  const router = useRouter();
   const pathname = usePathname();
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
+  const [checkingUser, setCheckingUser] = useState(true);
 
   const [counts, setCounts] = useState<CountMap>({
     pacientes: null,
@@ -367,6 +435,38 @@ export default function AppShell({ children }: Props) {
   const isPatientDetailPage = useMemo(() => {
     return pathname.startsWith("/pacientes/") && pathname !== "/pacientes";
   }, [pathname]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkGuestUser() {
+      const supabase = getSupabase();
+
+      if (!supabase) {
+        if (mounted) setCheckingUser(false);
+        return;
+      }
+
+      const { data } = await supabase.auth.getUser();
+      const email = data.user?.email?.trim().toLowerCase() || "";
+      const guest = email === GUEST_EMAIL;
+
+      if (!mounted) return;
+
+      setIsGuest(guest);
+      setCheckingUser(false);
+
+      if (guest && !hideShell && !isGuestAllowedPath(pathname)) {
+        router.replace("/prescricao");
+      }
+    }
+
+    checkGuestUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, [pathname, router, hideShell]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -441,22 +541,77 @@ export default function AppShell({ children }: Props) {
       });
     }
 
-    loadCounts();
+    if (!isGuest) {
+      loadCounts();
+    } else {
+      setCounts({
+        pacientes: null,
+        prescricoes: null,
+        exames: null,
+        topicos: null,
+        flashcards: null,
+        flashcardsDificeis: null,
+        cids: null,
+      });
+    }
 
     return () => {
       mounted = false;
     };
-  }, [pathname]);
+  }, [pathname, isGuest]);
 
   if (hideShell) {
     return <>{children}</>;
+  }
+
+  if (checkingUser) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
+        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-medium text-slate-600 shadow-sm">
+          Carregando acesso...
+        </div>
+      </div>
+    );
+  }
+
+  if (isGuest && !isGuestAllowedPath(pathname)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+        <div className="max-w-md rounded-[28px] border border-amber-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+            <Lock className="h-5 w-5" />
+          </div>
+
+          <h1 className="mt-4 text-xl font-semibold text-slate-900">
+            Acesso restrito
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Este usuário convidado tem acesso apenas a Prescrição, Tópicos e
+            CIDs.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => router.replace("/prescricao")}
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+          >
+            Ir para prescrição
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
       {desktopSidebarOpen ? (
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-[320px] border-r border-slate-200 lg:block print:hidden">
-          <SidebarContent pathname={pathname} counts={counts} />
+          <SidebarContent
+            pathname={pathname}
+            counts={counts}
+            isGuest={isGuest}
+          />
         </aside>
       ) : null}
 
@@ -514,6 +669,7 @@ export default function AppShell({ children }: Props) {
               counts={counts}
               onNavigate={() => setMobileOpen(false)}
               isMobile
+              isGuest={isGuest}
             />
           </div>
         </div>
@@ -535,7 +691,7 @@ export default function AppShell({ children }: Props) {
         </main>
       </div>
 
-      {isPatientDetailPage ? <PrintProntuarioButton /> : null}
+      {isPatientDetailPage && !isGuest ? <PrintProntuarioButton /> : null}
     </div>
   );
 }

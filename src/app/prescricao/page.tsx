@@ -50,6 +50,8 @@ type PrescriptionForm = {
   orientacoes: string;
 };
 
+const GUEST_EMAIL = "convidado@resibook.com";
+
 const emptyForm: PrescriptionForm = {
   patient_id: "",
   paciente_nome: "",
@@ -96,13 +98,26 @@ function getPatientLabel(item: Prescription) {
   return item.paciente_nome || "Paciente não vinculado";
 }
 
-function buildPrescriptionText(item: Prescription) {
+function buildPrescriptionTextFromItem(item: Prescription) {
   const lines = [
     item.medicamento || "Prescrição sem medicamento definido",
     item.posologia || "",
     item.via ? `Via: ${item.via}` : "",
     item.duracao ? `Duração: ${item.duracao}` : "",
     item.orientacoes ? `Orientações: ${item.orientacoes}` : "",
+  ].filter(Boolean);
+
+  return lines.join("\n");
+}
+
+function buildPrescriptionTextFromForm(form: PrescriptionForm) {
+  const lines = [
+    form.paciente_nome ? `Paciente: ${form.paciente_nome}` : "",
+    form.medicamento || "Prescrição sem medicamento definido",
+    form.posologia || "",
+    form.via ? `Via: ${form.via}` : "",
+    form.duracao ? `Duração: ${form.duracao}` : "",
+    form.orientacoes ? `Orientações: ${form.orientacoes}` : "",
   ].filter(Boolean);
 
   return lines.join("\n");
@@ -122,6 +137,8 @@ function buildPayload(form: PrescriptionForm) {
 
 export default function PrescricaoPage() {
   const [initialQuery, setInitialQuery] = useState("");
+  const [isGuest, setIsGuest] = useState(false);
+  const [checkingUser, setCheckingUser] = useState(true);
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [templates, setTemplates] = useState<PrescriptionTemplate[]>([]);
@@ -164,11 +181,40 @@ export default function PrescricaoPage() {
     if (!supabase) {
       setError("Supabase não configurado.");
       setLoading(false);
+      setCheckingUser(false);
       return;
     }
 
     setLoading(true);
     setError("");
+
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email?.trim().toLowerCase() || "";
+    const guest = email === GUEST_EMAIL;
+
+    setIsGuest(guest);
+    setCheckingUser(false);
+
+    if (guest) {
+      const templatesRes = await supabase
+        .from("prescription_templates")
+        .select(
+          "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+        )
+        .order("titulo", { ascending: true });
+
+      if (templatesRes.error) {
+        setError(templatesRes.error.message);
+        setTemplates([]);
+      } else {
+        setTemplates((templatesRes.data as PrescriptionTemplate[]) || []);
+      }
+
+      setPatients([]);
+      setPrescriptions([]);
+      setLoading(false);
+      return;
+    }
 
     const [patientsRes, templatesRes, prescriptionsRes] = await Promise.all([
       supabase.from("patients").select("id, nome").order("nome", {
@@ -240,6 +286,10 @@ export default function PrescricaoPage() {
     });
   }, [prescriptions, query]);
 
+  const draftText = useMemo(() => {
+    return buildPrescriptionTextFromForm(form);
+  }, [form]);
+
   function updateForm<K extends keyof PrescriptionForm>(
     key: K,
     value: PrescriptionForm[K]
@@ -283,6 +333,11 @@ export default function PrescricaoPage() {
   }
 
   async function handleCreate() {
+    if (isGuest) {
+      setError("Usuário convidado não pode salvar prescrições.");
+      return;
+    }
+
     const supabase = getSupabase();
 
     if (!supabase) {
@@ -321,6 +376,8 @@ export default function PrescricaoPage() {
   }
 
   function startEdit(item: Prescription) {
+    if (isGuest) return;
+
     setEditingId(item.id);
     setEditForms((current) => ({
       ...current,
@@ -377,6 +434,8 @@ export default function PrescricaoPage() {
   }
 
   async function handleUpdate(id: number) {
+    if (isGuest) return;
+
     const supabase = getSupabase();
 
     if (!supabase) {
@@ -416,6 +475,8 @@ export default function PrescricaoPage() {
   }
 
   async function handleDelete(id: number) {
+    if (isGuest) return;
+
     const supabase = getSupabase();
 
     if (!supabase) {
@@ -458,13 +519,14 @@ export default function PrescricaoPage() {
             </h1>
 
             <p className="mt-2 text-sm text-slate-500 md:text-base">
-              Registro médico com formulário rápido, histórico salvo e modelos
-              prontos de plantão.
+              {isGuest
+                ? "Modo convidado: use os modelos ou monte uma prescrição para copiar. O salvamento no banco está bloqueado."
+                : "Registro médico com formulário rápido, histórico salvo e modelos prontos de plantão."}
             </p>
           </div>
 
           <div className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
-            {total} {total === 1 ? "item" : "itens"}
+            {isGuest ? "Modo convidado" : `${total} ${total === 1 ? "item" : "itens"}`}
           </div>
         </div>
 
@@ -474,11 +536,18 @@ export default function PrescricaoPage() {
           </div>
         ) : null}
 
+        {isGuest ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            Acesso convidado: você pode montar e copiar prescrições, mas não
+            pode salvar, editar, apagar ou acessar dados de pacientes.
+          </div>
+        ) : null}
+
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
             <div className="mb-5">
               <h2 className="text-lg font-semibold text-slate-900">
-                Nova prescrição
+                {isGuest ? "Montar prescrição" : "Nova prescrição"}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Clique em um modelo da biblioteca ou preencha manualmente.
@@ -486,23 +555,25 @@ export default function PrescricaoPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Paciente vinculado
-                </label>
-                <select
-                  value={form.patient_id}
-                  onChange={(e) => updateForm("patient_id", e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                >
-                  <option value="">Selecionar paciente (opcional)</option>
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!isGuest ? (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Paciente vinculado
+                  </label>
+                  <select
+                    value={form.patient_id}
+                    onChange={(e) => updateForm("patient_id", e.target.value)}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  >
+                    <option value="">Selecionar paciente (opcional)</option>
+                    {patients.map((patient) => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -578,7 +649,7 @@ export default function PrescricaoPage() {
               />
             </div>
 
-            <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
               <button
                 type="button"
                 onClick={resetForm}
@@ -587,14 +658,20 @@ export default function PrescricaoPage() {
                 Limpar formulário
               </button>
 
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={saving}
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? "Salvando..." : "Salvar prescrição"}
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <CopyButton text={draftText} />
+
+                {!isGuest ? (
+                  <button
+                    type="button"
+                    onClick={handleCreate}
+                    disabled={saving}
+                    className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Salvando..." : "Salvar prescrição"}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -608,33 +685,47 @@ export default function PrescricaoPage() {
             <div className="space-y-3">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Prescrições salvas
+                  {isGuest ? "Modo atual" : "Prescrições salvas"}
                 </p>
                 <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-                  {total}
+                  {isGuest ? "Guest" : total}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Último registro
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {ultima?.medicamento || "Nenhum registro"}
-                </p>
-                <p className="mt-1 text-sm text-slate-500">
-                  {ultima ? formatDate(ultima.created_at) : "-"}
-                </p>
-              </div>
+              {!isGuest ? (
+                <>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Último registro
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">
+                      {ultima?.medicamento || "Nenhum registro"}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {ultima ? formatDate(ultima.created_at) : "-"}
+                    </p>
+                  </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Paciente do último item
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {ultima ? getPatientLabel(ultima) : "-"}
-                </p>
-              </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Paciente do último item
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">
+                      {ultima ? getPatientLabel(ultima) : "-"}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                    Salvamento bloqueado
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-amber-900">
+                    O convidado pode copiar prescrições, mas não altera o banco
+                    de dados.
+                  </p>
+                </div>
+              )}
 
               <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
@@ -656,290 +747,297 @@ export default function PrescricaoPage() {
         initialQuery={initialQuery}
       />
 
-      <section
-        id="lista-prescricoes"
-        className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6"
-      >
-        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-              Prescrições salvas
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Histórico completo vindo da base de dados.
-            </p>
+      {!isGuest ? (
+        <section
+          id="lista-prescricoes"
+          className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6"
+        >
+          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-900">
+                Prescrições salvas
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Histórico completo vindo da base de dados.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 md:items-end">
+              <span className="text-sm font-medium text-slate-400">
+                {filteredPrescriptions.length} de {total} registros
+              </span>
+
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar prescrição..."
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none md:w-72"
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2 md:items-end">
-            <span className="text-sm font-medium text-slate-400">
-              {filteredPrescriptions.length} de {total} registros
-            </span>
+          {loading || checkingUser ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+              Carregando prescrições...
+            </div>
+          ) : filteredPrescriptions.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+              Nenhuma prescrição encontrada.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredPrescriptions.map((item) => {
+                const editing = editingId === item.id;
+                const savingItem = savingIds.includes(item.id);
+                const editForm = editForms[item.id] || {
+                  patient_id: item.patient_id || "",
+                  paciente_nome: item.paciente_nome || "",
+                  medicamento: item.medicamento || "",
+                  via: item.via || "",
+                  posologia: item.posologia || "",
+                  duracao: item.duracao || "",
+                  orientacoes: item.orientacoes || "",
+                };
 
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar prescrição..."
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none md:w-72"
-            />
-          </div>
-        </div>
+                return (
+                  <article
+                    key={item.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                            Prescrição
+                          </span>
 
-        {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-            Carregando prescrições...
-          </div>
-        ) : filteredPrescriptions.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-            Nenhuma prescrição encontrada.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredPrescriptions.map((item) => {
-              const editing = editingId === item.id;
-              const savingItem = savingIds.includes(item.id);
-              const editForm = editForms[item.id] || {
-                patient_id: item.patient_id || "",
-                paciente_nome: item.paciente_nome || "",
-                medicamento: item.medicamento || "",
-                via: item.via || "",
-                posologia: item.posologia || "",
-                duracao: item.duracao || "",
-                orientacoes: item.orientacoes || "",
-              };
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
+                            Clínica médica
+                          </span>
+                        </div>
 
-              return (
-                <article
-                  key={item.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                          Prescrição
-                        </span>
+                        <h3 className="mt-3 text-lg font-semibold tracking-tight text-slate-900">
+                          {item.medicamento || "Prescrição clínica"}
+                        </h3>
 
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
-                          Clínica médica
-                        </span>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {getPatientLabel(item)} •{" "}
+                          {formatDate(item.created_at)}
+                        </p>
                       </div>
 
-                      <h3 className="mt-3 text-lg font-semibold tracking-tight text-slate-900">
-                        {item.medicamento || "Prescrição clínica"}
-                      </h3>
-
-                      <p className="mt-1 text-sm text-slate-500">
-                        {getPatientLabel(item)} • {formatDate(item.created_at)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <CopyButton text={buildPrescriptionText(item)} />
-                    </div>
-                  </div>
-
-                  {item.orientacoes ? (
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                        Observações
-                      </p>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                        {item.orientacoes}
-                      </p>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-4 rounded-2xl bg-[#07183d] px-4 py-4">
-                    <pre className="whitespace-pre-wrap font-mono text-[15px] leading-7 text-slate-100">
-                      {buildPrescriptionText(item)}
-                    </pre>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    {!editing ? (
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(item)}
-                          className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-                        >
-                          Editar
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id)}
-                          disabled={savingItem}
-                          className="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {savingItem ? "Apagando..." : "Apagar"}
-                        </button>
+                      <div className="flex items-center gap-2">
+                        <CopyButton text={buildPrescriptionTextFromItem(item)} />
                       </div>
-                    ) : (
-                      <div>
-                        <div className="mb-4">
-                          <p className="text-sm font-semibold text-slate-900">
-                            Editando prescrição
-                          </p>
-                          <p className="mt-1 text-sm text-slate-500">
-                            Altere os campos abaixo e salve.
-                          </p>
-                        </div>
+                    </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Paciente vinculado
-                            </label>
-                            <select
-                              value={editForm.patient_id}
-                              onChange={(e) =>
-                                updateEditForm(
-                                  item.id,
-                                  "patient_id",
-                                  e.target.value
-                                )
-                              }
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            >
-                              <option value="">
-                                Selecionar paciente (opcional)
-                              </option>
-                              {patients.map((patient) => (
-                                <option key={patient.id} value={patient.id}>
-                                  {patient.nome}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                    {item.orientacoes ? (
+                      <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                          Observações
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                          {item.orientacoes}
+                        </p>
+                      </div>
+                    ) : null}
 
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Nome do paciente
-                            </label>
-                            <input
-                              value={editForm.paciente_nome}
-                              onChange={(e) =>
-                                updateEditForm(
-                                  item.id,
-                                  "paciente_nome",
-                                  e.target.value
-                                )
-                              }
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
+                    <div className="mt-4 rounded-2xl bg-[#07183d] px-4 py-4">
+                      <pre className="whitespace-pre-wrap font-mono text-[15px] leading-7 text-slate-100">
+                        {buildPrescriptionTextFromItem(item)}
+                      </pre>
+                    </div>
 
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Medicamento
-                            </label>
-                            <input
-                              value={editForm.medicamento}
-                              onChange={(e) =>
-                                updateEditForm(
-                                  item.id,
-                                  "medicamento",
-                                  e.target.value
-                                )
-                              }
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Via
-                            </label>
-                            <input
-                              value={editForm.via}
-                              onChange={(e) =>
-                                updateEditForm(item.id, "via", e.target.value)
-                              }
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Posologia
-                            </label>
-                            <input
-                              value={editForm.posologia}
-                              onChange={(e) =>
-                                updateEditForm(
-                                  item.id,
-                                  "posologia",
-                                  e.target.value
-                                )
-                              }
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Duração
-                            </label>
-                            <input
-                              value={editForm.duracao}
-                              onChange={(e) =>
-                                updateEditForm(
-                                  item.id,
-                                  "duracao",
-                                  e.target.value
-                                )
-                              }
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mt-4">
-                          <label className="mb-2 block text-sm font-medium text-slate-700">
-                            Orientações
-                          </label>
-                          <textarea
-                            rows={5}
-                            value={editForm.orientacoes}
-                            onChange={(e) =>
-                              updateEditForm(
-                                item.id,
-                                "orientacoes",
-                                e.target.value
-                              )
-                            }
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
-                          />
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap gap-3">
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                      {!editing ? (
+                        <div className="flex flex-wrap gap-3">
                           <button
                             type="button"
-                            onClick={() => handleUpdate(item.id)}
-                            disabled={savingItem}
-                            className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {savingItem ? "Salvando..." : "Salvar edição"}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => cancelEdit(item.id)}
+                            onClick={() => startEdit(item)}
                             className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
                           >
-                            Cancelar
+                            Editar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item.id)}
+                            disabled={savingItem}
+                            className="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {savingItem ? "Apagando..." : "Apagar"}
                           </button>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                      ) : (
+                        <div>
+                          <div className="mb-4">
+                            <p className="text-sm font-semibold text-slate-900">
+                              Editando prescrição
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Altere os campos abaixo e salve.
+                            </p>
+                          </div>
+
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                                Paciente vinculado
+                              </label>
+                              <select
+                                value={editForm.patient_id}
+                                onChange={(e) =>
+                                  updateEditForm(
+                                    item.id,
+                                    "patient_id",
+                                    e.target.value
+                                  )
+                                }
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                              >
+                                <option value="">
+                                  Selecionar paciente (opcional)
+                                </option>
+                                {patients.map((patient) => (
+                                  <option key={patient.id} value={patient.id}>
+                                    {patient.nome}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                                Nome do paciente
+                              </label>
+                              <input
+                                value={editForm.paciente_nome}
+                                onChange={(e) =>
+                                  updateEditForm(
+                                    item.id,
+                                    "paciente_nome",
+                                    e.target.value
+                                  )
+                                }
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                                Medicamento
+                              </label>
+                              <input
+                                value={editForm.medicamento}
+                                onChange={(e) =>
+                                  updateEditForm(
+                                    item.id,
+                                    "medicamento",
+                                    e.target.value
+                                  )
+                                }
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                                Via
+                              </label>
+                              <input
+                                value={editForm.via}
+                                onChange={(e) =>
+                                  updateEditForm(
+                                    item.id,
+                                    "via",
+                                    e.target.value
+                                  )
+                                }
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                                Posologia
+                              </label>
+                              <input
+                                value={editForm.posologia}
+                                onChange={(e) =>
+                                  updateEditForm(
+                                    item.id,
+                                    "posologia",
+                                    e.target.value
+                                  )
+                                }
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                                Duração
+                              </label>
+                              <input
+                                value={editForm.duracao}
+                                onChange={(e) =>
+                                  updateEditForm(
+                                    item.id,
+                                    "duracao",
+                                    e.target.value
+                                  )
+                                }
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <label className="mb-2 block text-sm font-medium text-slate-700">
+                              Orientações
+                            </label>
+                            <textarea
+                              rows={5}
+                              value={editForm.orientacoes}
+                              onChange={(e) =>
+                                updateEditForm(
+                                  item.id,
+                                  "orientacoes",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+                            />
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap gap-3">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdate(item.id)}
+                              disabled={savingItem}
+                              className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {savingItem ? "Salvando..." : "Salvar edição"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => cancelEdit(item.id)}
+                              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }
