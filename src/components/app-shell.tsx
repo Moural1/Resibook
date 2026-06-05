@@ -19,9 +19,12 @@ import {
   Settings,
   User,
   BarChart3,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
 import { Topbar } from "./topbar";
+import PrintProntuarioButton from "./print-prontuario-button";
 
 type Props = {
   children: React.ReactNode;
@@ -348,6 +351,7 @@ function SidebarContent({
 export default function AppShell({ children }: Props) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
 
   const [counts, setCounts] = useState<CountMap>({
     pacientes: null,
@@ -365,6 +369,10 @@ export default function AppShell({ children }: Props) {
       pathname === "/signup" ||
       pathname === "/register"
     );
+  }, [pathname]);
+
+  const isPatientDetailPage = useMemo(() => {
+    return pathname.startsWith("/pacientes/") && pathname !== "/pacientes";
   }, [pathname]);
 
   useEffect(() => {
@@ -388,9 +396,7 @@ export default function AppShell({ children }: Props) {
     async function loadCounts() {
       const supabase = getSupabase();
 
-      if (!supabase) {
-        return;
-      }
+      if (!supabase) return;
 
       const [
         patientsCount,
@@ -454,12 +460,30 @@ export default function AppShell({ children }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[320px] border-r border-slate-200 lg:block">
-        <SidebarContent pathname={pathname} counts={counts} />
-      </aside>
+    <div className="min-h-screen bg-slate-100 print:bg-white">
+      {desktopSidebarOpen ? (
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[320px] border-r border-slate-200 lg:block print:hidden">
+          <SidebarContent pathname={pathname} counts={counts} />
+        </aside>
+      ) : null}
 
-      <div className="lg:hidden">
+      <button
+        type="button"
+        onClick={() => setDesktopSidebarOpen((current) => !current)}
+        className={`fixed top-4 z-[65] hidden h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-lg shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
+          desktopSidebarOpen ? "left-[336px]" : "left-4"
+        }`}
+        aria-label={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
+      >
+        {desktopSidebarOpen ? (
+          <PanelLeftClose className="h-4 w-4" />
+        ) : (
+          <PanelLeftOpen className="h-4 w-4" />
+        )}
+        {desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
+      </button>
+
+      <div className="lg:hidden print:hidden">
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
@@ -472,7 +496,7 @@ export default function AppShell({ children }: Props) {
       </div>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-[70] lg:hidden">
+        <div className="fixed inset-0 z-[70] lg:hidden print:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
@@ -502,13 +526,23 @@ export default function AppShell({ children }: Props) {
         </div>
       ) : null}
 
-      <div className="min-h-screen lg:pl-[320px]">
-        <Topbar />
+      <div
+        className={`min-h-screen transition-[padding] duration-200 print:pl-0 ${
+          desktopSidebarOpen ? "lg:pl-[320px]" : "lg:pl-0"
+        }`}
+      >
+        <div className="print:hidden">
+          <Topbar />
+        </div>
 
-        <main className="px-3 pb-24 pt-4 sm:px-4 md:px-6 md:py-6 lg:px-8">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+        <main className="px-3 pb-24 pt-4 sm:px-4 md:px-6 md:py-6 lg:px-8 print:px-0 print:py-0">
+          <div className="mx-auto w-full max-w-7xl print:max-w-none">
+            {children}
+          </div>
         </main>
       </div>
+
+      {isPatientDetailPage ? <PrintProntuarioButton /> : null}
     </div>
   );
 }
