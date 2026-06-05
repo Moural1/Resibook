@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --background: #f1f5f9;
@@ -42,10 +40,6 @@ a {
   text-decoration: none;
 }
 
-pre {
-  font-family: inherit;
-}
-
 /* ============================
    ResiBook — impressão/PDF
    ============================ */
@@ -54,9 +48,6 @@ pre {
   html,
   body {
     background: #ffffff !important;
-  }
-
-  body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -65,6 +56,7 @@ pre {
   header,
   nav,
   button,
+  .print-hidden,
   .print\:hidden {
     display: none !important;
   }
@@ -87,18 +79,8 @@ pre {
   }
 
   section,
-  article,
-  div {
-    box-shadow: none !important;
-  }
-
-  section {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    border-color: #d1d5db !important;
-  }
-
   article {
+    box-shadow: none !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -160,15 +142,6 @@ pre {
   .bg-pink-50,
   .bg-fuchsia-50 {
     background: #ffffff !important;
-  }
-
-  .rounded-\[28px\],
-  .rounded-\[24px\],
-  .rounded-\[22px\],
-  .rounded-3xl,
-  .rounded-2xl,
-  .rounded-xl {
-    border-radius: 10px !important;
   }
 
   @page {
