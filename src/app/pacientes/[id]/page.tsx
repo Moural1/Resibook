@@ -311,6 +311,15 @@ export default function PatientDetailPage() {
               <CopyButton text={buildPatientSummary(patient, prescriptions)} />
 
               <Link
+                href={`/prescricao?patient_id=${encodeURIComponent(
+                  patient.id
+                )}&paciente_nome=${encodeURIComponent(patient.nome)}`}
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white"
+              >
+                Nova prescrição
+              </Link>
+
+              <Link
                 href={`/prescricao?q=${encodeURIComponent(patient.nome)}`}
                 className="inline-flex h-11 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-5 text-sm font-semibold text-blue-700"
               >

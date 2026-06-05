@@ -141,10 +141,21 @@ export default function PrescricaoPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
     const q = params.get("q") || "";
+    const patientId = params.get("patient_id") || "";
+    const pacienteNome = params.get("paciente_nome") || "";
 
     setInitialQuery(q);
     setQuery(q);
+
+    if (patientId || pacienteNome) {
+      setForm((current) => ({
+        ...current,
+        patient_id: patientId,
+        paciente_nome: pacienteNome,
+      }));
+    }
   }, []);
 
   async function loadData() {
