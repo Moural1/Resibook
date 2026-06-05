@@ -1,24 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   AlertTriangle,
+  Brain,
+  BookOpen,
   ClipboardList,
   Database,
   Download,
-  Edit3,
   FileText,
-  Mail,
-  Save,
   ShieldCheck,
   Stethoscope,
-  User,
-  Users,
-  X,
-  Brain,
   Tags,
-  BookOpen,
+  Users,
 } from "lucide-react";
 
 type ExportResult = {
@@ -36,24 +31,6 @@ type ExportConfig = {
   icon: React.ComponentType<{ className?: string }>;
   select: string;
   orderBy?: string;
-};
-
-type AccountForm = {
-  nome: string;
-  cargo: string;
-  especialidade: string;
-  crm: string;
-  telefone: string;
-  instituicao: string;
-};
-
-const emptyAccountForm: AccountForm = {
-  nome: "",
-  cargo: "",
-  especialidade: "",
-  crm: "",
-  telefone: "",
-  instituicao: "",
 };
 
 const exportConfigs: ExportConfig[] = [
@@ -139,19 +116,6 @@ function getDateStamp() {
   return `${year}-${month}-${day}_${hour}-${minute}`;
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-
-  try {
-    return new Intl.DateTimeFormat("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
-}
-
 function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json;charset=utf-8",
@@ -194,71 +158,10 @@ async function fetchTableData(config: ExportConfig) {
   };
 }
 
-function FieldView({
-  label,
-  value,
-}: {
-  label: string;
-  value?: string | null;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-
-      <p className="mt-2 min-h-6 text-sm font-medium text-slate-900">
-        {value?.trim() ? value : "-"}
-      </p>
-    </div>
-  );
-}
-
-function InputField({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-      />
-    </div>
-  );
-}
-
 export default function DadosDaContaPage() {
-  const supabase = createClient();
-
-  const [accountLoading, setAccountLoading] = useState(true);
-  const [editingAccount, setEditingAccount] = useState(false);
-  const [savingAccount, setSavingAccount] = useState(false);
-
-  const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState("");
-  const [createdAt, setCreatedAt] = useState<string | null>(null);
-  const [lastSignInAt, setLastSignInAt] = useState<string | null>(null);
-  const [accountForm, setAccountForm] =
-    useState<AccountForm>(emptyAccountForm);
-
   const [loadingAll, setLoadingAll] = useState(false);
   const [loadingTable, setLoadingTable] = useState<string | null>(null);
   const [results, setResults] = useState<ExportResult[]>([]);
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -266,78 +169,13 @@ export default function DadosDaContaPage() {
     return results.reduce((acc, item) => acc + item.count, 0);
   }, [results]);
 
-  async function loadAccount() {
-    setAccountLoading(true);
-    setError("");
+  const successCount = useMemo(() => {
+    return results.filter((item) => item.ok).length;
+  }, [results]);
 
-    const { data, error } = await supabase.auth.getUser();
-
-    if (error || !data.user) {
-      setError(error?.message || "Não foi possível carregar os dados da conta.");
-      setAccountLoading(false);
-      return;
-    }
-
-    const metadata = data.user.user_metadata || {};
-
-    setEmail(data.user.email || "");
-    setUserId(data.user.id || "");
-    setCreatedAt(data.user.created_at || null);
-    setLastSignInAt(data.user.last_sign_in_at || null);
-
-    setAccountForm({
-      nome: String(metadata.nome || metadata.name || ""),
-      cargo: String(metadata.cargo || ""),
-      especialidade: String(metadata.especialidade || ""),
-      crm: String(metadata.crm || ""),
-      telefone: String(metadata.telefone || ""),
-      instituicao: String(metadata.instituicao || ""),
-    });
-
-    setAccountLoading(false);
-  }
-
-  useEffect(() => {
-    loadAccount();
-  }, []);
-
-  function updateAccount<K extends keyof AccountForm>(
-    key: K,
-    value: AccountForm[K]
-  ) {
-    setAccountForm((current) => ({
-      ...current,
-      [key]: value,
-    }));
-  }
-
-  async function handleSaveAccount() {
-    setSavingAccount(true);
-    setError("");
-    setSuccess("");
-
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        nome: accountForm.nome.trim(),
-        name: accountForm.nome.trim(),
-        cargo: accountForm.cargo.trim(),
-        especialidade: accountForm.especialidade.trim(),
-        crm: accountForm.crm.trim(),
-        telefone: accountForm.telefone.trim(),
-        instituicao: accountForm.instituicao.trim(),
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setSuccess("Dados da conta salvos com sucesso.");
-      setEditingAccount(false);
-      await loadAccount();
-    }
-
-    setSavingAccount(false);
-  }
+  const errorCount = useMemo(() => {
+    return results.filter((item) => !item.ok).length;
+  }, [results]);
 
   async function handleExportOne(config: ExportConfig) {
     setError("");
@@ -358,6 +196,7 @@ export default function DadosDaContaPage() {
         },
         ...current.filter((item) => item.table !== config.table),
       ]);
+
       setLoadingTable(null);
       return;
     }
@@ -427,15 +266,6 @@ export default function DadosDaContaPage() {
       exported_at: new Date().toISOString(),
       app: "ResiBook",
       version: "backup-v1",
-      account: {
-        email,
-        user_id: userId,
-        nome: accountForm.nome,
-        cargo: accountForm.cargo,
-        especialidade: accountForm.especialidade,
-        crm: accountForm.crm,
-        instituicao: accountForm.instituicao,
-      },
       tables: nextResults,
       data: backup,
     };
@@ -457,62 +287,31 @@ export default function DadosDaContaPage() {
                 Dados da conta
               </span>
 
-              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                Perfil e backup
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                Backup e exportação
               </span>
             </div>
 
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-              Conta e segurança
+              Central de dados
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Gerencie seus dados profissionais básicos e exporte backups locais
-              do ResiBook.
+              Exporte os dados do ResiBook em JSON para manter uma cópia local
+              segura. Esta página é dedicada a backup, exportação e segurança
+              dos arquivos.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {!editingAccount ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingAccount(true);
-                  setError("");
-                  setSuccess("");
-                }}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-              >
-                <Edit3 className="h-4 w-4" />
-                Editar dados
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={handleSaveAccount}
-                  disabled={savingAccount}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Save className="h-4 w-4" />
-                  {savingAccount ? "Salvando..." : "Salvar alterações"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingAccount(false);
-                    loadAccount();
-                  }}
-                  disabled={savingAccount}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <X className="h-4 w-4" />
-                  Cancelar
-                </button>
-              </>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={handleExportAll}
+            disabled={loadingAll || loadingTable !== null}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" />
+            {loadingAll ? "Exportando..." : "Exportar backup completo"}
+          </button>
         </div>
 
         {error ? (
@@ -527,232 +326,128 @@ export default function DadosDaContaPage() {
           </div>
         ) : null}
 
-        {accountLoading ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-[86px] animate-pulse rounded-2xl border border-slate-200 bg-slate-100"
-              />
-            ))}
-          </div>
-        ) : !editingAccount ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <FieldView label="Nome" value={accountForm.nome} />
-            <FieldView label="Cargo" value={accountForm.cargo} />
-            <FieldView label="Especialidade" value={accountForm.especialidade} />
-            <FieldView label="CRM / registro" value={accountForm.crm} />
-            <FieldView label="Telefone" value={accountForm.telefone} />
-            <FieldView label="Instituição" value={accountForm.instituicao} />
-          </div>
-        ) : (
-          <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <InputField
-                label="Nome"
-                value={accountForm.nome}
-                onChange={(value) => updateAccount("nome", value)}
-                placeholder="Seu nome"
-              />
-
-              <InputField
-                label="Cargo"
-                value={accountForm.cargo}
-                onChange={(value) => updateAccount("cargo", value)}
-                placeholder="Ex.: Médico"
-              />
-
-              <InputField
-                label="Especialidade"
-                value={accountForm.especialidade}
-                onChange={(value) => updateAccount("especialidade", value)}
-                placeholder="Ex.: Psiquiatria"
-              />
-
-              <InputField
-                label="CRM / registro"
-                value={accountForm.crm}
-                onChange={(value) => updateAccount("crm", value)}
-                placeholder="Ex.: CRM-MG 000000"
-              />
-
-              <InputField
-                label="Telefone"
-                value={accountForm.telefone}
-                onChange={(value) => updateAccount("telefone", value)}
-                placeholder="Telefone profissional"
-              />
-
-              <InputField
-                label="Instituição"
-                value={accountForm.instituicao}
-                onChange={(value) => updateAccount("instituicao", value)}
-                placeholder="Hospital, clínica ou serviço"
-              />
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="border-b border-slate-200 pb-4">
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
-                <User className="h-5 w-5" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
+                <Database className="h-5 w-5" />
               </div>
 
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Acesso
-                </h2>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Registros
+                </p>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Informações técnicas do usuário autenticado.
+                <p className="mt-1 text-2xl font-semibold text-slate-900">
+                  {totalExported}
                 </p>
               </div>
             </div>
+
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              Total contabilizado na última exportação realizada nesta sessão.
+            </p>
           </div>
 
-          <div className="mt-5 space-y-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-slate-400" />
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    E-mail
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-slate-900">
-                    {email || "-"}
-                  </p>
-                </div>
+          <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                  Sucesso
+                </p>
+
+                <p className="mt-1 text-2xl font-semibold text-emerald-950">
+                  {successCount}
+                </p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Usuário
-                  </p>
-                  <p className="mt-1 break-all text-sm font-medium text-slate-900">
-                    {userId || "-"}
-                  </p>
-                </div>
+            <p className="mt-3 text-sm leading-6 text-emerald-900">
+              Módulos exportados com sucesso.
+            </p>
+          </div>
+
+          <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-amber-700 shadow-sm">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+                  Pendências
+                </p>
+
+                <p className="mt-1 text-2xl font-semibold text-amber-950">
+                  {errorCount}
+                </p>
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <FieldView label="Criado em" value={formatDate(createdAt)} />
-              <FieldView
-                label="Último login"
-                value={formatDate(lastSignInAt)}
-              />
-            </div>
+            <p className="mt-3 text-sm leading-6 text-amber-900">
+              Módulos com erro na última tentativa de exportação.
+            </p>
           </div>
-        </section>
-
-        <section className="rounded-[28px] border border-amber-200 bg-amber-50 p-6">
-          <div className="flex items-start gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-200 bg-white text-amber-700">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold text-amber-950">
-                Segurança dos dados
-              </h2>
-
-              <p className="mt-2 text-sm leading-7 text-amber-950">
-                Os backups exportados podem conter dados clínicos. Guarde os
-                arquivos em local seguro e evite compartilhar por WhatsApp,
-                e-mail comum ou dispositivos de terceiros.
-              </p>
-
-              <p className="mt-3 text-sm leading-7 text-amber-950">
-                Para uso com dados reais, o ideal é evoluir a segurança para RLS
-                por usuário, separação por perfil e auditoria.
-              </p>
-            </div>
-          </div>
-        </section>
+        </div>
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
-                  Backup
-                </span>
+        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900">
+              Backup completo
+            </h2>
 
-                <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                  Exportação local
-                </span>
-              </div>
-
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
-                Backup e exportação
-              </h2>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Exporte seus dados do ResiBook em JSON para guardar uma cópia
-                local segura. O backup completo inclui pacientes, prescrições,
-                evoluções, exames, tópicos, flashcards e CIDs.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Última exportação
-              </p>
-
-              <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-                {totalExported}
-              </p>
-
-              <p className="text-xs text-slate-500">registros contabilizados</p>
-            </div>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Baixa um único arquivo contendo as principais tabelas do sistema.
+              Use antes de alterações grandes, migrações ou importações.
+            </p>
           </div>
+
+          <button
+            type="button"
+            onClick={handleExportAll}
+            disabled={loadingAll || loadingTable !== null}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" />
+            {loadingAll ? "Exportando..." : "Baixar backup completo"}
+          </button>
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm">
                 <Database className="h-5 w-5" />
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">
-                  Backup completo
+                <h3 className="text-base font-semibold text-slate-900">
+                  Arquivo JSON único
                 </h3>
 
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Baixa um único arquivo com todas as principais tabelas do
-                  sistema.
+                  Inclui pacientes, prescrições, evoluções, exames/modelos,
+                  tópicos, flashcards e CIDs.
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleExportAll}
-              disabled={loadingAll || loadingTable !== null}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Download className="h-4 w-4" />
-              {loadingAll ? "Exportando..." : "Exportar backup completo"}
-            </button>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+              resibook-backup-completo
+            </span>
           </div>
         </div>
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="border-b border-slate-200 pb-4">
-          <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900">
             Exportar por módulo
           </h2>
 
@@ -820,11 +515,31 @@ export default function DadosDaContaPage() {
                   <Download className="h-4 w-4" />
                   {loadingTable === config.table
                     ? "Exportando..."
-                    : "Exportar"}
+                    : "Exportar módulo"}
                 </button>
               </article>
             );
           })}
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-amber-200 bg-amber-50 p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-200 bg-white text-amber-700">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold text-amber-950">
+              Cuidado com os arquivos exportados
+            </h2>
+
+            <p className="mt-2 text-sm leading-7 text-amber-950">
+              Os arquivos exportados podem conter dados clínicos. Guarde em
+              local seguro e evite compartilhar por WhatsApp, e-mail comum ou
+              dispositivos de terceiros.
+            </p>
+          </div>
         </div>
       </section>
     </div>
