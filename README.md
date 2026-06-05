@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ResiBook
 
-## Getting Started
+Sistema clínico web para organização de pacientes, prescrições, evoluções, exames, tópicos médicos, flashcards e CIDs.
 
-First, run the development server:
+O ResiBook foi criado para uso médico em rotina de plantão, estudo e acompanhamento clínico, com foco em rapidez, organização e acesso responsivo pelo computador e celular.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Funcionalidades principais
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Autenticação
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Login por e-mail e senha via Supabase Auth.
+- Logout integrado.
+- Interface protegida por fluxo de autenticação.
+- Acesso otimizado para uso em produção via Vercel.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+### Dashboard
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Visão geral do sistema.
+- Acesso rápido aos principais módulos.
+- Layout responsivo.
+- Integração com contagens reais do banco.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+### Pacientes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Cadastro de pacientes.
+- Edição de pacientes.
+- Exclusão de pacientes.
+- Busca por nome, queixa, diagnóstico, especialidade, telefone e observações.
+- Filtros por sexo e especialidade.
+- Botão para copiar resumo clínico.
+- Botão para abrir prontuário individual.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+### Prontuário individual
+
+Rota:
+
+```txt
+/pacientes/[id]
