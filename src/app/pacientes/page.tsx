@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -622,6 +623,13 @@ export default function PacientesPage() {
 
                 <div className="mt-5 flex flex-wrap gap-3">
                   <CopyButton text={buildPatientSummary(item)} />
+
+                  <Link
+                    href={`/pacientes/${item.id}`}
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700"
+                  >
+                    Abrir prontuário
+                  </Link>
 
                   <button
                     type="button"
