@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import {
   Menu,
   X,
@@ -43,17 +44,6 @@ type CountMap = {
 const GUEST_EMAIL = "convidado@resibook.com";
 
 const GUEST_ALLOWED_PATHS = ["/prescricao", "/topicos", "/cids"];
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !key) return null;
-
-  return createClient(url, key);
-}
 
 function isGuestAllowedPath(pathname: string) {
   return GUEST_ALLOWED_PATHS.some((path) => {
@@ -440,31 +430,51 @@ export default function AppShell({ children }: Props) {
     let mounted = true;
 
     async function checkGuestUser() {
-      const supabase = getSupabase();
-
-      if (!supabase) {
-        if (mounted) setCheckingUser(false);
+      if (hideShell) {
+        setCheckingUser(false);
         return;
       }
 
-      const { data } = await supabase.auth.getUser();
-      const email = data.user?.email?.trim().toLowerCase() || "";
-      const guest = email === GUEST_EMAIL;
+      const supabase = createClient();
+
+      const { data: sessionData } = await supabase.auth.getSession();
+
+      const sessionEmail =
+        sessionData.session?.user?.email?.trim().toLowerCase() || "";
+
+      const guest = sessionEmail === GUEST_EMAIL;
 
       if (!mounted) return;
 
       setIsGuest(guest);
       setCheckingUser(false);
 
-      if (guest && !hideShell && !isGuestAllowedPath(pathname)) {
+      if (guest && !isGuestAllowedPath(pathname)) {
         router.replace("/prescricao");
       }
     }
 
     checkGuestUser();
 
+    const supabase = createClient();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const email = session?.user?.email?.trim().toLowerCase() || "";
+      const guest = email === GUEST_EMAIL;
+
+      setIsGuest(guest);
+      setCheckingUser(false);
+
+      if (guest && !isGuestAllowedPath(window.location.pathname)) {
+        router.replace("/prescricao");
+      }
+    });
+
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, [pathname, router, hideShell]);
 
@@ -487,9 +497,7 @@ export default function AppShell({ children }: Props) {
     let mounted = true;
 
     async function loadCounts() {
-      const supabase = getSupabase();
-
-      if (!supabase) return;
+      const supabase = createClient();
 
       const [
         patientsCount,
