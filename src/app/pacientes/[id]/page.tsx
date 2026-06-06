@@ -15,8 +15,11 @@ type Patient = {
   telefone?: string | null;
   especialidade?: string | null;
   plano_saude?: string | null;
+  numero_carteirinha?: string | null;
   carteirinha?: string | null;
   data_nascimento?: string | null;
+  crm_medico?: string | null;
+  local_atendimento?: string | null;
   queixa?: string | null;
   hma?: string | null;
   hpp?: string | null;
@@ -163,6 +166,12 @@ function resolveBirthAndReturnDates(patient: Patient) {
   };
 }
 
+
+function getCarteirinha(patient: Patient) {
+  return patient.numero_carteirinha || patient.carteirinha || "";
+}
+
+
 function buildPrescriptionText(item: Prescription) {
   const lines = [
     item.medicamento || "Prescrição sem medicamento definido",
@@ -202,7 +211,9 @@ function buildPatientSummary(
     birthDate ? `DATA DE NASCIMENTO: ${formatDateOnly(birthDate)}` : "",
     patient.especialidade ? `ESPECIALIDADE: ${patient.especialidade}` : "",
     patient.plano_saude ? `PLANO DE SAÚDE: ${patient.plano_saude}` : "",
-    patient.carteirinha ? `CARTEIRINHA: ${patient.carteirinha}` : "",
+    patient.local_atendimento ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}` : "",
+    patient.crm_medico ? `MÉDICO / CRM: ${patient.crm_medico}` : "",
+    getCarteirinha(patient) ? `CARTEIRINHA: ${getCarteirinha(patient)}` : "",
     returnDate ? `RETORNO PREVISTO: ${formatDateOnly(returnDate)}` : "",
     patient.queixa ? `QUEIXA PRINCIPAL:\n${patient.queixa}` : "",
     patient.hma ? `HMA:\n${patient.hma}` : "",
@@ -260,25 +271,26 @@ function buildProfessionalPrintHtml(
   notes: PatientNote[]
 ) {
   const { birthDate, returnDate } = resolveBirthAndReturnDates(patient);
+  const carteirinha = getCarteirinha(patient);
+  const emittedAt = formatDate(new Date().toISOString());
 
   const noteHtml = notes.length
     ? notes
         .map(
           (item, index) => `
-            <div class="timeline-item">
+            <article class="timeline-item">
               <div class="timeline-index">${index + 1}</div>
-              <div class="timeline-content">
-                <div class="timeline-header">
-                  <strong>${escapeHtml(
-                    item.titulo || "Evolução clínica"
-                  )}</strong>
-                  <span>${escapeHtml(item.tipo || "evolucao")} • ${escapeHtml(
-            formatDate(item.created_at)
-          )}</span>
+              <div class="timeline-card">
+                <div class="timeline-head">
+                  <div>
+                    <strong>${escapeHtml(item.titulo || "Evolução clínica")}</strong>
+                    <span>${escapeHtml(item.tipo || "evolucao")}</span>
+                  </div>
+                  <time>${escapeHtml(formatDate(item.created_at))}</time>
                 </div>
                 <div class="timeline-text">${textToHtml(item.conteudo)}</div>
               </div>
-            </div>
+            </article>
           `
         )
         .join("")
@@ -288,13 +300,16 @@ function buildProfessionalPrintHtml(
     ? prescriptions
         .map(
           (item, index) => `
-            <div class="rx-card">
-              <div class="rx-top">
-                <strong>Prescrição ${index + 1}</strong>
-                <span>${escapeHtml(formatDate(item.created_at))}</span>
+            <article class="rx-card">
+              <div class="rx-head">
+                <div>
+                  <strong>Prescrição ${index + 1}</strong>
+                  <span>${escapeHtml(item.medicamento || "Prescrição clínica")}</span>
+                </div>
+                <time>${escapeHtml(formatDate(item.created_at))}</time>
               </div>
               <div class="rx-body">${textToHtml(buildPrescriptionText(item))}</div>
-            </div>
+            </article>
           `
         )
         .join("")
@@ -309,17 +324,18 @@ function buildProfessionalPrintHtml(
         <style>
           @page {
             size: A4;
-            margin: 16mm;
+            margin: 12mm;
           }
 
           * {
             box-sizing: border-box;
           }
 
-          html, body {
+          html,
+          body {
             margin: 0;
             padding: 0;
-            background: #f3f6fb;
+            background: #edf2f7;
             color: #0f172a;
             font-family: Arial, Helvetica, sans-serif;
           }
@@ -329,89 +345,205 @@ function buildProfessionalPrintHtml(
           }
 
           .sheet {
-            max-width: 820px;
+            max-width: 880px;
             margin: 0 auto;
             background: #ffffff;
-            border: 1px solid #dbe3ef;
-            border-radius: 18px;
+            border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+            border: 1px solid #d8e2ee;
+            box-shadow: 0 28px 80px rgba(15, 23, 42, 0.13);
           }
 
-          .topbar {
-            background: linear-gradient(135deg, #0b1f52 0%, #12398b 100%);
+          .hero {
+            background:
+              radial-gradient(circle at top right, rgba(34, 211, 238, 0.30), transparent 34%),
+              linear-gradient(135deg, #06183d 0%, #0b2f6f 62%, #0f766e 100%);
             color: #ffffff;
-            padding: 22px 28px;
+            padding: 28px 32px 30px;
           }
 
-          .brand-line {
+          .brand-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 22px;
+          }
+
+          .brand {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 16px;
+            gap: 14px;
           }
 
-          .brand-left h1 {
+          .brand-mark {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 900;
+          }
+
+          .brand h1 {
             margin: 0;
             font-size: 22px;
-            letter-spacing: 0.12em;
-            font-weight: 800;
+            font-weight: 900;
+            letter-spacing: 0.18em;
           }
 
-          .brand-left p {
-            margin: 6px 0 0 0;
+          .brand p {
+            margin: 5px 0 0;
             font-size: 12px;
-            opacity: 0.88;
+            opacity: 0.86;
           }
 
           .doc-meta {
+            min-width: 230px;
             text-align: right;
             font-size: 12px;
-            line-height: 1.6;
-            opacity: 0.95;
+            line-height: 1.65;
+            color: rgba(255, 255, 255, 0.9);
           }
 
-          .patient-banner {
-            padding: 22px 28px;
-            border-bottom: 1px solid #e7edf5;
-            background: #f8fbff;
+          .patient-hero {
+            margin-top: 26px;
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 22px;
+            align-items: end;
           }
 
-          .patient-banner h2 {
-            margin: 0;
-            font-size: 28px;
+          .kicker {
+            display: inline-flex;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
             font-weight: 800;
-            color: #0b1f52;
+            margin-bottom: 12px;
           }
 
-          .patient-banner p {
-            margin: 8px 0 0 0;
-            color: #475569;
+          .patient-name h2 {
+            margin: 0;
+            font-size: 32px;
+            line-height: 1.1;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+          }
+
+          .patient-name p {
+            margin: 10px 0 0;
             font-size: 13px;
+            color: rgba(255, 255, 255, 0.86);
+          }
+
+          .hero-card {
+            border-radius: 18px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.19);
+          }
+
+          .hero-card .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 7px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.13);
+            font-size: 12px;
+          }
+
+          .hero-card .row:last-child {
+            border-bottom: none;
+          }
+
+          .hero-card span {
+            color: rgba(255, 255, 255, 0.72);
+          }
+
+          .hero-card strong {
+            color: #ffffff;
+            text-align: right;
           }
 
           .content {
-            padding: 24px 28px 30px;
+            padding: 26px 32px 32px;
+          }
+
+          .quick-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+          }
+
+          .quick-card {
+            background: #f8fafc;
+            border: 1px solid #e4edf7;
+            border-radius: 16px;
+            padding: 13px 14px;
+          }
+
+          .quick-card span {
+            display: block;
+            font-size: 9px;
+            letter-spacing: 0.16em;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 800;
+            margin-bottom: 6px;
+          }
+
+          .quick-card strong {
+            display: block;
+            font-size: 13px;
+            color: #0f172a;
+            line-height: 1.4;
           }
 
           .section {
-            margin-bottom: 20px;
-            border: 1px solid #e6edf5;
-            border-radius: 14px;
+            margin-bottom: 16px;
+            border: 1px solid #e4edf7;
+            border-radius: 18px;
             overflow: hidden;
+            background: #ffffff;
             break-inside: avoid;
             page-break-inside: avoid;
           }
 
           .section-title {
-            background: #f8fafc;
-            border-bottom: 1px solid #e6edf5;
-            padding: 11px 16px;
-            font-size: 13px;
-            font-weight: 800;
-            letter-spacing: 0.14em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(180deg, #fbfdff 0%, #f5f8fc 100%);
+            border-bottom: 1px solid #e4edf7;
+            padding: 12px 16px;
             color: #0b1f52;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 0.15em;
             text-transform: uppercase;
+          }
+
+          .section-title .number {
+            width: 25px;
+            height: 25px;
+            min-width: 25px;
+            border-radius: 9px;
+            background: #0b2f6f;
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0;
+            font-size: 11px;
           }
 
           .section-body {
@@ -421,7 +553,7 @@ function buildProfessionalPrintHtml(
           .grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px 20px;
+            gap: 14px 22px;
           }
 
           .field {
@@ -430,88 +562,104 @@ function buildProfessionalPrintHtml(
 
           .field-label {
             display: block;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.12em;
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
             color: #64748b;
             margin-bottom: 5px;
           }
 
           .field-value {
-            font-size: 14px;
-            line-height: 1.55;
+            font-size: 13px;
+            line-height: 1.5;
             color: #0f172a;
-            font-weight: 600;
+            font-weight: 700;
           }
 
           .rich-text {
-            font-size: 14px;
-            line-height: 1.75;
-            color: #1e293b;
-            white-space: normal;
+            font-size: 13.5px;
+            line-height: 1.72;
+            color: #1f2937;
           }
 
           .timeline-item {
-            display: flex;
-            gap: 14px;
-            padding: 14px 0;
+            display: grid;
+            grid-template-columns: 34px 1fr;
+            gap: 12px;
+            padding: 0 0 14px;
+            margin-bottom: 14px;
             border-bottom: 1px solid #eef2f7;
           }
 
           .timeline-item:last-child {
-            border-bottom: none;
+            margin-bottom: 0;
             padding-bottom: 0;
+            border-bottom: none;
           }
 
           .timeline-index {
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-            border-radius: 999px;
-            background: #dbeafe;
-            color: #1d4ed8;
+            width: 30px;
+            height: 30px;
+            border-radius: 11px;
+            background: #ecfeff;
+            color: #0e7490;
+            border: 1px solid #bae6fd;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 12px;
-            font-weight: 700;
-            margin-top: 2px;
+            font-weight: 900;
           }
 
-          .timeline-content {
-            flex: 1;
+          .timeline-card {
+            background: #fbfdff;
+            border: 1px solid #e5edf6;
+            border-radius: 14px;
+            padding: 13px;
           }
 
-          .timeline-header {
+          .timeline-head,
+          .rx-head {
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
             justify-content: space-between;
-            gap: 8px;
+            gap: 14px;
             margin-bottom: 8px;
           }
 
-          .timeline-header strong {
-            font-size: 14px;
+          .timeline-head strong,
+          .rx-head strong {
+            display: block;
+            font-size: 13.5px;
             color: #0f172a;
           }
 
-          .timeline-header span {
-            font-size: 12px;
+          .timeline-head span,
+          .rx-head span {
+            display: block;
+            margin-top: 3px;
+            font-size: 11px;
             color: #64748b;
+            text-transform: capitalize;
+          }
+
+          .timeline-head time,
+          .rx-head time {
+            font-size: 11px;
+            color: #64748b;
+            white-space: nowrap;
           }
 
           .timeline-text {
-            font-size: 14px;
-            line-height: 1.75;
-            color: #1e293b;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #243042;
           }
 
           .rx-card {
-            border: 1px solid #e6edf5;
+            border: 1px solid #e5edf6;
             background: #fbfdff;
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 14px;
             margin-bottom: 12px;
           }
@@ -520,40 +668,24 @@ function buildProfessionalPrintHtml(
             margin-bottom: 0;
           }
 
-          .rx-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 10px;
-          }
-
-          .rx-top strong {
-            font-size: 14px;
-            color: #0b1f52;
-          }
-
-          .rx-top span {
-            font-size: 12px;
-            color: #64748b;
-          }
-
           .rx-body {
             background: #ffffff;
-            border: 1px solid #ebf0f6;
-            border-radius: 10px;
+            border: 1px solid #e9eff6;
+            border-radius: 12px;
             padding: 12px;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.7;
-            color: #1e293b;
+            color: #1f2937;
           }
 
           .signature-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 28px;
-            margin-top: 28px;
-            padding-top: 18px;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 36px;
+            margin-top: 34px;
+            padding-top: 10px;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
 
           .signature-box {
@@ -563,19 +695,25 @@ function buildProfessionalPrintHtml(
           }
 
           .signature-line {
-            border-top: 1px solid #334155;
-            margin-bottom: 8px;
+            border-top: 1px solid #1e293b;
+            margin-bottom: 9px;
             height: 1px;
           }
 
+          .signature-box small {
+            display: block;
+            margin-top: 4px;
+            color: #64748b;
+          }
+
           .footer {
-            margin-top: 20px;
+            margin-top: 22px;
             padding-top: 14px;
             border-top: 1px solid #e6edf5;
             display: flex;
             justify-content: space-between;
             gap: 16px;
-            font-size: 11px;
+            font-size: 10.5px;
             color: #64748b;
           }
 
@@ -585,9 +723,15 @@ function buildProfessionalPrintHtml(
           }
 
           @media print {
+            html,
             body {
               background: #ffffff;
+            }
+
+            body {
               padding: 0;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
 
             .sheet {
@@ -596,50 +740,92 @@ function buildProfessionalPrintHtml(
               border: none;
               border-radius: 0;
             }
+
+            .section {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
           }
         </style>
       </head>
       <body>
-        <div class="sheet">
-          <div class="topbar">
-            <div class="brand-line">
-              <div class="brand-left">
-                <h1>RESIBOOK</h1>
-                <p>Prontuário clínico ambulatorial</p>
+        <main class="sheet">
+          <header class="hero">
+            <div class="brand-row">
+              <div class="brand">
+                <div class="brand-mark">R</div>
+                <div>
+                  <h1>RESIBOOK</h1>
+                  <p>Prontuário clínico ambulatorial</p>
+                </div>
               </div>
 
               <div class="doc-meta">
                 <div><strong>Documento:</strong> Prontuário médico</div>
-                <div><strong>Emitido em:</strong> ${escapeHtml(
-                  formatDate(new Date().toISOString())
-                )}</div>
+                <div><strong>Emitido em:</strong> ${escapeHtml(emittedAt)}</div>
               </div>
             </div>
-          </div>
 
-          <div class="patient-banner">
-            <h2>${escapeHtml(patient.nome || "Paciente")}</h2>
-            <p>
-              ${escapeHtml(patient.especialidade || "Sem especialidade")}
-              ${
-                typeof patient.idade === "number"
-                  ? ` • ${escapeHtml(String(patient.idade))} anos`
-                  : ""
-              }
-              ${patient.sexo ? ` • ${escapeHtml(patient.sexo)}` : ""}
-            </p>
-          </div>
+            <div class="patient-hero">
+              <div class="patient-name">
+                <div class="kicker">Registro clínico</div>
+                <h2>${escapeHtml(patient.nome || "Paciente")}</h2>
+                <p>
+                  ${escapeHtml(patient.especialidade || "Sem especialidade")}
+                  ${
+                    typeof patient.idade === "number"
+                      ? ` • ${escapeHtml(String(patient.idade))} anos`
+                      : ""
+                  }
+                  ${patient.sexo ? ` • ${escapeHtml(patient.sexo)}` : ""}
+                </p>
+              </div>
 
-          <div class="content">
+              <div class="hero-card">
+                <div class="row">
+                  <span>Cadastro</span>
+                  <strong>${escapeHtml(formatDate(patient.created_at))}</strong>
+                </div>
+                <div class="row">
+                  <span>Nascimento</span>
+                  <strong>${escapeHtml(birthDate ? formatDateOnly(birthDate) : "-")}</strong>
+                </div>
+                <div class="row">
+                  <span>Retorno</span>
+                  <strong>${escapeHtml(returnDate ? formatDateOnly(returnDate) : "-")}</strong>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <section class="content">
+            <div class="quick-grid">
+              <div class="quick-card">
+                <span>Telefone</span>
+                <strong>${escapeHtml(patient.telefone || "-")}</strong>
+              </div>
+              <div class="quick-card">
+                <span>Plano</span>
+                <strong>${escapeHtml(patient.plano_saude || "-")}</strong>
+              </div>
+              <div class="quick-card">
+                <span>Carteirinha</span>
+                <strong>${escapeHtml(carteirinha || "-")}</strong>
+              </div>
+              <div class="quick-card">
+                <span>Local</span>
+                <strong>${escapeHtml(patient.local_atendimento || "-")}</strong>
+              </div>
+            </div>
+
             <div class="section">
-              <div class="section-title">1. Dados cadastrais</div>
+              <div class="section-title"><span class="number">1</span> Dados cadastrais</div>
               <div class="section-body">
                 <div class="grid">
                   <div class="field">
                     <span class="field-label">Nome</span>
                     <div class="field-value">${escapeHtml(patient.nome || "-")}</div>
                   </div>
-
                   <div class="field">
                     <span class="field-label">Idade</span>
                     <div class="field-value">${
@@ -648,165 +834,118 @@ function buildProfessionalPrintHtml(
                         : "-"
                     }</div>
                   </div>
-
                   <div class="field">
                     <span class="field-label">Sexo</span>
                     <div class="field-value">${escapeHtml(patient.sexo || "-")}</div>
                   </div>
-
                   <div class="field">
                     <span class="field-label">Telefone</span>
-                    <div class="field-value">${escapeHtml(
-                      patient.telefone || "-"
-                    )}</div>
+                    <div class="field-value">${escapeHtml(patient.telefone || "-")}</div>
                   </div>
-
                   <div class="field">
                     <span class="field-label">Especialidade</span>
-                    <div class="field-value">${escapeHtml(
-                      patient.especialidade || "-"
-                    )}</div>
+                    <div class="field-value">${escapeHtml(patient.especialidade || "-")}</div>
                   </div>
-
-                  <div class="field">
-                    <span class="field-label">Cadastro</span>
-                    <div class="field-value">${escapeHtml(
-                      formatDate(patient.created_at)
-                    )}</div>
-                  </div>
-
                   <div class="field">
                     <span class="field-label">Plano de saúde</span>
-                    <div class="field-value">${escapeHtml(
-                      patient.plano_saude || "-"
-                    )}</div>
+                    <div class="field-value">${escapeHtml(patient.plano_saude || "-")}</div>
                   </div>
-
                   <div class="field">
                     <span class="field-label">Carteirinha</span>
-                    <div class="field-value">${escapeHtml(
-                      patient.carteirinha || "-"
-                    )}</div>
+                    <div class="field-value">${escapeHtml(carteirinha || "-")}</div>
                   </div>
-
-                  ${
-                    birthDate
-                      ? `
-                    <div class="field">
-                      <span class="field-label">Data de nascimento</span>
-                      <div class="field-value">${escapeHtml(
-                        formatDateOnly(birthDate)
-                      )}</div>
-                    </div>
-                  `
-                      : ""
-                  }
-
-                  ${
-                    returnDate
-                      ? `
-                    <div class="field">
-                      <span class="field-label">Retorno previsto</span>
-                      <div class="field-value">${escapeHtml(
-                        formatDateOnly(returnDate)
-                      )}</div>
-                    </div>
-                  `
-                      : ""
-                  }
+                  <div class="field">
+                    <span class="field-label">Local de atendimento</span>
+                    <div class="field-value">${escapeHtml(patient.local_atendimento || "-")}</div>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Data de nascimento</span>
+                    <div class="field-value">${escapeHtml(birthDate ? formatDateOnly(birthDate) : "-")}</div>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Retorno previsto</span>
+                    <div class="field-value">${escapeHtml(returnDate ? formatDateOnly(returnDate) : "-")}</div>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">2. Queixa principal</div>
+              <div class="section-title"><span class="number">2</span> Queixa principal</div>
               <div class="section-body">
                 <div class="rich-text">${textToHtml(patient.queixa)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">3. HMA — História da moléstia atual</div>
+              <div class="section-title"><span class="number">3</span> HMA — História da moléstia atual</div>
               <div class="section-body">
                 <div class="rich-text">${textToHtml(patient.hma)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">4. HPP — História patológica pregressa</div>
+              <div class="section-title"><span class="number">4</span> HPP — História patológica pregressa</div>
               <div class="section-body">
                 <div class="rich-text">${textToHtml(patient.hpp)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">5. Medicamentos em uso</div>
+              <div class="section-title"><span class="number">5</span> Medicamentos em uso</div>
               <div class="section-body">
-                <div class="rich-text">${textToHtml(
-                  patient.medicamentos_em_uso
-                )}</div>
+                <div class="rich-text">${textToHtml(patient.medicamentos_em_uso)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">6. Exame físico / exame do estado mental</div>
+              <div class="section-title"><span class="number">6</span> Exame físico / exame do estado mental</div>
               <div class="section-body">
-                <div class="rich-text">${textToHtml(
-                  patient.exame_fisico
-                )}</div>
+                <div class="rich-text">${textToHtml(patient.exame_fisico)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">7. Hipótese diagnóstica</div>
+              <div class="section-title"><span class="number">7</span> Hipótese diagnóstica</div>
               <div class="section-body">
-                <div class="rich-text">${textToHtml(
-                  patient.hipotese_diagnostica
-                )}</div>
+                <div class="rich-text">${textToHtml(patient.hipotese_diagnostica)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">8. Conduta médica</div>
+              <div class="section-title"><span class="number">8</span> Conduta médica</div>
               <div class="section-body">
-                <div class="rich-text">${textToHtml(
-                  patient.conduta_medica
-                )}</div>
+                <div class="rich-text">${textToHtml(patient.conduta_medica)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">9. Observações</div>
+              <div class="section-title"><span class="number">9</span> Observações</div>
               <div class="section-body">
-                <div class="rich-text">${textToHtml(
-                  patient.observacoes
-                )}</div>
+                <div class="rich-text">${textToHtml(patient.observacoes)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">10. Evoluções / anotações</div>
-              <div class="section-body">
-                ${noteHtml}
-              </div>
+              <div class="section-title"><span class="number">10</span> Evoluções / anotações</div>
+              <div class="section-body">${noteHtml}</div>
             </div>
 
             <div class="section">
-              <div class="section-title">11. Prescrições vinculadas</div>
-              <div class="section-body">
-                ${prescriptionHtml}
-              </div>
+              <div class="section-title"><span class="number">11</span> Prescrições vinculadas</div>
+              <div class="section-body">${prescriptionHtml}</div>
             </div>
 
             <div class="signature-grid">
               <div class="signature-box">
                 <div class="signature-line"></div>
                 Assinatura / carimbo
+                <small>${escapeHtml(patient.crm_medico || "")}</small>
               </div>
-
               <div class="signature-box">
                 <div class="signature-line"></div>
                 Data
+                <small>${escapeHtml(patient.local_atendimento || "")}</small>
               </div>
             </div>
 
@@ -814,12 +953,13 @@ function buildProfessionalPrintHtml(
               <div>ResiBook • Prontuário clínico</div>
               <div>${escapeHtml(patient.nome || "Paciente")}</div>
             </div>
-          </div>
-        </div>
+          </section>
+        </main>
       </body>
     </html>
   `;
 }
+
 
 function InfoBlock({
   title,

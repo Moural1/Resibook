@@ -16,6 +16,9 @@ type Patient = {
   especialidade: string | null;
   plano_saude: string | null;
   numero_carteirinha: string | null;
+  data_nascimento: string | null;
+  crm_medico: string | null;
+  local_atendimento: string | null;
   queixa: string | null;
   queixa_principal: string | null;
   hma: string | null;
@@ -38,6 +41,9 @@ type PatientForm = {
   especialidade: string;
   plano_saude: string;
   numero_carteirinha: string;
+  data_nascimento: string;
+  crm_medico: string;
+  local_atendimento: string;
   queixa_principal: string;
   hma: string;
   hpp: string;
@@ -57,6 +63,9 @@ const emptyForm: PatientForm = {
   especialidade: "",
   plano_saude: "",
   numero_carteirinha: "",
+  data_nascimento: "",
+  crm_medico: "",
+  local_atendimento: "",
   queixa_principal: "",
   hma: "",
   hpp: "",
@@ -121,6 +130,11 @@ function patientToForm(patient: Patient): PatientForm {
     especialidade: patient.especialidade || "",
     plano_saude: patient.plano_saude || "",
     numero_carteirinha: patient.numero_carteirinha || "",
+    data_nascimento: patient.data_nascimento
+      ? new Date(patient.data_nascimento).toISOString().slice(0, 10)
+      : "",
+    crm_medico: patient.crm_medico || "",
+    local_atendimento: patient.local_atendimento || "",
     queixa_principal: getQueixa(patient),
     hma: patient.hma || "",
     hpp: patient.hpp || "",
@@ -145,6 +159,9 @@ function buildPayload(form: PatientForm, userId: string) {
     especialidade: form.especialidade.trim() || null,
     plano_saude: form.plano_saude.trim() || null,
     numero_carteirinha: form.numero_carteirinha.trim() || null,
+    data_nascimento: form.data_nascimento || null,
+    crm_medico: form.crm_medico.trim() || null,
+    local_atendimento: form.local_atendimento.trim() || null,
     queixa: form.queixa_principal.trim() || null,
     queixa_principal: form.queixa_principal.trim() || null,
     hma: form.hma.trim() || null,
@@ -160,7 +177,7 @@ function buildPayload(form: PatientForm, userId: string) {
 }
 
 const patientSelect =
-  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, queixa, queixa_principal, hma, hpp, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
+  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, crm_medico, local_atendimento, queixa, queixa_principal, hma, hpp, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
 
 function buildPatientSummary(patient: Patient) {
   const lines = [
@@ -173,6 +190,11 @@ function buildPatientSummary(patient: Patient) {
     patient.especialidade ? `ESPECIALIDADE: ${patient.especialidade}` : "",
     patient.plano_saude ? `PLANO DE SAÚDE: ${patient.plano_saude}` : "",
     patient.numero_carteirinha ? `CARTEIRINHA: ${patient.numero_carteirinha}` : "",
+    patient.data_nascimento
+      ? `DATA DE NASCIMENTO: ${formatDateOnly(patient.data_nascimento)}`
+      : "",
+    patient.local_atendimento ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}` : "",
+    patient.crm_medico ? `MÉDICO / CRM: ${patient.crm_medico}` : "",
     getQueixa(patient) ? `QUEIXA PRINCIPAL:\n${getQueixa(patient)}` : "",
     patient.hma ? `HMA:\n${patient.hma}` : "",
     patient.hpp ? `HPP:\n${patient.hpp}` : "",
@@ -367,6 +389,9 @@ export default function PacientesPage() {
         normalize(item.especialidade).includes(q) ||
         normalize(item.plano_saude).includes(q) ||
         normalize(item.numero_carteirinha).includes(q) ||
+        normalize(item.data_nascimento).includes(q) ||
+        normalize(item.crm_medico).includes(q) ||
+        normalize(item.local_atendimento).includes(q) ||
         normalize(getQueixa(item)).includes(q) ||
         normalize(item.hma).includes(q) ||
         normalize(item.hpp).includes(q) ||
@@ -657,6 +682,12 @@ export default function PacientesPage() {
                         </span>
                       ) : null}
 
+                      {item.data_nascimento ? (
+                        <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+                          Nasc.: {formatDateOnly(item.data_nascimento)}
+                        </span>
+                      ) : null}
+
                       {item.retorno_previsto_em ? (
                         <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                           Retorno: {formatDateOnly(item.retorno_previsto_em)}
@@ -784,6 +815,13 @@ export default function PacientesPage() {
 
                 <InputField
                   type="date"
+                  value={form.data_nascimento}
+                  onChange={(value) => updateForm("data_nascimento", value)}
+                  placeholder="Data de nascimento"
+                />
+
+                <InputField
+                  type="date"
                   value={form.retorno_previsto_em}
                   onChange={(value) => updateForm("retorno_previsto_em", value)}
                   placeholder="Retorno previsto"
@@ -799,6 +837,18 @@ export default function PacientesPage() {
                   value={form.numero_carteirinha}
                   onChange={(value) => updateForm("numero_carteirinha", value)}
                   placeholder="Número da carteirinha"
+                />
+
+                <InputField
+                  value={form.local_atendimento}
+                  onChange={(value) => updateForm("local_atendimento", value)}
+                  placeholder="Local de atendimento / consultório"
+                />
+
+                <InputField
+                  value={form.crm_medico}
+                  onChange={(value) => updateForm("crm_medico", value)}
+                  placeholder="Médico / CRM para impressão"
                 />
               </div>
             </div>
