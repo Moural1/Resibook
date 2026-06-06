@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 
 type Patient = {
   id: string;
+  user_id?: string | null;
   nome: string;
   idade: number | null;
   sexo: string | null;
@@ -46,17 +47,6 @@ const emptyForm: PatientForm = {
   observacoes: "",
   retorno_previsto_em: "",
 };
-
-function getSupabase(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !key) return null;
-
-  return createClient(url, key);
-}
 
 function normalize(value?: string | number | null) {
   return String(value || "")
@@ -111,8 +101,9 @@ function patientToForm(patient: Patient): PatientForm {
   };
 }
 
-function buildPayload(form: PatientForm) {
+function buildPayload(form: PatientForm, userId: string) {
   return {
+    user_id: userId,
     nome: form.nome.trim(),
     idade: form.idade.trim() ? Number(form.idade) : null,
     sexo: form.sexo.trim() || null,
@@ -202,7 +193,9 @@ function TextAreaField({
 export default function PacientesPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient();
 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -227,23 +220,27 @@ export default function PacientesPage() {
   }, []);
 
   async function loadPatients() {
-    const supabase = getSupabase();
+    setLoading(true);
+    setError("");
 
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user?.id || null;
+
+    setCurrentUserId(userId);
+
+    if (!userId) {
+      setError("Usuário autenticado não identificado.");
       setPatients([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError("");
-
     const { data, error } = await supabase
       .from("patients")
       .select(
-        "id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
+        "id, user_id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
       )
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -352,10 +349,8 @@ export default function PacientesPage() {
   }
 
   async function handleSave() {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId) {
+      setError("Usuário autenticado não identificado.");
       return;
     }
 
@@ -368,22 +363,23 @@ export default function PacientesPage() {
     setError("");
     setSuccess("");
 
-    const payload = buildPayload(form);
+    const payload = buildPayload(form, currentUserId);
 
     const response = editingPatient
       ? await supabase
           .from("patients")
           .update(payload)
           .eq("id", editingPatient.id)
+          .eq("user_id", currentUserId)
           .select(
-            "id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
+            "id, user_id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
           )
           .single()
       : await supabase
           .from("patients")
           .insert(payload)
           .select(
-            "id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
+            "id, user_id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
           )
           .single();
 
@@ -409,10 +405,8 @@ export default function PacientesPage() {
   }
 
   async function handleDelete(id: string, nome: string) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId) {
+      setError("Usuário autenticado não identificado.");
       return;
     }
 
@@ -426,7 +420,11 @@ export default function PacientesPage() {
     setError("");
     setSuccess("");
 
-    const { error } = await supabase.from("patients").delete().eq("id", id);
+    const { error } = await supabase
+      .from("patients")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", currentUserId);
 
     if (error) {
       setError(error.message);
@@ -450,7 +448,7 @@ export default function PacientesPage() {
                 </span>
 
                 <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  CRUD completo
+                  Privado por usuário
                 </span>
 
                 <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -471,7 +469,7 @@ export default function PacientesPage() {
                 <span>
                   {loading
                     ? "Carregando..."
-                    : `Total carregado do banco: ${patients.length}`}
+                    : `Total do seu usuário: ${patients.length}`}
                 </span>
                 <span>•</span>
                 <span>Exibindo: {filtered.length}</span>

@@ -413,6 +413,7 @@ export default function AppShell({ children }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [checkingUser, setCheckingUser] = useState(true);
 
   const [counts, setCounts] = useState<CountMap>({
@@ -452,12 +453,14 @@ export default function AppShell({ children }: Props) {
 
       const sessionEmail =
         sessionData.session?.user?.email?.trim().toLowerCase() || "";
+      const userId = sessionData.session?.user?.id || null;
 
       const guest = sessionEmail === GUEST_EMAIL;
 
       if (!mounted) return;
 
       setIsGuest(guest);
+      setCurrentUserId(userId);
       setCheckingUser(false);
 
       if (guest && !isGuestAllowedPath(pathname)) {
@@ -473,9 +476,11 @@ export default function AppShell({ children }: Props) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const email = session?.user?.email?.trim().toLowerCase() || "";
+      const userId = session?.user?.id || null;
       const guest = email === GUEST_EMAIL;
 
       setIsGuest(guest);
+      setCurrentUserId(userId);
       setCheckingUser(false);
 
       if (guest && !isGuestAllowedPath(window.location.pathname)) {
@@ -510,6 +515,19 @@ export default function AppShell({ children }: Props) {
     async function loadCounts() {
       const supabase = createClient();
 
+      if (!currentUserId) {
+        setCounts({
+          pacientes: null,
+          prescricoes: null,
+          exames: null,
+          topicos: null,
+          flashcards: null,
+          flashcardsDificeis: null,
+          cids: null,
+        });
+        return;
+      }
+
       const [
         patientsCount,
         prescricoesCount,
@@ -519,13 +537,21 @@ export default function AppShell({ children }: Props) {
         flashcardsDificeisCount,
         cidsCount,
       ] = await Promise.all([
-        getTableCount(supabase, "patients"),
+        getTableCount(supabase, "patients", {
+          column: "user_id",
+          value: currentUserId,
+        }),
 
         getFirstAvailableCount(supabase, [
           "prescriptions",
           "prescricoes",
           "prescricao",
-        ]),
+        ]).then(async () =>
+          getTableCount(supabase, "prescriptions", {
+            column: "user_id",
+            value: currentUserId,
+          })
+        ),
 
         getFirstAvailableCount(supabase, [
           "exam_templates",
@@ -537,7 +563,10 @@ export default function AppShell({ children }: Props) {
 
         getTableCount(supabase, "topicos_medicos"),
 
-        getTableCount(supabase, "flashcards"),
+        getTableCount(supabase, "flashcards", {
+          column: "user_id",
+          value: currentUserId,
+        }),
 
         getTableCount(supabase, "flashcards", {
           column: "dificil",
@@ -547,6 +576,20 @@ export default function AppShell({ children }: Props) {
         getTableCount(supabase, "cids"),
       ]);
 
+      let difficultCount = flashcardsDificeisCount;
+
+      try {
+        const { count, error } = await supabase
+          .from("flashcards")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", currentUserId)
+          .eq("dificil", true);
+
+        if (!error) difficultCount = count ?? 0;
+      } catch {
+        difficultCount = null;
+      }
+
       if (!mounted) return;
 
       setCounts({
@@ -555,7 +598,7 @@ export default function AppShell({ children }: Props) {
         exames: examesCount,
         topicos: topicosCount,
         flashcards: flashcardsCount,
-        flashcardsDificeis: flashcardsDificeisCount,
+        flashcardsDificeis: difficultCount,
         cids: cidsCount,
       });
     }
@@ -577,7 +620,7 @@ export default function AppShell({ children }: Props) {
     return () => {
       mounted = false;
     };
-  }, [pathname, isGuest]);
+  }, [pathname, isGuest, currentUserId]);
 
   if (hideShell) {
     return <>{children}</>;
