@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import LogoutButton from "./logout-button";
 import { Topbar } from "./topbar";
-import PrintProntuarioButton from "./print-prontuario-button";
 
 type Props = {
   children: React.ReactNode;
@@ -50,6 +49,8 @@ const GUEST_ALLOWED_PATHS = [
   "/topicos",
   "/cids",
   "/exames-evolucao",
+  "/termos",
+  "/privacidade",
 ];
 
 function isGuestAllowedPath(pathname: string) {
@@ -119,7 +120,10 @@ async function getFlashcardDificeisCount(
       .eq("dificil", true);
 
     if (error) {
-      console.warn("Não foi possível contar flashcards difíceis:", error.message);
+      console.warn(
+        "Não foi possível contar flashcards difíceis:",
+        error.message
+      );
       return null;
     }
 
@@ -417,6 +421,24 @@ function SidebarContent({
                 <p className="mt-1 text-sm leading-6 text-amber-100/80">
                   As demais áreas do sistema estão bloqueadas para este usuário.
                 </p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link
+                    href="/termos"
+                    onClick={onNavigate}
+                    className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15"
+                  >
+                    Termos
+                  </Link>
+
+                  <Link
+                    href="/privacidade"
+                    onClick={onNavigate}
+                    className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15"
+                  >
+                    Privacidade
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -470,10 +492,6 @@ export default function AppShell({ children }: Props) {
       pathname === "/signup" ||
       pathname === "/register"
     );
-  }, [pathname]);
-
-  const isPatientDetailPage = useMemo(() => {
-    return pathname.startsWith("/pacientes/") && pathname !== "/pacientes";
   }, [pathname]);
 
   useEffect(() => {
@@ -663,7 +681,7 @@ export default function AppShell({ children }: Props) {
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Este usuário convidado tem acesso apenas a Prescrição, Exames /
-            Evolução, Tópicos e CIDs.
+            Evolução, Tópicos, CIDs, Termos de Uso e Política de Privacidade.
           </p>
 
           <button
@@ -767,8 +785,6 @@ export default function AppShell({ children }: Props) {
           </div>
         </main>
       </div>
-
-      {isPatientDetailPage && !isGuest ? <PrintProntuarioButton /> : null}
     </div>
   );
 }
