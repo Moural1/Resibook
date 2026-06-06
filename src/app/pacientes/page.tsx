@@ -14,9 +14,17 @@ type Patient = {
   sexo: string | null;
   telefone: string | null;
   especialidade: string | null;
+  plano_saude: string | null;
+  numero_carteirinha: string | null;
   queixa: string | null;
+  queixa_principal: string | null;
+  hma: string | null;
+  hpp: string | null;
   diagnostico_principal: string | null;
+  hipotese_diagnostica: string | null;
   medicamentos_em_uso: string | null;
+  exame_fisico: string | null;
+  conduta_medica: string | null;
   observacoes: string | null;
   retorno_previsto_em: string | null;
   created_at: string | null;
@@ -28,9 +36,15 @@ type PatientForm = {
   sexo: string;
   telefone: string;
   especialidade: string;
-  queixa: string;
-  diagnostico_principal: string;
+  plano_saude: string;
+  numero_carteirinha: string;
+  queixa_principal: string;
+  hma: string;
+  hpp: string;
   medicamentos_em_uso: string;
+  exame_fisico: string;
+  hipotese_diagnostica: string;
+  conduta_medica: string;
   observacoes: string;
   retorno_previsto_em: string;
 };
@@ -41,9 +55,15 @@ const emptyForm: PatientForm = {
   sexo: "",
   telefone: "",
   especialidade: "",
-  queixa: "",
-  diagnostico_principal: "",
+  plano_saude: "",
+  numero_carteirinha: "",
+  queixa_principal: "",
+  hma: "",
+  hpp: "",
   medicamentos_em_uso: "",
+  exame_fisico: "",
+  hipotese_diagnostica: "",
+  conduta_medica: "",
   observacoes: "",
   retorno_previsto_em: "",
 };
@@ -81,6 +101,14 @@ function formatDateOnly(value?: string | null) {
   }
 }
 
+function getQueixa(patient: Patient) {
+  return patient.queixa_principal || patient.queixa || "";
+}
+
+function getHipotese(patient: Patient) {
+  return patient.hipotese_diagnostica || patient.diagnostico_principal || "";
+}
+
 function patientToForm(patient: Patient): PatientForm {
   return {
     nome: patient.nome || "",
@@ -91,9 +119,15 @@ function patientToForm(patient: Patient): PatientForm {
     sexo: patient.sexo || "",
     telefone: patient.telefone || "",
     especialidade: patient.especialidade || "",
-    queixa: patient.queixa || "",
-    diagnostico_principal: patient.diagnostico_principal || "",
+    plano_saude: patient.plano_saude || "",
+    numero_carteirinha: patient.numero_carteirinha || "",
+    queixa_principal: getQueixa(patient),
+    hma: patient.hma || "",
+    hpp: patient.hpp || "",
     medicamentos_em_uso: patient.medicamentos_em_uso || "",
+    exame_fisico: patient.exame_fisico || "",
+    hipotese_diagnostica: getHipotese(patient),
+    conduta_medica: patient.conduta_medica || "",
     observacoes: patient.observacoes || "",
     retorno_previsto_em: patient.retorno_previsto_em
       ? new Date(patient.retorno_previsto_em).toISOString().slice(0, 10)
@@ -109,35 +143,52 @@ function buildPayload(form: PatientForm, userId: string) {
     sexo: form.sexo.trim() || null,
     telefone: form.telefone.trim() || null,
     especialidade: form.especialidade.trim() || null,
-    queixa: form.queixa.trim() || null,
-    diagnostico_principal: form.diagnostico_principal.trim() || null,
+    plano_saude: form.plano_saude.trim() || null,
+    numero_carteirinha: form.numero_carteirinha.trim() || null,
+    queixa: form.queixa_principal.trim() || null,
+    queixa_principal: form.queixa_principal.trim() || null,
+    hma: form.hma.trim() || null,
+    hpp: form.hpp.trim() || null,
     medicamentos_em_uso: form.medicamentos_em_uso.trim() || null,
+    exame_fisico: form.exame_fisico.trim() || null,
+    diagnostico_principal: form.hipotese_diagnostica.trim() || null,
+    hipotese_diagnostica: form.hipotese_diagnostica.trim() || null,
+    conduta_medica: form.conduta_medica.trim() || null,
     observacoes: form.observacoes.trim() || null,
     retorno_previsto_em: form.retorno_previsto_em || null,
   };
 }
 
+const patientSelect =
+  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, queixa, queixa_principal, hma, hpp, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
+
 function buildPatientSummary(patient: Patient) {
   const lines = [
+    "RESIBOOK — RESUMO DO PACIENTE",
+    "",
     `PACIENTE: ${patient.nome || "-"}`,
     patient.idade ? `IDADE: ${patient.idade} anos` : "",
     patient.sexo ? `SEXO: ${patient.sexo}` : "",
     patient.telefone ? `TELEFONE: ${patient.telefone}` : "",
     patient.especialidade ? `ESPECIALIDADE: ${patient.especialidade}` : "",
-    patient.queixa ? `QUEIXA: ${patient.queixa}` : "",
-    patient.diagnostico_principal
-      ? `DIAGNÓSTICO PRINCIPAL: ${patient.diagnostico_principal}`
-      : "",
+    patient.plano_saude ? `PLANO DE SAÚDE: ${patient.plano_saude}` : "",
+    patient.numero_carteirinha ? `CARTEIRINHA: ${patient.numero_carteirinha}` : "",
+    getQueixa(patient) ? `QUEIXA PRINCIPAL:\n${getQueixa(patient)}` : "",
+    patient.hma ? `HMA:\n${patient.hma}` : "",
+    patient.hpp ? `HPP:\n${patient.hpp}` : "",
     patient.medicamentos_em_uso
       ? `MEDICAMENTOS EM USO:\n${patient.medicamentos_em_uso}`
       : "",
+    patient.exame_fisico ? `EXAME FÍSICO:\n${patient.exame_fisico}` : "",
+    getHipotese(patient) ? `HIPÓTESE DIAGNÓSTICA:\n${getHipotese(patient)}` : "",
+    patient.conduta_medica ? `CONDUTA MÉDICA:\n${patient.conduta_medica}` : "",
     patient.observacoes ? `OBSERVAÇÕES:\n${patient.observacoes}` : "",
     patient.retorno_previsto_em
       ? `RETORNO PREVISTO: ${formatDateOnly(patient.retorno_previsto_em)}`
       : "",
   ].filter(Boolean);
 
-  return lines.join("\n\n");
+  return lines.join("\n");
 }
 
 function InfoBlock({
@@ -190,6 +241,28 @@ function TextAreaField({
   );
 }
 
+function InputField({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+    />
+  );
+}
+
 export default function PacientesPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -237,9 +310,7 @@ export default function PacientesPage() {
 
     const { data, error } = await supabase
       .from("patients")
-      .select(
-        "id, user_id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
-      )
+      .select(patientSelect)
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -294,9 +365,15 @@ export default function PacientesPage() {
         normalize(item.sexo).includes(q) ||
         normalize(item.telefone).includes(q) ||
         normalize(item.especialidade).includes(q) ||
-        normalize(item.queixa).includes(q) ||
-        normalize(item.diagnostico_principal).includes(q) ||
+        normalize(item.plano_saude).includes(q) ||
+        normalize(item.numero_carteirinha).includes(q) ||
+        normalize(getQueixa(item)).includes(q) ||
+        normalize(item.hma).includes(q) ||
+        normalize(item.hpp).includes(q) ||
+        normalize(getHipotese(item)).includes(q) ||
         normalize(item.medicamentos_em_uso).includes(q) ||
+        normalize(item.exame_fisico).includes(q) ||
+        normalize(item.conduta_medica).includes(q) ||
         normalize(item.observacoes).includes(q);
 
       const matchesSexo = !sexo || item.sexo === sexo;
@@ -371,16 +448,12 @@ export default function PacientesPage() {
           .update(payload)
           .eq("id", editingPatient.id)
           .eq("user_id", currentUserId)
-          .select(
-            "id, user_id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
-          )
+          .select(patientSelect)
           .single()
       : await supabase
           .from("patients")
           .insert(payload)
-          .select(
-            "id, user_id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
-          )
+          .select(patientSelect)
           .single();
 
     if (response.error) {
@@ -448,7 +521,7 @@ export default function PacientesPage() {
                 </span>
 
                 <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  Privado por usuário
+                  Prontuário profissional
                 </span>
 
                 <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -461,8 +534,8 @@ export default function PacientesPage() {
               </h1>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Cadastro, edição, exclusão, filtros e busca clínica em tempo
-                real.
+                Cadastro clínico completo com dados cadastrais, plano de saúde,
+                queixa, HMA, HPP, exame físico, hipótese diagnóstica e conduta.
               </p>
 
               <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
@@ -503,7 +576,7 @@ export default function PacientesPage() {
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar nome, queixa, diagnóstico, medicamento, telefone..."
+            placeholder="Buscar nome, queixa, HMA, HPP, diagnóstico, medicamento, plano de saúde..."
             className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
           />
 
@@ -578,6 +651,12 @@ export default function PacientesPage() {
                         </span>
                       ) : null}
 
+                      {item.plano_saude ? (
+                        <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                          {item.plano_saude}
+                        </span>
+                      ) : null}
+
                       {item.retorno_previsto_em ? (
                         <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                           Retorno: {formatDateOnly(item.retorno_previsto_em)}
@@ -604,19 +683,11 @@ export default function PacientesPage() {
                 </div>
 
                 <div className="mt-4 grid gap-3">
-                  <InfoBlock title="Queixa">{item.queixa}</InfoBlock>
-
-                  <InfoBlock title="Diagnóstico principal">
-                    {item.diagnostico_principal}
-                  </InfoBlock>
-
-                  <InfoBlock title="Medicamentos em uso">
-                    {item.medicamentos_em_uso}
-                  </InfoBlock>
-
-                  <InfoBlock title="Observações">
-                    {item.observacoes}
-                  </InfoBlock>
+                  <InfoBlock title="Queixa principal">{getQueixa(item)}</InfoBlock>
+                  <InfoBlock title="HMA">{item.hma}</InfoBlock>
+                  <InfoBlock title="HPP">{item.hpp}</InfoBlock>
+                  <InfoBlock title="Hipótese diagnóstica">{getHipotese(item)}</InfoBlock>
+                  <InfoBlock title="Conduta médica">{item.conduta_medica}</InfoBlock>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3">
@@ -654,14 +725,14 @@ export default function PacientesPage() {
 
       {modalOpen ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
                   {editingPatient ? "Editar paciente" : "Novo paciente"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Preencha os dados clínicos principais e salve.
+                  Preencha o prontuário-base. Esses campos aparecem na impressão profissional.
                 </p>
               </div>
 
@@ -674,88 +745,124 @@ export default function PacientesPage() {
               </button>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <input
-                value={form.nome}
-                onChange={(event) => updateForm("nome", event.target.value)}
-                placeholder="Nome completo"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-4 text-sm font-semibold text-slate-900">
+                Dados cadastrais
+              </p>
 
-              <input
-                type="number"
-                min="0"
-                value={form.idade}
-                onChange={(event) => updateForm("idade", event.target.value)}
-                placeholder="Idade"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <InputField
+                  value={form.nome}
+                  onChange={(value) => updateForm("nome", value)}
+                  placeholder="Nome completo"
+                />
 
-              <input
-                value={form.sexo}
-                onChange={(event) => updateForm("sexo", event.target.value)}
-                placeholder="Sexo"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
+                <InputField
+                  type="number"
+                  value={form.idade}
+                  onChange={(value) => updateForm("idade", value)}
+                  placeholder="Idade"
+                />
 
-              <input
-                value={form.telefone}
-                onChange={(event) => updateForm("telefone", event.target.value)}
-                placeholder="Telefone"
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
+                <InputField
+                  value={form.sexo}
+                  onChange={(value) => updateForm("sexo", value)}
+                  placeholder="Sexo"
+                />
 
-              <input
-                value={form.especialidade}
-                onChange={(event) =>
-                  updateForm("especialidade", event.target.value)
-                }
-                placeholder="Ex.: Clínica Médica, Psiquiatria..."
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
+                <InputField
+                  value={form.telefone}
+                  onChange={(value) => updateForm("telefone", value)}
+                  placeholder="Telefone"
+                />
 
-              <input
-                type="date"
-                value={form.retorno_previsto_em}
-                onChange={(event) =>
-                  updateForm("retorno_previsto_em", event.target.value)
-                }
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
+                <InputField
+                  value={form.especialidade}
+                  onChange={(value) => updateForm("especialidade", value)}
+                  placeholder="Especialidade / serviço"
+                />
+
+                <InputField
+                  type="date"
+                  value={form.retorno_previsto_em}
+                  onChange={(value) => updateForm("retorno_previsto_em", value)}
+                  placeholder="Retorno previsto"
+                />
+
+                <InputField
+                  value={form.plano_saude}
+                  onChange={(value) => updateForm("plano_saude", value)}
+                  placeholder="Plano de saúde / convênio"
+                />
+
+                <InputField
+                  value={form.numero_carteirinha}
+                  onChange={(value) => updateForm("numero_carteirinha", value)}
+                  placeholder="Número da carteirinha"
+                />
+              </div>
             </div>
 
             <div className="mt-4 grid gap-4">
               <TextAreaField
-                label="Queixa"
-                value={form.queixa}
-                onChange={(value) => updateForm("queixa", value)}
-                placeholder="Queixa principal / motivo do acompanhamento"
+                label="Queixa principal"
+                value={form.queixa_principal}
+                onChange={(value) => updateForm("queixa_principal", value)}
+                placeholder="Ex.: dor torácica há 2 dias; tristeza persistente; retorno de acompanhamento..."
               />
 
               <TextAreaField
-                label="Diagnóstico principal"
-                value={form.diagnostico_principal}
-                onChange={(value) =>
-                  updateForm("diagnostico_principal", value)
-                }
-                placeholder="Diagnóstico principal"
+                label="HMA — História da Moléstia Atual"
+                value={form.hma}
+                onChange={(value) => updateForm("hma", value)}
+                placeholder="História cronológica, início, evolução, fatores de melhora/piora, sintomas associados..."
+                rows={6}
+              />
+
+              <TextAreaField
+                label="HPP — História Patológica Pregressa"
+                value={form.hpp}
+                onChange={(value) => updateForm("hpp", value)}
+                placeholder="Comorbidades, cirurgias, internações, alergias, antecedentes relevantes..."
+                rows={5}
               />
 
               <TextAreaField
                 label="Medicamentos em uso"
                 value={form.medicamentos_em_uso}
-                onChange={(value) =>
-                  updateForm("medicamentos_em_uso", value)
-                }
-                placeholder="Medicamentos em uso"
+                onChange={(value) => updateForm("medicamentos_em_uso", value)}
+                placeholder="Nome, dose, via, frequência e adesão quando relevante..."
+              />
+
+              <TextAreaField
+                label="Exame físico / exame do estado mental"
+                value={form.exame_fisico}
+                onChange={(value) => updateForm("exame_fisico", value)}
+                placeholder="Estado geral, sinais vitais, exame segmentar ou exame psíquico..."
+                rows={6}
+              />
+
+              <TextAreaField
+                label="Hipótese diagnóstica"
+                value={form.hipotese_diagnostica}
+                onChange={(value) => updateForm("hipotese_diagnostica", value)}
+                placeholder="Hipótese principal e diferenciais..."
+              />
+
+              <TextAreaField
+                label="Conduta médica"
+                value={form.conduta_medica}
+                onChange={(value) => updateForm("conduta_medica", value)}
+                placeholder="Exames solicitados, prescrição, orientações, retorno, encaminhamentos..."
+                rows={6}
               />
 
               <TextAreaField
                 label="Observações"
                 value={form.observacoes}
                 onChange={(value) => updateForm("observacoes", value)}
-                placeholder="Comorbidades, exames relevantes, contexto social, plano..."
-                rows={5}
+                placeholder="Informações adicionais, contexto familiar/social, pendências..."
+                rows={4}
               />
             </div>
 
