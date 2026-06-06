@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
 type Flashcard = {
   id: string;
@@ -11,7 +12,7 @@ type Flashcard = {
   tipo: string | null;
   frente: string | null;
   verso: string | null;
-  dificil: boolean | null;
+  dificil: boolean;
 };
 
 type FlashcardForm = {
@@ -23,6 +24,12 @@ type FlashcardForm = {
   dificil: boolean;
 };
 
+type MarkRow = {
+  flashcard_id: string;
+};
+
+const GUEST_EMAIL = "convidado@resibook.com";
+
 const emptyForm: FlashcardForm = {
   area: "",
   materia: "",
@@ -31,17 +38,6 @@ const emptyForm: FlashcardForm = {
   verso: "",
   dificil: false,
 };
-
-function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) return null;
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-}
 
 function normalize(value?: string | null) {
   return (value || "")
@@ -52,10 +48,14 @@ function normalize(value?: string | null) {
 }
 
 export default function FlashcardsPage() {
+  const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
 
   const [cards, setCards] = useState<Flashcard[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingIds, setSavingIds] = useState<string[]>([]);
@@ -72,38 +72,66 @@ export default function FlashcardsPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-
     setQuery(params.get("q") || "");
     setArea(params.get("area") || "");
     setMateria(params.get("materia") || "");
   }, []);
 
   async function loadCards() {
-    const supabase = getSupabase();
+    setLoading(true);
+    setError("");
 
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user || null;
+    const email = user?.email?.trim().toLowerCase() || "";
+    const userId = user?.id || null;
+
+    setCurrentUserId(userId);
+    setIsGuest(email === GUEST_EMAIL);
+
+    if (!userId || email === GUEST_EMAIL) {
       setCards([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    const [cardsRes, marksRes] = await Promise.all([
+      supabase
+        .from("flashcards")
+        .select("id, area, materia, tipo, frente, verso")
+        .order("area", { ascending: true, nullsFirst: false })
+        .order("materia", { ascending: true, nullsFirst: false }),
 
-    const { data, error } = await supabase
-      .from("flashcards")
-      .select("id, area, materia, tipo, frente, verso, dificil")
-      .order("area", { ascending: true, nullsFirst: false })
-      .order("materia", { ascending: true, nullsFirst: false });
+      supabase
+        .from("flashcard_user_marks")
+        .select("flashcard_id")
+        .eq("user_id", userId),
+    ]);
 
-    if (error) {
-      setError(error.message);
+    if (cardsRes.error) {
+      setError(cardsRes.error.message);
       setCards([]);
-    } else {
-      setError("");
-      setCards((data as Flashcard[]) || []);
+      setLoading(false);
+      return;
     }
 
+    if (marksRes.error) {
+      setError(marksRes.error.message);
+    }
+
+    const difficultIds = new Set(
+      ((marksRes.data || []) as MarkRow[]).map((item) => String(item.flashcard_id))
+    );
+
+    const mapped = ((cardsRes.data || []) as Omit<Flashcard, "dificil">[]).map(
+      (item) => ({
+        ...item,
+        id: String(item.id),
+        dificil: difficultIds.has(String(item.id)),
+      })
+    );
+
+    setCards(mapped);
     setLoading(false);
   }
 
@@ -126,19 +154,15 @@ export default function FlashcardsPage() {
   }, [query, area, materia, pathname, router]);
 
   const areas = useMemo(() => {
-    return Array.from(
-      new Set(cards.map((item) => item.area).filter(Boolean))
-    ) as string[];
+    return Array.from(new Set(cards.map((item) => item.area).filter(Boolean))) as string[];
   }, [cards]);
 
   const materias = useMemo(() => {
-    return Array.from(
-      new Set(cards.map((item) => item.materia).filter(Boolean))
-    ) as string[];
+    return Array.from(new Set(cards.map((item) => item.materia).filter(Boolean))) as string[];
   }, [cards]);
 
   const difficultCount = useMemo(() => {
-    return cards.filter((item) => item.dificil === true).length;
+    return cards.filter((item) => item.dificil).length;
   }, [cards]);
 
   const filtered = useMemo(() => {
@@ -168,12 +192,15 @@ export default function FlashcardsPage() {
   }
 
   function openCreateModal() {
+    if (isGuest) return;
     setEditingCard(null);
     setForm(emptyForm);
     setModalOpen(true);
   }
 
   function openEditModal(card: Flashcard) {
+    if (isGuest) return;
+
     setEditingCard(card);
     setForm({
       area: card.area || "",
@@ -201,10 +228,8 @@ export default function FlashcardsPage() {
   }
 
   async function toggleDificil(card: Flashcard) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId || isGuest) {
+      setError("Usuário não autorizado para marcar flashcards.");
       return;
     }
 
@@ -215,13 +240,20 @@ export default function FlashcardsPage() {
     setError("");
     setSavingIds((current) => [...current, card.id]);
 
-    const { error } = await supabase
-      .from("flashcards")
-      .update({ dificil: nextValue })
-      .eq("id", card.id);
+    const response = nextValue
+      ? await supabase.from("flashcard_user_marks").insert({
+          user_id: currentUserId,
+          flashcard_id: card.id,
+          dificil: true,
+        })
+      : await supabase
+          .from("flashcard_user_marks")
+          .delete()
+          .eq("user_id", currentUserId)
+          .eq("flashcard_id", card.id);
 
-    if (error) {
-      setError(error.message);
+    if (response.error) {
+      setError(response.error.message);
     } else {
       setCards((current) =>
         current.map((item) =>
@@ -234,10 +266,8 @@ export default function FlashcardsPage() {
   }
 
   async function handleSave() {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId || isGuest) {
+      setError("Usuário não autorizado para salvar flashcards.");
       return;
     }
 
@@ -255,7 +285,6 @@ export default function FlashcardsPage() {
       tipo: form.tipo.trim() || null,
       frente: form.frente.trim(),
       verso: form.verso.trim(),
-      dificil: form.dificil,
     };
 
     const response = editingCard
@@ -263,28 +292,47 @@ export default function FlashcardsPage() {
           .from("flashcards")
           .update(payload)
           .eq("id", editingCard.id)
-      : await supabase.from("flashcards").insert(payload);
+          .select("id")
+          .single()
+      : await supabase.from("flashcards").insert(payload).select("id").single();
 
     if (response.error) {
       setError(response.error.message);
-    } else {
-      closeModal();
-      await loadCards();
+      setSaving(false);
+      return;
     }
 
+    const savedId = String(response.data?.id || editingCard?.id || "");
+
+    if (savedId) {
+      if (form.dificil) {
+        await supabase.from("flashcard_user_marks").upsert({
+          user_id: currentUserId,
+          flashcard_id: savedId,
+          dificil: true,
+        });
+      } else {
+        await supabase
+          .from("flashcard_user_marks")
+          .delete()
+          .eq("user_id", currentUserId)
+          .eq("flashcard_id", savedId);
+      }
+    }
+
+    closeModal();
+    await loadCards();
     setSaving(false);
   }
 
   async function handleDelete(id: string) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId || isGuest) {
+      setError("Usuário não autorizado para apagar flashcards.");
       return;
     }
 
     const confirmed = window.confirm(
-      "Tem certeza que deseja apagar este flashcard?"
+      "Tem certeza que deseja apagar este flashcard da biblioteca compartilhada?"
     );
 
     if (!confirmed) return;
@@ -304,6 +352,16 @@ export default function FlashcardsPage() {
     setSavingIds((current) => current.filter((item) => item !== id));
   }
 
+  if (isGuest) {
+    return (
+      <section className="rounded-[28px] border border-rose-200 bg-rose-50 p-6 shadow-sm">
+        <p className="text-sm font-semibold text-rose-700">
+          Acesso restrito para o modo convidado.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
@@ -316,11 +374,11 @@ export default function FlashcardsPage() {
                 </span>
 
                 <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  CRUD completo
+                  Compartilhada
                 </span>
 
                 <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                  {difficultCount} difíceis
+                  {difficultCount} difíceis no seu usuário
                 </span>
               </div>
 
@@ -329,7 +387,8 @@ export default function FlashcardsPage() {
               </h1>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Criar, editar, apagar, buscar e marcar difíceis.
+                Biblioteca compartilhada. A marcação de difícil é individual por
+                login.
               </p>
 
               <p className="mt-3 text-sm font-medium text-slate-700">
@@ -412,12 +471,12 @@ export default function FlashcardsPage() {
               : `${filtered.length} resultado(s).`}
           </span>
 
-          <a
+          <Link
             href="/flashcards-dificeis"
             className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-700"
           >
             Ver difíceis
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -461,7 +520,7 @@ export default function FlashcardsPage() {
 
                   {item.dificil ? (
                     <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                      Difícil
+                      Difícil para você
                     </span>
                   ) : null}
                 </div>
@@ -606,7 +665,7 @@ export default function FlashcardsPage() {
                   checked={form.dificil}
                   onChange={(e) => updateForm("dificil", e.target.checked)}
                 />
-                Marcar como difícil
+                Marcar como difícil para meu usuário
               </label>
             </div>
 

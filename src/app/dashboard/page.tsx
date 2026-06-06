@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
 type Patient = {
   id: string;
@@ -43,19 +43,7 @@ type DashboardCounts = {
   cids: number;
 };
 
-function getSupabase(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !key) return null;
-
-  return createClient(url, key);
-}
-
 async function getTableCount(
-  supabase: SupabaseClient,
   tableName: string,
   filter?: {
     column: string;
@@ -63,6 +51,8 @@ async function getTableCount(
   }
 ): Promise<number> {
   try {
+    const supabase = createClient();
+
     let query = supabase
       .from(tableName)
       .select("id", { count: "exact", head: true });
@@ -99,6 +89,8 @@ function formatDate(value?: string | null) {
 }
 
 export default function DashboardPage() {
+  const supabase = createClient();
+
   const [counts, setCounts] = useState<DashboardCounts>({
     patients: 0,
     prescriptions: 0,
@@ -127,16 +119,17 @@ export default function DashboardPage() {
     let mounted = true;
 
     async function load() {
-      const supabase = getSupabase();
+      setLoading(true);
+      setError("");
 
-      if (!supabase) {
-        setError("Supabase não configurado.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id || null;
+
+      if (!userId) {
+        setError("Usuário autenticado não identificado.");
         setLoading(false);
         return;
       }
-
-      setLoading(true);
-      setError("");
 
       const [
         patientsCount,
@@ -151,26 +144,28 @@ export default function DashboardPage() {
         examTemplatesRes,
         topicosRes,
       ] = await Promise.all([
-        getTableCount(supabase, "patients"),
-        getTableCount(supabase, "prescriptions"),
-        getTableCount(supabase, "exam_templates"),
-        getTableCount(supabase, "topicos_medicos"),
-        getTableCount(supabase, "flashcards"),
-        getTableCount(supabase, "flashcards", {
-          column: "dificil",
-          value: true,
+        getTableCount("patients", { column: "user_id", value: userId }),
+        getTableCount("prescriptions", { column: "user_id", value: userId }),
+        getTableCount("exam_templates"),
+        getTableCount("topicos_medicos"),
+        getTableCount("flashcards"),
+        getTableCount("flashcard_user_marks", {
+          column: "user_id",
+          value: userId,
         }),
-        getTableCount(supabase, "cids"),
+        getTableCount("cids"),
 
         supabase
           .from("patients")
           .select("id, nome, especialidade, queixa, created_at")
+          .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(5),
 
         supabase
           .from("prescriptions")
           .select("id, paciente_nome, medicamento, created_at")
+          .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(5),
 
@@ -268,7 +263,7 @@ export default function DashboardPage() {
           </span>
 
           <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            Dados reais
+            Privado por usuário
           </span>
         </div>
 
@@ -277,8 +272,8 @@ export default function DashboardPage() {
         </h1>
 
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-          Visão geral com contadores, atalhos rápidos, favoritos e atividade
-          recente dos principais módulos do sistema.
+          Visão geral do seu login. Pacientes, prescrições e atividades clínicas
+          são filtrados por usuário; bibliotecas médicas seguem compartilhadas.
         </p>
 
         {error ? (
@@ -297,21 +292,21 @@ export default function DashboardPage() {
           <MetricCard
             title="Pacientes"
             value={counts.patients}
-            description="Cadastros ativos"
+            description="Cadastros do seu login"
             href="/pacientes"
           />
 
           <MetricCard
             title="Prescrições"
             value={counts.prescriptions}
-            description="Itens salvos"
+            description="Itens salvos por você"
             href="/prescricao"
           />
 
           <MetricCard
             title="Exames / Evolução"
             value={counts.examTemplates}
-            description="Blocos clínicos"
+            description="Biblioteca compartilhada"
             href="/exames-evolucao"
           />
 
@@ -325,14 +320,14 @@ export default function DashboardPage() {
           <MetricCard
             title="Flashcards"
             value={counts.flashcards}
-            description="Revisão clínica"
+            description="Biblioteca compartilhada"
             href="/flashcards"
           />
 
           <MetricCard
             title="Difíceis"
             value={counts.flashcardsDificeis}
-            description="Flashcards marcados"
+            description="Marcados por você"
             href="/flashcards-dificeis"
           />
 
@@ -347,7 +342,7 @@ export default function DashboardPage() {
             title="Revisão"
             value={counts.topicosMedicos}
             description="Modo estudo"
-            href="/revisao-topicos"
+            href="/topicos"
           />
         </div>
       </section>
@@ -389,14 +384,7 @@ export default function DashboardPage() {
               href="/topicos"
               emoji="📚"
               title="Abrir tópicos"
-              description="Editar e consultar biblioteca médica."
-            />
-
-            <ShortcutCard
-              href="/revisao-topicos"
-              emoji="🎯"
-              title="Revisão de tópicos"
-              description="Modo rápido para prova e plantão."
+              description="Consultar biblioteca médica."
             />
 
             <ShortcutCard
@@ -410,7 +398,7 @@ export default function DashboardPage() {
               href="/flashcards-dificeis"
               emoji="🔥"
               title="Revisar difíceis"
-              description="Foco no que precisa repetir."
+              description="Foco no que você marcou."
             />
 
             <ShortcutCard
@@ -418,6 +406,13 @@ export default function DashboardPage() {
               emoji="🏷️"
               title="Consultar CIDs"
               description="Buscar códigos e descrições."
+            />
+
+            <ShortcutCard
+              href="/metricas"
+              emoji="📊"
+              title="Métricas"
+              description="Ver seus indicadores clínicos."
             />
           </div>
         </section>
@@ -428,7 +423,7 @@ export default function DashboardPage() {
               Favoritos salvos
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Modelos favoritos para acesso rápido.
+              Modelos favoritos para acesso rápido neste navegador.
             </p>
           </div>
 
@@ -466,7 +461,7 @@ export default function DashboardPage() {
           actionLabel="Ver todos"
         >
           {recentPatients.length === 0 ? (
-            <EmptyState text="Nenhum paciente recente." />
+            <EmptyState text="Nenhum paciente recente no seu login." />
           ) : (
             <div className="space-y-3">
               {recentPatients.map((item) => (
@@ -493,7 +488,7 @@ export default function DashboardPage() {
           actionLabel="Abrir módulo"
         >
           {recentPrescriptions.length === 0 ? (
-            <EmptyState text="Nenhuma prescrição recente." />
+            <EmptyState text="Nenhuma prescrição recente no seu login." />
           ) : (
             <div className="space-y-3">
               {recentPrescriptions.map((item) => (

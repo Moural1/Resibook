@@ -1,7 +1,9 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Toaster from "../components/toaster";
 import AppShell from "../components/app-shell";
+import AccessLogger from "../components/access-logger";
 
 export const metadata: Metadata = {
   title: "ResiBook",
@@ -35,6 +37,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body>
+        <Suspense fallback={null}>
+          <AccessLogger />
+        </Suspense>
+
         <AppShell>{children}</AppShell>
         <Toaster />
       </body>

@@ -257,6 +257,15 @@ export default function MetricasPage() {
       setError("");
 
       const supabase = createClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id || null;
+
+      if (!userId) {
+        setError("Usuário autenticado não identificado.");
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
 
       const [
         patients,
@@ -271,33 +280,36 @@ export default function MetricasPage() {
         prescriptionsRes,
         notesRes,
       ] = await Promise.all([
-        getCount("patients"),
-        getCount("prescriptions"),
-        getCount("patient_notes"),
+        getCount("patients", { column: "user_id", value: userId }),
+        getCount("prescriptions", { column: "user_id", value: userId }),
+        getCount("patient_notes", { column: "user_id", value: userId }),
         getCount("exam_templates"),
         getCount("topicos_medicos"),
         getCount("flashcards"),
-        getCount("flashcards", {
-          column: "dificil",
-          value: true,
+        getCount("flashcard_user_marks", {
+          column: "user_id",
+          value: userId,
         }),
         getCount("cids"),
 
         supabase
           .from("patients")
           .select("id, nome, especialidade, queixa, created_at")
+          .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(5),
 
         supabase
           .from("prescriptions")
           .select("id, paciente_nome, medicamento, created_at")
+          .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(5),
 
         supabase
           .from("patient_notes")
           .select("id, tipo, titulo, conteudo, created_at")
+          .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(5),
       ]);
@@ -389,7 +401,7 @@ export default function MetricasPage() {
               </span>
 
               <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                Dados operacionais
+                Dados privados do usuário
               </span>
             </div>
 
@@ -398,8 +410,8 @@ export default function MetricasPage() {
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Acompanhamento objetivo da base clínica, registros de prontuário,
-              prescrições e materiais de apoio do ResiBook.
+              Pacientes, prescrições e evoluções são do usuário logado.
+              Bibliotecas médicas seguem compartilhadas.
             </p>
           </div>
 
@@ -448,28 +460,28 @@ export default function MetricasPage() {
             <MainMetricCard
               title="Pacientes ativos"
               value={counts.patients}
-              description="Pacientes cadastrados na base clínica."
+              description="Pacientes cadastrados no seu login."
               icon={Users}
             />
 
             <MainMetricCard
               title="Prescrições"
               value={counts.prescriptions}
-              description="Prescrições registradas no sistema."
+              description="Prescrições registradas por você."
               icon={ClipboardList}
             />
 
             <MainMetricCard
               title="Evoluções"
               value={counts.notes}
-              description="Notas e evoluções de prontuário."
+              description="Notas e evoluções do seu prontuário."
               icon={FileText}
             />
 
             <MainMetricCard
               title="Flashcards"
               value={counts.flashcards}
-              description="Itens ativos na biblioteca de revisão."
+              description="Itens na biblioteca compartilhada."
               icon={Brain}
             />
           </div>
@@ -489,7 +501,7 @@ export default function MetricasPage() {
                   Distribuição da base
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Separação entre uso clínico e biblioteca médica.
+                  Núcleo clínico privado e biblioteca compartilhada.
                 </p>
               </div>
             </div>
@@ -514,13 +526,13 @@ export default function MetricasPage() {
 
             <div className="mt-6 space-y-5">
               <ProgressLine
-                label="Núcleo clínico"
+                label="Núcleo clínico privado"
                 value={clinicalTotal}
                 total={totalSystem}
               />
 
               <ProgressLine
-                label="Biblioteca médica"
+                label="Biblioteca médica compartilhada"
                 value={libraryTotal}
                 total={totalSystem}
               />
@@ -570,7 +582,7 @@ export default function MetricasPage() {
                   Atividade recente
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Últimos registros clínicos criados no sistema.
+                  Últimos registros clínicos criados no seu login.
                 </p>
               </div>
             </div>
@@ -587,7 +599,7 @@ export default function MetricasPage() {
             </div>
           ) : recentItems.length === 0 ? (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-              Nenhuma atividade recente encontrada.
+              Nenhuma atividade recente encontrada para o seu usuário.
             </div>
           ) : (
             <div className="mt-5 space-y-3">

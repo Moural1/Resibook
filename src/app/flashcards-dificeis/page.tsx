@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
 type Flashcard = {
   id: string;
@@ -10,19 +10,12 @@ type Flashcard = {
   tipo: string | null;
   frente: string | null;
   verso: string | null;
-  dificil: boolean | null;
+  dificil: boolean;
 };
 
-function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) return null;
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-}
+type MarkRow = {
+  flashcard_id: string;
+};
 
 function normalize(value?: string | null) {
   return (value || "")
@@ -33,7 +26,10 @@ function normalize(value?: string | null) {
 }
 
 export default function FlashcardsDificeisPage() {
+  const supabase = createClient();
+
   const [cards, setCards] = useState<Flashcard[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingIds, setSavingIds] = useState<string[]>([]);
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
@@ -41,30 +37,60 @@ export default function FlashcardsDificeisPage() {
   const [error, setError] = useState("");
 
   async function loadCards() {
-    const supabase = getSupabase();
+    setLoading(true);
+    setError("");
 
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user?.id || null;
+
+    setCurrentUserId(userId);
+
+    if (!userId) {
       setCards([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    const marksRes = await supabase
+      .from("flashcard_user_marks")
+      .select("flashcard_id")
+      .eq("user_id", userId);
 
-    const { data, error } = await supabase
+    if (marksRes.error) {
+      setError(marksRes.error.message);
+      setCards([]);
+      setLoading(false);
+      return;
+    }
+
+    const ids = ((marksRes.data || []) as MarkRow[]).map((item) =>
+      String(item.flashcard_id)
+    );
+
+    if (ids.length === 0) {
+      setCards([]);
+      setLoading(false);
+      return;
+    }
+
+    const cardsRes = await supabase
       .from("flashcards")
-      .select("id, area, materia, tipo, frente, verso, dificil")
-      .eq("dificil", true)
+      .select("id, area, materia, tipo, frente, verso")
+      .in("id", ids)
       .order("area", { ascending: true, nullsFirst: false })
       .order("materia", { ascending: true, nullsFirst: false });
 
-    if (error) {
-      setError(error.message);
+    if (cardsRes.error) {
+      setError(cardsRes.error.message);
       setCards([]);
     } else {
-      setError("");
-      setCards((data as Flashcard[]) || []);
+      setCards(
+        ((cardsRes.data || []) as Omit<Flashcard, "dificil">[]).map((item) => ({
+          ...item,
+          id: String(item.id),
+          dificil: true,
+        }))
+      );
     }
 
     setLoading(false);
@@ -99,10 +125,8 @@ export default function FlashcardsDificeisPage() {
   }
 
   async function removeDificil(id: string) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId) {
+      setError("Usuário autenticado não identificado.");
       return;
     }
 
@@ -112,9 +136,10 @@ export default function FlashcardsDificeisPage() {
     setSavingIds((current) => [...current, id]);
 
     const { error } = await supabase
-      .from("flashcards")
-      .update({ dificil: false })
-      .eq("id", id);
+      .from("flashcard_user_marks")
+      .delete()
+      .eq("user_id", currentUserId)
+      .eq("flashcard_id", id);
 
     if (error) {
       setError(error.message);
@@ -145,8 +170,8 @@ export default function FlashcardsDificeisPage() {
           </h1>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Tudo o que foi marcado como difícil aparece aqui. Ao remover, o
-            card volta a ficar apenas na lista geral.
+            Esta página mostra apenas os cards marcados como difíceis pelo seu
+            login. A marcação não interfere no usuário de outra pessoa.
           </p>
 
           <p className="mt-3 text-sm font-medium text-slate-700">
@@ -177,7 +202,7 @@ export default function FlashcardsDificeisPage() {
         </section>
       ) : filtered.length === 0 ? (
         <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
-          Nenhum flashcard difícil encontrado.
+          Nenhum flashcard difícil encontrado para o seu usuário.
         </section>
       ) : (
         <section className="grid gap-4 xl:grid-cols-2">
@@ -210,7 +235,7 @@ export default function FlashcardsDificeisPage() {
                   ) : null}
 
                   <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                    Difícil
+                    Difícil para você
                   </span>
                 </div>
 
