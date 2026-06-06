@@ -326,6 +326,12 @@ function SidebarContent({
     ...(isAdmin
       ? [
           {
+            href: "/modelos-prescricao",
+            label: "Modelos prescrição",
+            icon: ClipboardList,
+            badge: null,
+          },
+          {
             href: "/acessos",
             label: "Acessos",
             icon: ShieldCheck,
