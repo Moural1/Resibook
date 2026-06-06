@@ -1,48 +1,77 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const LOG_INTERVAL_MS = 5 * 60 * 1000;
+const ADMIN_EMAIL = "igormoura@resibook.com";
 
 export default function AccessLogger() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const router = useRouter();
 
   useEffect(() => {
-    async function logAccess() {
+    let mounted = true;
+
+    async function checkBlockedAndLogLogin() {
       const supabase = createClient();
 
       const { data } = await supabase.auth.getSession();
-      const user = data.session?.user;
+      const session = data.session;
+      const user = session?.user;
+      const accessToken = session?.access_token || "";
 
-      if (!user?.id || !user.email) return;
+      if (!user?.id || !user.email || !accessToken) return;
 
-      const queryString = searchParams?.toString();
-      const path = queryString ? `${pathname}?${queryString}` : pathname;
+      const email = user.email.trim().toLowerCase();
 
-      if (path === "/login") return;
+      const { data: blockedData } = await supabase
+        .from("blocked_users")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
 
-      const storageKey = `resibook_access_log_${user.id}_${path}`;
-      const lastLog = Number(sessionStorage.getItem(storageKey) || "0");
-      const now = Date.now();
+      if (!mounted) return;
 
-      if (now - lastLog < LOG_INTERVAL_MS) return;
+      if (blockedData && email !== ADMIN_EMAIL) {
+        await supabase.auth.signOut();
+        router.replace("/login?blocked=1");
+        return;
+      }
 
-      sessionStorage.setItem(storageKey, String(now));
+      const tokenPart = accessToken.slice(-16);
+      const storageKey = `resibook_login_logged_${user.id}_${tokenPart}`;
+      const alreadyLogged = sessionStorage.getItem(storageKey);
 
-      await supabase.from("access_logs").insert({
+      if (alreadyLogged) return;
+
+      sessionStorage.setItem(storageKey, "1");
+
+      await supabase.from("login_logs").insert({
         user_id: user.id,
         user_email: user.email,
-        path,
-        page_title: document.title || "ResiBook",
         user_agent: navigator.userAgent,
       });
     }
 
-    logAccess();
-  }, [pathname, searchParams]);
+    checkBlockedAndLogLogin();
+
+    const supabase = createClient();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+
+      if (!user?.id || !user.email) return;
+
+      checkBlockedAndLogLogin();
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   return null;
 }

@@ -22,6 +22,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Lock,
+  ShieldCheck,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
 import { Topbar } from "./topbar";
@@ -42,6 +43,7 @@ type CountMap = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
+const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const GUEST_ALLOWED_PATHS = [
   "/prescricao",
@@ -103,6 +105,29 @@ async function getFirstAvailableCount(
   }
 
   return null;
+}
+
+async function getFlashcardDificeisCount(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<number | null> {
+  try {
+    const { count, error } = await supabase
+      .from("flashcard_user_marks")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("dificil", true);
+
+    if (error) {
+      console.warn("Não foi possível contar flashcards difíceis:", error.message);
+      return null;
+    }
+
+    return count ?? 0;
+  } catch (error) {
+    console.warn("Erro inesperado ao contar flashcards difíceis:", error);
+    return null;
+  }
 }
 
 function Badge({ value }: { value?: number | null }) {
@@ -188,12 +213,14 @@ function SidebarContent({
   onNavigate,
   isMobile = false,
   isGuest = false,
+  isAdmin = false,
 }: {
   pathname: string;
   counts: CountMap;
   onNavigate?: () => void;
   isMobile?: boolean;
   isGuest?: boolean;
+  isAdmin?: boolean;
 }) {
   const fullPrimaryItems = [
     {
@@ -292,6 +319,16 @@ function SidebarContent({
       icon: BarChart3,
       badge: null,
     },
+    ...(isAdmin
+      ? [
+          {
+            href: "/acessos",
+            label: "Acessos",
+            icon: ShieldCheck,
+            badge: null,
+          },
+        ]
+      : []),
   ];
 
   const primaryItems = isGuest ? guestPrimaryItems : fullPrimaryItems;
@@ -414,6 +451,7 @@ export default function AppShell({ children }: Props) {
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [sessionEmail, setSessionEmail] = useState("");
   const [checkingUser, setCheckingUser] = useState(true);
 
   const [counts, setCounts] = useState<CountMap>({
@@ -451,14 +489,14 @@ export default function AppShell({ children }: Props) {
 
       const { data: sessionData } = await supabase.auth.getSession();
 
-      const sessionEmail =
+      const email =
         sessionData.session?.user?.email?.trim().toLowerCase() || "";
       const userId = sessionData.session?.user?.id || null;
-
-      const guest = sessionEmail === GUEST_EMAIL;
+      const guest = email === GUEST_EMAIL;
 
       if (!mounted) return;
 
+      setSessionEmail(email);
       setIsGuest(guest);
       setCurrentUserId(userId);
       setCheckingUser(false);
@@ -479,6 +517,7 @@ export default function AppShell({ children }: Props) {
       const userId = session?.user?.id || null;
       const guest = email === GUEST_EMAIL;
 
+      setSessionEmail(email);
       setIsGuest(guest);
       setCurrentUserId(userId);
       setCheckingUser(false);
@@ -542,16 +581,10 @@ export default function AppShell({ children }: Props) {
           value: currentUserId,
         }),
 
-        getFirstAvailableCount(supabase, [
-          "prescriptions",
-          "prescricoes",
-          "prescricao",
-        ]).then(async () =>
-          getTableCount(supabase, "prescriptions", {
-            column: "user_id",
-            value: currentUserId,
-          })
-        ),
+        getTableCount(supabase, "prescriptions", {
+          column: "user_id",
+          value: currentUserId,
+        }),
 
         getFirstAvailableCount(supabase, [
           "exam_templates",
@@ -563,32 +596,12 @@ export default function AppShell({ children }: Props) {
 
         getTableCount(supabase, "topicos_medicos"),
 
-        getTableCount(supabase, "flashcards", {
-          column: "user_id",
-          value: currentUserId,
-        }),
+        getTableCount(supabase, "flashcards"),
 
-        getTableCount(supabase, "flashcards", {
-          column: "dificil",
-          value: true,
-        }),
+        getFlashcardDificeisCount(supabase, currentUserId),
 
         getTableCount(supabase, "cids"),
       ]);
-
-      let difficultCount = flashcardsDificeisCount;
-
-      try {
-        const { count, error } = await supabase
-          .from("flashcards")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", currentUserId)
-          .eq("dificil", true);
-
-        if (!error) difficultCount = count ?? 0;
-      } catch {
-        difficultCount = null;
-      }
 
       if (!mounted) return;
 
@@ -598,7 +611,7 @@ export default function AppShell({ children }: Props) {
         exames: examesCount,
         topicos: topicosCount,
         flashcards: flashcardsCount,
-        flashcardsDificeis: difficultCount,
+        flashcardsDificeis: flashcardsDificeisCount,
         cids: cidsCount,
       });
     }
@@ -673,6 +686,7 @@ export default function AppShell({ children }: Props) {
             pathname={pathname}
             counts={counts}
             isGuest={isGuest}
+            isAdmin={sessionEmail === ADMIN_EMAIL}
           />
         </aside>
       ) : null}
@@ -732,6 +746,7 @@ export default function AppShell({ children }: Props) {
               onNavigate={() => setMobileOpen(false)}
               isMobile
               isGuest={isGuest}
+              isAdmin={sessionEmail === ADMIN_EMAIL}
             />
           </div>
         </div>
