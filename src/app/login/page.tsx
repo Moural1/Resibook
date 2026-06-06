@@ -9,6 +9,7 @@ function LoginContent() {
   const supabase = createClient();
 
   const redirectTo = searchParams.get("redirect") || "/dashboard";
+  const blocked = searchParams.get("blocked") === "1";
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -80,6 +81,12 @@ function LoginContent() {
           </p>
         </div>
 
+        {blocked ? (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            Seu acesso foi bloqueado pelo administrador do sistema.
+          </div>
+        ) : null}
+
         <form className="space-y-4" onSubmit={handleSubmit}>
           {erro ? (
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -91,6 +98,7 @@ function LoginContent() {
             <label htmlFor="email" className="text-sm font-medium text-gray-600">
               E-mail
             </label>
+
             <input
               id="email"
               type="email"
@@ -106,6 +114,7 @@ function LoginContent() {
             <label htmlFor="senha" className="text-sm font-medium text-gray-600">
               Senha
             </label>
+
             <input
               id="senha"
               type="password"
@@ -125,7 +134,31 @@ function LoginContent() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-gray-500">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
+          <p className="text-xs leading-5 text-slate-500">
+            Ao acessar o ResiBook, você concorda com os{" "}
+            <a
+              href="/termos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-blue-700 underline-offset-4 hover:underline"
+            >
+              Termos de Uso
+            </a>{" "}
+            e com a{" "}
+            <a
+              href="/privacidade"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-blue-700 underline-offset-4 hover:underline"
+            >
+              Política de Privacidade
+            </a>
+            .
+          </p>
+        </div>
+
+        <p className="mt-5 text-center text-xs text-gray-500">
           Acesso restrito • Conteúdo profissional médico
         </p>
       </div>

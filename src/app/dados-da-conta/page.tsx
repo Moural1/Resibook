@@ -38,10 +38,10 @@ const exportConfigs: ExportConfig[] = [
     table: "patients",
     label: "Pacientes",
     description:
-      "Cadastro clínico, queixa, diagnóstico, medicamentos e observações.",
+      "Cadastro clínico completo, plano de saúde, HMA, HPP, exame físico, hipótese diagnóstica e conduta.",
     icon: Users,
     select:
-      "id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at",
+      "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, queixa, queixa_principal, hma, hpp, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, crm_medico, local_atendimento, created_at",
     orderBy: "created_at",
   },
   {
@@ -50,7 +50,7 @@ const exportConfigs: ExportConfig[] = [
     description: "Prescrições salvas e vinculadas aos pacientes.",
     icon: ClipboardList,
     select:
-      "id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at",
+      "id, user_id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at",
     orderBy: "created_at",
   },
   {
@@ -59,7 +59,7 @@ const exportConfigs: ExportConfig[] = [
     description:
       "Evoluções, condutas, retornos, exames e observações por paciente.",
     icon: FileText,
-    select: "id, patient_id, tipo, titulo, conteudo, created_at",
+    select: "id, user_id, patient_id, tipo, titulo, conteudo, created_at",
     orderBy: "created_at",
   },
   {
@@ -76,15 +76,23 @@ const exportConfigs: ExportConfig[] = [
     description: "Biblioteca médica estruturada por área e conduta.",
     icon: BookOpen,
     select:
-      "id, area, titulo, resumo, diagnostico, exames, tratamento, pegadinhas, atualizado_em",
+      "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em",
     orderBy: "atualizado_em",
   },
   {
     table: "flashcards",
     label: "Flashcards",
-    description: "Flashcards de revisão e marcação de difíceis.",
+    description: "Flashcards de revisão compartilhados entre usuários.",
     icon: Brain,
     select: "id, area, materia, tipo, frente, verso, dificil",
+  },
+  {
+    table: "flashcard_user_marks",
+    label: "Flashcards difíceis",
+    description: "Marcações individuais de flashcards difíceis do usuário.",
+    icon: Brain,
+    select: "id, user_id, flashcard_id, dificil, created_at",
+    orderBy: "created_at",
   },
   {
     table: "cids",
@@ -265,7 +273,9 @@ export default function DadosDaContaPage() {
     const payload = {
       exported_at: new Date().toISOString(),
       app: "ResiBook",
-      version: "backup-v1",
+      version: "backup-v2-rls",
+      description:
+        "Backup respeitando as permissões do usuário logado e as políticas de RLS do Supabase.",
       tables: nextResults,
       data: backup,
     };
@@ -290,6 +300,10 @@ export default function DadosDaContaPage() {
               <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
                 Backup e exportação
               </span>
+
+              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                RLS ativo
+              </span>
             </div>
 
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
@@ -298,8 +312,8 @@ export default function DadosDaContaPage() {
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
               Exporte os dados do ResiBook em JSON para manter uma cópia local
-              segura. Esta página é dedicada a backup, exportação e segurança
-              dos arquivos.
+              segura. Esta página respeita as regras de segurança do banco: cada
+              usuário exporta apenas os dados que tem permissão para acessar.
             </p>
           </div>
 
@@ -403,8 +417,9 @@ export default function DadosDaContaPage() {
             </h2>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Baixa um único arquivo contendo as principais tabelas do sistema.
-              Use antes de alterações grandes, migrações ou importações.
+              Baixa um único arquivo contendo as principais tabelas do sistema
+              que o usuário logado tem autorização para acessar. Use antes de
+              alterações grandes, migrações ou importações.
             </p>
           </div>
 
@@ -433,7 +448,8 @@ export default function DadosDaContaPage() {
 
                 <p className="mt-1 text-sm leading-6 text-slate-600">
                   Inclui pacientes, prescrições, evoluções, exames/modelos,
-                  tópicos, flashcards e CIDs.
+                  tópicos, flashcards, marcações de difíceis e CIDs, respeitando
+                  as permissões do usuário atual.
                 </p>
               </div>
             </div>
@@ -523,6 +539,67 @@ export default function DadosDaContaPage() {
         </div>
       </section>
 
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="border-b border-slate-200 pb-5">
+          <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+            Documentos legais
+          </span>
+
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+            Termos e privacidade
+          </h2>
+
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+            Consulte os documentos que regulam o uso do ResiBook, incluindo
+            responsabilidade profissional, privacidade, dados sensíveis,
+            segurança, backup e uso adequado do sistema.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <a
+            href="/termos"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-blue-200 hover:bg-blue-50"
+          >
+            <p className="text-sm font-semibold text-slate-900">
+              Termos de Uso
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Regras de uso, responsabilidade profissional, limites da
+              ferramenta, backup, acesso, condutas permitidas e uso adequado do
+              ResiBook.
+            </p>
+
+            <p className="mt-4 text-sm font-semibold text-blue-700">
+              Abrir termos →
+            </p>
+          </a>
+
+          <a
+            href="/privacidade"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-200 hover:bg-emerald-50"
+          >
+            <p className="text-sm font-semibold text-slate-900">
+              Política de Privacidade
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Tratamento de dados pessoais e sensíveis, separação por usuário,
+              segurança, logs de acesso, exportações e direitos dos titulares.
+            </p>
+
+            <p className="mt-4 text-sm font-semibold text-emerald-700">
+              Abrir política →
+            </p>
+          </a>
+        </div>
+      </section>
+
       <section className="rounded-[28px] border border-amber-200 bg-amber-50 p-6">
         <div className="flex items-start gap-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-200 bg-white text-amber-700">
@@ -535,9 +612,10 @@ export default function DadosDaContaPage() {
             </h2>
 
             <p className="mt-2 text-sm leading-7 text-amber-950">
-              Os arquivos exportados podem conter dados clínicos. Guarde em
-              local seguro e evite compartilhar por WhatsApp, e-mail comum ou
-              dispositivos de terceiros.
+              Os arquivos exportados podem conter dados clínicos e informações
+              identificáveis de pacientes. Guarde em local seguro e evite
+              compartilhar por WhatsApp, e-mail comum ou dispositivos de
+              terceiros.
             </p>
           </div>
         </div>
