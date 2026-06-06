@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../../components/copy-button";
 
 type Patient = {
   id: string;
+  user_id?: string | null;
   nome: string;
   idade: number | null;
   sexo: string | null;
@@ -23,6 +24,7 @@ type Patient = {
 
 type Prescription = {
   id: number;
+  user_id?: string | null;
   patient_id: string | null;
   paciente_nome: string | null;
   medicamento: string | null;
@@ -35,6 +37,7 @@ type Prescription = {
 
 type PatientNote = {
   id: number;
+  user_id?: string | null;
   patient_id: string;
   tipo: string | null;
   titulo: string | null;
@@ -53,17 +56,6 @@ const emptyNoteForm: NoteForm = {
   titulo: "",
   conteudo: "",
 };
-
-function getSupabase(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !key) return null;
-
-  return createClient(url, key);
-}
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -179,6 +171,7 @@ function InfoBlock({
 }
 
 export default function PatientDetailPage() {
+  const supabase = createClient();
   const router = useRouter();
   const params = useParams();
 
@@ -201,18 +194,12 @@ export default function PatientDetailPage() {
     {}
   );
 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   async function loadPatient() {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
-      setLoading(false);
-      return;
-    }
-
     if (!patientId) {
       setError("ID do paciente não encontrado.");
       setLoading(false);
@@ -222,12 +209,27 @@ export default function PatientDetailPage() {
     setLoading(true);
     setError("");
 
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user?.id || null;
+
+    setCurrentUserId(userId);
+
+    if (!userId) {
+      setError("Usuário autenticado não identificado.");
+      setPatient(null);
+      setPrescriptions([]);
+      setNotes([]);
+      setLoading(false);
+      return;
+    }
+
     const { data: patientData, error: patientError } = await supabase
       .from("patients")
       .select(
-        "id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
+        "id, user_id, nome, idade, sexo, telefone, especialidade, queixa, diagnostico_principal, medicamentos_em_uso, observacoes, retorno_previsto_em, created_at"
       )
       .eq("id", patientId)
+      .eq("user_id", userId)
       .single();
 
     if (patientError || !patientData) {
@@ -244,25 +246,28 @@ export default function PatientDetailPage() {
 
     const notesPromise = supabase
       .from("patient_notes")
-      .select("id, patient_id, tipo, titulo, conteudo, created_at")
+      .select("id, user_id, patient_id, tipo, titulo, conteudo, created_at")
       .eq("patient_id", currentPatient.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     const byIdPromise = supabase
       .from("prescriptions")
       .select(
-        "id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
+        "id, user_id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
       )
       .eq("patient_id", currentPatient.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     const byNamePromise = currentPatient.nome
       ? supabase
           .from("prescriptions")
           .select(
-            "id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
+            "id, user_id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
           )
           .eq("paciente_nome", currentPatient.nome)
+          .eq("user_id", userId)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null });
 
@@ -336,10 +341,8 @@ export default function PatientDetailPage() {
   }
 
   async function handleCreateNote() {
-    const supabase = getSupabase();
-
-    if (!supabase || !patient) {
-      setError("Supabase não configurado ou paciente não encontrado.");
+    if (!patient || !currentUserId) {
+      setError("Usuário autenticado ou paciente não identificado.");
       return;
     }
 
@@ -355,12 +358,13 @@ export default function PatientDetailPage() {
     const { data, error } = await supabase
       .from("patient_notes")
       .insert({
+        user_id: currentUserId,
         patient_id: patient.id,
         tipo: noteForm.tipo.trim() || "evolucao",
         titulo: noteForm.titulo.trim() || null,
         conteudo: noteForm.conteudo.trim(),
       })
-      .select("id, patient_id, tipo, titulo, conteudo, created_at")
+      .select("id, user_id, patient_id, tipo, titulo, conteudo, created_at")
       .single();
 
     if (error) {
@@ -396,10 +400,8 @@ export default function PatientDetailPage() {
   }
 
   async function handleUpdateNote(id: number) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId) {
+      setError("Usuário autenticado não identificado.");
       return;
     }
 
@@ -427,7 +429,8 @@ export default function PatientDetailPage() {
         conteudo: form.conteudo.trim(),
       })
       .eq("id", id)
-      .select("id, patient_id, tipo, titulo, conteudo, created_at")
+      .eq("user_id", currentUserId)
+      .select("id, user_id, patient_id, tipo, titulo, conteudo, created_at")
       .single();
 
     if (error) {
@@ -444,10 +447,8 @@ export default function PatientDetailPage() {
   }
 
   async function handleDeleteNote(id: number) {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId) {
+      setError("Usuário autenticado não identificado.");
       return;
     }
 
@@ -459,7 +460,11 @@ export default function PatientDetailPage() {
     setError("");
     setSuccess("");
 
-    const { error } = await supabase.from("patient_notes").delete().eq("id", id);
+    const { error } = await supabase
+      .from("patient_notes")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", currentUserId);
 
     if (error) {
       setError(error.message);
