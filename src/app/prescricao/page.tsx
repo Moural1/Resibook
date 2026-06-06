@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import PrescriptionTemplatesLive from "../../components/prescription-templates-live";
 
 type Prescription = {
   id: number;
+  user_id?: string | null;
   patient_id: string | null;
   paciente_nome: string | null;
   medicamento: string | null;
@@ -62,17 +63,6 @@ const emptyForm: PrescriptionForm = {
   orientacoes: "",
 };
 
-function getSupabase(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !key) return null;
-
-  return createClient(url, key);
-}
-
 function formatDate(value?: string | null) {
   if (!value) return "-";
 
@@ -123,8 +113,9 @@ function buildPrescriptionTextFromForm(form: PrescriptionForm) {
   return lines.join("\n");
 }
 
-function buildPayload(form: PrescriptionForm) {
+function buildPayload(form: PrescriptionForm, userId: string) {
   return {
+    user_id: userId,
     patient_id: form.patient_id || null,
     paciente_nome: form.paciente_nome.trim() || null,
     medicamento: form.medicamento.trim() || null,
@@ -136,9 +127,12 @@ function buildPayload(form: PrescriptionForm) {
 }
 
 export default function PrescricaoPage() {
+  const supabase = createClient();
+
   const [initialQuery, setInitialQuery] = useState("");
   const [isGuest, setIsGuest] = useState(false);
   const [checkingUser, setCheckingUser] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [templates, setTemplates] = useState<PrescriptionTemplate[]>([]);
@@ -176,72 +170,62 @@ export default function PrescricaoPage() {
   }, []);
 
   async function loadData() {
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
-      setLoading(false);
-      setCheckingUser(false);
-      return;
-    }
-
     setLoading(true);
     setError("");
 
-    const { data: userData } = await supabase.auth.getUser();
-    const email = userData.user?.email?.trim().toLowerCase() || "";
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    const user = sessionData.session?.user;
+    const email = user?.email?.trim().toLowerCase() || "";
+    const userId = user?.id || null;
     const guest = email === GUEST_EMAIL;
 
+    setCurrentUserId(userId);
     setIsGuest(guest);
     setCheckingUser(false);
 
-    if (guest) {
-      const templatesRes = await supabase
-        .from("prescription_templates")
-        .select(
-          "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
-        )
-        .order("titulo", { ascending: true });
+    const templatesRes = await supabase
+      .from("prescription_templates")
+      .select(
+        "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+      )
+      .order("titulo", { ascending: true });
 
-      if (templatesRes.error) {
-        setError(templatesRes.error.message);
-        setTemplates([]);
-      } else {
-        setTemplates((templatesRes.data as PrescriptionTemplate[]) || []);
-      }
+    if (templatesRes.error) {
+      setError(templatesRes.error.message);
+      setTemplates([]);
+    } else {
+      setTemplates((templatesRes.data as PrescriptionTemplate[]) || []);
+    }
 
+    if (guest || !userId) {
       setPatients([]);
       setPrescriptions([]);
       setLoading(false);
       return;
     }
 
-    const [patientsRes, templatesRes, prescriptionsRes] = await Promise.all([
-      supabase.from("patients").select("id, nome").order("nome", {
-        ascending: true,
-      }),
-
+    const [patientsRes, prescriptionsRes] = await Promise.all([
       supabase
-        .from("prescription_templates")
-        .select(
-          "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
-        )
-        .order("titulo", { ascending: true }),
+        .from("patients")
+        .select("id, nome")
+        .eq("user_id", userId)
+        .order("nome", { ascending: true }),
 
       supabase
         .from("prescriptions")
         .select(
-          "id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
+          "id, user_id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
         )
+        .eq("user_id", userId)
         .order("created_at", { ascending: false }),
     ]);
 
     if (patientsRes.error) {
       console.warn("Erro ao buscar pacientes:", patientsRes.error.message);
-    }
-
-    if (templatesRes.error) {
-      console.warn("Erro ao buscar modelos:", templatesRes.error.message);
+      setPatients([]);
+    } else {
+      setPatients((patientsRes.data as Patient[]) || []);
     }
 
     if (prescriptionsRes.error) {
@@ -250,9 +234,6 @@ export default function PrescricaoPage() {
     } else {
       setPrescriptions((prescriptionsRes.data as Prescription[]) || []);
     }
-
-    setPatients((patientsRes.data as Patient[]) || []);
-    setTemplates((templatesRes.data as PrescriptionTemplate[]) || []);
 
     setLoading(false);
   }
@@ -338,10 +319,8 @@ export default function PrescricaoPage() {
       return;
     }
 
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId) {
+      setError("Usuário autenticado não identificado.");
       return;
     }
 
@@ -359,9 +338,9 @@ export default function PrescricaoPage() {
 
     const { data, error } = await supabase
       .from("prescriptions")
-      .insert(buildPayload(form))
+      .insert(buildPayload(form, currentUserId))
       .select(
-        "id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
+        "id, user_id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
       )
       .single();
 
@@ -436,10 +415,8 @@ export default function PrescricaoPage() {
   async function handleUpdate(id: number) {
     if (isGuest) return;
 
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId) {
+      setError("Usuário autenticado não identificado.");
       return;
     }
 
@@ -455,10 +432,11 @@ export default function PrescricaoPage() {
 
     const { data, error } = await supabase
       .from("prescriptions")
-      .update(buildPayload(editForm))
+      .update(buildPayload(editForm, currentUserId))
       .eq("id", id)
+      .eq("user_id", currentUserId)
       .select(
-        "id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
+        "id, user_id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
       )
       .single();
 
@@ -477,10 +455,8 @@ export default function PrescricaoPage() {
   async function handleDelete(id: number) {
     if (isGuest) return;
 
-    const supabase = getSupabase();
-
-    if (!supabase) {
-      setError("Supabase não configurado.");
+    if (!currentUserId) {
+      setError("Usuário autenticado não identificado.");
       return;
     }
 
@@ -493,7 +469,11 @@ export default function PrescricaoPage() {
     setError("");
     setSavingIds((current) => [...current, id]);
 
-    const { error } = await supabase.from("prescriptions").delete().eq("id", id);
+    const { error } = await supabase
+      .from("prescriptions")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", currentUserId);
 
     if (error) {
       setError(error.message);
@@ -758,7 +738,7 @@ export default function PrescricaoPage() {
                 Prescrições salvas
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Histórico completo vindo da base de dados.
+                Histórico privado do usuário logado.
               </p>
             </div>
 
@@ -782,7 +762,7 @@ export default function PrescricaoPage() {
             </div>
           ) : filteredPrescriptions.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-              Nenhuma prescrição encontrada.
+              Nenhuma prescrição encontrada para este usuário.
             </div>
           ) : (
             <div className="space-y-4">
@@ -812,7 +792,7 @@ export default function PrescricaoPage() {
                           </span>
 
                           <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
-                            Clínica médica
+                            Privada
                           </span>
                         </div>
 
