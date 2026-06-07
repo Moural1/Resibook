@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
-import { Plus, X } from "lucide-react";
+import { AlertTriangle, Plus, X } from "lucide-react";
 
 type Patient = {
   id: string;
@@ -24,6 +24,7 @@ type Patient = {
   queixa_principal: string | null;
   hma: string | null;
   hpp: string | null;
+  alergias: string | null;
   diagnostico_principal: string | null;
   hipotese_diagnostica: string | null;
   medicamentos_em_uso: string | null;
@@ -48,12 +49,23 @@ type PatientForm = {
   queixa_principal: string;
   hma: string;
   hpp: string;
+  alergias: string;
   medicamentos_em_uso: string;
   exame_fisico: string;
   hipotese_diagnostica: string;
   conduta_medica: string;
   observacoes: string;
   retorno_previsto_em: string;
+};
+
+type ExamTemplate = {
+  id: number;
+  categoria: string | null;
+  titulo: string | null;
+  sexo: string | null;
+  conteudo: string | null;
+  arquivo_origem?: string | null;
+  source_file?: string | null;
 };
 
 const emptyForm: PatientForm = {
@@ -70,6 +82,7 @@ const emptyForm: PatientForm = {
   queixa_principal: "",
   hma: "",
   hpp: "",
+  alergias: "",
   medicamentos_em_uso: "",
   exame_fisico: "",
   hipotese_diagnostica: "",
@@ -139,6 +152,7 @@ function patientToForm(patient: Patient): PatientForm {
     queixa_principal: getQueixa(patient),
     hma: patient.hma || "",
     hpp: patient.hpp || "",
+    alergias: patient.alergias || "",
     medicamentos_em_uso: patient.medicamentos_em_uso || "",
     exame_fisico: patient.exame_fisico || "",
     hipotese_diagnostica: getHipotese(patient),
@@ -167,6 +181,7 @@ function buildPayload(form: PatientForm, userId: string) {
     queixa_principal: form.queixa_principal.trim() || null,
     hma: form.hma.trim() || null,
     hpp: form.hpp.trim() || null,
+    alergias: form.alergias.trim() || null,
     medicamentos_em_uso: form.medicamentos_em_uso.trim() || null,
     exame_fisico: form.exame_fisico.trim() || null,
     diagnostico_principal: form.hipotese_diagnostica.trim() || null,
@@ -178,7 +193,7 @@ function buildPayload(form: PatientForm, userId: string) {
 }
 
 const patientSelect =
-  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, crm_medico, local_atendimento, queixa, queixa_principal, hma, hpp, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
+  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, crm_medico, local_atendimento, queixa, queixa_principal, hma, hpp, alergias, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
 
 function buildPatientSummary(patient: Patient) {
   const lines = [
@@ -200,6 +215,7 @@ function buildPatientSummary(patient: Patient) {
       ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}`
       : "",
     patient.crm_medico ? `MÉDICO / CRM: ${patient.crm_medico}` : "",
+    patient.alergias ? `ALERGIAS:\n${patient.alergias}` : "",
     getQueixa(patient) ? `QUEIXA PRINCIPAL:\n${getQueixa(patient)}` : "",
     patient.hma ? `HMA:\n${patient.hma}` : "",
     patient.hpp ? `HPP:\n${patient.hpp}` : "",
@@ -299,6 +315,7 @@ export default function PacientesPage() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [examTemplates, setExamTemplates] = useState<ExamTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -315,7 +332,6 @@ export default function PacientesPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-
     setQuery(params.get("q") || "");
     setSexo(params.get("sexo") || "");
     setEspecialidade(params.get("especialidade") || "");
@@ -337,17 +353,30 @@ export default function PacientesPage() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from("patients")
-      .select(patientSelect)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    const [patientsRes, examsRes] = await Promise.all([
+      supabase
+        .from("patients")
+        .select(patientSelect)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
 
-    if (error) {
-      setError(error.message);
+      supabase
+        .from("exam_templates")
+        .select(
+          "id, categoria, titulo, sexo, conteudo, arquivo_origem, source_file"
+        )
+        .order("titulo", { ascending: true }),
+    ]);
+
+    if (patientsRes.error) {
+      setError(patientsRes.error.message);
       setPatients([]);
     } else {
-      setPatients((data as Patient[]) || []);
+      setPatients((patientsRes.data as Patient[]) || []);
+    }
+
+    if (!examsRes.error) {
+      setExamTemplates((examsRes.data as ExamTemplate[]) || []);
     }
 
     setLoading(false);
@@ -403,6 +432,7 @@ export default function PacientesPage() {
         normalize(getQueixa(item)).includes(q) ||
         normalize(item.hma).includes(q) ||
         normalize(item.hpp).includes(q) ||
+        normalize(item.alergias).includes(q) ||
         normalize(getHipotese(item)).includes(q) ||
         normalize(item.medicamentos_em_uso).includes(q) ||
         normalize(item.exame_fisico).includes(q) ||
@@ -428,6 +458,80 @@ export default function PacientesPage() {
       return now - new Date(patient.created_at).getTime() <= sevenDays;
     }).length;
   }, [patients]);
+
+  const exameFisicoTemplates = useMemo(() => {
+    return examTemplates.filter((item) => {
+      const title = normalize(item.titulo);
+      const categoriaNorm = normalize(item.categoria);
+      const conteudo = normalize(item.conteudo);
+
+      return (
+        title.includes("exame fisico") ||
+        categoriaNorm.includes("exame fisico") ||
+        conteudo.includes("exame fisico")
+      );
+    });
+  }, [examTemplates]);
+
+  function getExamTemplateFor(target: "masculino" | "feminino" | "todos") {
+    const candidates = exameFisicoTemplates;
+
+    const exactBySexo = candidates.find((item) => {
+      const sexoNorm = normalize(item.sexo);
+      const tituloNorm = normalize(item.titulo);
+      const categoriaNorm = normalize(item.categoria);
+
+      if (target === "masculino") {
+        return (
+          sexoNorm.includes("masc") ||
+          sexoNorm.includes("hom") ||
+          tituloNorm.includes("homem") ||
+          tituloNorm.includes("mascul") ||
+          categoriaNorm.includes("homem") ||
+          categoriaNorm.includes("mascul")
+        );
+      }
+
+      if (target === "feminino") {
+        return (
+          sexoNorm.includes("fem") ||
+          sexoNorm.includes("mulh") ||
+          tituloNorm.includes("mulher") ||
+          tituloNorm.includes("femin") ||
+          categoriaNorm.includes("mulher") ||
+          categoriaNorm.includes("femin")
+        );
+      }
+
+      return (
+        sexoNorm.includes("todos") ||
+        sexoNorm.includes("ambos") ||
+        sexoNorm === ""
+      );
+    });
+
+    if (exactBySexo?.conteudo) return exactBySexo.conteudo;
+
+    const generic = candidates.find((item) => item.conteudo);
+    return generic?.conteudo || "";
+  }
+
+  function importExamTemplate(target: "masculino" | "feminino" | "todos") {
+    const content = getExamTemplateFor(target);
+
+    if (!content) {
+      setError("Nenhum modelo de exame físico encontrado em exames-evolucao.");
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      exame_fisico: content,
+    }));
+
+    setSuccess("Modelo de exame físico importado com sucesso.");
+    setError("");
+  }
 
   function updateForm<K extends keyof PatientForm>(
     key: K,
@@ -568,7 +672,8 @@ export default function PacientesPage() {
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                 Cadastro clínico completo com dados cadastrais, plano de saúde,
-                queixa, HMA, HPP, exame físico, hipótese diagnóstica e conduta.
+                alergias, queixa, HMA, HPP, exame físico, hipótese diagnóstica e
+                conduta.
               </p>
 
               <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
@@ -610,7 +715,7 @@ export default function PacientesPage() {
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar nome, queixa, HMA, HPP, diagnóstico, medicamento, plano de saúde..."
+            placeholder="Buscar nome, alergias, queixa, HMA, HPP, diagnóstico, medicamento, plano de saúde..."
             className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
           />
 
@@ -691,6 +796,13 @@ export default function PacientesPage() {
                         </span>
                       ) : null}
 
+                      {item.alergias ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          Alergia
+                        </span>
+                      ) : null}
+
                       {item.data_nascimento ? (
                         <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
                           Nasc.: {formatDateOnly(item.data_nascimento)}
@@ -723,6 +835,7 @@ export default function PacientesPage() {
                 </div>
 
                 <div className="mt-4 grid gap-3">
+                  <InfoBlock title="Alergias">{item.alergias}</InfoBlock>
                   <InfoBlock title="Queixa principal">
                     {getQueixa(item)}
                   </InfoBlock>
@@ -903,8 +1016,16 @@ export default function PacientesPage() {
                   label="HPP — História Patológica Pregressa"
                   value={form.hpp}
                   onChange={(value) => updateForm("hpp", value)}
-                  placeholder="Comorbidades, cirurgias, internações, alergias, antecedentes relevantes..."
+                  placeholder="Comorbidades, cirurgias, internações, antecedentes relevantes..."
                   rows={5}
+                />
+
+                <TextAreaField
+                  label="Alergias"
+                  value={form.alergias}
+                  onChange={(value) => updateForm("alergias", value)}
+                  placeholder="Ex.: Dipirona, Penicilina, contraste iodado..."
+                  rows={3}
                 />
 
                 <TextAreaField
@@ -916,13 +1037,55 @@ export default function PacientesPage() {
                   placeholder="Nome, dose, via, frequência e adesão quando relevante..."
                 />
 
-                <TextAreaField
-                  label="Exame físico / exame do estado mental"
-                  value={form.exame_fisico}
-                  onChange={(value) => updateForm("exame_fisico", value)}
-                  placeholder="Estado geral, sinais vitais, exame segmentar ou exame psíquico..."
-                  rows={6}
-                />
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Exame físico / exame do estado mental
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Você pode digitar manualmente ou importar dos modelos
+                        prontos de exames-evolução.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => importExamTemplate("masculino")}
+                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                      >
+                        Importar homem
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => importExamTemplate("feminino")}
+                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                      >
+                        Importar mulher
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => importExamTemplate("todos")}
+                        className="inline-flex h-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700"
+                      >
+                        Importar genérico
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <TextAreaField
+                      label="Conteúdo do exame físico"
+                      value={form.exame_fisico}
+                      onChange={(value) => updateForm("exame_fisico", value)}
+                      placeholder="Estado geral, sinais vitais, exame segmentar ou exame psíquico..."
+                      rows={8}
+                    />
+                  </div>
+                </div>
 
                 <TextAreaField
                   label="Hipótese diagnóstica"
