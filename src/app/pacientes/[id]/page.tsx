@@ -5,7 +5,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../../components/copy-button";
-import { AlertTriangle, Plus, ClipboardList, CalendarClock, FlaskConical } from "lucide-react";
+import {
+  AlertTriangle,
+  Plus,
+  ClipboardList,
+  CalendarClock,
+  FlaskConical,
+  FileText,
+  Pill,
+  Stethoscope,
+} from "lucide-react";
 
 type Patient = {
   id: string;
@@ -103,6 +112,38 @@ type ExamRequestItem = {
   updated_at: string | null;
 };
 
+type ConsultationItem = {
+  id: number;
+  patient_id: string;
+  user_id: string;
+  queixa_principal: string | null;
+  hma: string | null;
+  exame_fisico: string | null;
+  hipotese_diagnostica: string | null;
+  conduta_medica: string | null;
+  observacoes: string | null;
+  retorno_previsto_em: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type TimelineItem = {
+  id: string;
+  sourceType:
+    | "problem"
+    | "followup"
+    | "exam"
+    | "note"
+    | "prescription"
+    | "consultation";
+  title: string;
+  subtitle: string;
+  body: string;
+  status?: string;
+  date: string | null;
+  timestamp: number;
+};
+
 type NoteForm = {
   tipo: string;
   titulo: string;
@@ -134,6 +175,16 @@ type ExamRequestForm = {
   reviewed_at: string;
   resultado_resumido: string;
   impacto_clinico: string;
+};
+
+type ConsultationForm = {
+  queixa_principal: string;
+  hma: string;
+  exame_fisico: string;
+  hipotese_diagnostica: string;
+  conduta_medica: string;
+  observacoes: string;
+  retorno_previsto_em: string;
 };
 
 const emptyNoteForm: NoteForm = {
@@ -169,6 +220,16 @@ const emptyExamRequestForm: ExamRequestForm = {
   impacto_clinico: "",
 };
 
+const emptyConsultationForm: ConsultationForm = {
+  queixa_principal: "",
+  hma: "",
+  exame_fisico: "",
+  hipotese_diagnostica: "",
+  conduta_medica: "",
+  observacoes: "",
+  retorno_previsto_em: "",
+};
+
 function formatDate(value?: string | null) {
   if (!value) return "-";
 
@@ -200,15 +261,18 @@ function parseDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function getTimestamp(value?: string | null) {
+  if (!value) return 0;
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 function calculateAgeFromDate(date: Date) {
   const today = new Date();
   let age = today.getFullYear() - date.getFullYear();
   const monthDiff = today.getMonth() - date.getMonth();
 
-  if (
-    monthDiff < 0 ||
-    (monthDiff === 0 && today.getDate() < date.getDate())
-  ) {
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
     age--;
   }
 
@@ -302,13 +366,140 @@ function buildNoteText(item: PatientNote) {
   ].join("\n");
 }
 
+function buildConsultationText(item: ConsultationItem) {
+  return [
+    item.queixa_principal ? `Queixa principal:\n${item.queixa_principal}` : "",
+    item.hma ? `HMA:\n${item.hma}` : "",
+    item.exame_fisico ? `Exame físico:\n${item.exame_fisico}` : "",
+    item.hipotese_diagnostica
+      ? `Hipótese diagnóstica:\n${item.hipotese_diagnostica}`
+      : "",
+    item.conduta_medica ? `Conduta médica:\n${item.conduta_medica}` : "",
+    item.observacoes ? `Observações:\n${item.observacoes}` : "",
+    item.retorno_previsto_em
+      ? `Retorno previsto: ${formatDateOnly(item.retorno_previsto_em)}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function buildTimelineItems(
+  problems: ProblemItem[],
+  followups: FollowupItem[],
+  examRequests: ExamRequestItem[],
+  notes: PatientNote[],
+  prescriptions: Prescription[],
+  consultations: ConsultationItem[]
+): TimelineItem[] {
+  const problemItems: TimelineItem[] = problems.map((item) => ({
+    id: `problem-${item.id}`,
+    sourceType: "problem",
+    title: item.titulo,
+    subtitle: `${item.tipo} • ${item.status}`,
+    body: item.observacoes || "Sem observações.",
+    status: item.status,
+    date: item.updated_at || item.created_at,
+    timestamp: getTimestamp(item.updated_at || item.created_at),
+  }));
+
+  const followupItems: TimelineItem[] = followups.map((item) => ({
+    id: `followup-${item.id}`,
+    sourceType: "followup",
+    title: item.motivo || "Retorno clínico",
+    subtitle: `Previsto: ${formatDateOnly(item.retorno_previsto_em)}`,
+    body: [
+      `Status: ${item.status}`,
+      item.realizado_em ? `Realizado em: ${formatDateOnly(item.realizado_em)}` : "",
+      item.observacoes || "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    status: item.status,
+    date: item.realizado_em || item.retorno_previsto_em || item.updated_at || item.created_at,
+    timestamp: getTimestamp(
+      item.realizado_em || item.retorno_previsto_em || item.updated_at || item.created_at
+    ),
+  }));
+
+  const examItems: TimelineItem[] = examRequests.map((item) => ({
+    id: `exam-${item.id}`,
+    sourceType: "exam",
+    title: item.nome_exame,
+    subtitle: item.indicacao || "Exame do paciente",
+    body: [
+      `Status: ${item.status}`,
+      item.resultado_resumido ? `Resultado: ${item.resultado_resumido}` : "",
+      item.impacto_clinico ? `Impacto clínico: ${item.impacto_clinico}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    status: item.status,
+    date:
+      item.reviewed_at ||
+      item.received_at ||
+      item.requested_at ||
+      item.updated_at ||
+      item.created_at,
+    timestamp: getTimestamp(
+      item.reviewed_at ||
+        item.received_at ||
+        item.requested_at ||
+        item.updated_at ||
+        item.created_at
+    ),
+  }));
+
+  const noteItems: TimelineItem[] = notes.map((item) => ({
+    id: `note-${item.id}`,
+    sourceType: "note",
+    title: item.titulo || "Evolução clínica",
+    subtitle: item.tipo || "evolucao",
+    body: item.conteudo,
+    status: item.tipo || "evolucao",
+    date: item.created_at,
+    timestamp: getTimestamp(item.created_at),
+  }));
+
+  const prescriptionItems: TimelineItem[] = prescriptions.map((item) => ({
+    id: `rx-${item.id}`,
+    sourceType: "prescription",
+    title: item.medicamento || "Prescrição clínica",
+    subtitle: item.via ? `Via: ${item.via}` : "Prescrição vinculada",
+    body: buildPrescriptionText(item),
+    date: item.created_at,
+    timestamp: getTimestamp(item.created_at),
+  }));
+
+  const consultationItems: TimelineItem[] = consultations.map((item) => ({
+    id: `consultation-${item.id}`,
+    sourceType: "consultation",
+    title: item.queixa_principal || "Consulta clínica",
+    subtitle: item.hipotese_diagnostica || "Atendimento registrado",
+    body: buildConsultationText(item),
+    status: "consulta",
+    date: item.created_at,
+    timestamp: getTimestamp(item.created_at),
+  }));
+
+  return [
+    ...problemItems,
+    ...followupItems,
+    ...examItems,
+    ...noteItems,
+    ...prescriptionItems,
+    ...consultationItems,
+  ].sort((a, b) => b.timestamp - a.timestamp);
+}
+
 function buildPatientSummary(
   patient: Patient,
   prescriptions: Prescription[],
   notes: PatientNote[],
   problems: ProblemItem[],
   followups: FollowupItem[],
-  examRequests: ExamRequestItem[]
+  examRequests: ExamRequestItem[],
+  consultations: ConsultationItem[]
 ) {
   const { birthDate, returnDate } = resolveBirthAndReturnDates(patient);
 
@@ -320,28 +511,32 @@ function buildPatientSummary(
     birthDate ? `DATA DE NASCIMENTO: ${formatDateOnly(birthDate)}` : "",
     patient.especialidade ? `ESPECIALIDADE: ${patient.especialidade}` : "",
     patient.plano_saude ? `PLANO DE SAÚDE: ${patient.plano_saude}` : "",
-    patient.local_atendimento
-      ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}`
-      : "",
+    patient.local_atendimento ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}` : "",
     patient.crm_medico ? `MÉDICO / CRM: ${patient.crm_medico}` : "",
     getCarteirinha(patient) ? `CARTEIRINHA: ${getCarteirinha(patient)}` : "",
     returnDate ? `RETORNO PREVISTO: ${formatDateOnly(returnDate)}` : "",
     patient.alergias ? `ALERGIAS:\n${patient.alergias}` : "",
-    patient.queixa ? `QUEIXA PRINCIPAL:\n${patient.queixa}` : "",
-    patient.hma ? `HMA:\n${patient.hma}` : "",
+    patient.queixa ? `QUEIXA BASE:\n${patient.queixa}` : "",
+    patient.hma ? `HMA BASE:\n${patient.hma}` : "",
     patient.hpp ? `HPP:\n${patient.hpp}` : "",
-    patient.medicamentos_em_uso
-      ? `MEDICAMENTOS EM USO:\n${patient.medicamentos_em_uso}`
-      : "",
-    patient.exame_fisico ? `EXAME FÍSICO:\n${patient.exame_fisico}` : "",
+    patient.medicamentos_em_uso ? `MEDICAMENTOS EM USO:\n${patient.medicamentos_em_uso}` : "",
+    patient.exame_fisico ? `EXAME FÍSICO BASE:\n${patient.exame_fisico}` : "",
     patient.hipotese_diagnostica
-      ? `HIPÓTESE DIAGNÓSTICA:\n${patient.hipotese_diagnostica}`
+      ? `HIPÓTESE DIAGNÓSTICA BASE:\n${patient.hipotese_diagnostica}`
       : "",
-    patient.conduta_medica
-      ? `CONDUTA MÉDICA:\n${patient.conduta_medica}`
-      : "",
-    patient.observacoes ? `OBSERVAÇÕES:\n${patient.observacoes}` : "",
+    patient.conduta_medica ? `CONDUTA MÉDICA BASE:\n${patient.conduta_medica}` : "",
+    patient.observacoes ? `OBSERVAÇÕES GERAIS:\n${patient.observacoes}` : "",
   ].filter(Boolean);
+
+  const consultationText = consultations.length
+    ? [
+        "CONSULTAS:",
+        ...consultations.map(
+          (item, index) =>
+            `${index + 1}. ${formatDate(item.created_at)}\n${buildConsultationText(item)}`
+        ),
+      ]
+    : [];
 
   const problemText = problems.length
     ? [
@@ -376,9 +571,7 @@ function buildPatientSummary(
           (item, index) =>
             `${index + 1}. ${item.nome_exame} | Status: ${item.status}${
               item.indicacao ? ` | Indicação: ${item.indicacao}` : ""
-            }${
-              item.resultado_resumido ? `\nResultado: ${item.resultado_resumido}` : ""
-            }${
+            }${item.resultado_resumido ? `\nResultado: ${item.resultado_resumido}` : ""}${
               item.impacto_clinico ? `\nImpacto clínico: ${item.impacto_clinico}` : ""
             }`
         ),
@@ -403,6 +596,7 @@ function buildPatientSummary(
 
   return [
     ...sections,
+    ...consultationText,
     ...problemText,
     ...followupText,
     ...examText,
@@ -431,11 +625,31 @@ function buildProfessionalPrintHtml(
   notes: PatientNote[],
   problems: ProblemItem[],
   followups: FollowupItem[],
-  examRequests: ExamRequestItem[]
+  examRequests: ExamRequestItem[],
+  consultations: ConsultationItem[]
 ) {
   const { birthDate, returnDate } = resolveBirthAndReturnDates(patient);
   const carteirinha = getCarteirinha(patient);
   const emittedAt = formatDate(new Date().toISOString());
+
+  const consultationHtml = consultations.length
+    ? consultations
+        .map(
+          (item, index) => `
+            <article class="rx-card">
+              <div class="rx-head">
+                <div>
+                  <strong>Consulta ${index + 1}</strong>
+                  <span>${escapeHtml(item.queixa_principal || "Consulta clínica")}</span>
+                </div>
+                <time>${escapeHtml(formatDate(item.created_at))}</time>
+              </div>
+              <div class="rx-body">${textToHtml(buildConsultationText(item))}</div>
+            </article>
+          `
+        )
+        .join("")
+    : `<p class="empty">Sem consultas registradas.</p>`;
 
   const noteHtml = notes.length
     ? notes
@@ -586,9 +800,7 @@ function buildProfessionalPrintHtml(
             color: #ffffff;
             padding: 28px 32px 30px;
           }
-          .brand-row {
-            display: flex; align-items: flex-start; justify-content: space-between; gap: 22px;
-          }
+          .brand-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; }
           .brand { display: flex; align-items: center; gap: 14px; }
           .brand-mark {
             width: 48px; height: 48px; border-radius: 16px; background: rgba(255,255,255,0.14);
@@ -597,12 +809,8 @@ function buildProfessionalPrintHtml(
           }
           .brand h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 0.18em; }
           .brand p { margin: 5px 0 0; font-size: 12px; opacity: 0.86; }
-          .doc-meta {
-            min-width: 230px; text-align: right; font-size: 12px; line-height: 1.65; color: rgba(255,255,255,0.9);
-          }
-          .patient-hero {
-            margin-top: 26px; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 22px; align-items: end;
-          }
+          .doc-meta { min-width: 230px; text-align: right; font-size: 12px; line-height: 1.65; color: rgba(255,255,255,0.9); }
+          .patient-hero { margin-top: 26px; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 22px; align-items: end; }
           .kicker {
             display: inline-flex; border: 1px solid rgba(255,255,255,0.24); background: rgba(255,255,255,0.12);
             border-radius: 999px; padding: 6px 12px; font-size: 10px; text-transform: uppercase;
@@ -610,9 +818,7 @@ function buildProfessionalPrintHtml(
           }
           .patient-name h2 { margin: 0; font-size: 32px; line-height: 1.1; font-weight: 900; letter-spacing: -0.03em; }
           .patient-name p { margin: 10px 0 0; font-size: 13px; color: rgba(255,255,255,0.86); }
-          .hero-card {
-            border-radius: 18px; padding: 16px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.19);
-          }
+          .hero-card { border-radius: 18px; padding: 16px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.19); }
           .row {
             display: flex; justify-content: space-between; gap: 14px; padding: 7px 0;
             border-bottom: 1px solid rgba(255,255,255,0.13); font-size: 12px;
@@ -621,12 +827,8 @@ function buildProfessionalPrintHtml(
           .hero-card span { color: rgba(255,255,255,0.72); }
           .hero-card strong { color: #ffffff; text-align: right; }
           .content { padding: 26px 32px 32px; }
-          .quick-grid {
-            display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px;
-          }
-          .quick-card {
-            background: #f8fafc; border: 1px solid #e4edf7; border-radius: 16px; padding: 13px 14px;
-          }
+          .quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+          .quick-card { background: #f8fafc; border: 1px solid #e4edf7; border-radius: 16px; padding: 13px 14px; }
           .quick-card.alert { background: #fff1f2; border-color: #fecdd3; }
           .quick-card span {
             display: block; font-size: 9px; letter-spacing: 0.16em; color: #64748b;
@@ -670,25 +872,15 @@ function buildProfessionalPrintHtml(
             width: 30px; height: 30px; border-radius: 11px; background: #ecfeff; color: #0e7490; border: 1px solid #bae6fd;
             display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900;
           }
-          .timeline-card {
-            background: #fbfdff; border: 1px solid #e5edf6; border-radius: 14px; padding: 13px;
-          }
-          .timeline-head, .rx-head {
-            display: flex; justify-content: space-between; gap: 14px; margin-bottom: 8px;
-          }
-          .timeline-head strong, .rx-head strong {
-            display: block; font-size: 13.5px; color: #0f172a;
-          }
+          .timeline-card { background: #fbfdff; border: 1px solid #e5edf6; border-radius: 14px; padding: 13px; }
+          .timeline-head, .rx-head { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 8px; }
+          .timeline-head strong, .rx-head strong { display: block; font-size: 13.5px; color: #0f172a; }
           .timeline-head span, .rx-head span {
             display: block; margin-top: 3px; font-size: 11px; color: #64748b; text-transform: capitalize;
           }
-          .timeline-head time, .rx-head time {
-            font-size: 11px; color: #64748b; white-space: nowrap;
-          }
+          .timeline-head time, .rx-head time { font-size: 11px; color: #64748b; white-space: nowrap; }
           .timeline-text { font-size: 13px; line-height: 1.7; color: #243042; }
-          .rx-card {
-            border: 1px solid #e5edf6; background: #fbfdff; border-radius: 14px; padding: 14px; margin-bottom: 12px;
-          }
+          .rx-card { border: 1px solid #e5edf6; background: #fbfdff; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
           .rx-card:last-child { margin-bottom: 0; }
           .rx-body {
             background: #ffffff; border: 1px solid #e9eff6; border-radius: 12px; padding: 12px; font-size: 13px;
@@ -748,59 +940,69 @@ function buildProfessionalPrintHtml(
 
               <div class="hero-card">
                 <div class="row"><span>Cadastro</span><strong>${escapeHtml(formatDate(patient.created_at))}</strong></div>
-                <div class="row"><span>Nascimento</span><strong>${escapeHtml(birthDate ? formatDateOnly(birthDate) : "-")}</strong></div>
-                <div class="row"><span>Retorno</span><strong>${escapeHtml(returnDate ? formatDateOnly(returnDate) : "-")}</strong></div>
+                <div class="row"><span>Nascimento</span><strong>${escapeHtml(
+                  birthDate ? formatDateOnly(birthDate) : "-"
+                )}</strong></div>
+                <div class="row"><span>Retorno</span><strong>${escapeHtml(
+                  returnDate ? formatDateOnly(returnDate) : "-"
+                )}</strong></div>
               </div>
             </div>
           </header>
 
           <section class="content">
             <div class="quick-grid">
-              <div class="quick-card"><span>Telefone</span><strong>${escapeHtml(patient.telefone || "-")}</strong></div>
-              <div class="quick-card"><span>Plano</span><strong>${escapeHtml(patient.plano_saude || "-")}</strong></div>
-              <div class="quick-card"><span>Carteirinha</span><strong>${escapeHtml(carteirinha || "-")}</strong></div>
-              <div class="quick-card"><span>Local</span><strong>${escapeHtml(patient.local_atendimento || "-")}</strong></div>
+              <div class="quick-card"><span>Telefone</span><strong>${escapeHtml(
+                patient.telefone || "-"
+              )}</strong></div>
+              <div class="quick-card"><span>Plano</span><strong>${escapeHtml(
+                patient.plano_saude || "-"
+              )}</strong></div>
+              <div class="quick-card"><span>Carteirinha</span><strong>${escapeHtml(
+                carteirinha || "-"
+              )}</strong></div>
+              <div class="quick-card"><span>Local</span><strong>${escapeHtml(
+                patient.local_atendimento || "-"
+              )}</strong></div>
               ${
                 patient.alergias
-                  ? `<div class="quick-card alert"><span>Alergias</span><strong>${escapeHtml(patient.alergias)}</strong></div>`
+                  ? `<div class="quick-card alert"><span>Alergias</span><strong>${escapeHtml(
+                      patient.alergias
+                    )}</strong></div>`
                   : ""
               }
             </div>
 
-            <div class="section">
-              <div class="section-title"><span class="number">1</span> Dados cadastrais</div>
-              <div class="section-body">
-                <div class="grid">
-                  <div class="field"><span class="field-label">Nome</span><div class="field-value">${escapeHtml(patient.nome || "-")}</div></div>
-                  <div class="field"><span class="field-label">Idade</span><div class="field-value">${
-                    typeof patient.idade === "number" ? `${escapeHtml(String(patient.idade))} anos` : "-"
-                  }</div></div>
-                  <div class="field"><span class="field-label">Sexo</span><div class="field-value">${escapeHtml(patient.sexo || "-")}</div></div>
-                  <div class="field"><span class="field-label">Telefone</span><div class="field-value">${escapeHtml(patient.telefone || "-")}</div></div>
-                  <div class="field"><span class="field-label">Especialidade</span><div class="field-value">${escapeHtml(patient.especialidade || "-")}</div></div>
-                  <div class="field"><span class="field-label">Plano de saúde</span><div class="field-value">${escapeHtml(patient.plano_saude || "-")}</div></div>
-                  <div class="field"><span class="field-label">Carteirinha</span><div class="field-value">${escapeHtml(carteirinha || "-")}</div></div>
-                  <div class="field"><span class="field-label">Local de atendimento</span><div class="field-value">${escapeHtml(patient.local_atendimento || "-")}</div></div>
-                  <div class="field"><span class="field-label">Data de nascimento</span><div class="field-value">${escapeHtml(birthDate ? formatDateOnly(birthDate) : "-")}</div></div>
-                  <div class="field"><span class="field-label">Retorno previsto</span><div class="field-value">${escapeHtml(returnDate ? formatDateOnly(returnDate) : "-")}</div></div>
-                </div>
-              </div>
-            </div>
+            <div class="section"><div class="section-title"><span class="number">1</span> Dados cadastrais</div><div class="section-body"><div class="grid">
+              <div class="field"><span class="field-label">Nome</span><div class="field-value">${escapeHtml(patient.nome || "-")}</div></div>
+              <div class="field"><span class="field-label">Idade</span><div class="field-value">${
+                typeof patient.idade === "number" ? `${escapeHtml(String(patient.idade))} anos` : "-"
+              }</div></div>
+              <div class="field"><span class="field-label">Sexo</span><div class="field-value">${escapeHtml(patient.sexo || "-")}</div></div>
+              <div class="field"><span class="field-label">Telefone</span><div class="field-value">${escapeHtml(patient.telefone || "-")}</div></div>
+              <div class="field"><span class="field-label">Especialidade</span><div class="field-value">${escapeHtml(patient.especialidade || "-")}</div></div>
+              <div class="field"><span class="field-label">Plano de saúde</span><div class="field-value">${escapeHtml(patient.plano_saude || "-")}</div></div>
+              <div class="field"><span class="field-label">Carteirinha</span><div class="field-value">${escapeHtml(carteirinha || "-")}</div></div>
+              <div class="field"><span class="field-label">Local de atendimento</span><div class="field-value">${escapeHtml(patient.local_atendimento || "-")}</div></div>
+              <div class="field"><span class="field-label">Data de nascimento</span><div class="field-value">${escapeHtml(birthDate ? formatDateOnly(birthDate) : "-")}</div></div>
+              <div class="field"><span class="field-label">Retorno previsto</span><div class="field-value">${escapeHtml(returnDate ? formatDateOnly(returnDate) : "-")}</div></div>
+            </div></div></div>
 
-            <div class="section"><div class="section-title"><span class="number">2</span> Queixa principal</div><div class="section-body"><div class="rich-text">${textToHtml(patient.queixa)}</div></div></div>
-            <div class="section"><div class="section-title"><span class="number">3</span> HMA — História da moléstia atual</div><div class="section-body"><div class="rich-text">${textToHtml(patient.hma)}</div></div></div>
-            <div class="section"><div class="section-title"><span class="number">4</span> HPP — História patológica pregressa</div><div class="section-body"><div class="rich-text">${textToHtml(patient.hpp)}</div></div></div>
+            <div class="section"><div class="section-title"><span class="number">2</span> Queixa base</div><div class="section-body"><div class="rich-text">${textToHtml(patient.queixa)}</div></div></div>
+            <div class="section"><div class="section-title"><span class="number">3</span> HMA base</div><div class="section-body"><div class="rich-text">${textToHtml(patient.hma)}</div></div></div>
+            <div class="section"><div class="section-title"><span class="number">4</span> HPP</div><div class="section-body"><div class="rich-text">${textToHtml(patient.hpp)}</div></div></div>
             <div class="section"><div class="section-title alert"><span class="number">5</span> Alergias</div><div class="section-body"><div class="rich-text">${textToHtml(patient.alergias)}</div></div></div>
             <div class="section"><div class="section-title"><span class="number">6</span> Medicamentos em uso</div><div class="section-body"><div class="rich-text">${textToHtml(patient.medicamentos_em_uso)}</div></div></div>
-            <div class="section"><div class="section-title"><span class="number">7</span> Exame físico / exame do estado mental</div><div class="section-body"><div class="rich-text">${textToHtml(patient.exame_fisico)}</div></div></div>
-            <div class="section"><div class="section-title"><span class="number">8</span> Hipótese diagnóstica</div><div class="section-body"><div class="rich-text">${textToHtml(patient.hipotese_diagnostica)}</div></div></div>
-            <div class="section"><div class="section-title"><span class="number">9</span> Conduta médica</div><div class="section-body"><div class="rich-text">${textToHtml(patient.conduta_medica)}</div></div></div>
-            <div class="section"><div class="section-title"><span class="number">10</span> Observações</div><div class="section-body"><div class="rich-text">${textToHtml(patient.observacoes)}</div></div></div>
-            <div class="section"><div class="section-title"><span class="number">11</span> Problemas do paciente</div><div class="section-body">${problemsHtml}</div></div>
-            <div class="section"><div class="section-title"><span class="number">12</span> Retornos</div><div class="section-body">${followupsHtml}</div></div>
-            <div class="section"><div class="section-title"><span class="number">13</span> Exames do paciente</div><div class="section-body">${examsHtml}</div></div>
-            <div class="section"><div class="section-title"><span class="number">14</span> Evoluções / anotações</div><div class="section-body">${noteHtml}</div></div>
-            <div class="section"><div class="section-title"><span class="number">15</span> Prescrições vinculadas</div><div class="section-body">${prescriptionHtml}</div></div>
+            <div class="section"><div class="section-title"><span class="number">7</span> Exame físico base</div><div class="section-body"><div class="rich-text">${textToHtml(patient.exame_fisico)}</div></div></div>
+            <div class="section"><div class="section-title"><span class="number">8</span> Hipótese diagnóstica base</div><div class="section-body"><div class="rich-text">${textToHtml(patient.hipotese_diagnostica)}</div></div></div>
+            <div class="section"><div class="section-title"><span class="number">9</span> Conduta médica base</div><div class="section-body"><div class="rich-text">${textToHtml(patient.conduta_medica)}</div></div></div>
+            <div class="section"><div class="section-title"><span class="number">10</span> Observações gerais</div><div class="section-body"><div class="rich-text">${textToHtml(patient.observacoes)}</div></div></div>
+            <div class="section"><div class="section-title"><span class="number">11</span> Consultas</div><div class="section-body">${consultationHtml}</div></div>
+            <div class="section"><div class="section-title"><span class="number">12</span> Problemas do paciente</div><div class="section-body">${problemsHtml}</div></div>
+            <div class="section"><div class="section-title"><span class="number">13</span> Retornos</div><div class="section-body">${followupsHtml}</div></div>
+            <div class="section"><div class="section-title"><span class="number">14</span> Exames do paciente</div><div class="section-body">${examsHtml}</div></div>
+            <div class="section"><div class="section-title"><span class="number">15</span> Evoluções / anotações</div><div class="section-body">${noteHtml}</div></div>
+            <div class="section"><div class="section-title"><span class="number">16</span> Prescrições vinculadas</div><div class="section-body">${prescriptionHtml}</div></div>
 
             <div class="signature-grid">
               <div class="signature-box">
@@ -847,24 +1049,87 @@ function InfoBlock({
   );
 }
 
-function Field({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function TimelineCard({ item }: { item: TimelineItem }) {
+  const styles = {
+    problem: {
+      badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      card: "border-emerald-100 bg-emerald-50/40",
+      icon: ClipboardList,
+      label: "Problema",
+    },
+    followup: {
+      badge: "border-amber-200 bg-amber-50 text-amber-700",
+      card: "border-amber-100 bg-amber-50/40",
+      icon: CalendarClock,
+      label: "Retorno",
+    },
+    exam: {
+      badge: "border-blue-200 bg-blue-50 text-blue-700",
+      card: "border-blue-100 bg-blue-50/40",
+      icon: FlaskConical,
+      label: "Exame",
+    },
+    note: {
+      badge: "border-cyan-200 bg-cyan-50 text-cyan-700",
+      card: "border-cyan-100 bg-cyan-50/40",
+      icon: FileText,
+      label: "Evolução",
+    },
+    prescription: {
+      badge: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
+      card: "border-fuchsia-100 bg-fuchsia-50/40",
+      icon: Pill,
+      label: "Prescrição",
+    },
+    consultation: {
+      badge: "border-violet-200 bg-violet-50 text-violet-700",
+      card: "border-violet-100 bg-violet-50/40",
+      icon: Stethoscope,
+      label: "Consulta",
+    },
+  }[item.sourceType];
+
+  const Icon = styles.icon;
+
   return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <input
-        value={value}
-        readOnly
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none"
-      />
-    </div>
+    <article className="relative pl-10">
+      <div className="absolute left-0 top-2 flex h-8 w-8 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <Icon className="h-4 w-4 text-slate-700" />
+      </div>
+
+      <div className={`rounded-2xl border p-4 ${styles.card}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${styles.badge}`}>
+                {styles.label}
+              </span>
+
+              {item.status ? (
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                  {item.status}
+                </span>
+              ) : null}
+            </div>
+
+            <h3 className="mt-3 text-base font-semibold text-slate-900">{item.title}</h3>
+            <p className="mt-1 text-sm text-slate-500">{item.subtitle}</p>
+          </div>
+
+          <span className="text-xs font-medium text-slate-400">
+            {formatDate(item.date)}
+          </span>
+        </div>
+
+        {item.body ? (
+          <div className="mt-4 rounded-2xl border border-white/70 bg-white px-4 py-3">
+            <pre className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+              {item.body}
+            </pre>
+          </div>
+        ) : null}
+      </div>
+    </article>
   );
 }
 
@@ -884,35 +1149,42 @@ export default function PatientDetailPage() {
   const [problems, setProblems] = useState<ProblemItem[]>([]);
   const [followups, setFollowups] = useState<FollowupItem[]>([]);
   const [examRequests, setExamRequests] = useState<ExamRequestItem[]>([]);
+  const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [savingNote, setSavingNote] = useState(false);
   const [savingProblem, setSavingProblem] = useState(false);
   const [savingFollowup, setSavingFollowup] = useState(false);
   const [savingExamRequest, setSavingExamRequest] = useState(false);
+  const [savingConsultation, setSavingConsultation] = useState(false);
 
   const [savingNoteIds, setSavingNoteIds] = useState<number[]>([]);
   const [savingProblemIds, setSavingProblemIds] = useState<number[]>([]);
   const [savingFollowupIds, setSavingFollowupIds] = useState<number[]>([]);
   const [savingExamRequestIds, setSavingExamRequestIds] = useState<number[]>([]);
+  const [savingConsultationIds, setSavingConsultationIds] = useState<number[]>([]);
 
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingProblemId, setEditingProblemId] = useState<number | null>(null);
   const [editingFollowupId, setEditingFollowupId] = useState<number | null>(null);
   const [editingExamRequestId, setEditingExamRequestId] = useState<number | null>(null);
+  const [editingConsultationId, setEditingConsultationId] = useState<number | null>(null);
 
   const [noteForm, setNoteForm] = useState<NoteForm>(emptyNoteForm);
   const [problemForm, setProblemForm] = useState<ProblemForm>(emptyProblemForm);
   const [followupForm, setFollowupForm] = useState<FollowupForm>(emptyFollowupForm);
   const [examRequestForm, setExamRequestForm] = useState<ExamRequestForm>(emptyExamRequestForm);
+  const [consultationForm, setConsultationForm] = useState<ConsultationForm>(emptyConsultationForm);
 
   const [editNoteForms, setEditNoteForms] = useState<Record<number, NoteForm>>({});
   const [editProblemForms, setEditProblemForms] = useState<Record<number, ProblemForm>>({});
   const [editFollowupForms, setEditFollowupForms] = useState<Record<number, FollowupForm>>({});
   const [editExamRequestForms, setEditExamRequestForms] = useState<Record<number, ExamRequestForm>>({});
+  const [editConsultationForms, setEditConsultationForms] = useState<
+    Record<number, ConsultationForm>
+  >({});
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -937,6 +1209,19 @@ export default function PatientDetailPage() {
     [examRequests]
   );
 
+  const timelineItems = useMemo(
+    () =>
+      buildTimelineItems(
+        problems,
+        followups,
+        examRequests,
+        notes,
+        prescriptions,
+        consultations
+      ),
+    [problems, followups, examRequests, notes, prescriptions, consultations]
+  );
+
   async function loadPatient() {
     if (!patientId) {
       setError("ID do paciente não encontrado.");
@@ -949,7 +1234,6 @@ export default function PatientDetailPage() {
 
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user?.id || null;
-
     setCurrentUserId(userId);
 
     if (!userId) {
@@ -960,6 +1244,7 @@ export default function PatientDetailPage() {
       setProblems([]);
       setFollowups([]);
       setExamRequests([]);
+      setConsultations([]);
       setLoading(false);
       return;
     }
@@ -979,6 +1264,7 @@ export default function PatientDetailPage() {
       setProblems([]);
       setFollowups([]);
       setExamRequests([]);
+      setConsultations([]);
       setLoading(false);
       return;
     }
@@ -1030,61 +1316,42 @@ export default function PatientDetailPage() {
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    const [notesRes, byIdRes, byNameRes, problemsRes, followupsRes, examsRes] =
-      await Promise.all([
-        notesPromise,
-        byIdPromise,
-        byNamePromise,
-        problemsPromise,
-        followupsPromise,
-        examsPromise,
-      ]);
+    const consultationsPromise = supabase
+      .from("patient_consultations")
+      .select("*")
+      .eq("patient_id", currentPatient.id)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-    if (notesRes.error) {
-      console.warn("Erro ao buscar evoluções:", notesRes.error.message);
-      setNotes([]);
-    } else {
-      setNotes((notesRes.data as PatientNote[]) || []);
-    }
+    const [
+      notesRes,
+      byIdRes,
+      byNameRes,
+      problemsRes,
+      followupsRes,
+      examsRes,
+      consultationsRes,
+    ] = await Promise.all([
+      notesPromise,
+      byIdPromise,
+      byNamePromise,
+      problemsPromise,
+      followupsPromise,
+      examsPromise,
+      consultationsPromise,
+    ]);
 
-    if (problemsRes.error) {
-      console.warn("Erro ao buscar problemas:", problemsRes.error.message);
-      setProblems([]);
-    } else {
-      setProblems((problemsRes.data as ProblemItem[]) || []);
-    }
-
-    if (followupsRes.error) {
-      console.warn("Erro ao buscar retornos:", followupsRes.error.message);
-      setFollowups([]);
-    } else {
-      setFollowups((followupsRes.data as FollowupItem[]) || []);
-    }
-
-    if (examsRes.error) {
-      console.warn("Erro ao buscar exames:", examsRes.error.message);
-      setExamRequests([]);
-    } else {
-      setExamRequests((examsRes.data as ExamRequestItem[]) || []);
-    }
-
-    if (byIdRes.error) {
-      console.warn("Erro ao buscar prescrições por ID:", byIdRes.error.message);
-    }
-
-    if (byNameRes.error) {
-      console.warn("Erro ao buscar prescrições por nome:", byNameRes.error.message);
-    }
+    setNotes(notesRes.error ? [] : ((notesRes.data as PatientNote[]) || []));
+    setProblems(problemsRes.error ? [] : ((problemsRes.data as ProblemItem[]) || []));
+    setFollowups(followupsRes.error ? [] : ((followupsRes.data as FollowupItem[]) || []));
+    setExamRequests(examsRes.error ? [] : ((examsRes.data as ExamRequestItem[]) || []));
+    setConsultations(
+      consultationsRes.error ? [] : ((consultationsRes.data as ConsultationItem[]) || [])
+    );
 
     const mergedMap = new Map<number, Prescription>();
-
-    ((byIdRes.data as Prescription[]) || []).forEach((item) => {
-      mergedMap.set(item.id, item);
-    });
-
-    ((byNameRes.data as Prescription[]) || []).forEach((item) => {
-      mergedMap.set(item.id, item);
-    });
+    ((byIdRes.data as Prescription[]) || []).forEach((item) => mergedMap.set(item.id, item));
+    ((byNameRes.data as Prescription[]) || []).forEach((item) => mergedMap.set(item.id, item));
 
     const merged = Array.from(mergedMap.values()).sort((a, b) => {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -1117,6 +1384,13 @@ export default function PatientDetailPage() {
     value: ExamRequestForm[K]
   ) {
     setExamRequestForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateConsultationForm<K extends keyof ConsultationForm>(
+    key: K,
+    value: ConsultationForm[K]
+  ) {
+    setConsultationForm((current) => ({ ...current, [key]: value }));
   }
 
   function updateEditNoteForm<K extends keyof NoteForm>(id: number, key: K, value: NoteForm[K]) {
@@ -1159,13 +1433,19 @@ export default function PatientDetailPage() {
     }));
   }
 
-  async function handleCreateNote() {
-    if (!patient || !currentUserId) {
-      setError("Usuário autenticado ou paciente não identificado.");
-      return;
-    }
+  function updateEditConsultationForm<K extends keyof ConsultationForm>(
+    id: number,
+    key: K,
+    value: ConsultationForm[K]
+  ) {
+    setEditConsultationForms((current) => ({
+      ...current,
+      [id]: { ...(current[id] || emptyConsultationForm), [key]: value },
+    }));
+  }
 
-    if (!noteForm.conteudo.trim()) {
+  async function handleCreateNote() {
+    if (!patient || !currentUserId || !noteForm.conteudo.trim()) {
       setError("O conteúdo da evolução é obrigatório.");
       return;
     }
@@ -1186,9 +1466,8 @@ export default function PatientDetailPage() {
       .select("*")
       .single();
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
+    if (error) setError(error.message);
+    else if (data) {
       setNotes((current) => [data as PatientNote, ...current]);
       setNoteForm(emptyNoteForm);
       setSuccess("Evolução salva com sucesso.");
@@ -1198,12 +1477,7 @@ export default function PatientDetailPage() {
   }
 
   async function handleCreateProblem() {
-    if (!patient || !currentUserId) {
-      setError("Usuário autenticado ou paciente não identificado.");
-      return;
-    }
-
-    if (!problemForm.titulo.trim()) {
+    if (!patient || !currentUserId || !problemForm.titulo.trim()) {
       setError("O título do problema é obrigatório.");
       return;
     }
@@ -1226,9 +1500,8 @@ export default function PatientDetailPage() {
       .select("*")
       .single();
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
+    if (error) setError(error.message);
+    else if (data) {
       setProblems((current) => [data as ProblemItem, ...current]);
       setProblemForm(emptyProblemForm);
       setSuccess("Problema salvo com sucesso.");
@@ -1238,12 +1511,7 @@ export default function PatientDetailPage() {
   }
 
   async function handleCreateFollowup() {
-    if (!patient || !currentUserId) {
-      setError("Usuário autenticado ou paciente não identificado.");
-      return;
-    }
-
-    if (!followupForm.retorno_previsto_em) {
+    if (!patient || !currentUserId || !followupForm.retorno_previsto_em) {
       setError("A data prevista do retorno é obrigatória.");
       return;
     }
@@ -1266,9 +1534,8 @@ export default function PatientDetailPage() {
       .select("*")
       .single();
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
+    if (error) setError(error.message);
+    else if (data) {
       setFollowups((current) =>
         [...current, data as FollowupItem].sort((a, b) =>
           a.retorno_previsto_em.localeCompare(b.retorno_previsto_em)
@@ -1282,12 +1549,7 @@ export default function PatientDetailPage() {
   }
 
   async function handleCreateExamRequest() {
-    if (!patient || !currentUserId) {
-      setError("Usuário autenticado ou paciente não identificado.");
-      return;
-    }
-
-    if (!examRequestForm.nome_exame.trim()) {
+    if (!patient || !currentUserId || !examRequestForm.nome_exame.trim()) {
       setError("O nome do exame é obrigatório.");
       return;
     }
@@ -1313,15 +1575,56 @@ export default function PatientDetailPage() {
       .select("*")
       .single();
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
+    if (error) setError(error.message);
+    else if (data) {
       setExamRequests((current) => [data as ExamRequestItem, ...current]);
       setExamRequestForm(emptyExamRequestForm);
       setSuccess("Exame salvo com sucesso.");
     }
 
     setSavingExamRequest(false);
+  }
+
+  async function handleCreateConsultation() {
+    if (!patient || !currentUserId) {
+      setError("Usuário autenticado ou paciente não identificado.");
+      return;
+    }
+
+    if (!consultationForm.queixa_principal.trim()) {
+      setError("A queixa principal da consulta é obrigatória.");
+      return;
+    }
+
+    setSavingConsultation(true);
+    setError("");
+    setSuccess("");
+
+    const { data, error } = await supabase
+      .from("patient_consultations")
+      .insert({
+        patient_id: patient.id,
+        user_id: currentUserId,
+        queixa_principal: consultationForm.queixa_principal.trim(),
+        hma: consultationForm.hma.trim() || null,
+        exame_fisico: consultationForm.exame_fisico.trim() || null,
+        hipotese_diagnostica: consultationForm.hipotese_diagnostica.trim() || null,
+        conduta_medica: consultationForm.conduta_medica.trim() || null,
+        observacoes: consultationForm.observacoes.trim() || null,
+        retorno_previsto_em: consultationForm.retorno_previsto_em || null,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      setError(error.message);
+    } else if (data) {
+      setConsultations((current) => [data as ConsultationItem, ...current]);
+      setConsultationForm(emptyConsultationForm);
+      setSuccess("Consulta salva com sucesso.");
+    }
+
+    setSavingConsultation(false);
   }
 
   function startEditNote(note: PatientNote) {
@@ -1381,6 +1684,22 @@ export default function PatientDetailPage() {
     }));
   }
 
+  function startEditConsultation(item: ConsultationItem) {
+    setEditingConsultationId(item.id);
+    setEditConsultationForms((current) => ({
+      ...current,
+      [item.id]: {
+        queixa_principal: item.queixa_principal || "",
+        hma: item.hma || "",
+        exame_fisico: item.exame_fisico || "",
+        hipotese_diagnostica: item.hipotese_diagnostica || "",
+        conduta_medica: item.conduta_medica || "",
+        observacoes: item.observacoes || "",
+        retorno_previsto_em: item.retorno_previsto_em || "",
+      },
+    }));
+  }
+
   function cancelEditNote(id: number) {
     setEditingNoteId(null);
     setEditNoteForms((current) => {
@@ -1417,14 +1736,18 @@ export default function PatientDetailPage() {
     });
   }
 
+  function cancelEditConsultation(id: number) {
+    setEditingConsultationId(null);
+    setEditConsultationForms((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
+
   async function handleUpdateNote(id: number) {
-    if (!currentUserId) {
-      setError("Usuário autenticado não identificado.");
-      return;
-    }
-
+    if (!currentUserId) return;
     const form = editNoteForms[id];
-
     if (!form || !form.conteudo.trim()) {
       setError("O conteúdo da evolução é obrigatório.");
       return;
@@ -1446,9 +1769,8 @@ export default function PatientDetailPage() {
       .select("*")
       .single();
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
+    if (error) setError(error.message);
+    else if (data) {
       setNotes((current) =>
         current.map((item) => (item.id === id ? (data as PatientNote) : item))
       );
@@ -1460,13 +1782,8 @@ export default function PatientDetailPage() {
   }
 
   async function handleUpdateProblem(id: number) {
-    if (!currentUserId) {
-      setError("Usuário autenticado não identificado.");
-      return;
-    }
-
+    if (!currentUserId) return;
     const form = editProblemForms[id];
-
     if (!form || !form.titulo.trim()) {
       setError("O título do problema é obrigatório.");
       return;
@@ -1490,9 +1807,8 @@ export default function PatientDetailPage() {
       .select("*")
       .single();
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
+    if (error) setError(error.message);
+    else if (data) {
       setProblems((current) =>
         current.map((item) => (item.id === id ? (data as ProblemItem) : item))
       );
@@ -1504,13 +1820,8 @@ export default function PatientDetailPage() {
   }
 
   async function handleUpdateFollowup(id: number) {
-    if (!currentUserId) {
-      setError("Usuário autenticado não identificado.");
-      return;
-    }
-
+    if (!currentUserId) return;
     const form = editFollowupForms[id];
-
     if (!form || !form.retorno_previsto_em) {
       setError("A data prevista do retorno é obrigatória.");
       return;
@@ -1534,9 +1845,8 @@ export default function PatientDetailPage() {
       .select("*")
       .single();
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
+    if (error) setError(error.message);
+    else if (data) {
       setFollowups((current) =>
         current
           .map((item) => (item.id === id ? (data as FollowupItem) : item))
@@ -1550,13 +1860,8 @@ export default function PatientDetailPage() {
   }
 
   async function handleUpdateExamRequest(id: number) {
-    if (!currentUserId) {
-      setError("Usuário autenticado não identificado.");
-      return;
-    }
-
+    if (!currentUserId) return;
     const form = editExamRequestForms[id];
-
     if (!form || !form.nome_exame.trim()) {
       setError("O nome do exame é obrigatório.");
       return;
@@ -1583,9 +1888,8 @@ export default function PatientDetailPage() {
       .select("*")
       .single();
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
+    if (error) setError(error.message);
+    else if (data) {
       setExamRequests((current) =>
         current.map((item) => (item.id === id ? (data as ExamRequestItem) : item))
       );
@@ -1596,14 +1900,49 @@ export default function PatientDetailPage() {
     setSavingExamRequestIds((current) => current.filter((item) => item !== id));
   }
 
-  async function handleDeleteNote(id: number) {
-    if (!currentUserId) {
-      setError("Usuário autenticado não identificado.");
+  async function handleUpdateConsultation(id: number) {
+    if (!currentUserId) return;
+    const form = editConsultationForms[id];
+
+    if (!form || !form.queixa_principal.trim()) {
+      setError("A queixa principal da consulta é obrigatória.");
       return;
     }
 
-    if (!window.confirm("Tem certeza que deseja apagar esta evolução?")) return;
+    setSavingConsultationIds((current) => [...current, id]);
+    setError("");
+    setSuccess("");
 
+    const { data, error } = await supabase
+      .from("patient_consultations")
+      .update({
+        queixa_principal: form.queixa_principal.trim(),
+        hma: form.hma.trim() || null,
+        exame_fisico: form.exame_fisico.trim() || null,
+        hipotese_diagnostica: form.hipotese_diagnostica.trim() || null,
+        conduta_medica: form.conduta_medica.trim() || null,
+        observacoes: form.observacoes.trim() || null,
+        retorno_previsto_em: form.retorno_previsto_em || null,
+      })
+      .eq("id", id)
+      .eq("user_id", currentUserId)
+      .select("*")
+      .single();
+
+    if (error) setError(error.message);
+    else if (data) {
+      setConsultations((current) =>
+        current.map((item) => (item.id === id ? (data as ConsultationItem) : item))
+      );
+      cancelEditConsultation(id);
+      setSuccess("Consulta atualizada com sucesso.");
+    }
+
+    setSavingConsultationIds((current) => current.filter((item) => item !== id));
+  }
+
+  async function handleDeleteNote(id: number) {
+    if (!currentUserId || !window.confirm("Tem certeza que deseja apagar esta evolução?")) return;
     setSavingNoteIds((current) => [...current, id]);
     setError("");
     setSuccess("");
@@ -1614,9 +1953,8 @@ export default function PatientDetailPage() {
       .eq("id", id)
       .eq("user_id", currentUserId);
 
-    if (error) {
-      setError(error.message);
-    } else {
+    if (error) setError(error.message);
+    else {
       setNotes((current) => current.filter((item) => item.id !== id));
       cancelEditNote(id);
       setSuccess("Evolução apagada com sucesso.");
@@ -1626,13 +1964,7 @@ export default function PatientDetailPage() {
   }
 
   async function handleDeleteProblem(id: number) {
-    if (!currentUserId) {
-      setError("Usuário autenticado não identificado.");
-      return;
-    }
-
-    if (!window.confirm("Tem certeza que deseja apagar este problema?")) return;
-
+    if (!currentUserId || !window.confirm("Tem certeza que deseja apagar este problema?")) return;
     setSavingProblemIds((current) => [...current, id]);
     setError("");
     setSuccess("");
@@ -1643,9 +1975,8 @@ export default function PatientDetailPage() {
       .eq("id", id)
       .eq("user_id", currentUserId);
 
-    if (error) {
-      setError(error.message);
-    } else {
+    if (error) setError(error.message);
+    else {
       setProblems((current) => current.filter((item) => item.id !== id));
       cancelEditProblem(id);
       setSuccess("Problema apagado com sucesso.");
@@ -1655,13 +1986,7 @@ export default function PatientDetailPage() {
   }
 
   async function handleDeleteFollowup(id: number) {
-    if (!currentUserId) {
-      setError("Usuário autenticado não identificado.");
-      return;
-    }
-
-    if (!window.confirm("Tem certeza que deseja apagar este retorno?")) return;
-
+    if (!currentUserId || !window.confirm("Tem certeza que deseja apagar este retorno?")) return;
     setSavingFollowupIds((current) => [...current, id]);
     setError("");
     setSuccess("");
@@ -1672,9 +1997,8 @@ export default function PatientDetailPage() {
       .eq("id", id)
       .eq("user_id", currentUserId);
 
-    if (error) {
-      setError(error.message);
-    } else {
+    if (error) setError(error.message);
+    else {
       setFollowups((current) => current.filter((item) => item.id !== id));
       cancelEditFollowup(id);
       setSuccess("Retorno apagado com sucesso.");
@@ -1684,13 +2008,7 @@ export default function PatientDetailPage() {
   }
 
   async function handleDeleteExamRequest(id: number) {
-    if (!currentUserId) {
-      setError("Usuário autenticado não identificado.");
-      return;
-    }
-
-    if (!window.confirm("Tem certeza que deseja apagar este exame?")) return;
-
+    if (!currentUserId || !window.confirm("Tem certeza que deseja apagar este exame?")) return;
     setSavingExamRequestIds((current) => [...current, id]);
     setError("");
     setSuccess("");
@@ -1701,15 +2019,36 @@ export default function PatientDetailPage() {
       .eq("id", id)
       .eq("user_id", currentUserId);
 
-    if (error) {
-      setError(error.message);
-    } else {
+    if (error) setError(error.message);
+    else {
       setExamRequests((current) => current.filter((item) => item.id !== id));
       cancelEditExamRequest(id);
       setSuccess("Exame apagado com sucesso.");
     }
 
     setSavingExamRequestIds((current) => current.filter((item) => item !== id));
+  }
+
+  async function handleDeleteConsultation(id: number) {
+    if (!currentUserId || !window.confirm("Tem certeza que deseja apagar esta consulta?")) return;
+    setSavingConsultationIds((current) => [...current, id]);
+    setError("");
+    setSuccess("");
+
+    const { error } = await supabase
+      .from("patient_consultations")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", currentUserId);
+
+    if (error) setError(error.message);
+    else {
+      setConsultations((current) => current.filter((item) => item.id !== id));
+      cancelEditConsultation(id);
+      setSuccess("Consulta apagada com sucesso.");
+    }
+
+    setSavingConsultationIds((current) => current.filter((item) => item !== id));
   }
 
   function handlePrintProfessional() {
@@ -1721,11 +2060,11 @@ export default function PatientDetailPage() {
       notes,
       problems,
       followups,
-      examRequests
+      examRequests,
+      consultations
     );
 
     const printWindow = window.open("", "_blank", "width=1100,height=800");
-
     if (!printWindow) {
       alert("Não foi possível abrir a janela de impressão.");
       return;
@@ -1841,7 +2180,8 @@ export default function PatientDetailPage() {
                   notes,
                   problems,
                   followups,
-                  examRequests
+                  examRequests,
+                  consultations
                 )}
               />
 
@@ -1854,7 +2194,9 @@ export default function PatientDetailPage() {
               </button>
 
               <Link
-                href={`/prescricao?patient_id=${encodeURIComponent(patient.id)}&paciente_nome=${encodeURIComponent(patient.nome)}`}
+                href={`/prescricao?patient_id=${encodeURIComponent(
+                  patient.id
+                )}&paciente_nome=${encodeURIComponent(patient.nome)}`}
                 className="inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white"
               >
                 Nova prescrição
@@ -1889,7 +2231,20 @@ export default function PatientDetailPage() {
           ) : null}
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
+          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
+            <div className="flex items-center gap-2 text-violet-700">
+              <Stethoscope className="h-4 w-4" />
+              <p className="text-sm font-semibold">Consultas</p>
+            </div>
+            <p className="mt-3 text-3xl font-bold text-violet-900">
+              {consultations.length}
+            </p>
+            <p className="mt-1 text-sm text-violet-800">
+              Atendimentos registrados para esse paciente.
+            </p>
+          </div>
+
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center gap-2 text-emerald-700">
               <ClipboardList className="h-4 w-4" />
@@ -1932,14 +2287,337 @@ export default function PatientDetailPage() {
 
         <div className="mt-6 grid gap-4 xl:grid-cols-2">
           <InfoBlock title="Alergias">{patient.alergias}</InfoBlock>
-          <InfoBlock title="Queixa principal">{patient.queixa}</InfoBlock>
-          <InfoBlock title="HMA">{patient.hma}</InfoBlock>
+          <InfoBlock title="Queixa base">{patient.queixa}</InfoBlock>
+          <InfoBlock title="HMA base">{patient.hma}</InfoBlock>
           <InfoBlock title="HPP">{patient.hpp}</InfoBlock>
           <InfoBlock title="Medicamentos em uso">{patient.medicamentos_em_uso}</InfoBlock>
-          <InfoBlock title="Exame físico / estado mental">{patient.exame_fisico}</InfoBlock>
-          <InfoBlock title="Hipótese diagnóstica">{patient.hipotese_diagnostica}</InfoBlock>
-          <InfoBlock title="Conduta médica">{patient.conduta_medica}</InfoBlock>
-          <InfoBlock title="Observações">{patient.observacoes}</InfoBlock>
+          <InfoBlock title="Exame físico base">{patient.exame_fisico}</InfoBlock>
+          <InfoBlock title="Hipótese diagnóstica base">{patient.hipotese_diagnostica}</InfoBlock>
+          <InfoBlock title="Conduta médica base">{patient.conduta_medica}</InfoBlock>
+          <InfoBlock title="Observações gerais">{patient.observacoes}</InfoBlock>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-700">
+              Visão longitudinal
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900">
+              Linha do tempo clínica
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Consultas, problemas, retornos, exames, evoluções e prescrições em ordem cronológica.
+            </p>
+          </div>
+
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+            {timelineItems.length} {timelineItems.length === 1 ? "evento" : "eventos"}
+          </span>
+        </div>
+
+        {timelineItems.length === 0 ? (
+          <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+            Ainda não há eventos na linha do tempo.
+          </div>
+        ) : (
+          <div className="relative mt-6 space-y-4 before:absolute before:bottom-0 before:left-[15px] before:top-0 before:w-px before:bg-slate-200">
+            {timelineItems.map((item) => (
+              <TimelineCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-[28px] border border-violet-200 bg-white p-6 shadow-sm">
+        <div className="border-b border-violet-100 pb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-700">
+            Atendimento
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-slate-900">
+            Nova consulta
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Registre um novo atendimento sem sobrescrever o cadastro-base do paciente.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-4">
+          <textarea
+            rows={3}
+            value={consultationForm.queixa_principal}
+            onChange={(e) => updateConsultationForm("queixa_principal", e.target.value)}
+            placeholder="Queixa principal da consulta"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+          />
+
+          <textarea
+            rows={5}
+            value={consultationForm.hma}
+            onChange={(e) => updateConsultationForm("hma", e.target.value)}
+            placeholder="HMA da consulta"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+          />
+
+          <textarea
+            rows={5}
+            value={consultationForm.exame_fisico}
+            onChange={(e) => updateConsultationForm("exame_fisico", e.target.value)}
+            placeholder="Exame físico da consulta"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+          />
+
+          <textarea
+            rows={4}
+            value={consultationForm.hipotese_diagnostica}
+            onChange={(e) =>
+              updateConsultationForm("hipotese_diagnostica", e.target.value)
+            }
+            placeholder="Hipótese diagnóstica da consulta"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+          />
+
+          <textarea
+            rows={5}
+            value={consultationForm.conduta_medica}
+            onChange={(e) => updateConsultationForm("conduta_medica", e.target.value)}
+            placeholder="Conduta médica da consulta"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+          />
+
+          <textarea
+            rows={4}
+            value={consultationForm.observacoes}
+            onChange={(e) => updateConsultationForm("observacoes", e.target.value)}
+            placeholder="Observações da consulta"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+          />
+
+          <input
+            type="date"
+            value={consultationForm.retorno_previsto_em}
+            onChange={(e) => updateConsultationForm("retorno_previsto_em", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          />
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={handleCreateConsultation}
+            disabled={savingConsultation}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            <Plus className="h-4 w-4" />
+            {savingConsultation ? "Salvando..." : "Salvar consulta"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setConsultationForm(emptyConsultationForm)}
+            className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+          >
+            Limpar
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          {consultations.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+              Nenhuma consulta registrada.
+            </div>
+          ) : (
+            consultations.map((item) => {
+              const editing = editingConsultationId === item.id;
+              const savingItem = savingConsultationIds.includes(item.id);
+              const editForm = editConsultationForms[item.id] || {
+                queixa_principal: item.queixa_principal || "",
+                hma: item.hma || "",
+                exame_fisico: item.exame_fisico || "",
+                hipotese_diagnostica: item.hipotese_diagnostica || "",
+                conduta_medica: item.conduta_medica || "",
+                observacoes: item.observacoes || "",
+                retorno_previsto_em: item.retorno_previsto_em || "",
+              };
+
+              return (
+                <article
+                  key={item.id}
+                  className="rounded-2xl border border-violet-100 bg-violet-50/40 p-4"
+                >
+                  {!editing ? (
+                    <>
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                              Consulta
+                            </span>
+
+                            {item.retorno_previsto_em ? (
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                                Retorno: {formatDateOnly(item.retorno_previsto_em)}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <h3 className="mt-3 text-lg font-semibold text-slate-900">
+                            {item.queixa_principal || "Consulta clínica"}
+                          </h3>
+
+                          <p className="mt-1 text-sm text-slate-500">
+                            {formatDate(item.created_at)}
+                          </p>
+                        </div>
+
+                        <CopyButton text={buildConsultationText(item)} />
+                      </div>
+
+                      <div className="mt-4 grid gap-3">
+                        <InfoBlock title="HMA">{item.hma}</InfoBlock>
+                        <InfoBlock title="Exame físico">{item.exame_fisico}</InfoBlock>
+                        <InfoBlock title="Hipótese diagnóstica">
+                          {item.hipotese_diagnostica}
+                        </InfoBlock>
+                        <InfoBlock title="Conduta médica">{item.conduta_medica}</InfoBlock>
+                        <InfoBlock title="Observações">{item.observacoes}</InfoBlock>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() => startEditConsultation(item)}
+                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteConsultation(item.id)}
+                          disabled={savingItem}
+                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:opacity-60"
+                        >
+                          {savingItem ? "Apagando..." : "Apagar"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid gap-4">
+                        <textarea
+                          rows={3}
+                          value={editForm.queixa_principal}
+                          onChange={(e) =>
+                            updateEditConsultationForm(
+                              item.id,
+                              "queixa_principal",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+                        />
+
+                        <textarea
+                          rows={5}
+                          value={editForm.hma}
+                          onChange={(e) =>
+                            updateEditConsultationForm(item.id, "hma", e.target.value)
+                          }
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+                        />
+
+                        <textarea
+                          rows={5}
+                          value={editForm.exame_fisico}
+                          onChange={(e) =>
+                            updateEditConsultationForm(
+                              item.id,
+                              "exame_fisico",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+                        />
+
+                        <textarea
+                          rows={4}
+                          value={editForm.hipotese_diagnostica}
+                          onChange={(e) =>
+                            updateEditConsultationForm(
+                              item.id,
+                              "hipotese_diagnostica",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+                        />
+
+                        <textarea
+                          rows={5}
+                          value={editForm.conduta_medica}
+                          onChange={(e) =>
+                            updateEditConsultationForm(
+                              item.id,
+                              "conduta_medica",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+                        />
+
+                        <textarea
+                          rows={4}
+                          value={editForm.observacoes}
+                          onChange={(e) =>
+                            updateEditConsultationForm(
+                              item.id,
+                              "observacoes",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+                        />
+
+                        <input
+                          type="date"
+                          value={editForm.retorno_previsto_em}
+                          onChange={(e) =>
+                            updateEditConsultationForm(
+                              item.id,
+                              "retorno_previsto_em",
+                              e.target.value
+                            )
+                          }
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                        />
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateConsultation(item.id)}
+                          disabled={savingItem}
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:opacity-60"
+                        >
+                          {savingItem ? "Salvando..." : "Salvar edição"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => cancelEditConsultation(item.id)}
+                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </article>
+              );
+            })
+          )}
         </div>
       </section>
 
@@ -1951,81 +2629,60 @@ export default function PatientDetailPage() {
           <h2 className="mt-1 text-xl font-semibold text-slate-900">
             Problemas do paciente
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Diagnóstico, hipótese, comorbidade ou problema crônico em acompanhamento.
-          </p>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Título</label>
-            <input
-              value={problemForm.titulo}
-              onChange={(e) => updateProblemForm("titulo", e.target.value)}
-              placeholder="Ex.: Transtorno de ansiedade generalizada"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Tipo</label>
-            <select
-              value={problemForm.tipo}
-              onChange={(e) => updateProblemForm("tipo", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="diagnostico">Diagnóstico</option>
-              <option value="hipotese">Hipótese</option>
-              <option value="comorbidade">Comorbidade</option>
-              <option value="alergia">Alergia</option>
-              <option value="sindrome">Síndrome</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-            <select
-              value={problemForm.status}
-              onChange={(e) => updateProblemForm("status", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="ativo">Ativo</option>
-              <option value="cronico">Crônico</option>
-              <option value="resolvido">Resolvido</option>
-              <option value="descartado">Descartado</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Prioridade</label>
-            <input
-              type="number"
-              value={problemForm.prioridade}
-              onChange={(e) => updateProblemForm("prioridade", e.target.value)}
-              placeholder="Ex.: 1"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Observações</label>
-          <textarea
-            rows={4}
-            value={problemForm.observacoes}
-            onChange={(e) => updateProblemForm("observacoes", e.target.value)}
-            placeholder="Detalhes clínicos, critérios diagnósticos, diferencial..."
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+          <input
+            value={problemForm.titulo}
+            onChange={(e) => updateProblemForm("titulo", e.target.value)}
+            placeholder="Título do problema"
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          />
+          <select
+            value={problemForm.tipo}
+            onChange={(e) => updateProblemForm("tipo", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          >
+            <option value="diagnostico">Diagnóstico</option>
+            <option value="hipotese">Hipótese</option>
+            <option value="comorbidade">Comorbidade</option>
+            <option value="alergia">Alergia</option>
+            <option value="sindrome">Síndrome</option>
+            <option value="outro">Outro</option>
+          </select>
+          <select
+            value={problemForm.status}
+            onChange={(e) => updateProblemForm("status", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          >
+            <option value="ativo">Ativo</option>
+            <option value="cronico">Crônico</option>
+            <option value="resolvido">Resolvido</option>
+            <option value="descartado">Descartado</option>
+          </select>
+          <input
+            type="number"
+            value={problemForm.prioridade}
+            onChange={(e) => updateProblemForm("prioridade", e.target.value)}
+            placeholder="Prioridade"
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
           />
         </div>
+
+        <textarea
+          rows={4}
+          value={problemForm.observacoes}
+          onChange={(e) => updateProblemForm("observacoes", e.target.value)}
+          placeholder="Observações"
+          className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+        />
 
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleCreateProblem}
             disabled={savingProblem}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-semibold text-white disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
             {savingProblem ? "Salvando..." : "Salvar problema"}
@@ -2050,10 +2707,7 @@ export default function PatientDetailPage() {
               };
 
               return (
-                <article
-                  key={item.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
+                <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   {!editing ? (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -2065,20 +2719,8 @@ export default function PatientDetailPage() {
                             <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                               {item.status}
                             </span>
-                            {item.prioridade != null ? (
-                              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                                Prioridade {item.prioridade}
-                              </span>
-                            ) : null}
                           </div>
-
-                          <h3 className="mt-3 text-lg font-semibold text-slate-900">
-                            {item.titulo}
-                          </h3>
-
-                          <p className="mt-1 text-sm text-slate-500">
-                            Criado em {formatDate(item.created_at)}
-                          </p>
+                          <h3 className="mt-3 text-lg font-semibold text-slate-900">{item.titulo}</h3>
                         </div>
                       </div>
 
@@ -2098,12 +2740,11 @@ export default function PatientDetailPage() {
                         >
                           Editar
                         </button>
-
                         <button
                           type="button"
                           onClick={() => handleDeleteProblem(item.id)}
                           disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:opacity-60"
                         >
                           {savingItem ? "Apagando..." : "Apagar"}
                         </button>
@@ -2114,18 +2755,13 @@ export default function PatientDetailPage() {
                       <div className="grid gap-4 md:grid-cols-2">
                         <input
                           value={editForm.titulo}
-                          onChange={(e) =>
-                            updateEditProblemForm(item.id, "titulo", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditProblemForm(item.id, "titulo", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
-
                         <select
                           value={editForm.tipo}
-                          onChange={(e) =>
-                            updateEditProblemForm(item.id, "tipo", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditProblemForm(item.id, "tipo", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         >
                           <option value="diagnostico">Diagnóstico</option>
                           <option value="hipotese">Hipótese</option>
@@ -2134,37 +2770,29 @@ export default function PatientDetailPage() {
                           <option value="sindrome">Síndrome</option>
                           <option value="outro">Outro</option>
                         </select>
-
                         <select
                           value={editForm.status}
-                          onChange={(e) =>
-                            updateEditProblemForm(item.id, "status", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditProblemForm(item.id, "status", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         >
                           <option value="ativo">Ativo</option>
                           <option value="cronico">Crônico</option>
                           <option value="resolvido">Resolvido</option>
                           <option value="descartado">Descartado</option>
                         </select>
-
                         <input
                           type="number"
                           value={editForm.prioridade}
-                          onChange={(e) =>
-                            updateEditProblemForm(item.id, "prioridade", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditProblemForm(item.id, "prioridade", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
                       </div>
 
                       <textarea
                         rows={4}
                         value={editForm.observacoes}
-                        onChange={(e) =>
-                          updateEditProblemForm(item.id, "observacoes", e.target.value)
-                        }
-                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+                        onChange={(e) => updateEditProblemForm(item.id, "observacoes", e.target.value)}
+                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
                       />
 
                       <div className="mt-4 flex flex-wrap gap-3">
@@ -2172,11 +2800,10 @@ export default function PatientDetailPage() {
                           type="button"
                           onClick={() => handleUpdateProblem(item.id)}
                           disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:opacity-60"
                         >
                           {savingItem ? "Salvando..." : "Salvar edição"}
                         </button>
-
                         <button
                           type="button"
                           onClick={() => cancelEditProblem(item.id)}
@@ -2199,77 +2826,54 @@ export default function PatientDetailPage() {
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-700">
             Seguimento
           </p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">
-            Retornos
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Controle de retorno pendente, atrasado, realizado ou cancelado.
-          </p>
+          <h2 className="mt-1 text-xl font-semibold text-slate-900">Retornos</h2>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Motivo</label>
-            <input
-              value={followupForm.motivo}
-              onChange={(e) => updateFollowupForm("motivo", e.target.value)}
-              placeholder="Ex.: revisão de resposta ao tratamento"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-            <select
-              value={followupForm.status}
-              onChange={(e) => updateFollowupForm("status", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="pendente">Pendente</option>
-              <option value="realizado">Realizado</option>
-              <option value="atrasado">Atrasado</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Retorno previsto em</label>
-            <input
-              type="date"
-              value={followupForm.retorno_previsto_em}
-              onChange={(e) => updateFollowupForm("retorno_previsto_em", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Realizado em</label>
-            <input
-              type="date"
-              value={followupForm.realizado_em}
-              onChange={(e) => updateFollowupForm("realizado_em", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Observações</label>
-          <textarea
-            rows={4}
-            value={followupForm.observacoes}
-            onChange={(e) => updateFollowupForm("observacoes", e.target.value)}
-            placeholder="Orientações, meta clínica, janela de reavaliação..."
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+          <input
+            value={followupForm.motivo}
+            onChange={(e) => updateFollowupForm("motivo", e.target.value)}
+            placeholder="Motivo"
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          />
+          <select
+            value={followupForm.status}
+            onChange={(e) => updateFollowupForm("status", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          >
+            <option value="pendente">Pendente</option>
+            <option value="realizado">Realizado</option>
+            <option value="atrasado">Atrasado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+          <input
+            type="date"
+            value={followupForm.retorno_previsto_em}
+            onChange={(e) => updateFollowupForm("retorno_previsto_em", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          />
+          <input
+            type="date"
+            value={followupForm.realizado_em}
+            onChange={(e) => updateFollowupForm("realizado_em", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
           />
         </div>
+
+        <textarea
+          rows={4}
+          value={followupForm.observacoes}
+          onChange={(e) => updateFollowupForm("observacoes", e.target.value)}
+          placeholder="Observações"
+          className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+        />
 
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleCreateFollowup}
             disabled={savingFollowup}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-amber-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-amber-600 px-5 text-sm font-semibold text-white disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
             {savingFollowup ? "Salvando..." : "Salvar retorno"}
@@ -2294,10 +2898,7 @@ export default function PatientDetailPage() {
               };
 
               return (
-                <article
-                  key={item.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
+                <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   {!editing ? (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -2309,20 +2910,10 @@ export default function PatientDetailPage() {
                             <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                               Previsto: {formatDateOnly(item.retorno_previsto_em)}
                             </span>
-                            {item.realizado_em ? (
-                              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                                Realizado: {formatDateOnly(item.realizado_em)}
-                              </span>
-                            ) : null}
                           </div>
-
                           <h3 className="mt-3 text-lg font-semibold text-slate-900">
                             {item.motivo || "Retorno clínico"}
                           </h3>
-
-                          <p className="mt-1 text-sm text-slate-500">
-                            Criado em {formatDate(item.created_at)}
-                          </p>
                         </div>
                       </div>
 
@@ -2342,12 +2933,11 @@ export default function PatientDetailPage() {
                         >
                           Editar
                         </button>
-
                         <button
                           type="button"
                           onClick={() => handleDeleteFollowup(item.id)}
                           disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:opacity-60"
                         >
                           {savingItem ? "Apagando..." : "Apagar"}
                         </button>
@@ -2358,51 +2948,40 @@ export default function PatientDetailPage() {
                       <div className="grid gap-4 md:grid-cols-2">
                         <input
                           value={editForm.motivo}
-                          onChange={(e) =>
-                            updateEditFollowupForm(item.id, "motivo", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditFollowupForm(item.id, "motivo", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
-
                         <select
                           value={editForm.status}
-                          onChange={(e) =>
-                            updateEditFollowupForm(item.id, "status", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditFollowupForm(item.id, "status", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         >
                           <option value="pendente">Pendente</option>
                           <option value="realizado">Realizado</option>
                           <option value="atrasado">Atrasado</option>
                           <option value="cancelado">Cancelado</option>
                         </select>
-
                         <input
                           type="date"
                           value={editForm.retorno_previsto_em}
                           onChange={(e) =>
                             updateEditFollowupForm(item.id, "retorno_previsto_em", e.target.value)
                           }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
-
                         <input
                           type="date"
                           value={editForm.realizado_em}
-                          onChange={(e) =>
-                            updateEditFollowupForm(item.id, "realizado_em", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditFollowupForm(item.id, "realizado_em", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
                       </div>
 
                       <textarea
                         rows={4}
                         value={editForm.observacoes}
-                        onChange={(e) =>
-                          updateEditFollowupForm(item.id, "observacoes", e.target.value)
-                        }
-                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+                        onChange={(e) => updateEditFollowupForm(item.id, "observacoes", e.target.value)}
+                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
                       />
 
                       <div className="mt-4 flex flex-wrap gap-3">
@@ -2410,11 +2989,10 @@ export default function PatientDetailPage() {
                           type="button"
                           onClick={() => handleUpdateFollowup(item.id)}
                           disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:opacity-60"
                         >
                           {savingItem ? "Salvando..." : "Salvar edição"}
                         </button>
-
                         <button
                           type="button"
                           onClick={() => cancelEditFollowup(item.id)}
@@ -2440,106 +3018,76 @@ export default function PatientDetailPage() {
           <h2 className="mt-1 text-xl font-semibold text-slate-900">
             Exames do paciente
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Solicitação, resultado resumido e impacto clínico na hipótese diagnóstica.
-          </p>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Nome do exame</label>
-            <input
-              value={examRequestForm.nome_exame}
-              onChange={(e) => updateExamRequestForm("nome_exame", e.target.value)}
-              placeholder="Ex.: Hemograma completo"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-            <select
-              value={examRequestForm.status}
-              onChange={(e) => updateExamRequestForm("status", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="solicitado">Solicitado</option>
-              <option value="recebido">Recebido</option>
-              <option value="revisado">Revisado</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Solicitado em</label>
-            <input
-              type="date"
-              value={examRequestForm.requested_at}
-              onChange={(e) => updateExamRequestForm("requested_at", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Recebido em</label>
-            <input
-              type="date"
-              value={examRequestForm.received_at}
-              onChange={(e) => updateExamRequestForm("received_at", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Indicação</label>
-            <textarea
-              rows={3}
-              value={examRequestForm.indicacao}
-              onChange={(e) => updateExamRequestForm("indicacao", e.target.value)}
-              placeholder="Ex.: investigação de anemia / confirmação etiológica..."
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Revisado em</label>
-            <input
-              type="date"
-              value={examRequestForm.reviewed_at}
-              onChange={(e) => updateExamRequestForm("reviewed_at", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Resultado resumido</label>
-            <textarea
-              rows={4}
-              value={examRequestForm.resultado_resumido}
-              onChange={(e) => updateExamRequestForm("resultado_resumido", e.target.value)}
-              placeholder="Resumo objetivo do resultado..."
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Impacto clínico</label>
-            <textarea
-              rows={4}
-              value={examRequestForm.impacto_clinico}
-              onChange={(e) => updateExamRequestForm("impacto_clinico", e.target.value)}
-              placeholder="Como esse exame mudou ou reforçou a hipótese diagnóstica?"
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
-            />
-          </div>
+          <input
+            value={examRequestForm.nome_exame}
+            onChange={(e) => updateExamRequestForm("nome_exame", e.target.value)}
+            placeholder="Nome do exame"
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          />
+          <select
+            value={examRequestForm.status}
+            onChange={(e) => updateExamRequestForm("status", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          >
+            <option value="solicitado">Solicitado</option>
+            <option value="recebido">Recebido</option>
+            <option value="revisado">Revisado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+          <input
+            type="date"
+            value={examRequestForm.requested_at}
+            onChange={(e) => updateExamRequestForm("requested_at", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          />
+          <input
+            type="date"
+            value={examRequestForm.received_at}
+            onChange={(e) => updateExamRequestForm("received_at", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          />
         </div>
+
+        <textarea
+          rows={3}
+          value={examRequestForm.indicacao}
+          onChange={(e) => updateExamRequestForm("indicacao", e.target.value)}
+          placeholder="Indicação"
+          className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+        />
+
+        <input
+          type="date"
+          value={examRequestForm.reviewed_at}
+          onChange={(e) => updateExamRequestForm("reviewed_at", e.target.value)}
+          className="mt-4 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+        />
+
+        <textarea
+          rows={4}
+          value={examRequestForm.resultado_resumido}
+          onChange={(e) => updateExamRequestForm("resultado_resumido", e.target.value)}
+          placeholder="Resultado resumido"
+          className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+        />
+
+        <textarea
+          rows={4}
+          value={examRequestForm.impacto_clinico}
+          onChange={(e) => updateExamRequestForm("impacto_clinico", e.target.value)}
+          placeholder="Impacto clínico"
+          className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+        />
 
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleCreateExamRequest}
             disabled={savingExamRequest}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
             {savingExamRequest ? "Salvando..." : "Salvar exame"}
@@ -2567,10 +3115,7 @@ export default function PatientDetailPage() {
               };
 
               return (
-                <article
-                  key={item.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
+                <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   {!editing ? (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -2579,25 +3124,11 @@ export default function PatientDetailPage() {
                             <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                               {item.status}
                             </span>
-                            {item.requested_at ? (
-                              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                                Solicitado: {formatDateOnly(item.requested_at)}
-                              </span>
-                            ) : null}
-                            {item.reviewed_at ? (
-                              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                                Revisado: {formatDateOnly(item.reviewed_at)}
-                              </span>
-                            ) : null}
                           </div>
 
                           <h3 className="mt-3 text-lg font-semibold text-slate-900">
                             {item.nome_exame}
                           </h3>
-
-                          <p className="mt-1 text-sm text-slate-500">
-                            Criado em {formatDate(item.created_at)}
-                          </p>
                         </div>
                       </div>
 
@@ -2615,12 +3146,11 @@ export default function PatientDetailPage() {
                         >
                           Editar
                         </button>
-
                         <button
                           type="button"
                           onClick={() => handleDeleteExamRequest(item.id)}
                           disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:opacity-60"
                         >
                           {savingItem ? "Apagando..." : "Apagar"}
                         </button>
@@ -2631,60 +3161,44 @@ export default function PatientDetailPage() {
                       <div className="grid gap-4 md:grid-cols-2">
                         <input
                           value={editForm.nome_exame}
-                          onChange={(e) =>
-                            updateEditExamRequestForm(item.id, "nome_exame", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditExamRequestForm(item.id, "nome_exame", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
-
                         <select
                           value={editForm.status}
-                          onChange={(e) =>
-                            updateEditExamRequestForm(item.id, "status", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditExamRequestForm(item.id, "status", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         >
                           <option value="solicitado">Solicitado</option>
                           <option value="recebido">Recebido</option>
                           <option value="revisado">Revisado</option>
                           <option value="cancelado">Cancelado</option>
                         </select>
-
                         <input
                           type="date"
                           value={editForm.requested_at}
-                          onChange={(e) =>
-                            updateEditExamRequestForm(item.id, "requested_at", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditExamRequestForm(item.id, "requested_at", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
-
                         <input
                           type="date"
                           value={editForm.received_at}
-                          onChange={(e) =>
-                            updateEditExamRequestForm(item.id, "received_at", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditExamRequestForm(item.id, "received_at", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
-
                         <input
                           type="date"
                           value={editForm.reviewed_at}
-                          onChange={(e) =>
-                            updateEditExamRequestForm(item.id, "reviewed_at", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none md:col-span-2"
+                          onChange={(e) => updateEditExamRequestForm(item.id, "reviewed_at", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none md:col-span-2"
                         />
                       </div>
 
                       <textarea
                         rows={3}
                         value={editForm.indicacao}
-                        onChange={(e) =>
-                          updateEditExamRequestForm(item.id, "indicacao", e.target.value)
-                        }
-                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+                        onChange={(e) => updateEditExamRequestForm(item.id, "indicacao", e.target.value)}
+                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
                       />
 
                       <textarea
@@ -2693,7 +3207,7 @@ export default function PatientDetailPage() {
                         onChange={(e) =>
                           updateEditExamRequestForm(item.id, "resultado_resumido", e.target.value)
                         }
-                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
                       />
 
                       <textarea
@@ -2702,7 +3216,7 @@ export default function PatientDetailPage() {
                         onChange={(e) =>
                           updateEditExamRequestForm(item.id, "impacto_clinico", e.target.value)
                         }
-                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
                       />
 
                       <div className="mt-4 flex flex-wrap gap-3">
@@ -2710,11 +3224,10 @@ export default function PatientDetailPage() {
                           type="button"
                           onClick={() => handleUpdateExamRequest(item.id)}
                           disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:opacity-60"
                         >
                           {savingItem ? "Salvando..." : "Salvar edição"}
                         </button>
-
                         <button
                           type="button"
                           onClick={() => cancelEditExamRequest(item.id)}
@@ -2740,55 +3253,43 @@ export default function PatientDetailPage() {
           <h2 className="mt-1 text-xl font-semibold text-slate-900">
             Nova evolução / anotação
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Registre evolução, conduta, retorno, hipótese diagnóstica ou observação clínica.
-          </p>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Tipo</label>
-            <select
-              value={noteForm.tipo}
-              onChange={(e) => updateNoteForm("tipo", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="evolucao">Evolução</option>
-              <option value="conduta">Conduta</option>
-              <option value="retorno">Retorno</option>
-              <option value="exame">Exame</option>
-              <option value="observacao">Observação</option>
-            </select>
-          </div>
+          <select
+            value={noteForm.tipo}
+            onChange={(e) => updateNoteForm("tipo", e.target.value)}
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          >
+            <option value="evolucao">Evolução</option>
+            <option value="conduta">Conduta</option>
+            <option value="retorno">Retorno</option>
+            <option value="exame">Exame</option>
+            <option value="observacao">Observação</option>
+          </select>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Título</label>
-            <input
-              value={noteForm.titulo}
-              onChange={(e) => updateNoteForm("titulo", e.target.value)}
-              placeholder="Ex.: Evolução de hoje, retorno em 30 dias..."
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Conteúdo</label>
-          <textarea
-            rows={8}
-            value={noteForm.conteudo}
-            onChange={(e) => updateNoteForm("conteudo", e.target.value)}
-            placeholder="Digite a evolução clínica..."
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+          <input
+            value={noteForm.titulo}
+            onChange={(e) => updateNoteForm("titulo", e.target.value)}
+            placeholder="Título"
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
           />
         </div>
+
+        <textarea
+          rows={8}
+          value={noteForm.conteudo}
+          onChange={(e) => updateNoteForm("conteudo", e.target.value)}
+          placeholder="Digite a evolução clínica..."
+          className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+        />
 
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleCreateNote}
             disabled={savingNote}
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-emerald-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-emerald-600 px-5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {savingNote ? "Salvando..." : "Salvar evolução"}
           </button>
@@ -2812,9 +3313,6 @@ export default function PatientDetailPage() {
             <h2 className="mt-1 text-xl font-semibold text-slate-900">
               Evoluções / anotações
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Evoluções vinculadas diretamente ao prontuário do paciente.
-            </p>
           </div>
 
           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
@@ -2838,10 +3336,7 @@ export default function PatientDetailPage() {
               };
 
               return (
-                <article
-                  key={item.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
+                <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   {!editing ? (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -2883,27 +3378,19 @@ export default function PatientDetailPage() {
                           type="button"
                           onClick={() => handleDeleteNote(item.id)}
                           disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:opacity-60"
                         >
                           {savingItem ? "Apagando..." : "Apagar"}
                         </button>
                       </div>
                     </>
                   ) : (
-                    <div>
-                      <div className="mb-4">
-                        <p className="text-sm font-semibold text-slate-900">
-                          Editando evolução
-                        </p>
-                      </div>
-
+                    <>
                       <div className="grid gap-4 md:grid-cols-2">
                         <select
                           value={editForm.tipo}
-                          onChange={(e) =>
-                            updateEditNoteForm(item.id, "tipo", e.target.value)
-                          }
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditNoteForm(item.id, "tipo", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         >
                           <option value="evolucao">Evolução</option>
                           <option value="conduta">Conduta</option>
@@ -2914,21 +3401,16 @@ export default function PatientDetailPage() {
 
                         <input
                           value={editForm.titulo}
-                          onChange={(e) =>
-                            updateEditNoteForm(item.id, "titulo", e.target.value)
-                          }
-                          placeholder="Título"
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                          onChange={(e) => updateEditNoteForm(item.id, "titulo", e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                         />
                       </div>
 
                       <textarea
                         rows={8}
                         value={editForm.conteudo}
-                        onChange={(e) =>
-                          updateEditNoteForm(item.id, "conteudo", e.target.value)
-                        }
-                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+                        onChange={(e) => updateEditNoteForm(item.id, "conteudo", e.target.value)}
+                        className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
                       />
 
                       <div className="mt-4 flex flex-wrap gap-3">
@@ -2936,7 +3418,7 @@ export default function PatientDetailPage() {
                           type="button"
                           onClick={() => handleUpdateNote(item.id)}
                           disabled={savingItem}
-                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:opacity-60"
                         >
                           {savingItem ? "Salvando..." : "Salvar edição"}
                         </button>
@@ -2949,7 +3431,7 @@ export default function PatientDetailPage() {
                           Cancelar
                         </button>
                       </div>
-                    </div>
+                    </>
                   )}
                 </article>
               );
@@ -2967,9 +3449,6 @@ export default function PatientDetailPage() {
             <h2 className="mt-1 text-xl font-semibold text-slate-900">
               Prescrições vinculadas
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Busca por paciente vinculado ou pelo nome salvo na prescrição.
-            </p>
           </div>
 
           <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
@@ -2984,10 +3463,7 @@ export default function PatientDetailPage() {
         ) : (
           <div className="mt-5 space-y-4">
             {prescriptions.map((item) => (
-              <article
-                key={item.id}
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-              >
+              <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
