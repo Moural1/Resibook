@@ -25,6 +25,7 @@ type SearchResult = {
   type:
     | "paciente"
     | "prescricao"
+    | "modelo_prescricao"
     | "exame"
     | "topico"
     | "cid"
@@ -44,6 +45,14 @@ type PrescriptionRow = {
   paciente_nome: string | null;
   medicamento: string | null;
   posologia?: string | null;
+};
+
+type PrescriptionTemplateRow = {
+  id: number;
+  categoria: string | null;
+  titulo: string | null;
+  conteudo: string | null;
+  observacoes?: string | null;
 };
 
 type ExamRow = {
@@ -79,6 +88,14 @@ type FlashcardRow = {
   verso?: string | null;
 };
 
+type SessionInfo = {
+  userId: string | null;
+  email: string;
+  isGuest: boolean;
+};
+
+const GUEST_EMAIL = "convidado@resibook.com";
+
 function getSupabase(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
@@ -88,6 +105,30 @@ function getSupabase(): SupabaseClient | null {
   if (!url || !key) return null;
 
   return createClient(url, key);
+}
+
+async function getSessionInfo(
+  supabase: SupabaseClient | null
+): Promise<SessionInfo> {
+  if (!supabase) {
+    return {
+      userId: null,
+      email: "",
+      isGuest: false,
+    };
+  }
+
+  const { data } = await supabase.auth.getSession();
+
+  const userId = data.session?.user?.id || null;
+  const email = data.session?.user?.email?.trim().toLowerCase() || "";
+  const isGuest = email === GUEST_EMAIL;
+
+  return {
+    userId,
+    email,
+    isGuest,
+  };
 }
 
 function normalize(value?: string | null) {
@@ -101,6 +142,7 @@ function normalize(value?: string | null) {
 function badgeLabel(type: SearchResult["type"]) {
   if (type === "paciente") return "Paciente";
   if (type === "prescricao") return "Prescrição";
+  if (type === "modelo_prescricao") return "Modelo";
   if (type === "exame") return "Exame";
   if (type === "topico") return "Tópico";
   if (type === "flashcard") return "Flashcard";
@@ -114,6 +156,10 @@ function badgeClass(type: SearchResult["type"]) {
 
   if (type === "prescricao") {
     return "border-blue-200 bg-blue-50 text-blue-700";
+  }
+
+  if (type === "modelo_prescricao") {
+    return "border-indigo-200 bg-indigo-50 text-indigo-700";
   }
 
   if (type === "exame") {
@@ -136,6 +182,9 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
 
   if (type === "paciente") return <Users className={className} />;
   if (type === "prescricao") return <ClipboardList className={className} />;
+  if (type === "modelo_prescricao") {
+    return <ClipboardList className={className} />;
+  }
   if (type === "exame") return <FlaskConical className={className} />;
   if (type === "topico") return <BookOpen className={className} />;
   if (type === "flashcard") return <Brain className={className} />;
@@ -143,7 +192,7 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
   return <Tags className={className} />;
 }
 
-const quickLinks = [
+const fullQuickLinks = [
   {
     href: "/pacientes",
     label: "Pacientes",
@@ -181,6 +230,29 @@ const quickLinks = [
   },
 ];
 
+const guestQuickLinks = [
+  {
+    href: "/prescricao",
+    label: "Prescrição",
+    icon: ClipboardList,
+  },
+  {
+    href: "/exames-evolucao",
+    label: "Exames",
+    icon: FlaskConical,
+  },
+  {
+    href: "/topicos",
+    label: "Tópicos",
+    icon: Stethoscope,
+  },
+  {
+    href: "/cids",
+    label: "CIDs",
+    icon: Tags,
+  },
+];
+
 export function Topbar() {
   const router = useRouter();
 
@@ -188,9 +260,46 @@ export function Topbar() {
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const firstResult = useMemo(() => results[0], [results]);
+
+  const quickLinks = isGuest ? guestQuickLinks : fullQuickLinks;
+
+  useEffect(() => {
+    const supabase = getSupabase();
+
+    let mounted = true;
+
+    async function loadSession() {
+      const info = await getSessionInfo(supabase);
+
+      if (!mounted) return;
+
+      setIsGuest(info.isGuest);
+    }
+
+    loadSession();
+
+    if (!supabase) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const email = session?.user?.email?.trim().toLowerCase() || "";
+      setIsGuest(email === GUEST_EMAIL);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -226,45 +335,82 @@ export function Topbar() {
 
       setLoading(true);
 
+      const sessionInfo = await getSessionInfo(supabase);
+      const userId = sessionInfo.userId;
+      const guest = sessionInfo.isGuest;
+
+      setIsGuest(guest);
+
+      if (!userId) {
+        setResults([]);
+        setLoading(false);
+        return;
+      }
+
+      const normalizedQuery = normalize(q);
+
+      const patientsPromise = guest
+        ? Promise.resolve({ data: [], error: null })
+        : supabase
+            .from("patients")
+            .select("id, nome, especialidade, queixa, diagnostico_principal")
+            .eq("user_id", userId)
+            .limit(40);
+
+      const prescriptionsPromise = guest
+        ? Promise.resolve({ data: [], error: null })
+        : supabase
+            .from("prescriptions")
+            .select("id, paciente_nome, medicamento, posologia")
+            .eq("user_id", userId)
+            .limit(40);
+
+      const prescriptionTemplatesPromise = supabase
+        .from("prescription_templates")
+        .select("id, categoria, titulo, conteudo, observacoes")
+        .limit(60);
+
+      const examsPromise = supabase
+        .from("exam_templates")
+        .select("id, titulo, categoria, conteudo")
+        .limit(40);
+
+      const topicosPromise = supabase
+        .from("topicos_medicos")
+        .select(
+          "id, area, titulo, resumo, diagnostico, exames, tratamento, pegadinhas"
+        )
+        .limit(60);
+
+      const cidsPromise = supabase
+        .from("cids")
+        .select("id, codigo, descricao, grupo")
+        .limit(60);
+
+      const flashcardsPromise = guest
+        ? Promise.resolve({ data: [], error: null })
+        : supabase
+            .from("flashcards")
+            .select("id, area, materia, frente, verso")
+            .limit(60);
+
       const [
         patientsRes,
         prescriptionsRes,
+        prescriptionTemplatesRes,
         examsRes,
         topicosRes,
         cidsRes,
         flashcardsRes,
       ] = await Promise.all([
-        supabase
-          .from("patients")
-          .select("id, nome, especialidade, queixa, diagnostico_principal")
-          .limit(40),
-
-        supabase
-          .from("prescriptions")
-          .select("id, paciente_nome, medicamento, posologia")
-          .limit(40),
-
-        supabase
-          .from("exam_templates")
-          .select("id, titulo, categoria, conteudo")
-          .limit(40),
-
-        supabase
-          .from("topicos_medicos")
-          .select(
-            "id, area, titulo, resumo, diagnostico, exames, tratamento, pegadinhas"
-          )
-          .limit(60),
-
-        supabase.from("cids").select("id, codigo, descricao, grupo").limit(60),
-
-        supabase
-          .from("flashcards")
-          .select("id, area, materia, frente, verso")
-          .limit(60),
+        patientsPromise,
+        prescriptionsPromise,
+        prescriptionTemplatesPromise,
+        examsPromise,
+        topicosPromise,
+        cidsPromise,
+        flashcardsPromise,
       ]);
-
-      const normalizedQuery = normalize(q);
 
       const patientResults: SearchResult[] = ((patientsRes.data ||
         []) as PatientRow[])
@@ -303,6 +449,23 @@ export function Topbar() {
           href: `/prescricao?q=${encodeURIComponent(item.medicamento || q)}`,
           type: "prescricao",
         }));
+
+      const prescriptionTemplateResults: SearchResult[] =
+        ((prescriptionTemplatesRes.data || []) as PrescriptionTemplateRow[])
+          .filter((item) =>
+            normalize(
+              `${item.titulo || ""} ${item.categoria || ""} ${
+                item.conteudo || ""
+              } ${item.observacoes || ""}`
+            ).includes(normalizedQuery)
+          )
+          .map((item) => ({
+            id: `modelo-prescricao-${item.id}`,
+            title: item.titulo || "Modelo de prescrição",
+            subtitle: item.categoria || "Prescrição pronta",
+            href: `/prescricao?q=${encodeURIComponent(item.titulo || q)}`,
+            type: "modelo_prescricao",
+          }));
 
       const examResults: SearchResult[] = ((examsRes.data || []) as ExamRow[])
         .filter((item) =>
@@ -375,6 +538,7 @@ export function Topbar() {
       const merged = [
         ...patientResults,
         ...topicoResults,
+        ...prescriptionTemplateResults,
         ...prescriptionResults,
         ...examResults,
         ...cidResults,
@@ -438,7 +602,11 @@ export function Topbar() {
                   handleSubmitSearch();
                 }
               }}
-              placeholder="Buscar pacientes, tópicos, prescrições, exames, CIDs, flashcards..."
+              placeholder={
+                isGuest
+                  ? "Buscar prescrições prontas, tópicos, exames e CIDs..."
+                  : "Buscar pacientes, tópicos, prescrições, exames, CIDs, flashcards..."
+              }
               className="h-full w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
             />
 
