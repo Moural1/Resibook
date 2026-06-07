@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
+import { Edit3, Plus, X } from "lucide-react";
 
 type TopicoMedico = {
   id: number;
@@ -189,9 +190,10 @@ export default function TopicosPage() {
   const [topicos, setTopicos] = useState<TopicoMedico[]>([]);
   const [query, setQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
+
   const [form, setForm] = useState<TopicoForm>(emptyForm);
-  const [editForms, setEditForms] = useState<Record<number, TopicoForm>>({});
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingItem, setEditingItem] = useState<TopicoMedico | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -296,27 +298,41 @@ export default function TopicosPage() {
     }));
   }
 
-  function updateEditForm<K extends keyof TopicoForm>(
-    id: number,
-    key: K,
-    value: TopicoForm[K]
-  ) {
-    setEditForms((current) => ({
-      ...current,
-      [id]: {
-        ...(current[id] || emptyForm),
-        [key]: value,
-      },
-    }));
+  function openCreateDrawer() {
+    if (!isAdmin) {
+      setError("Apenas o administrador pode criar tópicos.");
+      return;
+    }
+
+    setEditingItem(null);
+    setForm(emptyForm);
+    setDrawerOpen(true);
+    setError("");
+    setSuccess("");
   }
 
-  function resetForm() {
+  function openEditDrawer(item: TopicoMedico) {
+    if (!isAdmin) {
+      setError("Apenas o administrador pode editar tópicos.");
+      return;
+    }
+
+    setEditingItem(item);
+    setForm(toForm(item));
+    setDrawerOpen(true);
+    setError("");
+    setSuccess("");
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    setEditingItem(null);
     setForm(emptyForm);
   }
 
-  async function handleCreate() {
+  async function handleSave() {
     if (!isAdmin) {
-      setError("Apenas o administrador pode criar tópicos.");
+      setError("Apenas o administrador pode criar ou editar tópicos.");
       return;
     }
 
@@ -329,101 +345,55 @@ export default function TopicosPage() {
     setError("");
     setSuccess("");
 
-    const { data, error } = await supabase
-      .from("topicos_medicos")
-      .insert(buildPayload(form))
-      .select(
-        "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em"
-      )
-      .single();
+    const payload = buildPayload(form);
 
-    if (error) {
-      setError(error.message);
-    } else if (data) {
-      setTopicos((current) =>
-        [...current, data as TopicoMedico].sort((a, b) => {
+    const result = editingItem
+      ? await supabase
+          .from("topicos_medicos")
+          .update(payload)
+          .eq("id", editingItem.id)
+          .select(
+            "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em"
+          )
+          .single()
+      : await supabase
+          .from("topicos_medicos")
+          .insert(payload)
+          .select(
+            "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em"
+          )
+          .single();
+
+    if (result.error) {
+      setError(result.error.message);
+      setSaving(false);
+      return;
+    }
+
+    if (result.data) {
+      const saved = result.data as TopicoMedico;
+
+      setTopicos((current) => {
+        const next = editingItem
+          ? current.map((item) => (item.id === saved.id ? saved : item))
+          : [...current, saved];
+
+        return next.sort((a, b) => {
           const areaCompare = a.area.localeCompare(b.area, "pt-BR");
           if (areaCompare !== 0) return areaCompare;
           return a.titulo.localeCompare(b.titulo, "pt-BR");
-        })
+        });
+      });
+
+      setSuccess(
+        editingItem
+          ? "Tópico atualizado com sucesso."
+          : "Tópico criado com sucesso."
       );
-      setSuccess("Tópico criado com sucesso.");
-      resetForm();
+      closeDrawer();
     }
 
     setSaving(false);
-  }
-
-  function startEdit(item: TopicoMedico) {
-    if (!isAdmin) {
-      setError("Apenas o administrador pode editar tópicos.");
-      return;
-    }
-
-    setEditingId(item.id);
-    setEditForms((current) => ({
-      ...current,
-      [item.id]: toForm(item),
-    }));
-  }
-
-  function cancelEdit(id: number) {
-    setEditingId(null);
-    setEditForms((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
-  }
-
-  async function handleUpdate(id: number) {
-    if (!isAdmin) {
-      setError("Apenas o administrador pode editar tópicos.");
-      return;
-    }
-
-    const editForm = editForms[id];
-
-    if (!editForm) {
-      setError("Formulário de edição não encontrado.");
-      return;
-    }
-
-    if (!editForm.area.trim() || !editForm.titulo.trim()) {
-      setError("Área e título são obrigatórios.");
-      return;
-    }
-
-    setError("");
-    setSuccess("");
-    setSavingIds((current) => [...current, id]);
-
-    const { data, error } = await supabase
-      .from("topicos_medicos")
-      .update(buildPayload(editForm))
-      .eq("id", id)
-      .select(
-        "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em"
-      )
-      .single();
-
-    if (error) {
-      setError(error.message);
-    } else if (data) {
-      setTopicos((current) =>
-        current
-          .map((item) => (item.id === id ? (data as TopicoMedico) : item))
-          .sort((a, b) => {
-            const areaCompare = a.area.localeCompare(b.area, "pt-BR");
-            if (areaCompare !== 0) return areaCompare;
-            return a.titulo.localeCompare(b.titulo, "pt-BR");
-          })
-      );
-      setSuccess("Tópico atualizado com sucesso.");
-      cancelEdit(id);
-    }
-
-    setSavingIds((current) => current.filter((item) => item !== id));
   }
 
   async function handleDelete(id: number, title: string) {
@@ -452,186 +422,67 @@ export default function TopicosPage() {
     } else {
       setTopicos((current) => current.filter((item) => item.id !== id));
       setSuccess("Tópico apagado com sucesso.");
-      cancelEdit(id);
+      if (editingItem?.id === id) {
+        closeDrawer();
+      }
     }
 
     setSavingIds((current) => current.filter((item) => item !== id));
-  }
-
-  function renderEditForm(item: TopicoMedico) {
-    const editForm = editForms[item.id] || toForm(item);
-    const savingItem = savingIds.includes(item.id);
-
-    return (
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="mb-5 border-b border-slate-200 pb-4">
-          <p className="text-sm font-semibold text-slate-900">
-            Editando tópico
-          </p>
-          <p className="mt-1 text-sm text-slate-500">
-            Corrija o conteúdo e salve. Isso altera diretamente a tabela
-            topicos_medicos.
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <input
-            value={editForm.area}
-            onChange={(event) =>
-              updateEditForm(item.id, "area", event.target.value)
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-          />
-
-          <input
-            value={editForm.titulo}
-            onChange={(event) =>
-              updateEditForm(item.id, "titulo", event.target.value)
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-          />
-
-          <input
-            type="number"
-            min="1"
-            max="5"
-            value={editForm.prioridade}
-            onChange={(event) =>
-              updateEditForm(item.id, "prioridade", event.target.value)
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-          />
-
-          <input
-            value={editForm.fonte}
-            onChange={(event) =>
-              updateEditForm(item.id, "fonte", event.target.value)
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-          />
-        </div>
-
-        <div className="mt-4 grid gap-4">
-          <TextAreaField
-            label="Resumo"
-            value={editForm.resumo}
-            onChange={(value) => updateEditForm(item.id, "resumo", value)}
-          />
-
-          <TextAreaField
-            label="Diagnóstico"
-            value={editForm.diagnostico}
-            onChange={(value) => updateEditForm(item.id, "diagnostico", value)}
-          />
-
-          <TextAreaField
-            label="Critérios / classificação"
-            value={editForm.criterios}
-            onChange={(value) => updateEditForm(item.id, "criterios", value)}
-          />
-
-          <TextAreaField
-            label="Exames"
-            value={editForm.exames}
-            onChange={(value) => updateEditForm(item.id, "exames", value)}
-          />
-
-          <TextAreaField
-            label="Tratamento / conduta"
-            value={editForm.tratamento}
-            onChange={(value) => updateEditForm(item.id, "tratamento", value)}
-          />
-
-          <TextAreaField
-            label="Conduta na urgência"
-            value={editForm.conduta_urgencia}
-            onChange={(value) =>
-              updateEditForm(item.id, "conduta_urgencia", value)
-            }
-          />
-
-          <TextAreaField
-            label="Internação / referência"
-            value={editForm.internacao_referencia}
-            onChange={(value) =>
-              updateEditForm(item.id, "internacao_referencia", value)
-            }
-          />
-
-          <TextAreaField
-            label="Pegadinhas de prova"
-            value={editForm.pegadinhas}
-            onChange={(value) => updateEditForm(item.id, "pegadinhas", value)}
-          />
-
-          <TextAreaField
-            label="Tags"
-            value={editForm.tags}
-            onChange={(value) => updateEditForm(item.id, "tags", value)}
-            rows={2}
-          />
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
-          <button
-            type="button"
-            onClick={() => handleUpdate(item.id)}
-            disabled={savingItem}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {savingItem ? "Salvando..." : "Salvar edição"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => cancelEdit(item.id)}
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    );
   }
 
   return (
     <div className="space-y-6">
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
-              Biblioteca clínica
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
+                  Biblioteca clínica
+                </span>
 
-            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              Tópicos médicos
-            </span>
+                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                  Tópicos médicos
+                </span>
 
-            <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
-                isAdmin
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-amber-200 bg-amber-50 text-amber-700"
-              }`}
-            >
-              {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
-            </span>
-          </div>
+                <span
+                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
+                    isAdmin
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
+                </span>
+              </div>
 
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-            Tópicos clínicos
-          </h1>
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
+                Tópicos clínicos
+              </h1>
 
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-            Biblioteca médica estruturada por área, com diagnóstico, critérios,
-            exames, tratamento, urgência, internação/referência e pegadinhas de
-            prova.
-          </p>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
+                Biblioteca médica estruturada por área, com diagnóstico,
+                critérios, exames, tratamento, urgência, internação/referência
+                e pegadinhas de prova.
+              </p>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
-            <span>Total carregado do banco: {topicos.length}</span>
-            <span>•</span>
-            <span>Exibindo: {filtered.length}</span>
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
+                <span>Total carregado do banco: {topicos.length}</span>
+                <span>•</span>
+                <span>Exibindo: {filtered.length}</span>
+              </div>
+            </div>
+
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={openCreateDrawer}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+              >
+                <Plus className="h-4 w-4" />
+                Novo tópico
+              </button>
+            ) : null}
           </div>
 
           {!isAdmin ? (
@@ -691,127 +542,6 @@ export default function TopicosPage() {
         </div>
       </section>
 
-      {isAdmin ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="border-b border-slate-200 pb-5">
-            <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-              Novo tópico médico
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Crie tópicos novos ou complemente a biblioteca já importada.
-            </p>
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <input
-              value={form.area}
-              onChange={(event) => updateForm("area", event.target.value)}
-              placeholder="Área"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-
-            <input
-              value={form.titulo}
-              onChange={(event) => updateForm("titulo", event.target.value)}
-              placeholder="Título"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-
-            <input
-              type="number"
-              min="1"
-              max="5"
-              value={form.prioridade}
-              onChange={(event) => updateForm("prioridade", event.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-
-            <input
-              value={form.fonte}
-              onChange={(event) => updateForm("fonte", event.target.value)}
-              placeholder="Fonte"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
-
-          <div className="mt-4 grid gap-4">
-            <TextAreaField
-              label="Resumo"
-              value={form.resumo}
-              onChange={(value) => updateForm("resumo", value)}
-            />
-
-            <TextAreaField
-              label="Diagnóstico"
-              value={form.diagnostico}
-              onChange={(value) => updateForm("diagnostico", value)}
-            />
-
-            <TextAreaField
-              label="Critérios / classificação"
-              value={form.criterios}
-              onChange={(value) => updateForm("criterios", value)}
-            />
-
-            <TextAreaField
-              label="Exames"
-              value={form.exames}
-              onChange={(value) => updateForm("exames", value)}
-            />
-
-            <TextAreaField
-              label="Tratamento / conduta"
-              value={form.tratamento}
-              onChange={(value) => updateForm("tratamento", value)}
-            />
-
-            <TextAreaField
-              label="Conduta na urgência"
-              value={form.conduta_urgencia}
-              onChange={(value) => updateForm("conduta_urgencia", value)}
-            />
-
-            <TextAreaField
-              label="Internação / referência"
-              value={form.internacao_referencia}
-              onChange={(value) => updateForm("internacao_referencia", value)}
-            />
-
-            <TextAreaField
-              label="Pegadinhas de prova"
-              value={form.pegadinhas}
-              onChange={(value) => updateForm("pegadinhas", value)}
-            />
-
-            <TextAreaField
-              label="Tags"
-              value={form.tags}
-              onChange={(value) => updateForm("tags", value)}
-              rows={2}
-            />
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={saving}
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? "Salvando..." : "Criar tópico"}
-            </button>
-
-            <button
-              type="button"
-              onClick={resetForm}
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-            >
-              Limpar formulário
-            </button>
-          </div>
-        </section>
-      ) : null}
-
       {loading || checkingUser ? (
         <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
           Carregando tópicos médicos...
@@ -847,7 +577,6 @@ export default function TopicosPage() {
             <div className="mt-5 grid gap-4">
               {items.map((item) => {
                 const savingItem = savingIds.includes(item.id);
-                const editing = editingId === item.id;
 
                 return (
                   <article
@@ -892,10 +621,11 @@ export default function TopicosPage() {
                           <>
                             <button
                               type="button"
-                              onClick={() => startEdit(item)}
+                              onClick={() => openEditDrawer(item)}
                               disabled={savingItem}
-                              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
+                              <Edit3 className="h-4 w-4" />
                               Editar
                             </button>
 
@@ -954,8 +684,6 @@ export default function TopicosPage() {
                         </p>
                       </div>
                     ) : null}
-
-                    {editing && isAdmin ? renderEditForm(item) : null}
                   </article>
                 );
               })}
@@ -963,6 +691,154 @@ export default function TopicosPage() {
           </section>
         ))
       )}
+
+      {drawerOpen && isAdmin ? (
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="absolute inset-0"
+            aria-label="Fechar cadastro"
+          />
+
+          <div className="relative h-full w-full max-w-3xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-900">
+                  {editingItem ? "Editar tópico" : "Novo tópico"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Cadastro em painel separado para não poluir a listagem.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  value={form.area}
+                  onChange={(event) => updateForm("area", event.target.value)}
+                  placeholder="Área"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                />
+
+                <input
+                  value={form.titulo}
+                  onChange={(event) => updateForm("titulo", event.target.value)}
+                  placeholder="Título"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                />
+
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={form.prioridade}
+                  onChange={(event) =>
+                    updateForm("prioridade", event.target.value)
+                  }
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                />
+
+                <input
+                  value={form.fonte}
+                  onChange={(event) => updateForm("fonte", event.target.value)}
+                  placeholder="Fonte"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                />
+              </div>
+
+              <TextAreaField
+                label="Resumo"
+                value={form.resumo}
+                onChange={(value) => updateForm("resumo", value)}
+              />
+
+              <TextAreaField
+                label="Diagnóstico"
+                value={form.diagnostico}
+                onChange={(value) => updateForm("diagnostico", value)}
+              />
+
+              <TextAreaField
+                label="Critérios / classificação"
+                value={form.criterios}
+                onChange={(value) => updateForm("criterios", value)}
+              />
+
+              <TextAreaField
+                label="Exames"
+                value={form.exames}
+                onChange={(value) => updateForm("exames", value)}
+              />
+
+              <TextAreaField
+                label="Tratamento / conduta"
+                value={form.tratamento}
+                onChange={(value) => updateForm("tratamento", value)}
+              />
+
+              <TextAreaField
+                label="Conduta na urgência"
+                value={form.conduta_urgencia}
+                onChange={(value) => updateForm("conduta_urgencia", value)}
+              />
+
+              <TextAreaField
+                label="Internação / referência"
+                value={form.internacao_referencia}
+                onChange={(value) =>
+                  updateForm("internacao_referencia", value)
+                }
+              />
+
+              <TextAreaField
+                label="Pegadinhas de prova"
+                value={form.pegadinhas}
+                onChange={(value) => updateForm("pegadinhas", value)}
+              />
+
+              <TextAreaField
+                label="Tags"
+                value={form.tags}
+                onChange={(value) => updateForm("tags", value)}
+                rows={2}
+              />
+
+              <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving
+                    ? "Salvando..."
+                    : editingItem
+                      ? "Salvar edição"
+                      : "Criar tópico"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

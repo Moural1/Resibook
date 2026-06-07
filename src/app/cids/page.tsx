@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
-import { Lock } from "lucide-react";
+import { Edit3, Lock, Plus, X } from "lucide-react";
 
 type CidItem = {
   id: number;
@@ -92,12 +92,14 @@ export default function CidsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [query, setQuery] = useState("");
   const [grupo, setGrupo] = useState("");
   const [area, setArea] = useState("");
+
   const [form, setForm] = useState<CidForm>(initialForm);
+  const [editingItem, setEditingItem] = useState<CidItem | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   async function checkUser() {
     const { data, error } = await supabase.auth.getSession();
@@ -185,16 +187,28 @@ export default function CidsPage() {
 
   function resetForm() {
     setForm(initialForm);
-    setEditingId(null);
+    setEditingItem(null);
   }
 
-  function startEdit(item: CidItem) {
+  function openCreateDrawer() {
+    if (!isAdmin) {
+      setError("Apenas o administrador pode criar CIDs.");
+      return;
+    }
+
+    resetForm();
+    setDrawerOpen(true);
+    setError("");
+    setSuccess("");
+  }
+
+  function openEditDrawer(item: CidItem) {
     if (!isAdmin) {
       setError("Apenas o administrador pode editar CIDs.");
       return;
     }
 
-    setEditingId(item.id);
+    setEditingItem(item);
     setForm({
       codigo: item.codigo || "",
       descricao: item.descricao || "",
@@ -203,13 +217,17 @@ export default function CidsPage() {
       prioridade: item.prioridade != null ? String(item.prioridade) : "",
       tags: item.tags || "",
     });
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setDrawerOpen(true);
+    setError("");
+    setSuccess("");
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function closeDrawer() {
+    setDrawerOpen(false);
+    resetForm();
+  }
 
+  async function handleSave() {
     if (!isAdmin) {
       setError("Apenas o administrador pode criar ou editar CIDs.");
       return;
@@ -226,11 +244,11 @@ export default function CidsPage() {
 
     const payload = buildPayload(form);
 
-    const result = editingId
+    const result = editingItem
       ? await supabase
           .from("cids")
           .update(payload)
-          .eq("id", editingId)
+          .eq("id", editingItem.id)
           .select("id, codigo, descricao, grupo, area, prioridade, tags")
           .single()
       : await supabase
@@ -244,33 +262,23 @@ export default function CidsPage() {
     } else if (result.data) {
       const saved = result.data as CidItem;
 
-      if (editingId) {
-        setAllCids((current) =>
-          current
-            .map((item) => (item.id === saved.id ? saved : item))
-            .sort((a, b) => {
-              const grupoA = a.grupo || "";
-              const grupoB = b.grupo || "";
-              const byGroup = grupoA.localeCompare(grupoB, "pt-BR");
-              if (byGroup !== 0) return byGroup;
-              return a.codigo.localeCompare(b.codigo, "pt-BR");
-            })
-        );
-        setSuccess("CID atualizado com sucesso.");
-      } else {
-        setAllCids((current) =>
-          [...current, saved].sort((a, b) => {
-            const grupoA = a.grupo || "";
-            const grupoB = b.grupo || "";
-            const byGroup = grupoA.localeCompare(grupoB, "pt-BR");
-            if (byGroup !== 0) return byGroup;
-            return a.codigo.localeCompare(b.codigo, "pt-BR");
-          })
-        );
-        setSuccess("CID criado com sucesso.");
-      }
+      setAllCids((current) =>
+        (editingItem
+          ? current.map((item) => (item.id === saved.id ? saved : item))
+          : [...current, saved]
+        ).sort((a, b) => {
+          const grupoA = a.grupo || "";
+          const grupoB = b.grupo || "";
+          const byGroup = grupoA.localeCompare(grupoB, "pt-BR");
+          if (byGroup !== 0) return byGroup;
+          return a.codigo.localeCompare(b.codigo, "pt-BR");
+        })
+      );
 
-      resetForm();
+      setSuccess(
+        editingItem ? "CID atualizado com sucesso." : "CID criado com sucesso."
+      );
+      closeDrawer();
     }
 
     setSaving(false);
@@ -297,7 +305,9 @@ export default function CidsPage() {
       return;
     }
 
-    if (editingId === id) resetForm();
+    if (editingItem?.id === id) {
+      closeDrawer();
+    }
 
     setAllCids((current) => current.filter((item) => item.id !== id));
     setSuccess("CID apagado com sucesso.");
@@ -308,39 +318,56 @@ export default function CidsPage() {
     <div className="space-y-6">
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-              Referência rápida
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
+                  Referência rápida
+                </span>
 
-            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              Biblioteca compartilhada
-            </span>
+                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                  Biblioteca compartilhada
+                </span>
 
-            <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
-                isAdmin
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-amber-200 bg-amber-50 text-amber-700"
-              }`}
-            >
-              {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
-            </span>
+                <span
+                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
+                    isAdmin
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
+                </span>
+              </div>
+
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
+                CIDs
+              </h1>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                Consulta de CIDs com busca, filtros e cópia rápida. A
+                biblioteca é compartilhada para todos os autenticados; somente o
+                administrador pode criar, editar ou apagar.
+              </p>
+
+              <p className="mt-3 text-sm font-medium text-slate-700">
+                {loading
+                  ? "Carregando..."
+                  : `Total carregado do banco: ${allCids.length}`}
+              </p>
+            </div>
+
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={openCreateDrawer}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+              >
+                <Plus className="h-4 w-4" />
+                Novo CID
+              </button>
+            ) : null}
           </div>
-
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-            CIDs
-          </h1>
-
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Consulta de CIDs com busca, filtros e cópia rápida. A biblioteca é
-            compartilhada para todos os autenticados; somente o administrador
-            pode criar, editar ou apagar.
-          </p>
-
-          <p className="mt-3 text-sm font-medium text-slate-700">
-            {loading ? "Carregando..." : `Total carregado do banco: ${allCids.length}`}
-          </p>
 
           {!isAdmin ? (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
@@ -365,94 +392,6 @@ export default function CidsPage() {
             </p>
           ) : null}
         </div>
-
-        {isAdmin ? (
-          <form
-            onSubmit={handleSubmit}
-            className="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {editingId ? "Editar CID" : "Novo CID"}
-              </h2>
-
-              {editingId ? (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
-                >
-                  Cancelar edição
-                </button>
-              ) : null}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <input
-                value={form.codigo}
-                onChange={(e) => setForm((s) => ({ ...s, codigo: e.target.value }))}
-                placeholder="Código"
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
-
-              <input
-                value={form.grupo}
-                onChange={(e) => setForm((s) => ({ ...s, grupo: e.target.value }))}
-                placeholder="Grupo"
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
-
-              <input
-                value={form.area}
-                onChange={(e) => setForm((s) => ({ ...s, area: e.target.value }))}
-                placeholder="Área"
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
-
-              <input
-                value={form.prioridade}
-                onChange={(e) => setForm((s) => ({ ...s, prioridade: e.target.value }))}
-                placeholder="Prioridade"
-                type="number"
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
-            </div>
-
-            <textarea
-              value={form.descricao}
-              onChange={(e) => setForm((s) => ({ ...s, descricao: e.target.value }))}
-              placeholder="Descrição"
-              rows={3}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
-            />
-
-            <textarea
-              value={form.tags}
-              onChange={(e) => setForm((s) => ({ ...s, tags: e.target.value }))}
-              placeholder="Tags separadas por vírgula"
-              rows={2}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
-            />
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? "Salvando..." : editingId ? "Salvar edição" : "Criar CID"}
-              </button>
-
-              <button
-                type="button"
-                onClick={resetForm}
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700"
-              >
-                Limpar formulário
-              </button>
-            </div>
-          </form>
-        ) : null}
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
@@ -597,9 +536,10 @@ export default function CidsPage() {
                       <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
                         <button
                           type="button"
-                          onClick={() => startEdit(item)}
-                          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                          onClick={() => openEditDrawer(item)}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
                         >
+                          <Edit3 className="h-4 w-4" />
                           Editar
                         </button>
 
@@ -624,6 +564,122 @@ export default function CidsPage() {
           </section>
         ))
       )}
+
+      {drawerOpen && isAdmin ? (
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="absolute inset-0"
+            aria-label="Fechar cadastro"
+          />
+
+          <div className="relative h-full w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-900">
+                  {editingItem ? "Editar CID" : "Novo CID"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Cadastro em painel separado para manter a listagem limpa.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  value={form.codigo}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, codigo: e.target.value }))
+                  }
+                  placeholder="Código"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                />
+
+                <input
+                  value={form.grupo}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, grupo: e.target.value }))
+                  }
+                  placeholder="Grupo"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                />
+
+                <input
+                  value={form.area}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, area: e.target.value }))
+                  }
+                  placeholder="Área"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                />
+
+                <input
+                  value={form.prioridade}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, prioridade: e.target.value }))
+                  }
+                  placeholder="Prioridade"
+                  type="number"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                />
+              </div>
+
+              <textarea
+                value={form.descricao}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, descricao: e.target.value }))
+                }
+                placeholder="Descrição"
+                rows={4}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+              />
+
+              <textarea
+                value={form.tags}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, tags: e.target.value }))
+                }
+                placeholder="Tags separadas por vírgula"
+                rows={3}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+              />
+
+              <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving
+                    ? "Salvando..."
+                    : editingItem
+                      ? "Salvar edição"
+                      : "Criar CID"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
