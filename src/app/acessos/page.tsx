@@ -2,6 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  Activity,
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Clock3,
+  ShieldCheck,
+  UserRound,
+  Users,
+} from "lucide-react";
 
 type LoginLog = {
   id: number;
@@ -24,13 +34,38 @@ type SessionInfo = {
   isAdmin: boolean;
 };
 
+type UserAccessSummary = {
+  email: string;
+  totalLogins: number;
+  lastAccess: string | null;
+  userAgents: string[];
+  blocked: boolean;
+  blockedId?: number;
+  blockedReason?: string | null;
+  blockedAt?: string | null;
+};
+
 const ADMIN_EMAIL = "igormoura@resibook.com";
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  }).format(new Date(value));
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+
+  try {
+    return new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "medium",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function normalize(value?: string | null) {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function simplifyUserAgent(value?: string | null) {
@@ -42,14 +77,6 @@ function simplifyUserAgent(value?: string | null) {
   if (value.includes("Safari") && !value.includes("Chrome")) return "Safari";
 
   return value.slice(0, 90);
-}
-
-function normalize(value?: string | null) {
-  return (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
 }
 
 async function getSessionInfo(): Promise<SessionInfo> {
@@ -72,6 +99,33 @@ async function getSessionInfo(): Promise<SessionInfo> {
     email,
     isAdmin: email === ADMIN_EMAIL,
   };
+}
+
+function SummaryCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
+          <Icon className="h-5 w-5" />
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {label}
+          </p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function AcessosPage() {
@@ -120,7 +174,7 @@ export default function AcessosPage() {
         .from("login_logs")
         .select("id, user_id, user_email, user_agent, created_at")
         .order("created_at", { ascending: false })
-        .limit(300),
+        .limit(500),
 
       supabase
         .from("blocked_users")
@@ -156,6 +210,82 @@ export default function AcessosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const userSummaries = useMemo<UserAccessSummary[]>(() => {
+    const map = new Map<string, UserAccessSummary>();
+
+    for (const log of logs) {
+      const email = log.user_email.trim().toLowerCase();
+      const existing = map.get(email);
+
+      if (!existing) {
+        map.set(email, {
+          email,
+          totalLogins: 1,
+          lastAccess: log.created_at,
+          userAgents: log.user_agent ? [simplifyUserAgent(log.user_agent)] : [],
+          blocked: false,
+        });
+      } else {
+        existing.totalLogins += 1;
+
+        if (
+          !existing.lastAccess ||
+          new Date(log.created_at).getTime() > new Date(existing.lastAccess).getTime()
+        ) {
+          existing.lastAccess = log.created_at;
+        }
+
+        const agent = simplifyUserAgent(log.user_agent);
+        if (agent !== "-" && !existing.userAgents.includes(agent)) {
+          existing.userAgents.push(agent);
+        }
+      }
+    }
+
+    for (const blocked of blockedUsers) {
+      const email = blocked.email.trim().toLowerCase();
+      const existing = map.get(email);
+
+      if (!existing) {
+        map.set(email, {
+          email,
+          totalLogins: 0,
+          lastAccess: null,
+          userAgents: [],
+          blocked: true,
+          blockedId: blocked.id,
+          blockedReason: blocked.reason,
+          blockedAt: blocked.blocked_at,
+        });
+      } else {
+        existing.blocked = true;
+        existing.blockedId = blocked.id;
+        existing.blockedReason = blocked.reason;
+        existing.blockedAt = blocked.blocked_at;
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      const timeA = a.lastAccess ? new Date(a.lastAccess).getTime() : 0;
+      const timeB = b.lastAccess ? new Date(b.lastAccess).getTime() : 0;
+      return timeB - timeA;
+    });
+  }, [logs, blockedUsers]);
+
+  const filteredSummaries = useMemo(() => {
+    const q = normalize(query);
+
+    if (!q) return userSummaries;
+
+    return userSummaries.filter((item) => {
+      return (
+        normalize(item.email).includes(q) ||
+        normalize(item.blockedReason).includes(q) ||
+        item.userAgents.some((agent) => normalize(agent).includes(q))
+      );
+    });
+  }, [userSummaries, query]);
+
   const filteredLogs = useMemo(() => {
     const q = normalize(query);
 
@@ -170,10 +300,8 @@ export default function AcessosPage() {
   }, [logs, query]);
 
   const uniqueUsers = useMemo(() => {
-    return new Set(
-      logs.map((item) => item.user_email.trim().toLowerCase())
-    ).size;
-  }, [logs]);
+    return userSummaries.length;
+  }, [userSummaries]);
 
   const todayCount = useMemo(() => {
     const now = new Date();
@@ -191,6 +319,10 @@ export default function AcessosPage() {
       );
     }).length;
   }, [logs]);
+
+  const blockedCount = useMemo(() => {
+    return blockedUsers.length;
+  }, [blockedUsers]);
 
   async function blockUser(emailToBlock?: string) {
     if (!session.isAdmin || !session.userId) {
@@ -311,8 +443,8 @@ export default function AcessosPage() {
           </h1>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Veja quem logou no aplicativo, data/hora do acesso e bloqueie
-            usuários quando necessário.
+            Monitore acessos, veja usuários únicos, confira o último login e
+            gerencie bloqueios sem expor dados clínicos.
           </p>
 
           {error ? (
@@ -328,36 +460,11 @@ export default function AcessosPage() {
           ) : null}
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Logins registrados
-            </p>
-
-            <p className="mt-2 text-3xl font-semibold text-slate-900">
-              {logs.length}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Usuários únicos
-            </p>
-
-            <p className="mt-2 text-3xl font-semibold text-slate-900">
-              {uniqueUsers}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Logins hoje
-            </p>
-
-            <p className="mt-2 text-3xl font-semibold text-slate-900">
-              {todayCount}
-            </p>
-          </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard label="Logins registrados" value={logs.length} icon={Activity} />
+          <SummaryCard label="Usuários únicos" value={uniqueUsers} icon={Users} />
+          <SummaryCard label="Logins hoje" value={todayCount} icon={Clock3} />
+          <SummaryCard label="Bloqueados" value={blockedCount} icon={Ban} />
         </div>
       </section>
 
@@ -397,61 +504,169 @@ export default function AcessosPage() {
             Bloquear
           </button>
         </div>
-
-        {blockedUsers.length > 0 ? (
-          <div className="mt-5 space-y-3">
-            {blockedUsers.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-rose-900">
-                    {item.email}
-                  </p>
-
-                  <p className="mt-1 text-xs text-rose-700">
-                    Bloqueado em {formatDate(item.blocked_at)}
-                    {item.reason ? ` • ${item.reason}` : ""}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => unblockUser(item.id, item.email)}
-                  disabled={saving}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Desbloquear
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-            Nenhum usuário bloqueado.
-          </div>
-        )}
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">
-              Logins recentes
+              Usuários e status
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Exibindo os últimos 300 logins/sessões.
+              Resumo por e-mail com último acesso e situação atual.
             </p>
           </div>
 
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por e-mail ou navegador..."
+            placeholder="Buscar por e-mail, motivo ou navegador..."
             className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none md:w-96"
           />
+        </div>
+
+        {filteredSummaries.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+            Nenhum usuário encontrado.
+          </div>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {filteredSummaries.map((item) => {
+              const isAdminUser = item.email === ADMIN_EMAIL;
+
+              return (
+                <article
+                  key={item.email}
+                  className="rounded-[24px] border border-slate-200 bg-slate-50 p-5"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-base font-semibold text-slate-900">
+                          {item.email}
+                        </h3>
+
+                        {isAdminUser ? (
+                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                            Admin
+                          </span>
+                        ) : item.blocked ? (
+                          <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                            Bloqueado
+                          </span>
+                        ) : (
+                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            Ativo
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                            Último acesso
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-slate-900">
+                            {formatDate(item.lastAccess)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                            Total de logins
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-slate-900">
+                            {item.totalLogins}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                          Navegadores
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {item.userAgents.length > 0 ? (
+                            item.userAgents.slice(0, 4).map((agent) => (
+                              <span
+                                key={agent}
+                                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                              >
+                                {agent}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-slate-500">Sem informação</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {item.blocked && (item.blockedReason || item.blockedAt) ? (
+                        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-700">
+                            Motivo / bloqueio
+                          </p>
+                          <p className="mt-2 text-sm text-rose-900">
+                            {item.blockedReason || "Sem motivo informado"}
+                          </p>
+                          <p className="mt-1 text-xs text-rose-700">
+                            {item.blockedAt
+                              ? `Bloqueado em ${formatDate(item.blockedAt)}`
+                              : ""}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="flex shrink-0 flex-col gap-2">
+                      {isAdminUser ? (
+                        <span className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600">
+                          Protegido
+                        </span>
+                      ) : item.blocked && item.blockedId ? (
+                        <button
+                          type="button"
+                          onClick={() => unblockUser(item.blockedId!, item.email)}
+                          disabled={saving}
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Desbloquear
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => blockUser(item.email)}
+                          disabled={saving}
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Bloquear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">
+              Logins recentes
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Últimos 500 registros de acesso do sistema.
+            </p>
+          </div>
         </div>
 
         {filteredLogs.length === 0 ? (
@@ -467,17 +682,14 @@ export default function AcessosPage() {
                     <th className="px-4 py-3 text-left font-semibold text-slate-700">
                       Data / hora
                     </th>
-
                     <th className="px-4 py-3 text-left font-semibold text-slate-700">
                       Usuário
                     </th>
-
                     <th className="px-4 py-3 text-left font-semibold text-slate-700">
                       Navegador
                     </th>
-
                     <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                      Ação
+                      Status
                     </th>
                   </tr>
                 </thead>
@@ -506,22 +718,20 @@ export default function AcessosPage() {
 
                         <td className="whitespace-nowrap px-4 py-3">
                           {email === ADMIN_EMAIL ? (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                              <ShieldCheck className="h-3.5 w-3.5" />
                               Admin
                             </span>
                           ) : blocked ? (
-                            <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                              <Ban className="h-3.5 w-3.5" />
                               Bloqueado
                             </span>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => blockUser(email)}
-                              disabled={saving}
-                              className="inline-flex h-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Bloquear
-                            </button>
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Ativo
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -532,6 +742,26 @@ export default function AcessosPage() {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+            <UserRound className="h-5 w-5" />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Observações
+            </h2>
+
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              Esta página usa apenas e-mail, data/hora de login e navegador para
+              monitoramento administrativo. Nenhum dado clínico de pacientes é
+              exibido aqui.
+            </p>
+          </div>
+        </div>
       </section>
     </div>
   );
