@@ -51,6 +51,7 @@ const GUEST_ALLOWED_PATHS = [
   "/exames-evolucao",
   "/termos",
   "/privacidade",
+  "/aceite-legal",
 ];
 
 function isGuestAllowedPath(pathname: string) {
@@ -499,7 +500,8 @@ export default function AppShell({ children }: Props) {
     return (
       pathname === "/login" ||
       pathname === "/signup" ||
-      pathname === "/register"
+      pathname === "/register" ||
+      pathname === "/aceite-legal"
     );
   }, [pathname]);
 
@@ -699,7 +701,8 @@ export default function AppShell({ children }: Props) {
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Este usuário convidado tem acesso apenas a Prescrição, Exames /
-            Evolução, Tópicos, CIDs, Termos de Uso e Política de Privacidade.
+            Evolução, Tópicos, CIDs, Termos de Uso, Política de Privacidade e
+            aceite legal.
           </p>
 
           <button

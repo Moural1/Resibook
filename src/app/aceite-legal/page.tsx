@@ -39,18 +39,24 @@ export default function AceiteLegalPage() {
     }
 
     const normalizedEmail = user.email?.trim().toLowerCase() || "";
-    const nextPath = normalizedEmail === GUEST_EMAIL ? "/prescricao" : "/dashboard";
+    const nextPath =
+      normalizedEmail === GUEST_EMAIL ? "/prescricao" : "/dashboard";
 
     const { error: upsertError } = await supabase
       .from("user_legal_acceptances")
-      .upsert({
-        user_id: user.id,
-        email: user.email || "",
-        terms_version: TERMS_VERSION,
-        privacy_version: PRIVACY_VERSION,
-        accepted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
+      .upsert(
+        {
+          user_id: user.id,
+          email: user.email || "",
+          terms_version: TERMS_VERSION,
+          privacy_version: PRIVACY_VERSION,
+          accepted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id",
+        }
+      );
 
     if (upsertError) {
       setError(upsertError.message);
