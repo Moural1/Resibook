@@ -132,6 +132,13 @@ function getHipotese(patient: Patient) {
   return patient.hipotese_diagnostica || patient.diagnostico_principal || "";
 }
 
+function buildAlergiaResumo(value?: string | null) {
+  const clean = (value || "").trim();
+  if (!clean) return "";
+  if (clean.length <= 40) return clean;
+  return `${clean.slice(0, 40)}...`;
+}
+
 function patientToForm(patient: Patient): PatientForm {
   return {
     nome: patient.nome || "",
@@ -287,24 +294,34 @@ function TextAreaField({
 }
 
 function InputField({
+  label,
   value,
   onChange,
   placeholder,
   type = "text",
 }: {
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   type?: string;
 }) {
   return (
-    <input
-      type={type}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-    />
+    <div>
+      {label ? (
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          {label}
+        </label>
+      ) : null}
+
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+      />
+    </div>
   );
 }
 
@@ -530,6 +547,25 @@ export default function PacientesPage() {
     }));
 
     setSuccess("Modelo de exame físico importado com sucesso.");
+    setError("");
+  }
+
+  function appendExamTemplate(target: "masculino" | "feminino" | "todos") {
+    const content = getExamTemplateFor(target);
+
+    if (!content) {
+      setError("Nenhum modelo de exame físico encontrado em exames-evolucao.");
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      exame_fisico: current.exame_fisico.trim()
+        ? `${current.exame_fisico.trim()}\n\n${content}`
+        : content,
+    }));
+
+    setSuccess("Modelo acrescentado ao exame físico.");
     setError("");
   }
 
@@ -799,7 +835,7 @@ export default function PacientesPage() {
                       {item.alergias ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
                           <AlertTriangle className="h-3.5 w-3.5" />
-                          Alergia
+                          {buildAlergiaResumo(item.alergias)}
                         </span>
                       ) : null}
 
@@ -920,12 +956,14 @@ export default function PacientesPage() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <InputField
+                    label="Nome completo"
                     value={form.nome}
                     onChange={(value) => updateForm("nome", value)}
                     placeholder="Nome completo"
                   />
 
                   <InputField
+                    label="Idade"
                     type="number"
                     value={form.idade}
                     onChange={(value) => updateForm("idade", value)}
@@ -933,24 +971,28 @@ export default function PacientesPage() {
                   />
 
                   <InputField
+                    label="Sexo"
                     value={form.sexo}
                     onChange={(value) => updateForm("sexo", value)}
                     placeholder="Sexo"
                   />
 
                   <InputField
+                    label="Telefone"
                     value={form.telefone}
                     onChange={(value) => updateForm("telefone", value)}
                     placeholder="Telefone"
                   />
 
                   <InputField
+                    label="Especialidade / serviço"
                     value={form.especialidade}
                     onChange={(value) => updateForm("especialidade", value)}
                     placeholder="Especialidade / serviço"
                   />
 
                   <InputField
+                    label="Data de nascimento"
                     type="date"
                     value={form.data_nascimento}
                     onChange={(value) => updateForm("data_nascimento", value)}
@@ -958,6 +1000,7 @@ export default function PacientesPage() {
                   />
 
                   <InputField
+                    label="Retorno previsto"
                     type="date"
                     value={form.retorno_previsto_em}
                     onChange={(value) =>
@@ -967,12 +1010,14 @@ export default function PacientesPage() {
                   />
 
                   <InputField
+                    label="Plano de saúde / convênio"
                     value={form.plano_saude}
                     onChange={(value) => updateForm("plano_saude", value)}
                     placeholder="Plano de saúde / convênio"
                   />
 
                   <InputField
+                    label="Número da carteirinha"
                     value={form.numero_carteirinha}
                     onChange={(value) =>
                       updateForm("numero_carteirinha", value)
@@ -981,6 +1026,7 @@ export default function PacientesPage() {
                   />
 
                   <InputField
+                    label="Local de atendimento / consultório"
                     value={form.local_atendimento}
                     onChange={(value) =>
                       updateForm("local_atendimento", value)
@@ -989,6 +1035,7 @@ export default function PacientesPage() {
                   />
 
                   <InputField
+                    label="Médico / CRM para impressão"
                     value={form.crm_medico}
                     onChange={(value) => updateForm("crm_medico", value)}
                     placeholder="Médico / CRM para impressão"
@@ -1020,13 +1067,33 @@ export default function PacientesPage() {
                   rows={5}
                 />
 
-                <TextAreaField
-                  label="Alergias"
-                  value={form.alergias}
-                  onChange={(value) => updateForm("alergias", value)}
-                  placeholder="Ex.: Dipirona, Penicilina, contraste iodado..."
-                  rows={3}
-                />
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-xl bg-white p-2 text-rose-700">
+                      <AlertTriangle className="h-4 w-4" />
+                    </div>
+
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-rose-900">
+                        Alergias — destaque clínico
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-rose-800">
+                        Esse campo aparece com destaque visual no card do
+                        paciente para evitar passar despercebido.
+                      </p>
+
+                      <div className="mt-4">
+                        <TextAreaField
+                          label="Alergias"
+                          value={form.alergias}
+                          onChange={(value) => updateForm("alergias", value)}
+                          placeholder="Ex.: Dipirona, Penicilina, contraste iodado, látex..."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <TextAreaField
                   label="Medicamentos em uso"
@@ -1055,7 +1122,7 @@ export default function PacientesPage() {
                         onClick={() => importExamTemplate("masculino")}
                         className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
                       >
-                        Importar homem
+                        Substituir homem
                       </button>
 
                       <button
@@ -1063,7 +1130,7 @@ export default function PacientesPage() {
                         onClick={() => importExamTemplate("feminino")}
                         className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
                       >
-                        Importar mulher
+                        Substituir mulher
                       </button>
 
                       <button
@@ -1071,9 +1138,35 @@ export default function PacientesPage() {
                         onClick={() => importExamTemplate("todos")}
                         className="inline-flex h-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700"
                       >
-                        Importar genérico
+                        Substituir genérico
                       </button>
                     </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => appendExamTemplate("masculino")}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                    >
+                      Acrescentar homem
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => appendExamTemplate("feminino")}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                    >
+                      Acrescentar mulher
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => appendExamTemplate("todos")}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                    >
+                      Acrescentar genérico
+                    </button>
                   </div>
 
                   <div className="mt-4">

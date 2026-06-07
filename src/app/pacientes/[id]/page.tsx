@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../../components/copy-button";
+import { AlertTriangle } from "lucide-react";
 
 type Patient = {
   id: string;
@@ -23,6 +24,7 @@ type Patient = {
   queixa?: string | null;
   hma?: string | null;
   hpp?: string | null;
+  alergias?: string | null;
   medicamentos_em_uso?: string | null;
   exame_fisico?: string | null;
   hipotese_diagnostica?: string | null;
@@ -166,11 +168,16 @@ function resolveBirthAndReturnDates(patient: Patient) {
   };
 }
 
-
 function getCarteirinha(patient: Patient) {
   return patient.numero_carteirinha || patient.carteirinha || "";
 }
 
+function buildAlergiaResumo(value?: string | null) {
+  const clean = (value || "").trim();
+  if (!clean) return "";
+  if (clean.length <= 36) return clean;
+  return `${clean.slice(0, 36)}...`;
+}
 
 function buildPrescriptionText(item: Prescription) {
   const lines = [
@@ -211,10 +218,13 @@ function buildPatientSummary(
     birthDate ? `DATA DE NASCIMENTO: ${formatDateOnly(birthDate)}` : "",
     patient.especialidade ? `ESPECIALIDADE: ${patient.especialidade}` : "",
     patient.plano_saude ? `PLANO DE SAÚDE: ${patient.plano_saude}` : "",
-    patient.local_atendimento ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}` : "",
+    patient.local_atendimento
+      ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}`
+      : "",
     patient.crm_medico ? `MÉDICO / CRM: ${patient.crm_medico}` : "",
     getCarteirinha(patient) ? `CARTEIRINHA: ${getCarteirinha(patient)}` : "",
     returnDate ? `RETORNO PREVISTO: ${formatDateOnly(returnDate)}` : "",
+    patient.alergias ? `ALERGIAS:\n${patient.alergias}` : "",
     patient.queixa ? `QUEIXA PRINCIPAL:\n${patient.queixa}` : "",
     patient.hma ? `HMA:\n${patient.hma}` : "",
     patient.hpp ? `HPP:\n${patient.hpp}` : "",
@@ -451,7 +461,7 @@ function buildProfessionalPrintHtml(
             border: 1px solid rgba(255, 255, 255, 0.19);
           }
 
-          .hero-card .row {
+          .row {
             display: flex;
             justify-content: space-between;
             gap: 14px;
@@ -460,7 +470,7 @@ function buildProfessionalPrintHtml(
             font-size: 12px;
           }
 
-          .hero-card .row:last-child {
+          .row:last-child {
             border-bottom: none;
           }
 
@@ -491,6 +501,11 @@ function buildProfessionalPrintHtml(
             padding: 13px 14px;
           }
 
+          .quick-card.alert {
+            background: #fff1f2;
+            border-color: #fecdd3;
+          }
+
           .quick-card span {
             display: block;
             font-size: 9px;
@@ -499,6 +514,10 @@ function buildProfessionalPrintHtml(
             text-transform: uppercase;
             font-weight: 800;
             margin-bottom: 6px;
+          }
+
+          .quick-card.alert span {
+            color: #be123c;
           }
 
           .quick-card strong {
@@ -532,6 +551,12 @@ function buildProfessionalPrintHtml(
             text-transform: uppercase;
           }
 
+          .section-title.alert {
+            background: linear-gradient(180deg, #fff5f5 0%, #fff1f2 100%);
+            color: #9f1239;
+            border-bottom-color: #fecdd3;
+          }
+
           .section-title .number {
             width: 25px;
             height: 25px;
@@ -544,6 +569,10 @@ function buildProfessionalPrintHtml(
             justify-content: center;
             letter-spacing: 0;
             font-size: 11px;
+          }
+
+          .section-title.alert .number {
+            background: #e11d48;
           }
 
           .section-body {
@@ -816,6 +845,16 @@ function buildProfessionalPrintHtml(
                 <span>Local</span>
                 <strong>${escapeHtml(patient.local_atendimento || "-")}</strong>
               </div>
+              ${
+                patient.alergias
+                  ? `
+                    <div class="quick-card alert">
+                      <span>Alergias</span>
+                      <strong>${escapeHtml(patient.alergias)}</strong>
+                    </div>
+                  `
+                  : ""
+              }
             </div>
 
             <div class="section">
@@ -892,47 +931,54 @@ function buildProfessionalPrintHtml(
             </div>
 
             <div class="section">
-              <div class="section-title"><span class="number">5</span> Medicamentos em uso</div>
+              <div class="section-title alert"><span class="number">5</span> Alergias</div>
+              <div class="section-body">
+                <div class="rich-text">${textToHtml(patient.alergias)}</div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title"><span class="number">6</span> Medicamentos em uso</div>
               <div class="section-body">
                 <div class="rich-text">${textToHtml(patient.medicamentos_em_uso)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title"><span class="number">6</span> Exame físico / exame do estado mental</div>
+              <div class="section-title"><span class="number">7</span> Exame físico / exame do estado mental</div>
               <div class="section-body">
                 <div class="rich-text">${textToHtml(patient.exame_fisico)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title"><span class="number">7</span> Hipótese diagnóstica</div>
+              <div class="section-title"><span class="number">8</span> Hipótese diagnóstica</div>
               <div class="section-body">
                 <div class="rich-text">${textToHtml(patient.hipotese_diagnostica)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title"><span class="number">8</span> Conduta médica</div>
+              <div class="section-title"><span class="number">9</span> Conduta médica</div>
               <div class="section-body">
                 <div class="rich-text">${textToHtml(patient.conduta_medica)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title"><span class="number">9</span> Observações</div>
+              <div class="section-title"><span class="number">10</span> Observações</div>
               <div class="section-body">
                 <div class="rich-text">${textToHtml(patient.observacoes)}</div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title"><span class="number">10</span> Evoluções / anotações</div>
+              <div class="section-title"><span class="number">11</span> Evoluções / anotações</div>
               <div class="section-body">${noteHtml}</div>
             </div>
 
             <div class="section">
-              <div class="section-title"><span class="number">11</span> Prescrições vinculadas</div>
+              <div class="section-title"><span class="number">12</span> Prescrições vinculadas</div>
               <div class="section-body">${prescriptionHtml}</div>
             </div>
 
@@ -959,7 +1005,6 @@ function buildProfessionalPrintHtml(
     </html>
   `;
 }
-
 
 function InfoBlock({
   title,
@@ -1363,6 +1408,13 @@ export default function PatientDetailPage() {
                   </span>
                 ) : null}
 
+                {patient.alergias ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    {buildAlergiaResumo(patient.alergias)}
+                  </span>
+                ) : null}
+
                 {birthDate ? (
                   <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                     Nascimento: {formatDateOnly(birthDate)}
@@ -1445,6 +1497,7 @@ export default function PatientDetailPage() {
         </div>
 
         <div className="mt-6 grid gap-4 xl:grid-cols-2">
+          <InfoBlock title="Alergias">{patient.alergias}</InfoBlock>
           <InfoBlock title="Queixa principal">{patient.queixa}</InfoBlock>
           <InfoBlock title="HMA">{patient.hma}</InfoBlock>
           <InfoBlock title="HPP">{patient.hpp}</InfoBlock>
