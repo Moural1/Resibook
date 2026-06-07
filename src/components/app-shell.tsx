@@ -723,8 +723,8 @@ export default function AppShell({ children }: Props) {
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Este usuário convidado tem acesso apenas a Prescrição, Exames /
-            Evolução, Tópicos, CIDs, Suporte, Termos de Uso, Política de
-            Privacidade e aceite legal.
+            Evolução, Tópicos, CIDs, Termos de Uso, Política de Privacidade e
+            Suporte.
           </p>
 
           <button

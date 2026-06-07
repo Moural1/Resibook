@@ -1133,6 +1133,24 @@ function TimelineCard({ item }: { item: TimelineItem }) {
   );
 }
 
+function SectionToggle({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+    >
+      {open ? "Esconder" : "Mostrar"}
+    </button>
+  );
+}
+
 export default function PatientDetailPage() {
   const supabase = createClient();
   const router = useRouter();
@@ -1187,6 +1205,14 @@ export default function PatientDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showConsultations, setShowConsultations] = useState(true);
+  const [showProblems, setShowProblems] = useState(false);
+  const [showFollowups, setShowFollowups] = useState(false);
+  const [showExams, setShowExams] = useState(false);
+  const [showNewNote, setShowNewNote] = useState(false);
+  const [showNotesHistory, setShowNotesHistory] = useState(false);
+  const [showPrescriptions, setShowPrescriptions] = useState(false);
+
 
   const activeProblemsCount = useMemo(
     () => problems.filter((item) => item.status === "ativo" || item.status === "cronico").length,
@@ -1813,7 +1839,26 @@ export default function PatientDetailPage() {
         current.map((item) => (item.id === id ? (data as ProblemItem) : item))
       );
       cancelEditProblem(id);
-      setSuccess("Problema atualizado com sucesso.");
+      
+function SectionToggle({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+    >
+      {open ? "Esconder" : "Mostrar"}
+    </button>
+  );
+}
+
+setSuccess("Problema atualizado com sucesso.");
     }
 
     setSavingProblemIds((current) => current.filter((item) => item !== id));
@@ -2331,18 +2376,27 @@ export default function PatientDetailPage() {
       </section>
 
       <section className="rounded-[28px] border border-violet-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-violet-100 pb-4">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-700">
-            Atendimento
-          </p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">
-            Nova consulta
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Registre um novo atendimento sem sobrescrever o cadastro-base do paciente.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-violet-100 pb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-700">
+              Atendimento
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900">
+              Nova consulta
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Registre um novo atendimento sem sobrescrever o cadastro-base do paciente.
+            </p>
+          </div>
+
+          <SectionToggle
+            open={showConsultations}
+            onToggle={() => setShowConsultations((v) => !v)}
+          />
         </div>
 
+        {showConsultations ? (
+          <>
         <div className="mt-5 grid gap-4">
           <textarea
             rows={3}
@@ -2619,18 +2673,29 @@ export default function PatientDetailPage() {
             })
           )}
         </div>
+          </>
+        ) : null}
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-4">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
-            Lista longitudinal
-          </p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">
-            Problemas do paciente
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
+              Lista longitudinal
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900">
+              Problemas do paciente
+            </h2>
+          </div>
+
+          <SectionToggle
+            open={showProblems}
+            onToggle={() => setShowProblems((v) => !v)}
+          />
         </div>
 
+        {showProblems ? (
+          <>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <input
             value={problemForm.titulo}
@@ -2819,16 +2884,27 @@ export default function PatientDetailPage() {
             })
           )}
         </div>
+          </>
+        ) : null}
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-4">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-700">
-            Seguimento
-          </p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">Retornos</h2>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-700">
+              Seguimento
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900">Retornos</h2>
+          </div>
+
+          <SectionToggle
+            open={showFollowups}
+            onToggle={() => setShowFollowups((v) => !v)}
+          />
         </div>
 
+        {showFollowups ? (
+          <>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <input
             value={followupForm.motivo}
@@ -3008,18 +3084,29 @@ export default function PatientDetailPage() {
             })
           )}
         </div>
+          </>
+        ) : null}
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-4">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">
-            Apoio diagnóstico
-          </p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">
-            Exames do paciente
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">
+              Apoio diagnóstico
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900">
+              Exames do paciente
+            </h2>
+          </div>
+
+          <SectionToggle
+            open={showExams}
+            onToggle={() => setShowExams((v) => !v)}
+          />
         </div>
 
+        {showExams ? (
+          <>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <input
             value={examRequestForm.nome_exame}
@@ -3243,18 +3330,29 @@ export default function PatientDetailPage() {
             })
           )}
         </div>
+          </>
+        ) : null}
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-4">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
-            Evolução clínica
-          </p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">
-            Nova evolução / anotação
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
+              Evolução clínica
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900">
+              Nova evolução / anotação
+            </h2>
+          </div>
+
+          <SectionToggle
+            open={showNewNote}
+            onToggle={() => setShowNewNote((v) => !v)}
+          />
         </div>
 
+        {showNewNote ? (
+          <>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <select
             value={noteForm.tipo}
@@ -3302,6 +3400,8 @@ export default function PatientDetailPage() {
             Limpar
           </button>
         </div>
+          </>
+        ) : null}
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
@@ -3315,11 +3415,20 @@ export default function PatientDetailPage() {
             </h2>
           </div>
 
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-            {notes.length} {notes.length === 1 ? "item" : "itens"}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+              {notes.length} {notes.length === 1 ? "item" : "itens"}
+            </span>
+
+            <SectionToggle
+              open={showNotesHistory}
+              onToggle={() => setShowNotesHistory((v) => !v)}
+            />
+          </div>
         </div>
 
+        {showNotesHistory ? (
+          <>
         {notes.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
             Nenhuma evolução registrada.
@@ -3438,6 +3547,8 @@ export default function PatientDetailPage() {
             })}
           </div>
         )}
+          </>
+        ) : null}
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
@@ -3451,11 +3562,20 @@ export default function PatientDetailPage() {
             </h2>
           </div>
 
-          <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
-            {prescriptions.length} {prescriptions.length === 1 ? "item" : "itens"}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+              {prescriptions.length} {prescriptions.length === 1 ? "item" : "itens"}
+            </span>
+
+            <SectionToggle
+              open={showPrescriptions}
+              onToggle={() => setShowPrescriptions((v) => !v)}
+            />
+          </div>
         </div>
 
+        {showPrescriptions ? (
+          <>
         {prescriptions.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
             Nenhuma prescrição vinculada encontrada.
@@ -3499,6 +3619,8 @@ export default function PatientDetailPage() {
             ))}
           </div>
         )}
+          </>
+        ) : null}
       </section>
     </div>
   );
