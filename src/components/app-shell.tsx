@@ -342,6 +342,7 @@ function SidebarContent({
   ];
 
   const primaryItems = isGuest ? guestPrimaryItems : fullPrimaryItems;
+  const visibleSecondaryItems = isGuest ? [] : secondaryItems;
 
   return (
     <div className="flex h-full flex-col bg-[#07183d] text-white">
@@ -409,14 +410,16 @@ function SidebarContent({
           onNavigate={onNavigate}
         />
 
-        {!isGuest ? (
+        {visibleSecondaryItems.length > 0 ? (
           <NavSection
             title="Conta e acesso"
-            items={secondaryItems}
+            items={visibleSecondaryItems}
             pathname={pathname}
             onNavigate={onNavigate}
           />
-        ) : (
+        ) : null}
+
+        {isGuest ? (
           <div className="rounded-[22px] border border-amber-300/20 bg-amber-400/10 p-4">
             <div className="flex items-start gap-3">
               <Lock className="mt-0.5 h-4 w-4 text-amber-200" />
@@ -448,7 +451,7 @@ function SidebarContent({
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="border-t border-white/10 p-4">
@@ -510,15 +513,22 @@ export default function AppShell({ children }: Props) {
       }
 
       const supabase = createClient();
+      const { data: sessionData, error } = await supabase.auth.getSession();
 
-      const { data: sessionData } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (error) {
+        setSessionEmail("");
+        setIsGuest(false);
+        setCurrentUserId(null);
+        setCheckingUser(false);
+        return;
+      }
 
       const email =
         sessionData.session?.user?.email?.trim().toLowerCase() || "";
       const userId = sessionData.session?.user?.id || null;
       const guest = email === GUEST_EMAIL;
-
-      if (!mounted) return;
 
       setSessionEmail(email);
       setIsGuest(guest);
@@ -579,6 +589,8 @@ export default function AppShell({ children }: Props) {
       const supabase = createClient();
 
       if (!currentUserId) {
+        if (!mounted) return;
+
         setCounts({
           pacientes: null,
           prescricoes: null,

@@ -39,6 +39,7 @@ type TopicoForm = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
+const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const emptyForm: TopicoForm = {
   area: "",
@@ -182,6 +183,7 @@ export default function TopicosPage() {
   const supabase = createClient();
 
   const [isGuest, setIsGuest] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [checkingUser, setCheckingUser] = useState(true);
 
   const [topicos, setTopicos] = useState<TopicoMedico[]>([]);
@@ -198,10 +200,20 @@ export default function TopicosPage() {
   const [success, setSuccess] = useState("");
 
   async function checkUser() {
-    const { data } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      setIsGuest(false);
+      setIsAdmin(false);
+      setCheckingUser(false);
+      setError(error.message);
+      return;
+    }
+
     const email = data.session?.user?.email?.trim().toLowerCase() || "";
 
     setIsGuest(email === GUEST_EMAIL);
+    setIsAdmin(email === ADMIN_EMAIL);
     setCheckingUser(false);
   }
 
@@ -230,6 +242,7 @@ export default function TopicosPage() {
   useEffect(() => {
     checkUser();
     loadTopicos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const areas = useMemo(() => {
@@ -302,8 +315,8 @@ export default function TopicosPage() {
   }
 
   async function handleCreate() {
-    if (isGuest) {
-      setError("Usuário convidado não pode criar tópicos.");
+    if (!isAdmin) {
+      setError("Apenas o administrador pode criar tópicos.");
       return;
     }
 
@@ -342,7 +355,10 @@ export default function TopicosPage() {
   }
 
   function startEdit(item: TopicoMedico) {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode editar tópicos.");
+      return;
+    }
 
     setEditingId(item.id);
     setEditForms((current) => ({
@@ -361,7 +377,10 @@ export default function TopicosPage() {
   }
 
   async function handleUpdate(id: number) {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode editar tópicos.");
+      return;
+    }
 
     const editForm = editForms[id];
 
@@ -408,7 +427,10 @@ export default function TopicosPage() {
   }
 
   async function handleDelete(id: number, title: string) {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode apagar tópicos.");
+      return;
+    }
 
     const confirmed = window.confirm(
       `Tem certeza que deseja apagar o tópico "${title}"?`
@@ -585,8 +607,14 @@ export default function TopicosPage() {
               Tópicos médicos
             </span>
 
-            <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-              {isGuest ? "Somente leitura" : "CRUD completo"}
+            <span
+              className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
+                isAdmin
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
+              }`}
+            >
+              {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
             </span>
           </div>
 
@@ -595,9 +623,9 @@ export default function TopicosPage() {
           </h1>
 
           <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-            {isGuest
-              ? "Biblioteca médica para consulta e cópia rápida. O modo convidado não permite criar, editar ou apagar tópicos."
-              : "Biblioteca médica estruturada por área, com diagnóstico, critérios, exames, tratamento, urgência, internação/referência e pegadinhas de prova."}
+            Biblioteca médica estruturada por área, com diagnóstico, critérios,
+            exames, tratamento, urgência, internação/referência e pegadinhas de
+            prova.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
@@ -606,9 +634,11 @@ export default function TopicosPage() {
             <span>Exibindo: {filtered.length}</span>
           </div>
 
-          {isGuest ? (
+          {!isAdmin ? (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              Convidado: leitura e cópia liberadas. Edição bloqueada.
+              {isGuest
+                ? "Convidado: leitura e cópia liberadas. Edição bloqueada."
+                : "Usuário comum: leitura e cópia liberadas. Apenas o admin gerencia a biblioteca."}
             </div>
           ) : null}
 
@@ -661,7 +691,7 @@ export default function TopicosPage() {
         </div>
       </section>
 
-      {!isGuest ? (
+      {isAdmin ? (
         <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="border-b border-slate-200 pb-5">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">
@@ -858,7 +888,7 @@ export default function TopicosPage() {
                       <div className="flex flex-wrap gap-2">
                         <CopyButton text={buildFullText(item)} />
 
-                        {!isGuest ? (
+                        {isAdmin ? (
                           <>
                             <button
                               type="button"
@@ -925,7 +955,7 @@ export default function TopicosPage() {
                       </div>
                     ) : null}
 
-                    {editing && !isGuest ? renderEditForm(item) : null}
+                    {editing && isAdmin ? renderEditForm(item) : null}
                   </article>
                 );
               })}

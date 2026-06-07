@@ -7,6 +7,7 @@ import {
   Building2,
   CalendarClock,
   Edit3,
+  Lock,
   Mail,
   Phone,
   Save,
@@ -24,6 +25,8 @@ type UserForm = {
   telefone: string;
   instituicao: string;
 };
+
+const GUEST_EMAIL = "convidado@resibook.com";
 
 const emptyForm: UserForm = {
   nome: "",
@@ -107,8 +110,10 @@ export default function UsuarioPage() {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
+  const [sessionReady, setSessionReady] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
 
   const [email, setEmail] = useState("");
   const [userId, setUserId] = useState("");
@@ -123,21 +128,25 @@ export default function UsuarioPage() {
   async function loadUser() {
     setLoading(true);
     setError("");
+    setSuccess("");
 
     const { data, error } = await supabase.auth.getUser();
 
     if (error || !data.user) {
       setError(error?.message || "Não foi possível carregar o usuário.");
       setLoading(false);
+      setSessionReady(true);
       return;
     }
 
+    const normalizedEmail = data.user.email?.trim().toLowerCase() || "";
     const metadata = data.user.user_metadata || {};
 
     setEmail(data.user.email || "");
     setUserId(data.user.id || "");
     setCreatedAt(data.user.created_at || null);
     setLastSignInAt(data.user.last_sign_in_at || null);
+    setIsGuest(normalizedEmail === GUEST_EMAIL);
 
     setForm({
       nome: String(metadata.nome || metadata.name || ""),
@@ -149,10 +158,12 @@ export default function UsuarioPage() {
     });
 
     setLoading(false);
+    setSessionReady(true);
   }
 
   useEffect(() => {
     loadUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function updateForm<K extends keyof UserForm>(key: K, value: UserForm[K]) {
@@ -163,6 +174,16 @@ export default function UsuarioPage() {
   }
 
   async function handleSave() {
+    if (!sessionReady) {
+      setError("Sessão ainda está sendo verificada.");
+      return;
+    }
+
+    if (isGuest) {
+      setError("O usuário convidado não pode editar o perfil.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
@@ -197,6 +218,23 @@ export default function UsuarioPage() {
     loadUser();
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-[86px] animate-pulse rounded-2xl border border-slate-200 bg-slate-100"
+              />
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
@@ -210,6 +248,12 @@ export default function UsuarioPage() {
               <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                 Perfil profissional
               </span>
+
+              {isGuest ? (
+                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                  Modo convidado
+                </span>
+              ) : null}
             </div>
 
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
@@ -227,14 +271,20 @@ export default function UsuarioPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (isGuest) {
+                    setError("O usuário convidado não pode editar o perfil.");
+                    return;
+                  }
+
                   setEditing(true);
                   setError("");
                   setSuccess("");
                 }}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+                disabled={isGuest}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Edit3 className="h-4 w-4" />
-                Editar perfil
+                {isGuest ? <Lock className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
+                {isGuest ? "Edição bloqueada" : "Editar perfil"}
               </button>
             ) : (
               <>
@@ -274,16 +324,14 @@ export default function UsuarioPage() {
           </div>
         ) : null}
 
-        {loading ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-[86px] animate-pulse rounded-2xl border border-slate-200 bg-slate-100"
-              />
-            ))}
+        {isGuest ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            O perfil convidado pode visualizar apenas os dados do próprio login.
+            A edição de metadata está desabilitada neste modo.
           </div>
-        ) : !editing ? (
+        ) : null}
+
+        {!editing ? (
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <FieldView label="Nome" value={form.nome} icon={User} />
             <FieldView label="Cargo" value={form.cargo} icon={BadgeCheck} />
@@ -369,7 +417,7 @@ export default function UsuarioPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Informações técnicas da autenticação.
+                  Informações do seu próprio login autenticado.
                 </p>
               </div>
             </div>

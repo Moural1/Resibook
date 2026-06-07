@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Lock } from "lucide-react";
 
 type Patient = {
   id: string;
@@ -42,6 +43,8 @@ type DashboardCounts = {
   flashcardsDificeis: number;
   cids: number;
 };
+
+const GUEST_EMAIL = "convidado@resibook.com";
 
 async function getTableCount(
   tableName: string,
@@ -114,6 +117,8 @@ export default function DashboardPage() {
   const [favoriteExamCount, setFavoriteExamCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isGuest, setIsGuest] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -122,11 +127,47 @@ export default function DashboardPage() {
       setLoading(true);
       setError("");
 
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (sessionError) {
+        setError(sessionError.message);
+        setLoading(false);
+        setSessionReady(true);
+        return;
+      }
+
       const userId = sessionData.session?.user?.id || null;
+      const email = sessionData.session?.user?.email?.trim().toLowerCase() || "";
+      const guest = email === GUEST_EMAIL;
+
+      setIsGuest(guest);
+      setSessionReady(true);
 
       if (!userId) {
         setError("Usuário autenticado não identificado.");
+        setLoading(false);
+        return;
+      }
+
+      if (guest) {
+        setCounts({
+          patients: 0,
+          prescriptions: 0,
+          examTemplates: 0,
+          topicosMedicos: 0,
+          flashcards: 0,
+          flashcardsDificeis: 0,
+          cids: 0,
+        });
+        setRecentPatients([]);
+        setRecentPrescriptions([]);
+        setRecentExamTemplates([]);
+        setRecentTopicos([]);
+        setFavoritePrescriptionCount(0);
+        setFavoriteExamCount(0);
         setLoading(false);
         return;
       }
@@ -137,8 +178,8 @@ export default function DashboardPage() {
         examTemplatesCount,
         topicosMedicosCount,
         flashcardsCount,
-        flashcardsDificeisCount,
         cidsCount,
+        difficultMarksCount,
         patientsRes,
         prescriptionsRes,
         examTemplatesRes,
@@ -149,11 +190,24 @@ export default function DashboardPage() {
         getTableCount("exam_templates"),
         getTableCount("topicos_medicos"),
         getTableCount("flashcards"),
-        getTableCount("flashcard_user_marks", {
-          column: "user_id",
-          value: userId,
-        }),
         getTableCount("cids"),
+
+        supabase
+          .from("flashcard_user_marks")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("dificil", true)
+          .then(({ count, error }) => {
+            if (error) {
+              console.warn(
+                "Erro ao contar flashcards difíceis:",
+                error.message
+              );
+              return 0;
+            }
+
+            return count ?? 0;
+          }),
 
         supabase
           .from("patients")
@@ -190,12 +244,15 @@ export default function DashboardPage() {
         examTemplates: examTemplatesCount,
         topicosMedicos: topicosMedicosCount,
         flashcards: flashcardsCount,
-        flashcardsDificeis: flashcardsDificeisCount,
+        flashcardsDificeis: difficultMarksCount,
         cids: cidsCount,
       });
 
       if (patientsRes.error) {
-        console.warn("Erro ao carregar pacientes recentes:", patientsRes.error.message);
+        console.warn(
+          "Erro ao carregar pacientes recentes:",
+          patientsRes.error.message
+        );
       }
 
       if (prescriptionsRes.error) {
@@ -213,7 +270,10 @@ export default function DashboardPage() {
       }
 
       if (topicosRes.error) {
-        console.warn("Erro ao carregar tópicos recentes:", topicosRes.error.message);
+        console.warn(
+          "Erro ao carregar tópicos recentes:",
+          topicosRes.error.message
+        );
       }
 
       setRecentPatients((patientsRes.data as Patient[]) || []);
@@ -232,9 +292,7 @@ export default function DashboardPage() {
         setFavoritePrescriptionCount(
           Array.isArray(prescriptionFavorites) ? prescriptionFavorites.length : 0
         );
-        setFavoriteExamCount(
-          Array.isArray(examFavorites) ? examFavorites.length : 0
-        );
+        setFavoriteExamCount(Array.isArray(examFavorites) ? examFavorites.length : 0);
       } catch {
         setFavoritePrescriptionCount(0);
         setFavoriteExamCount(0);
@@ -248,7 +306,37 @@ export default function DashboardPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [supabase]);
+
+  if (!loading && sessionReady && isGuest) {
+    return (
+      <div className="space-y-6">
+        <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
+          <div className="mx-auto max-w-xl text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+              <Lock className="h-5 w-5" />
+            </div>
+
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+              Acesso restrito
+            </h1>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              O perfil convidado não pode visualizar dashboard privado, métricas
+              assistenciais, pacientes recentes nem prescrições recentes.
+            </p>
+
+            <Link
+              href="/prescricao"
+              className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+            >
+              Ir para prescrição
+            </Link>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

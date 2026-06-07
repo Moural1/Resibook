@@ -18,6 +18,12 @@ type BlockedUser = {
   blocked_at: string;
 };
 
+type SessionInfo = {
+  userId: string | null;
+  email: string;
+  isAdmin: boolean;
+};
+
 const ADMIN_EMAIL = "igormoura@resibook.com";
 
 function formatDate(value: string) {
@@ -46,11 +52,38 @@ function normalize(value?: string | null) {
     .trim();
 }
 
+async function getSessionInfo(): Promise<SessionInfo> {
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error) {
+    return {
+      userId: null,
+      email: "",
+      isAdmin: false,
+    };
+  }
+
+  const userId = data.session?.user?.id || null;
+  const email = data.session?.user?.email?.trim().toLowerCase() || "";
+
+  return {
+    userId,
+    email,
+    isAdmin: email === ADMIN_EMAIL,
+  };
+}
+
 export default function AcessosPage() {
   const supabase = createClient();
 
   const [checking, setChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [session, setSession] = useState<SessionInfo>({
+    userId: null,
+    email: "",
+    isAdmin: false,
+  });
 
   const [logs, setLogs] = useState<LoginLog[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
@@ -70,15 +103,12 @@ export default function AcessosPage() {
     setError("");
     setSuccess("");
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const email = sessionData.session?.user?.email?.trim().toLowerCase() || "";
-
-    const isAdmin = email === ADMIN_EMAIL;
-
-    setAuthorized(isAdmin);
+    const freshSession = await getSessionInfo();
+    setSession(freshSession);
+    setAuthorized(freshSession.isAdmin);
     setChecking(false);
 
-    if (!isAdmin) {
+    if (!freshSession.isAdmin) {
       setLogs([]);
       setBlockedUsers([]);
       setLoading(false);
@@ -98,18 +128,24 @@ export default function AcessosPage() {
         .order("blocked_at", { ascending: false }),
     ]);
 
+    const nextErrors: string[] = [];
+
     if (logsRes.error) {
-      setError(logsRes.error.message);
+      nextErrors.push(logsRes.error.message);
       setLogs([]);
     } else {
       setLogs((logsRes.data as LoginLog[]) || []);
     }
 
     if (blockedRes.error) {
-      setError(blockedRes.error.message);
+      nextErrors.push(blockedRes.error.message);
       setBlockedUsers([]);
     } else {
       setBlockedUsers((blockedRes.data as BlockedUser[]) || []);
+    }
+
+    if (nextErrors.length > 0) {
+      setError(nextErrors.join(" | "));
     }
 
     setLoading(false);
@@ -117,6 +153,7 @@ export default function AcessosPage() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredLogs = useMemo(() => {
@@ -133,7 +170,9 @@ export default function AcessosPage() {
   }, [logs, query]);
 
   const uniqueUsers = useMemo(() => {
-    return new Set(logs.map((item) => item.user_email.toLowerCase())).size;
+    return new Set(
+      logs.map((item) => item.user_email.trim().toLowerCase())
+    ).size;
   }, [logs]);
 
   const todayCount = useMemo(() => {
@@ -154,6 +193,11 @@ export default function AcessosPage() {
   }, [logs]);
 
   async function blockUser(emailToBlock?: string) {
+    if (!session.isAdmin || !session.userId) {
+      setError("Apenas o administrador pode bloquear usuários.");
+      return;
+    }
+
     const email = (emailToBlock || blockEmail).trim().toLowerCase();
 
     if (!email) {
@@ -166,17 +210,23 @@ export default function AcessosPage() {
       return;
     }
 
+    const alreadyBlocked = blockedUsers.some(
+      (item) => item.email.trim().toLowerCase() === email
+    );
+
+    if (alreadyBlocked) {
+      setError("Esse e-mail já está bloqueado.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user?.id || null;
-
     const { error } = await supabase.from("blocked_users").insert({
       email,
       reason: blockReason.trim() || null,
-      blocked_by: userId,
+      blocked_by: session.userId,
     });
 
     if (error) {
@@ -196,8 +246,12 @@ export default function AcessosPage() {
   }
 
   async function unblockUser(id: number, email: string) {
-    const confirmed = window.confirm(`Desbloquear ${email}?`);
+    if (!session.isAdmin) {
+      setError("Apenas o administrador pode desbloquear usuários.");
+      return;
+    }
 
+    const confirmed = window.confirm(`Desbloquear ${email}?`);
     if (!confirmed) return;
 
     setSaving(true);
@@ -366,7 +420,7 @@ export default function AcessosPage() {
                   type="button"
                   onClick={() => unblockUser(item.id, item.email)}
                   disabled={saving}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700"
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Desbloquear
                 </button>
@@ -464,7 +518,7 @@ export default function AcessosPage() {
                               type="button"
                               onClick={() => blockUser(email)}
                               disabled={saving}
-                              className="inline-flex h-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700"
+                              className="inline-flex h-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Bloquear
                             </button>

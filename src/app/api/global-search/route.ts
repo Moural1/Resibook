@@ -3,12 +3,21 @@ import { createClient } from "@supabase/supabase-js";
 
 type SearchResult = {
   id: string;
-  type: "paciente" | "prescricao" | "exame" | "flashcard" | "cid";
+  type:
+    | "paciente"
+    | "prescricao"
+    | "modelo_prescricao"
+    | "exame"
+    | "topico"
+    | "flashcard"
+    | "cid";
   title: string;
   subtitle: string;
   href: string;
   badge: string;
 };
+
+const GUEST_EMAIL = "convidado@resibook.com";
 
 function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,7 +27,15 @@ function getSupabase() {
 
   if (!supabaseUrl || !supabaseAnonKey) return null;
 
-  return createClient(supabaseUrl, supabaseAnonKey);
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      headers: {},
+    },
+  });
 }
 
 function normalize(value?: string | null) {
@@ -37,8 +54,37 @@ function includesSearch(parts: Array<string | null | undefined>, query: string) 
   return haystack.includes(q);
 }
 
+function getAccessToken(request: NextRequest) {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.toLowerCase().startsWith("bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+
+  const sbAccessToken = request.cookies.get("sb-access-token")?.value;
+  if (sbAccessToken) return sbAccessToken;
+
+  const sbProjectCookie = request.cookies
+    .getAll()
+    .find((cookie) => cookie.name.endsWith("-auth-token"));
+
+  if (!sbProjectCookie?.value) return null;
+
+  try {
+    const parsed = JSON.parse(sbProjectCookie.value);
+
+    if (Array.isArray(parsed)) {
+      return parsed[0] || null;
+    }
+
+    return parsed?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const supabase = getSupabase();
+
   if (!supabase) {
     return NextResponse.json({ results: [] });
   }
@@ -50,14 +96,89 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
-  const [patientsRes, templatesRes, examsRes, flashcardsRes, cidsRes] =
-    await Promise.all([
-      supabase.from("patients").select("*").limit(100),
-      supabase.from("prescription_templates").select("*").limit(100),
-      supabase.from("exam_templates").select("*").limit(100),
-      supabase.from("flashcards").select("*").limit(100),
-      supabase.from("cids").select("*").limit(100),
-    ]);
+  const accessToken = getAccessToken(request);
+
+  if (!accessToken) {
+    return NextResponse.json({ results: [] });
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(accessToken);
+
+  if (userError || !user?.id || !user.email) {
+    return NextResponse.json({ results: [] });
+  }
+
+  const userId = user.id;
+  const email = user.email.trim().toLowerCase();
+  const isGuest = email === GUEST_EMAIL;
+
+  const patientsPromise = isGuest
+    ? Promise.resolve({ data: [], error: null })
+    : supabase
+        .from("patients")
+        .select(
+          "id, nome, especialidade, queixa, observacoes, diagnostico_principal"
+        )
+        .eq("user_id", userId)
+        .limit(60);
+
+  const prescriptionsPromise = isGuest
+    ? Promise.resolve({ data: [], error: null })
+    : supabase
+        .from("prescriptions")
+        .select("id, paciente_nome, medicamento, posologia, orientacoes")
+        .eq("user_id", userId)
+        .limit(60);
+
+  const prescriptionTemplatesPromise = supabase
+    .from("prescription_templates")
+    .select("id, titulo, categoria, conteudo, observacoes, source_file")
+    .limit(80);
+
+  const examsPromise = supabase
+    .from("exam_templates")
+    .select("id, titulo, categoria, conteudo, sexo, arquivo_origem, source_file")
+    .limit(80);
+
+  const topicosPromise = supabase
+    .from("topicos_medicos")
+    .select(
+      "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, fonte"
+    )
+    .limit(80);
+
+  const flashcardsPromise = isGuest
+    ? Promise.resolve({ data: [], error: null })
+    : supabase
+        .from("flashcards")
+        .select("id, area, materia, tipo, frente, verso")
+        .limit(80);
+
+  const cidsPromise = supabase
+    .from("cids")
+    .select("id, codigo, descricao, grupo, area, tags")
+    .limit(80);
+
+  const [
+    patientsRes,
+    prescriptionsRes,
+    templatesRes,
+    examsRes,
+    topicosRes,
+    flashcardsRes,
+    cidsRes,
+  ] = await Promise.all([
+    patientsPromise,
+    prescriptionsPromise,
+    prescriptionTemplatesPromise,
+    examsPromise,
+    topicosPromise,
+    flashcardsPromise,
+    cidsPromise,
+  ]);
 
   const results: SearchResult[] = [];
 
@@ -79,9 +200,31 @@ export async function GET(request: NextRequest) {
         type: "paciente",
         title: item.nome || "Paciente",
         subtitle:
-          item.queixa || item.diagnostico_principal || item.especialidade || "Cadastro clínico",
-        href: "/pacientes",
+          item.queixa ||
+          item.diagnostico_principal ||
+          item.especialidade ||
+          "Cadastro clínico",
+        href: `/pacientes?q=${encodeURIComponent(item.nome || q)}`,
         badge: "Paciente",
+      });
+    }
+  }
+
+  for (const item of prescriptionsRes.data || []) {
+    if (
+      includesSearch(
+        [item.medicamento, item.paciente_nome, item.posologia, item.orientacoes],
+        q
+      )
+    ) {
+      results.push({
+        id: String(item.id),
+        type: "prescricao",
+        title: item.medicamento || "Prescrição",
+        subtitle:
+          item.paciente_nome || item.posologia || item.orientacoes || "Prescrição clínica",
+        href: `/prescricao?q=${encodeURIComponent(item.medicamento || q)}`,
+        badge: "Prescrição",
       });
     }
   }
@@ -89,17 +232,23 @@ export async function GET(request: NextRequest) {
   for (const item of templatesRes.data || []) {
     if (
       includesSearch(
-        [item.titulo, item.categoria, item.conteudo, item.observacoes, item.source_file],
+        [
+          item.titulo,
+          item.categoria,
+          item.conteudo,
+          item.observacoes,
+          item.source_file,
+        ],
         q
       )
     ) {
       results.push({
         id: String(item.id),
-        type: "prescricao",
+        type: "modelo_prescricao",
         title: item.titulo || "Prescrição pronta",
         subtitle: item.categoria || item.source_file || "Biblioteca de plantão",
-        href: "/prescricao",
-        badge: "Prescrição",
+        href: `/prescricao?q=${encodeURIComponent(item.titulo || q)}`,
+        badge: "Modelo",
       });
     }
   }
@@ -107,7 +256,14 @@ export async function GET(request: NextRequest) {
   for (const item of examsRes.data || []) {
     if (
       includesSearch(
-        [item.titulo, item.categoria, item.conteudo, item.sexo, item.source_file],
+        [
+          item.titulo,
+          item.categoria,
+          item.conteudo,
+          item.sexo,
+          item.arquivo_origem,
+          item.source_file,
+        ],
         q
       )
     ) {
@@ -115,9 +271,44 @@ export async function GET(request: NextRequest) {
         id: String(item.id),
         type: "exame",
         title: item.titulo || "Exame / Evolução",
-        subtitle: item.categoria || item.source_file || "Biblioteca clínica",
-        href: "/exames-evolucao",
-        badge: "Exames",
+        subtitle:
+          item.categoria ||
+          item.arquivo_origem ||
+          item.source_file ||
+          "Biblioteca clínica",
+        href: `/exames-evolucao?q=${encodeURIComponent(item.titulo || q)}`,
+        badge: "Exame",
+      });
+    }
+  }
+
+  for (const item of topicosRes.data || []) {
+    if (
+      includesSearch(
+        [
+          item.area,
+          item.titulo,
+          item.resumo,
+          item.diagnostico,
+          item.criterios,
+          item.exames,
+          item.tratamento,
+          item.conduta_urgencia,
+          item.internacao_referencia,
+          item.pegadinhas,
+          item.tags,
+          item.fonte,
+        ],
+        q
+      )
+    ) {
+      results.push({
+        id: String(item.id),
+        type: "topico",
+        title: item.titulo || "Tópico médico",
+        subtitle: item.area || item.resumo || "Biblioteca médica",
+        href: `/topicos?q=${encodeURIComponent(item.titulo || q)}`,
+        badge: "Tópico",
       });
     }
   }
@@ -125,7 +316,7 @@ export async function GET(request: NextRequest) {
   for (const item of flashcardsRes.data || []) {
     if (
       includesSearch(
-        [item.frente, item.verso, item.source_group, item.source_file, ...(item.tags || [])],
+        [item.frente, item.verso, item.area, item.materia, item.tipo],
         q
       )
     ) {
@@ -133,8 +324,8 @@ export async function GET(request: NextRequest) {
         id: String(item.id),
         type: "flashcard",
         title: item.frente || "Flashcard",
-        subtitle: item.source_group || item.source_file || "Revisão clínica",
-        href: "/flashcards",
+        subtitle: item.materia || item.area || item.tipo || "Revisão clínica",
+        href: `/flashcards?q=${encodeURIComponent(item.frente || q)}`,
         badge: "Flashcard",
       });
     }
@@ -142,20 +333,35 @@ export async function GET(request: NextRequest) {
 
   for (const item of cidsRes.data || []) {
     if (
-      includesSearch([item.codigo, item.descricao, item.grupo, item.area, item.tags], q)
+      includesSearch(
+        [item.codigo, item.descricao, item.grupo, item.area, item.tags],
+        q
+      )
     ) {
       results.push({
         id: String(item.id),
         type: "cid",
-        title: `${item.codigo} — ${item.descricao}`,
+        title: item.codigo
+          ? `${item.codigo} — ${item.descricao || "CID"}`
+          : item.descricao || "CID",
         subtitle: item.grupo || item.area || "CID-10",
-        href: "/cids",
+        href: `/cids?q=${encodeURIComponent(item.codigo || item.descricao || q)}`,
         badge: "CID",
       });
     }
   }
 
+  const orderedResults = [
+    ...results.filter((item) => item.type === "paciente"),
+    ...results.filter((item) => item.type === "topico"),
+    ...results.filter((item) => item.type === "modelo_prescricao"),
+    ...results.filter((item) => item.type === "prescricao"),
+    ...results.filter((item) => item.type === "exame"),
+    ...results.filter((item) => item.type === "cid"),
+    ...results.filter((item) => item.type === "flashcard"),
+  ].slice(0, 12);
+
   return NextResponse.json({
-    results: results.slice(0, 12),
+    results: orderedResults,
   });
 }

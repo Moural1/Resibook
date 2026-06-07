@@ -15,6 +15,7 @@ import {
   Stethoscope,
   Tags,
   Users,
+  Lock,
 } from "lucide-react";
 
 type CountMap = {
@@ -58,6 +59,8 @@ type NoteRow = {
   conteudo: string | null;
   created_at: string | null;
 };
+
+const GUEST_EMAIL = "convidado@resibook.com";
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -232,6 +235,8 @@ export default function MetricasPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
   const [counts, setCounts] = useState<CountMap>({
     patients: 0,
@@ -257,11 +262,45 @@ export default function MetricasPage() {
       setError("");
 
       const supabase = createClient();
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError) {
+        setError(sessionError.message);
+        setLoading(false);
+        setRefreshing(false);
+        setSessionReady(true);
+        return;
+      }
+
+      const email = sessionData.session?.user?.email?.trim().toLowerCase() || "";
       const userId = sessionData.session?.user?.id || null;
+      const guest = email === GUEST_EMAIL;
+
+      setIsGuest(guest);
+      setSessionReady(true);
 
       if (!userId) {
         setError("Usuário autenticado não identificado.");
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      if (guest) {
+        setError("Métricas privadas não estão disponíveis para o usuário convidado.");
+        setCounts({
+          patients: 0,
+          prescriptions: 0,
+          notes: 0,
+          exams: 0,
+          topicos: 0,
+          flashcards: 0,
+          flashcardsDificeis: 0,
+          cids: 0,
+        });
+        setRecentItems([]);
+        setUpdatedAt(new Date().toISOString());
         setLoading(false);
         setRefreshing(false);
         return;
@@ -289,6 +328,23 @@ export default function MetricasPage() {
         getCount("flashcard_user_marks", {
           column: "user_id",
           value: userId,
+        }).then(async (baseCount) => {
+          const supabaseLocal = createClient();
+          const { count, error: difficultError } = await supabaseLocal
+            .from("flashcard_user_marks")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .eq("dificil", true);
+
+          if (difficultError) {
+            console.warn(
+              "Erro ao contar flashcards difíceis:",
+              difficultError.message
+            );
+            return baseCount;
+          }
+
+          return count ?? 0;
         }),
         getCount("cids"),
 
@@ -389,6 +445,29 @@ export default function MetricasPage() {
   }, [counts]);
 
   const totalSystem = clinicalTotal + libraryTotal;
+
+  if (!loading && sessionReady && isGuest) {
+    return (
+      <div className="space-y-6">
+        <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
+          <div className="mx-auto max-w-xl text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+              <Lock className="h-5 w-5" />
+            </div>
+
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+              Acesso restrito
+            </h1>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              O perfil convidado não pode visualizar métricas privadas, atividade
+              clínica, dados agregados do prontuário nem marcações individuais.
+            </p>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

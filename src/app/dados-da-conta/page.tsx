@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   AlertTriangle,
@@ -31,7 +31,17 @@ type ExportConfig = {
   icon: React.ComponentType<{ className?: string }>;
   select: string;
   orderBy?: string;
+  isPrivate?: boolean;
+  guestAllowed?: boolean;
 };
+
+type SessionInfo = {
+  userId: string | null;
+  email: string;
+  isGuest: boolean;
+};
+
+const GUEST_EMAIL = "convidado@resibook.com";
 
 const exportConfigs: ExportConfig[] = [
   {
@@ -43,6 +53,8 @@ const exportConfigs: ExportConfig[] = [
     select:
       "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, queixa, queixa_principal, hma, hpp, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, crm_medico, local_atendimento, created_at",
     orderBy: "created_at",
+    isPrivate: true,
+    guestAllowed: false,
   },
   {
     table: "prescriptions",
@@ -52,6 +64,8 @@ const exportConfigs: ExportConfig[] = [
     select:
       "id, user_id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at",
     orderBy: "created_at",
+    isPrivate: true,
+    guestAllowed: false,
   },
   {
     table: "patient_notes",
@@ -61,6 +75,8 @@ const exportConfigs: ExportConfig[] = [
     icon: FileText,
     select: "id, user_id, patient_id, tipo, titulo, conteudo, created_at",
     orderBy: "created_at",
+    isPrivate: true,
+    guestAllowed: false,
   },
   {
     table: "exam_templates",
@@ -69,6 +85,7 @@ const exportConfigs: ExportConfig[] = [
     icon: Stethoscope,
     select: "id, categoria, titulo, sexo, arquivo_origem, conteudo, created_at",
     orderBy: "created_at",
+    guestAllowed: true,
   },
   {
     table: "topicos_medicos",
@@ -78,6 +95,7 @@ const exportConfigs: ExportConfig[] = [
     select:
       "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em",
     orderBy: "atualizado_em",
+    guestAllowed: true,
   },
   {
     table: "flashcards",
@@ -85,6 +103,7 @@ const exportConfigs: ExportConfig[] = [
     description: "Flashcards de revisão compartilhados entre usuários.",
     icon: Brain,
     select: "id, area, materia, tipo, frente, verso, dificil",
+    guestAllowed: false,
   },
   {
     table: "flashcard_user_marks",
@@ -93,6 +112,8 @@ const exportConfigs: ExportConfig[] = [
     icon: Brain,
     select: "id, user_id, flashcard_id, dificil, created_at",
     orderBy: "created_at",
+    isPrivate: true,
+    guestAllowed: false,
   },
   {
     table: "cids",
@@ -100,6 +121,7 @@ const exportConfigs: ExportConfig[] = [
     description: "Base de CIDs para consulta rápida.",
     icon: Tags,
     select: "id, codigo, descricao, grupo, area, prioridade, tags",
+    guestAllowed: true,
   },
 ];
 
@@ -139,10 +161,57 @@ function downloadJson(filename: string, data: unknown) {
   URL.revokeObjectURL(url);
 }
 
-async function fetchTableData(config: ExportConfig) {
+async function getSessionInfo(): Promise<SessionInfo> {
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error) {
+    return {
+      userId: null,
+      email: "",
+      isGuest: false,
+    };
+  }
+
+  const userId = data.session?.user?.id || null;
+  const email = data.session?.user?.email?.trim().toLowerCase() || "";
+  const isGuest = email === GUEST_EMAIL;
+
+  return {
+    userId,
+    email,
+    isGuest,
+  };
+}
+
+function isConfigAllowedForSession(config: ExportConfig, session: SessionInfo) {
+  if (!session.userId) return false;
+  if (session.isGuest && config.guestAllowed === false) return false;
+  return true;
+}
+
+async function fetchTableData(config: ExportConfig, session: SessionInfo) {
+  if (!session.userId) {
+    return {
+      data: [],
+      error: "Sessão inválida. Faça login novamente.",
+    };
+  }
+
+  if (!isConfigAllowedForSession(config, session)) {
+    return {
+      data: [],
+      error: "Este módulo não está disponível para o perfil atual.",
+    };
+  }
+
   const supabase = createClient();
 
   let query = supabase.from(config.table).select(config.select);
+
+  if (config.isPrivate) {
+    query = query.eq("user_id", session.userId);
+  }
 
   if (config.orderBy) {
     query = query.order(config.orderBy, {
@@ -167,11 +236,40 @@ async function fetchTableData(config: ExportConfig) {
 }
 
 export default function DadosDaContaPage() {
+  const [session, setSession] = useState<SessionInfo>({
+    userId: null,
+    email: "",
+    isGuest: false,
+  });
+  const [checkingSession, setCheckingSession] = useState(true);
   const [loadingAll, setLoadingAll] = useState(false);
   const [loadingTable, setLoadingTable] = useState<string | null>(null);
   const [results, setResults] = useState<ExportResult[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadSession() {
+      const info = await getSessionInfo();
+      if (!mounted) return;
+      setSession(info);
+      setCheckingSession(false);
+    }
+
+    loadSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const allowedConfigs = useMemo(() => {
+    return exportConfigs.filter((config) =>
+      isConfigAllowedForSession(config, session)
+    );
+  }, [session]);
 
   const totalExported = useMemo(() => {
     return results.reduce((acc, item) => acc + item.count, 0);
@@ -186,11 +284,16 @@ export default function DadosDaContaPage() {
   }, [results]);
 
   async function handleExportOne(config: ExportConfig) {
+    if (checkingSession) return;
+
     setError("");
     setSuccess("");
     setLoadingTable(config.table);
 
-    const response = await fetchTableData(config);
+    const freshSession = await getSessionInfo();
+    setSession(freshSession);
+
+    const response = await fetchTableData(config, freshSession);
 
     if (response.error) {
       setError(`Erro ao exportar ${config.label}: ${response.error}`);
@@ -212,9 +315,12 @@ export default function DadosDaContaPage() {
     const payload = {
       exported_at: new Date().toISOString(),
       app: "ResiBook",
+      version: "backup-v3-scoped",
       table: config.table,
       label: config.label,
       count: response.data.length,
+      scope: config.isPrivate ? "private-by-user" : "shared-library",
+      user_email: freshSession.email || null,
       data: response.data,
     };
 
@@ -238,15 +344,26 @@ export default function DadosDaContaPage() {
   }
 
   async function handleExportAll() {
+    if (checkingSession) return;
+
     setError("");
     setSuccess("");
     setLoadingAll(true);
 
+    const freshSession = await getSessionInfo();
+    setSession(freshSession);
+
+    if (!freshSession.userId) {
+      setError("Sessão inválida. Faça login novamente.");
+      setLoadingAll(false);
+      return;
+    }
+
     const backup: Record<string, unknown[]> = {};
     const nextResults: ExportResult[] = [];
 
-    for (const config of exportConfigs) {
-      const response = await fetchTableData(config);
+    for (const config of allowedConfigs) {
+      const response = await fetchTableData(config, freshSession);
 
       if (response.error) {
         backup[config.table] = [];
@@ -273,9 +390,11 @@ export default function DadosDaContaPage() {
     const payload = {
       exported_at: new Date().toISOString(),
       app: "ResiBook",
-      version: "backup-v2-rls",
+      version: "backup-v3-scoped",
       description:
-        "Backup respeitando as permissões do usuário logado e as políticas de RLS do Supabase.",
+        "Backup respeitando o escopo do usuário logado, políticas RLS e filtros explícitos de user_id em dados privados.",
+      profile: freshSession.isGuest ? "guest" : "authenticated",
+      user_email: freshSession.email || null,
       tables: nextResults,
       data: backup,
     };
@@ -304,6 +423,12 @@ export default function DadosDaContaPage() {
               <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                 RLS ativo
               </span>
+
+              {session.isGuest ? (
+                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                  Modo convidado
+                </span>
+              ) : null}
             </div>
 
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
@@ -312,15 +437,21 @@ export default function DadosDaContaPage() {
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
               Exporte os dados do ResiBook em JSON para manter uma cópia local
-              segura. Esta página respeita as regras de segurança do banco: cada
-              usuário exporta apenas os dados que tem permissão para acessar.
+              segura. Esta página respeita as regras de segurança do banco:
+              cada usuário exporta apenas os dados que tem permissão para
+              acessar.
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleExportAll}
-            disabled={loadingAll || loadingTable !== null}
+            disabled={
+              checkingSession ||
+              !session.userId ||
+              loadingAll ||
+              loadingTable !== null
+            }
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" />
@@ -337,6 +468,14 @@ export default function DadosDaContaPage() {
         {success ? (
           <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
             {success}
+          </div>
+        ) : null}
+
+        {session.isGuest ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            O usuário convidado exporta apenas bibliotecas compartilhadas
+            permitidas. Dados privados como pacientes, prescrições, evoluções e
+            marcações individuais não são exportados neste perfil.
           </div>
         ) : null}
 
@@ -426,7 +565,12 @@ export default function DadosDaContaPage() {
           <button
             type="button"
             onClick={handleExportAll}
-            disabled={loadingAll || loadingTable !== null}
+            disabled={
+              checkingSession ||
+              !session.userId ||
+              loadingAll ||
+              loadingTable !== null
+            }
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" />
@@ -447,9 +591,9 @@ export default function DadosDaContaPage() {
                 </h3>
 
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Inclui pacientes, prescrições, evoluções, exames/modelos,
-                  tópicos, flashcards, marcações de difíceis e CIDs, respeitando
-                  as permissões do usuário atual.
+                  Inclui apenas os módulos permitidos ao perfil atual,
+                  respeitando RLS, filtros explícitos em dados privados e o
+                  escopo de acesso do usuário logado.
                 </p>
               </div>
             </div>
@@ -472,8 +616,8 @@ export default function DadosDaContaPage() {
           </p>
         </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
-          {exportConfigs.map((config) => {
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {allowedConfigs.map((config) => {
             const Icon = config.icon;
             const currentResult = results.find(
               (item) => item.table === config.table
@@ -514,6 +658,16 @@ export default function DadosDaContaPage() {
                       {config.description}
                     </p>
 
+                    {config.isPrivate ? (
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        Dados privados do usuário
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        Biblioteca compartilhada
+                      </p>
+                    )}
+
                     {currentResult?.error ? (
                       <p className="mt-2 text-sm font-medium text-rose-600">
                         {currentResult.error}
@@ -525,7 +679,12 @@ export default function DadosDaContaPage() {
                 <button
                   type="button"
                   onClick={() => handleExportOne(config)}
-                  disabled={loadingAll || loadingTable !== null}
+                  disabled={
+                    checkingSession ||
+                    !session.userId ||
+                    loadingAll ||
+                    loadingTable !== null
+                  }
                   className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Download className="h-4 w-4" />

@@ -2,13 +2,23 @@
 
 import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+
+const GUEST_EMAIL = "convidado@resibook.com";
+
+function sanitizeRedirect(value: string | null) {
+  if (!value) return "/dashboard";
+  if (!value.startsWith("/")) return "/dashboard";
+  if (value.startsWith("//")) return "/dashboard";
+  return value;
+}
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const redirectTo = searchParams.get("redirect") || "/dashboard";
+  const redirectTo = sanitizeRedirect(searchParams.get("redirect"));
   const blocked = searchParams.get("blocked") === "1";
 
   const [email, setEmail] = useState("");
@@ -24,7 +34,9 @@ function LoginContent() {
     e.preventDefault();
     setErro("");
 
-    if (!email.trim() || !senha.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !senha.trim()) {
       setErro("Preencha e-mail e senha.");
       return;
     }
@@ -33,7 +45,7 @@ function LoginContent() {
       setLoading(true);
 
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: normalizedEmail,
         password: senha,
       });
 
@@ -54,7 +66,15 @@ function LoginContent() {
         return;
       }
 
-      window.location.replace(redirectTo);
+      const sessionEmail =
+        sessionData.session.user?.email?.trim().toLowerCase() || "";
+
+      const nextPath =
+        sessionEmail === GUEST_EMAIL && redirectTo === "/dashboard"
+          ? "/prescricao"
+          : redirectTo;
+
+      window.location.replace(nextPath);
     } catch {
       setErro("Não foi possível entrar. Tente novamente.");
       setLoading(false);
@@ -137,23 +157,23 @@ function LoginContent() {
         <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
           <p className="text-xs leading-5 text-slate-500">
             Ao acessar o ResiBook, você concorda com os{" "}
-            <a
+            <Link
               href="/termos"
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-blue-700 underline-offset-4 hover:underline"
             >
               Termos de Uso
-            </a>{" "}
+            </Link>{" "}
             e com a{" "}
-            <a
+            <Link
               href="/privacidade"
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-blue-700 underline-offset-4 hover:underline"
             >
               Política de Privacidade
-            </a>
+            </Link>
             .
           </p>
         </div>

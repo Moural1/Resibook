@@ -107,12 +107,21 @@ export default function PrescriptionTemplatesLive({
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [hydratedFromUrl, setHydratedFromUrl] = useState(false);
 
   useEffect(() => {
-    setQuery(initialQuery);
+    const params = new URLSearchParams(window.location.search);
+    const urlQuery = params.get("q") || initialQuery || "";
+    const urlCategory = params.get("categoria") || "";
+
+    setQuery(urlQuery);
+    setSelectedCategory(urlCategory);
+    setHydratedFromUrl(true);
   }, [initialQuery]);
 
   useEffect(() => {
+    if (!hydratedFromUrl) return;
+
     const params = new URLSearchParams();
 
     if (query.trim()) params.set("q", query.trim());
@@ -120,18 +129,28 @@ export default function PrescriptionTemplatesLive({
 
     const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(next, { scroll: false });
-  }, [query, selectedCategory, pathname, router]);
+  }, [query, selectedCategory, pathname, router, hydratedFromUrl]);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(FAVORITES_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as number[];
+
+      const parsed = JSON.parse(raw) as unknown;
+
       if (Array.isArray(parsed)) {
-        setFavoriteIds(parsed);
+        const uniqueValidIds = Array.from(
+          new Set(
+            parsed
+              .filter((value): value is number => typeof value === "number")
+              .filter((id) => templates.some((item) => item.id === id))
+          )
+        );
+
+        setFavoriteIds(uniqueValidIds);
       }
     } catch {}
-  }, []);
+  }, [templates]);
 
   useEffect(() => {
     try {
@@ -145,7 +164,7 @@ export default function PrescriptionTemplatesLive({
     setFavoriteIds((current) =>
       current.includes(id)
         ? current.filter((item) => item !== id)
-        : [id, ...current]
+        : [id, ...current.filter((item) => item !== id)]
     );
 
     showToast({
@@ -381,7 +400,9 @@ export default function PrescriptionTemplatesLive({
                 Mais usados no plantão
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                {filteredFavorites.length} modelo{filteredFavorites.length > 1 ? "s" : ""} favorito{filteredFavorites.length > 1 ? "s" : ""}
+                {filteredFavorites.length} modelo
+                {filteredFavorites.length > 1 ? "s" : ""} favorito
+                {filteredFavorites.length > 1 ? "s" : ""}
               </p>
             </div>
           </div>
@@ -408,7 +429,8 @@ export default function PrescriptionTemplatesLive({
                   {formatLabel(categoria)}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  {items.length} modelo{items.length > 1 ? "s" : ""} nesta categoria
+                  {items.length} modelo{items.length > 1 ? "s" : ""} nesta
+                  categoria
                 </p>
               </div>
 

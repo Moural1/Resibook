@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
+import { Lock } from "lucide-react";
 
 type CidItem = {
   id: number;
@@ -24,6 +25,7 @@ type CidForm = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
+const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const initialForm: CidForm = {
   codigo: "",
@@ -66,16 +68,30 @@ function buildCidText(item: CidItem) {
     .join("\n");
 }
 
+function buildPayload(form: CidForm) {
+  return {
+    codigo: form.codigo.trim(),
+    descricao: form.descricao.trim(),
+    grupo: form.grupo.trim() || null,
+    area: form.area.trim() || null,
+    prioridade: form.prioridade ? Number(form.prioridade) : null,
+    tags: form.tags.trim() || null,
+  };
+}
+
 export default function CidsPage() {
   const supabase = createClient();
 
   const [isGuest, setIsGuest] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [checkingUser, setCheckingUser] = useState(true);
 
   const [allCids, setAllCids] = useState<CidItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [query, setQuery] = useState("");
@@ -84,10 +100,20 @@ export default function CidsPage() {
   const [form, setForm] = useState<CidForm>(initialForm);
 
   async function checkUser() {
-    const { data } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      setIsGuest(false);
+      setIsAdmin(false);
+      setCheckingUser(false);
+      setError(error.message);
+      return;
+    }
+
     const email = data.session?.user?.email?.trim().toLowerCase() || "";
 
     setIsGuest(email === GUEST_EMAIL);
+    setIsAdmin(email === ADMIN_EMAIL);
     setCheckingUser(false);
   }
 
@@ -96,7 +122,7 @@ export default function CidsPage() {
 
     const { data, error } = await supabase
       .from("cids")
-      .select("*")
+      .select("id, codigo, descricao, grupo, area, prioridade, tags")
       .order("grupo", { ascending: true })
       .order("codigo", { ascending: true });
 
@@ -114,27 +140,32 @@ export default function CidsPage() {
   useEffect(() => {
     checkUser();
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const grupos = useMemo(() => {
     return Array.from(
       new Set(allCids.map((item) => item.grupo).filter(Boolean))
-    ) as string[];
+    ).sort((a, b) => String(a).localeCompare(String(b), "pt-BR")) as string[];
   }, [allCids]);
 
   const areas = useMemo(() => {
     return Array.from(
       new Set(allCids.map((item) => item.area).filter(Boolean))
-    ) as string[];
+    ).sort((a, b) => String(a).localeCompare(String(b), "pt-BR")) as string[];
   }, [allCids]);
 
   const filtered = useMemo(() => {
+    const normalizedQuery = normalize(query || "");
+
     return allCids.filter((item) => {
       const matchesQuery =
-        !query ||
-        normalize(item.codigo).includes(normalize(query)) ||
-        normalize(item.descricao).includes(normalize(query)) ||
-        normalize(item.tags || "").includes(normalize(query));
+        !normalizedQuery ||
+        normalize(item.codigo).includes(normalizedQuery) ||
+        normalize(item.descricao).includes(normalizedQuery) ||
+        normalize(item.tags || "").includes(normalizedQuery) ||
+        normalize(item.grupo || "").includes(normalizedQuery) ||
+        normalize(item.area || "").includes(normalizedQuery);
 
       const matchesGrupo = !grupo || item.grupo === grupo;
       const matchesArea = !area || item.area === area;
@@ -158,7 +189,10 @@ export default function CidsPage() {
   }
 
   function startEdit(item: CidItem) {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode editar CIDs.");
+      return;
+    }
 
     setEditingId(item.id);
     setForm({
@@ -176,8 +210,8 @@ export default function CidsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (isGuest) {
-      setError("Usuário convidado não pode criar ou editar CIDs.");
+    if (!isAdmin) {
+      setError("Apenas o administrador pode criar ou editar CIDs.");
       return;
     }
 
@@ -188,45 +222,86 @@ export default function CidsPage() {
 
     setSaving(true);
     setError("");
+    setSuccess("");
 
-    const payload = {
-      codigo: form.codigo.trim(),
-      descricao: form.descricao.trim(),
-      grupo: form.grupo.trim() || null,
-      area: form.area.trim() || null,
-      prioridade: form.prioridade ? Number(form.prioridade) : null,
-      tags: form.tags.trim() || null,
-    };
+    const payload = buildPayload(form);
 
     const result = editingId
-      ? await supabase.from("cids").update(payload).eq("id", editingId)
-      : await supabase.from("cids").insert(payload);
+      ? await supabase
+          .from("cids")
+          .update(payload)
+          .eq("id", editingId)
+          .select("id, codigo, descricao, grupo, area, prioridade, tags")
+          .single()
+      : await supabase
+          .from("cids")
+          .insert(payload)
+          .select("id, codigo, descricao, grupo, area, prioridade, tags")
+          .single();
 
     if (result.error) {
       setError(result.error.message);
-    } else {
+    } else if (result.data) {
+      const saved = result.data as CidItem;
+
+      if (editingId) {
+        setAllCids((current) =>
+          current
+            .map((item) => (item.id === saved.id ? saved : item))
+            .sort((a, b) => {
+              const grupoA = a.grupo || "";
+              const grupoB = b.grupo || "";
+              const byGroup = grupoA.localeCompare(grupoB, "pt-BR");
+              if (byGroup !== 0) return byGroup;
+              return a.codigo.localeCompare(b.codigo, "pt-BR");
+            })
+        );
+        setSuccess("CID atualizado com sucesso.");
+      } else {
+        setAllCids((current) =>
+          [...current, saved].sort((a, b) => {
+            const grupoA = a.grupo || "";
+            const grupoB = b.grupo || "";
+            const byGroup = grupoA.localeCompare(grupoB, "pt-BR");
+            if (byGroup !== 0) return byGroup;
+            return a.codigo.localeCompare(b.codigo, "pt-BR");
+          })
+        );
+        setSuccess("CID criado com sucesso.");
+      }
+
       resetForm();
-      await load();
     }
 
     setSaving(false);
   }
 
   async function handleDelete(id: number) {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode apagar CIDs.");
+      return;
+    }
 
     const confirmed = window.confirm("Tem certeza que deseja apagar este CID?");
     if (!confirmed) return;
+
+    setDeletingId(id);
+    setError("");
+    setSuccess("");
 
     const { error } = await supabase.from("cids").delete().eq("id", id);
 
     if (error) {
       setError(error.message);
+      setDeletingId(null);
       return;
     }
 
     if (editingId === id) resetForm();
-    await load();
+
+    setAllCids((current) => current.filter((item) => item.id !== id));
+    setSuccess("CID apagado com sucesso.");
+    setDeletingId(null);
   }
 
   return (
@@ -239,7 +314,17 @@ export default function CidsPage() {
             </span>
 
             <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              {isGuest ? "Somente leitura" : "CRUD completo"}
+              Biblioteca compartilhada
+            </span>
+
+            <span
+              className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
+                isAdmin
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
+              }`}
+            >
+              {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
             </span>
           </div>
 
@@ -248,27 +333,40 @@ export default function CidsPage() {
           </h1>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            {isGuest
-              ? "Consulta de CIDs com busca, filtros e cópia rápida. O modo convidado não permite criar, editar ou apagar."
-              : "Criar, editar, apagar e buscar por código, descrição ou tags."}
+            Consulta de CIDs com busca, filtros e cópia rápida. A biblioteca é
+            compartilhada para todos os autenticados; somente o administrador
+            pode criar, editar ou apagar.
           </p>
 
           <p className="mt-3 text-sm font-medium text-slate-700">
             {loading ? "Carregando..." : `Total carregado do banco: ${allCids.length}`}
           </p>
 
-          {isGuest ? (
+          {!isAdmin ? (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              Convidado: leitura e cópia liberadas. Edição bloqueada.
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                {isGuest
+                  ? "Convidado: leitura e cópia liberadas. Edição bloqueada."
+                  : "Usuário comum: leitura e cópia liberadas. Apenas o admin gerencia a biblioteca."}
+              </div>
             </div>
           ) : null}
 
+          {success ? (
+            <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+              {success}
+            </p>
+          ) : null}
+
           {error ? (
-            <p className="mt-2 text-sm font-medium text-rose-600">Erro: {error}</p>
+            <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+              Erro: {error}
+            </p>
           ) : null}
         </div>
 
-        {!isGuest ? (
+        {isAdmin ? (
           <form
             onSubmit={handleSubmit}
             className="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5"
@@ -313,9 +411,7 @@ export default function CidsPage() {
 
               <input
                 value={form.prioridade}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, prioridade: e.target.value }))
-                }
+                onChange={(e) => setForm((s) => ({ ...s, prioridade: e.target.value }))}
                 placeholder="Prioridade"
                 type="number"
                 className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
@@ -342,7 +438,7 @@ export default function CidsPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
+                className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "Salvando..." : editingId ? "Salvar edição" : "Criar CID"}
               </button>
@@ -365,7 +461,7 @@ export default function CidsPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por código ou descrição..."
+            placeholder="Buscar por código, descrição, grupo, área ou tags..."
             className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
           />
 
@@ -464,11 +560,7 @@ export default function CidsPage() {
                         </p>
                       </div>
 
-                      {highlighted ? (
-                        <span className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700">
-                          Encontrado
-                        </span>
-                      ) : null}
+                      <CopyButton text={buildCidText(item)} />
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -478,45 +570,53 @@ export default function CidsPage() {
                         </span>
                       ) : null}
 
+                      {item.prioridade != null ? (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                          Prioridade {item.prioridade}
+                        </span>
+                      ) : null}
+
                       {item.tags
-                        ? item.tags.split(",").map((tag) => (
-                            <span
-                              key={tag}
-                              className="rounded-full border border-sky-100 bg-white px-2.5 py-1 text-[11px] font-medium text-sky-700"
-                            >
-                              {tag.trim()}
-                            </span>
-                          ))
+                        ? item.tags.split(",").map((tag) => {
+                            const clean = tag.trim();
+                            if (!clean) return null;
+
+                            return (
+                              <span
+                                key={clean}
+                                className="rounded-full border border-sky-100 bg-white px-2.5 py-1 text-[11px] font-medium text-sky-700"
+                              >
+                                {clean}
+                              </span>
+                            );
+                          })
                         : null}
                     </div>
 
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <CopyButton text={buildCidText(item)} />
+                    {isAdmin ? (
+                      <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(item)}
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                        >
+                          Editar
+                        </button>
 
-                      {!isGuest ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => startEdit(item)}
-                            className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50 px-5 text-sm font-semibold text-cyan-800"
-                          >
-                            Editar
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(item.id)}
-                            className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-white px-5 text-sm font-semibold text-rose-700"
-                          >
-                            Apagar
-                          </button>
-                        </>
-                      ) : (
-                        <span className="inline-flex h-11 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-5 text-sm font-semibold text-amber-800">
-                          Somente leitura
-                        </span>
-                      )}
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deletingId === item.id}
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deletingId === item.id ? "Apagando..." : "Apagar"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                        Somente leitura
+                      </div>
+                    )}
                   </div>
                 );
               })}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import {
   BookOpen,
   ClipboardList,
@@ -96,28 +96,8 @@ type SessionInfo = {
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
-function getSupabase(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !key) return null;
-
-  return createClient(url, key);
-}
-
-async function getSessionInfo(
-  supabase: SupabaseClient | null
-): Promise<SessionInfo> {
-  if (!supabase) {
-    return {
-      userId: null,
-      email: "",
-      isGuest: false,
-    };
-  }
-
+async function getSessionInfo(): Promise<SessionInfo> {
+  const supabase = createClient();
   const { data } = await supabase.auth.getSession();
 
   const userId = data.session?.user?.id || null;
@@ -264,29 +244,21 @@ export function Topbar() {
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const firstResult = useMemo(() => results[0], [results]);
+  const searchRequestRef = useRef(0);
 
   const quickLinks = isGuest ? guestQuickLinks : fullQuickLinks;
 
   useEffect(() => {
-    const supabase = getSupabase();
-
+    const supabase = createClient();
     let mounted = true;
 
     async function loadSession() {
-      const info = await getSessionInfo(supabase);
-
+      const info = await getSessionInfo();
       if (!mounted) return;
-
       setIsGuest(info.isGuest);
     }
 
     loadSession();
-
-    if (!supabase) {
-      return () => {
-        mounted = false;
-      };
-    }
 
     const {
       data: { subscription },
@@ -311,7 +283,6 @@ export function Topbar() {
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
@@ -325,19 +296,15 @@ export function Topbar() {
         return;
       }
 
-      const supabase = getSupabase();
-
-      if (!supabase) {
-        setResults([]);
-        setLoading(false);
-        return;
-      }
-
+      const requestId = ++searchRequestRef.current;
       setLoading(true);
 
-      const sessionInfo = await getSessionInfo(supabase);
+      const supabase = createClient();
+      const sessionInfo = await getSessionInfo();
       const userId = sessionInfo.userId;
       const guest = sessionInfo.isGuest;
+
+      if (requestId !== searchRequestRef.current) return;
 
       setIsGuest(guest);
 
@@ -412,13 +379,15 @@ export function Topbar() {
         flashcardsPromise,
       ]);
 
+      if (requestId !== searchRequestRef.current) return;
+
       const patientResults: SearchResult[] = ((patientsRes.data ||
         []) as PatientRow[])
         .filter((item) =>
           normalize(
-            `${item.nome || ""} ${item.especialidade || ""} ${
-              item.queixa || ""
-            } ${item.diagnostico_principal || ""}`
+            `${item.nome || ""} ${item.especialidade || ""} ${item.queixa || ""} ${
+              item.diagnostico_principal || ""
+            }`
           ).includes(normalizedQuery)
         )
         .map((item) => ({
@@ -470,9 +439,7 @@ export function Topbar() {
       const examResults: SearchResult[] = ((examsRes.data || []) as ExamRow[])
         .filter((item) =>
           normalize(
-            `${item.titulo || ""} ${item.categoria || ""} ${
-              item.conteudo || ""
-            }`
+            `${item.titulo || ""} ${item.categoria || ""} ${item.conteudo || ""}`
           ).includes(normalizedQuery)
         )
         .map((item) => ({
@@ -550,7 +517,12 @@ export function Topbar() {
     }
 
     const timer = window.setTimeout(() => {
-      runSearch();
+      runSearch().catch(() => {
+        if (searchRequestRef.current > 0) {
+          setResults([]);
+          setLoading(false);
+        }
+      });
     }, 220);
 
     return () => window.clearTimeout(timer);
@@ -566,6 +538,8 @@ export function Topbar() {
 
     if (firstResult) {
       router.push(firstResult.href);
+    } else if (isGuest) {
+      router.push(`/prescricao?q=${encodeURIComponent(q)}`);
     } else {
       router.push(`/topicos?q=${encodeURIComponent(q)}`);
     }
@@ -650,7 +624,7 @@ export function Topbar() {
                     onClick={handleSubmitSearch}
                     className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white"
                   >
-                    Buscar em tópicos
+                    {isGuest ? "Buscar em prescrição" : "Buscar em tópicos"}
                   </button>
                 </div>
               ) : (

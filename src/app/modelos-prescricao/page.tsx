@@ -89,7 +89,7 @@ export default function ModelosPrescricaoPage() {
   const supabase = createClient();
 
   const [authorized, setAuthorized] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [sessionReady, setSessionReady] = useState(false);
 
   const [templates, setTemplates] = useState<PrescriptionTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,20 +105,34 @@ export default function ModelosPrescricaoPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  async function loadTemplates() {
+  async function loadPage() {
     setLoading(true);
     setError("");
+    setSuccess("");
 
-    const { data: sessionData } = await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError) {
+      setAuthorized(false);
+      setSessionReady(true);
+      setTemplates([]);
+      setError(sessionError.message);
+      setLoading(false);
+      return;
+    }
+
     const email = sessionData.session?.user?.email?.trim().toLowerCase() || "";
     const isAdmin = email === ADMIN_EMAIL;
 
     setAuthorized(isAdmin);
-    setChecking(false);
+    setSessionReady(true);
 
     const { data, error } = await supabase
       .from("prescription_templates")
-      .select("id, categoria, titulo, conteudo, observacoes, source_file, created_at")
+      .select(
+        "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+      )
       .order("categoria", { ascending: true, nullsFirst: false })
       .order("titulo", { ascending: true });
 
@@ -133,7 +147,8 @@ export default function ModelosPrescricaoPage() {
   }
 
   useEffect(() => {
-    loadTemplates();
+    loadPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const categorias = useMemo(() => {
@@ -175,6 +190,11 @@ export default function ModelosPrescricaoPage() {
   }
 
   function startEdit(item: PrescriptionTemplate) {
+    if (!authorized) {
+      setError("Apenas o administrador pode editar modelos.");
+      return;
+    }
+
     setEditingId(item.id);
     setForm(templateToForm(item));
     setError("");
@@ -187,6 +207,11 @@ export default function ModelosPrescricaoPage() {
   }
 
   async function handleSave() {
+    if (!sessionReady) {
+      setError("Sessão ainda está sendo verificada.");
+      return;
+    }
+
     if (!authorized) {
       setError("Apenas o administrador pode cadastrar modelos.");
       return;
@@ -213,17 +238,25 @@ export default function ModelosPrescricaoPage() {
           .from("prescription_templates")
           .update(payload)
           .eq("id", editingId)
-          .select("id, categoria, titulo, conteudo, observacoes, source_file, created_at")
+          .select(
+            "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+          )
           .single()
       : await supabase
           .from("prescription_templates")
           .insert(payload)
-          .select("id, categoria, titulo, conteudo, observacoes, source_file, created_at")
+          .select(
+            "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+          )
           .single();
 
     if (response.error) {
       setError(response.error.message);
-    } else if (response.data) {
+      setSaving(false);
+      return;
+    }
+
+    if (response.data) {
       const saved = response.data as PrescriptionTemplate;
 
       if (editingId) {
@@ -232,7 +265,16 @@ export default function ModelosPrescricaoPage() {
         );
         setSuccess("Modelo atualizado com sucesso.");
       } else {
-        setTemplates((current) => [saved, ...current]);
+        setTemplates((current) => {
+          const next = [saved, ...current];
+          return next.sort((a, b) => {
+            const categoriaA = a.categoria || "";
+            const categoriaB = b.categoria || "";
+            const byCategoria = categoriaA.localeCompare(categoriaB, "pt-BR");
+            if (byCategoria !== 0) return byCategoria;
+            return (a.titulo || "").localeCompare(b.titulo || "", "pt-BR");
+          });
+        });
         setSuccess("Modelo criado com sucesso.");
       }
 
@@ -244,6 +286,11 @@ export default function ModelosPrescricaoPage() {
   }
 
   async function handleDelete(item: PrescriptionTemplate) {
+    if (!sessionReady) {
+      setError("Sessão ainda está sendo verificada.");
+      return;
+    }
+
     if (!authorized) {
       setError("Apenas o administrador pode apagar modelos.");
       return;
@@ -279,7 +326,7 @@ export default function ModelosPrescricaoPage() {
     setDeletingId(null);
   }
 
-  if (checking || loading) {
+  if (!sessionReady || loading) {
     return (
       <div className="rounded-[28px] border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-600 shadow-sm">
         Carregando modelos de prescrição...
@@ -296,6 +343,10 @@ export default function ModelosPrescricaoPage() {
 
         <p className="mt-2 text-sm text-slate-600">
           Apenas o administrador pode gerenciar modelos prontos de prescrição.
+        </p>
+
+        <p className="mt-4 text-sm text-slate-500">
+          Os demais usuários consultam esses modelos pela página de Prescrição.
         </p>
       </section>
     );
@@ -346,7 +397,8 @@ export default function ModelosPrescricaoPage() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Use um conteúdo bem prático, já no formato que quer copiar no plantão.
+                Use um conteúdo bem prático, já no formato que quer copiar no
+                plantão.
               </p>
             </div>
 
@@ -412,7 +464,9 @@ export default function ModelosPrescricaoPage() {
               <textarea
                 rows={4}
                 value={form.observacoes}
-                onChange={(event) => updateForm("observacoes", event.target.value)}
+                onChange={(event) =>
+                  updateForm("observacoes", event.target.value)
+                }
                 placeholder="Ex.: ajustar para função renal, evitar em alergia..."
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
               />
@@ -426,7 +480,9 @@ export default function ModelosPrescricaoPage() {
               <textarea
                 rows={4}
                 value={form.source_file}
-                onChange={(event) => updateForm("source_file", event.target.value)}
+                onChange={(event) =>
+                  updateForm("source_file", event.target.value)
+                }
                 placeholder="Ex.: Protocolo interno, aula, revisão pessoal..."
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
               />

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Lock } from "lucide-react";
 
 type Flashcard = {
   id: string;
@@ -15,7 +17,10 @@ type Flashcard = {
 
 type MarkRow = {
   flashcard_id: string;
+  dificil: boolean | null;
 };
+
+const GUEST_EMAIL = "convidado@resibook.com";
 
 function normalize(value?: string | null) {
   return (value || "")
@@ -30,6 +35,8 @@ export default function FlashcardsDificeisPage() {
 
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingIds, setSavingIds] = useState<string[]>([]);
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
@@ -40,10 +47,24 @@ export default function FlashcardsDificeisPage() {
     setLoading(true);
     setError("");
 
-    const { data: sessionData } = await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError) {
+      setError(sessionError.message);
+      setCards([]);
+      setLoading(false);
+      setSessionReady(true);
+      return;
+    }
+
     const userId = sessionData.session?.user?.id || null;
+    const email = sessionData.session?.user?.email?.trim().toLowerCase() || "";
+    const guest = email === GUEST_EMAIL;
 
     setCurrentUserId(userId);
+    setIsGuest(guest);
+    setSessionReady(true);
 
     if (!userId) {
       setCards([]);
@@ -51,10 +72,17 @@ export default function FlashcardsDificeisPage() {
       return;
     }
 
+    if (guest) {
+      setCards([]);
+      setLoading(false);
+      return;
+    }
+
     const marksRes = await supabase
       .from("flashcard_user_marks")
-      .select("flashcard_id")
-      .eq("user_id", userId);
+      .select("flashcard_id, dificil")
+      .eq("user_id", userId)
+      .eq("dificil", true);
 
     if (marksRes.error) {
       setError(marksRes.error.message);
@@ -63,9 +91,9 @@ export default function FlashcardsDificeisPage() {
       return;
     }
 
-    const ids = ((marksRes.data || []) as MarkRow[]).map((item) =>
-      String(item.flashcard_id)
-    );
+    const ids = ((marksRes.data || []) as MarkRow[])
+      .filter((item) => item.dificil === true)
+      .map((item) => String(item.flashcard_id));
 
     if (ids.length === 0) {
       setCards([]);
@@ -98,6 +126,7 @@ export default function FlashcardsDificeisPage() {
 
   useEffect(() => {
     loadCards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
@@ -130,6 +159,11 @@ export default function FlashcardsDificeisPage() {
       return;
     }
 
+    if (isGuest) {
+      setError("Usuário convidado não pode acessar marcações individuais.");
+      return;
+    }
+
     if (savingIds.includes(id)) return;
 
     setError("");
@@ -139,7 +173,8 @@ export default function FlashcardsDificeisPage() {
       .from("flashcard_user_marks")
       .delete()
       .eq("user_id", currentUserId)
-      .eq("flashcard_id", id);
+      .eq("flashcard_id", id)
+      .eq("dificil", true);
 
     if (error) {
       setError(error.message);
@@ -149,6 +184,36 @@ export default function FlashcardsDificeisPage() {
     }
 
     setSavingIds((current) => current.filter((item) => item !== id));
+  }
+
+  if (!loading && sessionReady && isGuest) {
+    return (
+      <div className="space-y-6">
+        <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
+          <div className="mx-auto max-w-xl text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+              <Lock className="h-5 w-5" />
+            </div>
+
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+              Acesso restrito
+            </h1>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              O perfil convidado não pode visualizar nem alterar marcações
+              individuais de flashcards difíceis.
+            </p>
+
+            <Link
+              href="/topicos"
+              className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+            >
+              Ir para tópicos
+            </Link>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   return (

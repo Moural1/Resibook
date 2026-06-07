@@ -90,6 +90,7 @@ function getPatientLabel(item: Prescription) {
 
 function buildPrescriptionTextFromItem(item: Prescription) {
   const lines = [
+    item.paciente_nome ? `Paciente: ${item.paciente_nome}` : "",
     item.medicamento || "Prescrição sem medicamento definido",
     item.posologia || "",
     item.via ? `Via: ${item.via}` : "",
@@ -113,16 +114,57 @@ function buildPrescriptionTextFromForm(form: PrescriptionForm) {
   return lines.join("\n");
 }
 
-function buildPayload(form: PrescriptionForm, userId: string) {
+function sanitizeText(value?: string | null) {
+  return value?.trim() || "";
+}
+
+function getOwnedPatient(patientId: string, patients: Patient[]) {
+  if (!patientId) return null;
+  return patients.find((patient) => patient.id === patientId) || null;
+}
+
+function sanitizePrescriptionForm(
+  form: PrescriptionForm,
+  patients: Patient[]
+): PrescriptionForm {
+  const ownedPatient = getOwnedPatient(form.patient_id, patients);
+
+  if (ownedPatient) {
+    return {
+      ...form,
+      patient_id: ownedPatient.id,
+      paciente_nome: ownedPatient.nome,
+      medicamento: sanitizeText(form.medicamento),
+      via: sanitizeText(form.via),
+      posologia: sanitizeText(form.posologia),
+      duracao: sanitizeText(form.duracao),
+      orientacoes: sanitizeText(form.orientacoes),
+    };
+  }
+
+  return {
+    patient_id: "",
+    paciente_nome: sanitizeText(form.paciente_nome),
+    medicamento: sanitizeText(form.medicamento),
+    via: sanitizeText(form.via),
+    posologia: sanitizeText(form.posologia),
+    duracao: sanitizeText(form.duracao),
+    orientacoes: sanitizeText(form.orientacoes),
+  };
+}
+
+function buildPayload(form: PrescriptionForm, userId: string, patients: Patient[]) {
+  const sanitized = sanitizePrescriptionForm(form, patients);
+
   return {
     user_id: userId,
-    patient_id: form.patient_id || null,
-    paciente_nome: form.paciente_nome.trim() || null,
-    medicamento: form.medicamento.trim() || null,
-    via: form.via.trim() || null,
-    posologia: form.posologia.trim() || null,
-    duracao: form.duracao.trim() || null,
-    orientacoes: form.orientacoes.trim() || null,
+    patient_id: sanitized.patient_id || null,
+    paciente_nome: sanitized.paciente_nome || null,
+    medicamento: sanitized.medicamento || null,
+    via: sanitized.via || null,
+    posologia: sanitized.posologia || null,
+    duracao: sanitized.duracao || null,
+    orientacoes: sanitized.orientacoes || null,
   };
 }
 
@@ -130,6 +172,9 @@ export default function PrescricaoPage() {
   const supabase = createClient();
 
   const [initialQuery, setInitialQuery] = useState("");
+  const [urlPatientId, setUrlPatientId] = useState("");
+  const [urlPacienteNome, setUrlPacienteNome] = useState("");
+
   const [isGuest, setIsGuest] = useState(false);
   const [checkingUser, setCheckingUser] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -159,21 +204,76 @@ export default function PrescricaoPage() {
 
     setInitialQuery(q);
     setQuery(q);
+    setUrlPatientId(patientId);
+    setUrlPacienteNome(pacienteNome);
+  }, []);
 
-    if (patientId || pacienteNome) {
+  useEffect(() => {
+    if (checkingUser) return;
+
+    if (isGuest || !currentUserId) {
       setForm((current) => ({
         ...current,
-        patient_id: patientId,
-        paciente_nome: pacienteNome,
+        patient_id: "",
+        paciente_nome: "",
       }));
+      return;
     }
-  }, []);
+
+    if (!urlPatientId && !urlPacienteNome) return;
+
+    const ownedPatient = getOwnedPatient(urlPatientId, patients);
+
+    if (urlPatientId && !ownedPatient) {
+      setForm((current) => ({
+        ...current,
+        patient_id: "",
+        paciente_nome: "",
+      }));
+      return;
+    }
+
+    if (ownedPatient) {
+      setForm((current) => ({
+        ...current,
+        patient_id: ownedPatient.id,
+        paciente_nome: ownedPatient.nome,
+      }));
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      patient_id: "",
+      paciente_nome: sanitizeText(urlPacienteNome),
+    }));
+  }, [
+    checkingUser,
+    currentUserId,
+    isGuest,
+    patients,
+    urlPacienteNome,
+    urlPatientId,
+  ]);
 
   async function loadData() {
     setLoading(true);
     setError("");
 
-    const { data: sessionData } = await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError) {
+      setCheckingUser(false);
+      setLoading(false);
+      setError(sessionError.message);
+      setCurrentUserId(null);
+      setIsGuest(false);
+      setPatients([]);
+      setPrescriptions([]);
+      setTemplates([]);
+      return;
+    }
 
     const user = sessionData.session?.user;
     const email = user?.email?.trim().toLowerCase() || "";
@@ -192,8 +292,8 @@ export default function PrescricaoPage() {
       .order("titulo", { ascending: true });
 
     if (templatesRes.error) {
-      setError(templatesRes.error.message);
       setTemplates([]);
+      setError(templatesRes.error.message);
     } else {
       setTemplates((templatesRes.data as PrescriptionTemplate[]) || []);
     }
@@ -221,34 +321,37 @@ export default function PrescricaoPage() {
         .order("created_at", { ascending: false }),
     ]);
 
+    let nextError = templatesRes.error?.message || "";
+
     if (patientsRes.error) {
-      console.warn("Erro ao buscar pacientes:", patientsRes.error.message);
       setPatients([]);
+      nextError =
+        nextError || patientsRes.error.message || "Erro ao carregar pacientes.";
     } else {
       setPatients((patientsRes.data as Patient[]) || []);
     }
 
     if (prescriptionsRes.error) {
-      setError(prescriptionsRes.error.message);
       setPrescriptions([]);
+      nextError =
+        nextError ||
+        prescriptionsRes.error.message ||
+        "Erro ao carregar prescrições.";
     } else {
       setPrescriptions((prescriptionsRes.data as Prescription[]) || []);
     }
 
+    setError(nextError);
     setLoading(false);
   }
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const selectedPatientName = useMemo(() => {
-    const found = patients.find((patient) => patient.id === form.patient_id);
-    return found?.nome || "";
-  }, [form.patient_id, patients]);
-
   const total = prescriptions.length;
-  const ultima = prescriptions[0];
+  const ultima = prescriptions[0] || null;
 
   const filteredPrescriptions = useMemo(() => {
     const normalizedQuery = normalize(query);
@@ -268,8 +371,9 @@ export default function PrescricaoPage() {
   }, [prescriptions, query]);
 
   const draftText = useMemo(() => {
-    return buildPrescriptionTextFromForm(form);
-  }, [form]);
+    const safeForm = sanitizePrescriptionForm(form, isGuest ? [] : patients);
+    return buildPrescriptionTextFromForm(safeForm);
+  }, [form, isGuest, patients]);
 
   function updateForm<K extends keyof PrescriptionForm>(
     key: K,
@@ -277,13 +381,17 @@ export default function PrescricaoPage() {
   ) {
     setForm((current) => {
       if (key === "patient_id") {
-        const found = patients.find((patient) => patient.id === value);
+        const found = getOwnedPatient(String(value), patients);
 
         return {
           ...current,
-          patient_id: value,
-          paciente_nome: found?.nome || current.paciente_nome,
+          patient_id: found?.id || "",
+          paciente_nome: found?.nome || "",
         };
+      }
+
+      if (key === "paciente_nome" && current.patient_id) {
+        return current;
       }
 
       return {
@@ -293,8 +401,47 @@ export default function PrescricaoPage() {
     });
   }
 
+  function updateEditForm<K extends keyof PrescriptionForm>(
+    id: number,
+    key: K,
+    value: PrescriptionForm[K]
+  ) {
+    setEditForms((current) => {
+      const base = current[id] || emptyForm;
+
+      if (key === "patient_id") {
+        const found = getOwnedPatient(String(value), patients);
+
+        return {
+          ...current,
+          [id]: {
+            ...base,
+            patient_id: found?.id || "",
+            paciente_nome: found?.nome || "",
+          },
+        };
+      }
+
+      if (key === "paciente_nome" && base.patient_id) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [id]: {
+          ...base,
+          [key]: value,
+        },
+      };
+    });
+  }
+
   function resetForm() {
-    setForm(emptyForm);
+    setForm((current) => ({
+      ...emptyForm,
+      patient_id: isGuest ? "" : current.patient_id,
+      paciente_nome: isGuest ? "" : current.paciente_nome,
+    }));
   }
 
   function handleUseTemplate(draft: PrescriptionDraft) {
@@ -313,6 +460,34 @@ export default function PrescricaoPage() {
     });
   }
 
+  function startEdit(item: Prescription) {
+    setEditingId(item.id);
+    setEditForms((current) => ({
+      ...current,
+      [item.id]: sanitizePrescriptionForm(
+        {
+          patient_id: item.patient_id || "",
+          paciente_nome: item.paciente_nome || "",
+          medicamento: item.medicamento || "",
+          via: item.via || "",
+          posologia: item.posologia || "",
+          duracao: item.duracao || "",
+          orientacoes: item.orientacoes || "",
+        },
+        patients
+      ),
+    }));
+  }
+
+  function cancelEdit(id: number) {
+    setEditingId((current) => (current === id ? null : current));
+    setEditForms((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
+
   async function handleCreate() {
     if (isGuest) {
       setError("Usuário convidado não pode salvar prescrições.");
@@ -324,10 +499,12 @@ export default function PrescricaoPage() {
       return;
     }
 
+    const safeForm = sanitizePrescriptionForm(form, patients);
+
     if (
-      !form.medicamento.trim() &&
-      !form.posologia.trim() &&
-      !form.orientacoes.trim()
+      !safeForm.medicamento &&
+      !safeForm.posologia &&
+      !safeForm.orientacoes
     ) {
       setError("Preencha pelo menos medicamento, posologia ou orientações.");
       return;
@@ -338,7 +515,7 @@ export default function PrescricaoPage() {
 
     const { data, error } = await supabase
       .from("prescriptions")
-      .insert(buildPayload(form, currentUserId))
+      .insert(buildPayload(safeForm, currentUserId, patients))
       .select(
         "id, user_id, patient_id, paciente_nome, medicamento, posologia, duracao, via, orientacoes, created_at"
       )
@@ -348,68 +525,14 @@ export default function PrescricaoPage() {
       setError(error.message);
     } else if (data) {
       setPrescriptions((current) => [data as Prescription, ...current]);
-      resetForm();
+      setForm((current) => ({
+        ...emptyForm,
+        patient_id: current.patient_id,
+        paciente_nome: current.paciente_nome,
+      }));
     }
 
     setSaving(false);
-  }
-
-  function startEdit(item: Prescription) {
-    if (isGuest) return;
-
-    setEditingId(item.id);
-    setEditForms((current) => ({
-      ...current,
-      [item.id]: {
-        patient_id: item.patient_id || "",
-        paciente_nome: item.paciente_nome || "",
-        medicamento: item.medicamento || "",
-        via: item.via || "",
-        posologia: item.posologia || "",
-        duracao: item.duracao || "",
-        orientacoes: item.orientacoes || "",
-      },
-    }));
-  }
-
-  function cancelEdit(id: number) {
-    setEditingId(null);
-    setEditForms((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
-  }
-
-  function updateEditForm<K extends keyof PrescriptionForm>(
-    id: number,
-    key: K,
-    value: PrescriptionForm[K]
-  ) {
-    setEditForms((current) => {
-      const previous = current[id] || emptyForm;
-
-      if (key === "patient_id") {
-        const found = patients.find((patient) => patient.id === value);
-
-        return {
-          ...current,
-          [id]: {
-            ...previous,
-            patient_id: value,
-            paciente_nome: found?.nome || previous.paciente_nome,
-          },
-        };
-      }
-
-      return {
-        ...current,
-        [id]: {
-          ...previous,
-          [key]: value,
-        },
-      };
-    });
   }
 
   async function handleUpdate(id: number) {
@@ -427,12 +550,14 @@ export default function PrescricaoPage() {
       return;
     }
 
+    const safeEditForm = sanitizePrescriptionForm(editForm, patients);
+
     setError("");
     setSavingIds((current) => [...current, id]);
 
     const { data, error } = await supabase
       .from("prescriptions")
-      .update(buildPayload(editForm, currentUserId))
+      .update(buildPayload(safeEditForm, currentUserId, patients))
       .eq("id", id)
       .eq("user_id", currentUserId)
       .select(
@@ -500,8 +625,8 @@ export default function PrescricaoPage() {
 
             <p className="mt-2 text-sm text-slate-500 md:text-base">
               {isGuest
-                ? "Modo convidado: use os modelos ou monte uma prescrição para copiar. O salvamento no banco está bloqueado."
-                : "Registro médico com formulário rápido, histórico salvo e modelos prontos de plantão."}
+                ? "Modo convidado: use os modelos compartilhados ou monte uma prescrição para copiar. O salvamento no banco está bloqueado."
+                : "Registro médico com formulário rápido, histórico privado do usuário logado e modelos prontos compartilhados."}
             </p>
           </div>
 
@@ -518,52 +643,73 @@ export default function PrescricaoPage() {
 
         {isGuest ? (
           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            Acesso convidado: você pode montar e copiar prescrições, mas não
-            pode salvar, editar, apagar ou acessar dados de pacientes.
+            Acesso convidado: você pode consultar e copiar modelos de
+            <span className="mx-1">prescription_templates</span>
+            e montar um rascunho local, mas não pode salvar, editar, apagar ou
+            acessar dados privados de pacientes e prescrições.
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <div className="mb-5">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {isGuest ? "Montar prescrição" : "Nova prescrição"}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Clique em um modelo da biblioteca ou preencha manualmente.
-              </p>
+            <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Nova prescrição
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {isGuest
+                    ? "Sem vínculo com pacientes. Copie o texto para uso manual."
+                    : "As prescrições salvas ficam privadas para o usuário logado."}
+                </p>
+              </div>
+
+              {!isGuest ? (
+                <a
+                  href="#lista-prescricoes"
+                  className="text-sm font-semibold text-blue-700"
+                >
+                  Ver histórico salvo
+                </a>
+              ) : null}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {!isGuest ? (
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Paciente vinculado
-                  </label>
-                  <select
-                    value={form.patient_id}
-                    onChange={(e) => updateForm("patient_id", e.target.value)}
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                  >
-                    <option value="">Selecionar paciente (opcional)</option>
-                    {patients.map((patient) => (
-                      <option key={patient.id} value={patient.id}>
-                        {patient.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Paciente vinculado
+                </label>
+
+                <select
+                  value={isGuest ? "" : form.patient_id}
+                  onChange={(e) => updateForm("patient_id", e.target.value)}
+                  disabled={isGuest}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  <option value="">Selecionar paciente (opcional)</option>
+                  {patients.map((patient) => (
+                    <option key={patient.id} value={patient.id}>
+                      {patient.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Nome do paciente
                 </label>
                 <input
-                  value={form.paciente_nome || selectedPatientName}
+                  value={isGuest ? "" : form.paciente_nome}
                   onChange={(e) => updateForm("paciente_nome", e.target.value)}
-                  placeholder="Ex.: Maria Helena Souza"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  readOnly={Boolean(!isGuest && form.patient_id)}
+                  disabled={isGuest}
+                  placeholder={
+                    isGuest
+                      ? "Indisponível para convidado"
+                      : "Opcional para prescrição sem vínculo"
+                  }
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none disabled:cursor-not-allowed disabled:bg-slate-100 read-only:bg-slate-100"
                 />
               </div>
 
@@ -574,7 +720,7 @@ export default function PrescricaoPage() {
                 <input
                   value={form.medicamento}
                   onChange={(e) => updateForm("medicamento", e.target.value)}
-                  placeholder="Ex.: Ceftriaxona 1 g"
+                  placeholder="Ex.: Dipirona 500 mg"
                   className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
                 />
               </div>
@@ -701,19 +847,20 @@ export default function PrescricaoPage() {
                     Salvamento bloqueado
                   </p>
                   <p className="mt-2 text-sm leading-6 text-amber-900">
-                    O convidado pode copiar prescrições, mas não altera o banco
-                    de dados.
+                    O convidado pode copiar prescrições e consultar a biblioteca
+                    compartilhada, mas não altera o banco de dados.
                   </p>
                 </div>
               )}
 
               <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                  Biblioteca de plantão
+                  Biblioteca compartilhada
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
-                  {templates.length} modelos prontos para copiar e usar no
-                  formulário.
+                  {templates.length} modelos prontos vindos de
+                  <span className="mx-1 font-semibold">prescription_templates</span>
+                  para consultar, copiar e usar no formulário.
                 </p>
               </div>
             </div>
@@ -769,15 +916,20 @@ export default function PrescricaoPage() {
               {filteredPrescriptions.map((item) => {
                 const editing = editingId === item.id;
                 const savingItem = savingIds.includes(item.id);
-                const editForm = editForms[item.id] || {
-                  patient_id: item.patient_id || "",
-                  paciente_nome: item.paciente_nome || "",
-                  medicamento: item.medicamento || "",
-                  via: item.via || "",
-                  posologia: item.posologia || "",
-                  duracao: item.duracao || "",
-                  orientacoes: item.orientacoes || "",
-                };
+                const editForm =
+                  editForms[item.id] ||
+                  sanitizePrescriptionForm(
+                    {
+                      patient_id: item.patient_id || "",
+                      paciente_nome: item.paciente_nome || "",
+                      medicamento: item.medicamento || "",
+                      via: item.via || "",
+                      posologia: item.posologia || "",
+                      duracao: item.duracao || "",
+                      orientacoes: item.orientacoes || "",
+                    },
+                    patients
+                  );
 
                 return (
                   <article
@@ -801,8 +953,7 @@ export default function PrescricaoPage() {
                         </h3>
 
                         <p className="mt-1 text-sm text-slate-500">
-                          {getPatientLabel(item)} •{" "}
-                          {formatDate(item.created_at)}
+                          {getPatientLabel(item)} • {formatDate(item.created_at)}
                         </p>
                       </div>
 
@@ -899,7 +1050,8 @@ export default function PrescricaoPage() {
                                     e.target.value
                                   )
                                 }
-                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                                readOnly={Boolean(editForm.patient_id)}
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none read-only:bg-slate-100"
                               />
                             </div>
 
@@ -927,11 +1079,7 @@ export default function PrescricaoPage() {
                               <input
                                 value={editForm.via}
                                 onChange={(e) =>
-                                  updateEditForm(
-                                    item.id,
-                                    "via",
-                                    e.target.value
-                                  )
+                                  updateEditForm(item.id, "via", e.target.value)
                                 }
                                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
                               />

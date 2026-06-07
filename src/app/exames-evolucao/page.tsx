@@ -6,7 +6,6 @@ import CopyButton from "../../components/copy-button";
 import {
   ClipboardCopy,
   Edit3,
-  FlaskConical,
   Lock,
   Plus,
   Search,
@@ -34,6 +33,7 @@ type FormState = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
+const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const emptyForm: FormState = {
   categoria: "",
@@ -137,11 +137,13 @@ export default function ExamesEvolucaoPage() {
   const supabase = createClient();
 
   const [isGuest, setIsGuest] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [checkingUser, setCheckingUser] = useState(true);
 
   const [items, setItems] = useState<ExamTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [query, setQuery] = useState("");
   const [categoria, setCategoria] = useState("");
@@ -155,10 +157,20 @@ export default function ExamesEvolucaoPage() {
   const [success, setSuccess] = useState("");
 
   async function checkUser() {
-    const { data } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      setIsGuest(false);
+      setIsAdmin(false);
+      setCheckingUser(false);
+      setError(error.message);
+      return;
+    }
+
     const email = data.session?.user?.email?.trim().toLowerCase() || "";
 
     setIsGuest(email === GUEST_EMAIL);
+    setIsAdmin(email === ADMIN_EMAIL);
     setCheckingUser(false);
   }
 
@@ -168,7 +180,9 @@ export default function ExamesEvolucaoPage() {
 
     const { data, error } = await supabase
       .from("exam_templates")
-      .select("id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at")
+      .select(
+        "id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at"
+      )
       .order("categoria", { ascending: true })
       .order("titulo", { ascending: true });
 
@@ -185,6 +199,7 @@ export default function ExamesEvolucaoPage() {
   useEffect(() => {
     checkUser();
     loadItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const categorias = useMemo(() => {
@@ -226,7 +241,10 @@ export default function ExamesEvolucaoPage() {
   }
 
   function openCreateModal() {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode criar modelos em exam_templates.");
+      return;
+    }
 
     setEditingItem(null);
     setForm(emptyForm);
@@ -236,7 +254,10 @@ export default function ExamesEvolucaoPage() {
   }
 
   function openEditModal(item: ExamTemplate) {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode editar modelos em exam_templates.");
+      return;
+    }
 
     setEditingItem(item);
     setForm({
@@ -258,8 +279,8 @@ export default function ExamesEvolucaoPage() {
   }
 
   async function handleSave() {
-    if (isGuest) {
-      setError("Usuário convidado não pode criar ou editar exames.");
+    if (!isAdmin) {
+      setError("Apenas o administrador pode criar ou editar exames.");
       return;
     }
 
@@ -279,12 +300,16 @@ export default function ExamesEvolucaoPage() {
           .from("exam_templates")
           .update(payload)
           .eq("id", editingItem.id)
-          .select("id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at")
+          .select(
+            "id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at"
+          )
           .single()
       : await supabase
           .from("exam_templates")
           .insert(payload)
-          .select("id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at")
+          .select(
+            "id, categoria, titulo, sexo, arquivo_origem, source_file, conteudo, created_at"
+          )
           .single();
 
     if (response.error) {
@@ -298,7 +323,16 @@ export default function ExamesEvolucaoPage() {
         );
         setSuccess("Modelo atualizado com sucesso.");
       } else {
-        setItems((current) => [saved, ...current]);
+        setItems((current) => {
+          const next = [saved, ...current];
+          return next.sort((a, b) => {
+            const categoriaA = a.categoria || "";
+            const categoriaB = b.categoria || "";
+            const byCategoria = categoriaA.localeCompare(categoriaB, "pt-BR");
+            if (byCategoria !== 0) return byCategoria;
+            return (a.titulo || "").localeCompare(b.titulo || "", "pt-BR");
+          });
+        });
         setSuccess("Modelo criado com sucesso.");
       }
 
@@ -309,7 +343,10 @@ export default function ExamesEvolucaoPage() {
   }
 
   async function handleDelete(item: ExamTemplate) {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode apagar modelos em exam_templates.");
+      return;
+    }
 
     const confirmed = window.confirm(
       `Tem certeza que deseja apagar "${item.titulo || "este modelo"}"?`
@@ -317,6 +354,7 @@ export default function ExamesEvolucaoPage() {
 
     if (!confirmed) return;
 
+    setDeletingId(item.id);
     setError("");
     setSuccess("");
 
@@ -328,9 +366,13 @@ export default function ExamesEvolucaoPage() {
     if (error) {
       setError(error.message);
     } else {
-      setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+      setItems((current) =>
+        current.filter((currentItem) => currentItem.id !== item.id)
+      );
       setSuccess("Modelo apagado com sucesso.");
     }
+
+    setDeletingId(null);
   }
 
   const hasFilters = Boolean(query || categoria || sexo);
@@ -346,7 +388,17 @@ export default function ExamesEvolucaoPage() {
               </span>
 
               <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                {isGuest ? "Somente leitura" : "Modelos clínicos"}
+                Biblioteca compartilhada
+              </span>
+
+              <span
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                  isAdmin
+                    ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border border-blue-200 bg-blue-50 text-blue-700"
+                }`}
+              >
+                {isAdmin ? "Admin pode gerenciar" : "Consulta e cópia liberadas"}
               </span>
             </div>
 
@@ -368,7 +420,7 @@ export default function ExamesEvolucaoPage() {
             </div>
           </div>
 
-          {!isGuest ? (
+          {isAdmin ? (
             <button
               type="button"
               onClick={openCreateModal}
@@ -381,7 +433,9 @@ export default function ExamesEvolucaoPage() {
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
-                Convidado: leitura e cópia liberadas.
+                {isGuest
+                  ? "Convidado: leitura e cópia liberadas."
+                  : "Somente o admin gerencia a biblioteca."}
               </div>
             </div>
           )}
@@ -503,7 +557,7 @@ export default function ExamesEvolucaoPage() {
                   </pre>
                 </div>
 
-                {!isGuest ? (
+                {isAdmin ? (
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button
                       type="button"
@@ -517,10 +571,11 @@ export default function ExamesEvolucaoPage() {
                     <button
                       type="button"
                       onClick={() => handleDelete(item)}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700"
+                      disabled={deletingId === item.id}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Apagar
+                      {deletingId === item.id ? "Apagando..." : "Apagar"}
                     </button>
                   </div>
                 ) : (
@@ -535,7 +590,7 @@ export default function ExamesEvolucaoPage() {
         </section>
       )}
 
-      {modalOpen && !isGuest ? (
+      {modalOpen && isAdmin ? (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/40 p-4">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
@@ -544,7 +599,7 @@ export default function ExamesEvolucaoPage() {
                   {editingItem ? "Editar modelo" : "Novo modelo"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Preencha o bloco clínico para consulta e cópia rápida.
+                  Apenas o administrador pode alterar a biblioteca compartilhada.
                 </p>
               </div>
 
@@ -608,8 +663,8 @@ export default function ExamesEvolucaoPage() {
                 {saving
                   ? "Salvando..."
                   : editingItem
-                  ? "Salvar edição"
-                  : "Criar modelo"}
+                    ? "Salvar edição"
+                    : "Criar modelo"}
               </button>
 
               <button

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Lock } from "lucide-react";
 
 type Flashcard = {
   id: string;
@@ -26,9 +27,11 @@ type FlashcardForm = {
 
 type MarkRow = {
   flashcard_id: string;
+  dificil: boolean | null;
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
+const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const emptyForm: FlashcardForm = {
   area: "",
@@ -55,6 +58,8 @@ export default function FlashcardsPage() {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -81,15 +86,29 @@ export default function FlashcardsPage() {
     setLoading(true);
     setError("");
 
-    const { data: sessionData } = await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError) {
+      setError(sessionError.message);
+      setCards([]);
+      setLoading(false);
+      setSessionReady(true);
+      return;
+    }
+
     const user = sessionData.session?.user || null;
     const email = user?.email?.trim().toLowerCase() || "";
     const userId = user?.id || null;
+    const guest = email === GUEST_EMAIL;
+    const admin = email === ADMIN_EMAIL;
 
     setCurrentUserId(userId);
-    setIsGuest(email === GUEST_EMAIL);
+    setIsGuest(guest);
+    setIsAdmin(admin);
+    setSessionReady(true);
 
-    if (!userId || email === GUEST_EMAIL) {
+    if (!userId || guest) {
       setCards([]);
       setLoading(false);
       return;
@@ -104,8 +123,9 @@ export default function FlashcardsPage() {
 
       supabase
         .from("flashcard_user_marks")
-        .select("flashcard_id")
-        .eq("user_id", userId),
+        .select("flashcard_id, dificil")
+        .eq("user_id", userId)
+        .eq("dificil", true),
     ]);
 
     if (cardsRes.error) {
@@ -120,7 +140,9 @@ export default function FlashcardsPage() {
     }
 
     const difficultIds = new Set(
-      ((marksRes.data || []) as MarkRow[]).map((item) => String(item.flashcard_id))
+      ((marksRes.data || []) as MarkRow[])
+        .filter((item) => item.dificil === true)
+        .map((item) => String(item.flashcard_id))
     );
 
     const mapped = ((cardsRes.data || []) as Omit<Flashcard, "dificil">[]).map(
@@ -137,6 +159,7 @@ export default function FlashcardsPage() {
 
   useEffect(() => {
     loadCards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -154,11 +177,15 @@ export default function FlashcardsPage() {
   }, [query, area, materia, pathname, router]);
 
   const areas = useMemo(() => {
-    return Array.from(new Set(cards.map((item) => item.area).filter(Boolean))) as string[];
+    return Array.from(
+      new Set(cards.map((item) => item.area).filter(Boolean))
+    ) as string[];
   }, [cards]);
 
   const materias = useMemo(() => {
-    return Array.from(new Set(cards.map((item) => item.materia).filter(Boolean))) as string[];
+    return Array.from(
+      new Set(cards.map((item) => item.materia).filter(Boolean))
+    ) as string[];
   }, [cards]);
 
   const difficultCount = useMemo(() => {
@@ -192,14 +219,21 @@ export default function FlashcardsPage() {
   }
 
   function openCreateModal() {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode criar flashcards compartilhados.");
+      return;
+    }
+
     setEditingCard(null);
     setForm(emptyForm);
     setModalOpen(true);
   }
 
   function openEditModal(card: Flashcard) {
-    if (isGuest) return;
+    if (!isAdmin) {
+      setError("Apenas o administrador pode editar flashcards compartilhados.");
+      return;
+    }
 
     setEditingCard(card);
     setForm({
@@ -241,7 +275,7 @@ export default function FlashcardsPage() {
     setSavingIds((current) => [...current, card.id]);
 
     const response = nextValue
-      ? await supabase.from("flashcard_user_marks").insert({
+      ? await supabase.from("flashcard_user_marks").upsert({
           user_id: currentUserId,
           flashcard_id: card.id,
           dificil: true,
@@ -250,7 +284,8 @@ export default function FlashcardsPage() {
           .from("flashcard_user_marks")
           .delete()
           .eq("user_id", currentUserId)
-          .eq("flashcard_id", card.id);
+          .eq("flashcard_id", card.id)
+          .eq("dificil", true);
 
     if (response.error) {
       setError(response.error.message);
@@ -266,8 +301,8 @@ export default function FlashcardsPage() {
   }
 
   async function handleSave() {
-    if (!currentUserId || isGuest) {
-      setError("Usuário não autorizado para salvar flashcards.");
+    if (!currentUserId || isGuest || !isAdmin) {
+      setError("Apenas o administrador pode salvar flashcards compartilhados.");
       return;
     }
 
@@ -316,7 +351,8 @@ export default function FlashcardsPage() {
           .from("flashcard_user_marks")
           .delete()
           .eq("user_id", currentUserId)
-          .eq("flashcard_id", savedId);
+          .eq("flashcard_id", savedId)
+          .eq("dificil", true);
       }
     }
 
@@ -326,8 +362,8 @@ export default function FlashcardsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!currentUserId || isGuest) {
-      setError("Usuário não autorizado para apagar flashcards.");
+    if (!currentUserId || isGuest || !isAdmin) {
+      setError("Apenas o administrador pode apagar flashcards compartilhados.");
       return;
     }
 
@@ -352,12 +388,30 @@ export default function FlashcardsPage() {
     setSavingIds((current) => current.filter((item) => item !== id));
   }
 
-  if (isGuest) {
+  if (!loading && sessionReady && isGuest) {
     return (
-      <section className="rounded-[28px] border border-rose-200 bg-rose-50 p-6 shadow-sm">
-        <p className="text-sm font-semibold text-rose-700">
-          Acesso restrito para o modo convidado.
-        </p>
+      <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
+        <div className="mx-auto max-w-xl text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+            <Lock className="h-5 w-5" />
+          </div>
+
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+            Acesso restrito
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            O modo convidado não pode acessar a biblioteca de flashcards nem
+            marcações individuais de dificuldade.
+          </p>
+
+          <Link
+            href="/topicos"
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+          >
+            Ir para tópicos
+          </Link>
+        </div>
       </section>
     );
   }
@@ -380,6 +434,16 @@ export default function FlashcardsPage() {
                 <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                   {difficultCount} difíceis no seu usuário
                 </span>
+
+                {isAdmin ? (
+                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    Admin pode gerenciar
+                  </span>
+                ) : (
+                  <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                    Usuário pode consultar e marcar
+                  </span>
+                )}
               </div>
 
               <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
@@ -388,7 +452,7 @@ export default function FlashcardsPage() {
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                 Biblioteca compartilhada. A marcação de difícil é individual por
-                login.
+                login. O CRUD da biblioteca é apenas do administrador.
               </p>
 
               <p className="mt-3 text-sm font-medium text-slate-700">
@@ -404,13 +468,15 @@ export default function FlashcardsPage() {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-            >
-              Novo flashcard
-            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+              >
+                Novo flashcard
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -572,26 +638,30 @@ export default function FlashcardsPage() {
                     {savingItem
                       ? "Salvando..."
                       : item.dificil
-                      ? "Remover difícil"
-                      : "Marcar difícil"}
+                        ? "Remover difícil"
+                        : "Marcar difícil"}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => openEditModal(item)}
-                    className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-                  >
-                    Editar
-                  </button>
+                  {isAdmin ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(item)}
+                        className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                      >
+                        Editar
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id)}
-                    disabled={savingItem}
-                    className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {savingItem ? "Apagando..." : "Apagar"}
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        disabled={savingItem}
+                        className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {savingItem ? "Apagando..." : "Apagar"}
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </article>
             );
@@ -608,7 +678,7 @@ export default function FlashcardsPage() {
                   {editingCard ? "Editar flashcard" : "Novo flashcard"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Crie ou edite o conteúdo e salve.
+                  Apenas o administrador pode alterar a biblioteca compartilhada.
                 </p>
               </div>
 
@@ -679,8 +749,8 @@ export default function FlashcardsPage() {
                 {saving
                   ? "Salvando..."
                   : editingCard
-                  ? "Salvar edição"
-                  : "Criar flashcard"}
+                    ? "Salvar edição"
+                    : "Criar flashcard"}
               </button>
 
               <button
