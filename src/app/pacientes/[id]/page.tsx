@@ -140,7 +140,7 @@ type TimelineItem = {
   subtitle: string;
   body: string;
   status?: string;
-  date: string | null;
+  date: string | null | undefined;
   timestamp: number;
 };
 
@@ -450,37 +450,37 @@ function buildTimelineItems(
     ),
   }));
 
-  const noteItems: TimelineItem[] = notes.map((item) => ({
-    id: `note-${item.id}`,
-    sourceType: "note",
-    title: item.titulo || "Evolução clínica",
-    subtitle: item.tipo || "evolucao",
-    body: item.conteudo,
-    status: item.tipo || "evolucao",
-    date: item.created_at,
-    timestamp: getTimestamp(item.created_at),
-  }));
+ const noteItems: TimelineItem[] = notes.map((item) => ({
+  id: `note-${item.id}`,
+  sourceType: "note",
+  title: item.titulo || "Evolução clínica",
+  subtitle: item.tipo || "evolucao",
+  body: item.conteudo,
+  status: item.tipo || "evolucao",
+  date: item.created_at ?? null,
+  timestamp: getTimestamp(item.created_at),
+}));
 
-  const prescriptionItems: TimelineItem[] = prescriptions.map((item) => ({
-    id: `rx-${item.id}`,
-    sourceType: "prescription",
-    title: item.medicamento || "Prescrição clínica",
-    subtitle: item.via ? `Via: ${item.via}` : "Prescrição vinculada",
-    body: buildPrescriptionText(item),
-    date: item.created_at,
-    timestamp: getTimestamp(item.created_at),
-  }));
-
-  const consultationItems: TimelineItem[] = consultations.map((item) => ({
-    id: `consultation-${item.id}`,
-    sourceType: "consultation",
-    title: item.queixa_principal || "Consulta clínica",
-    subtitle: item.hipotese_diagnostica || "Atendimento registrado",
-    body: buildConsultationText(item),
-    status: "consulta",
-    date: item.created_at,
-    timestamp: getTimestamp(item.created_at),
-  }));
+const prescriptionItems: TimelineItem[] = prescriptions.map((item) => ({
+  id: `rx-${item.id}`,
+  sourceType: "prescription",
+  title: item.medicamento || "Prescrição clínica",
+  subtitle: item.via ? `Via: ${item.via}` : "Prescrição vinculada",
+  body: buildPrescriptionText(item),
+  date: item.created_at ?? null,
+  timestamp: getTimestamp(item.created_at),
+}));
+  
+const consultationItems: TimelineItem[] = consultations.map((item) => ({
+  id: `consultation-${item.id}`,
+  sourceType: "consultation",
+  title: item.queixa_principal || "Consulta clínica",
+  subtitle: item.hipotese_diagnostica || "Atendimento registrado",
+  body: buildConsultationText(item),
+  status: "consulta",
+  date: item.created_at ?? null,
+  timestamp: getTimestamp(item.created_at),
+}));
 
   return [
     ...problemItems,
