@@ -1144,12 +1144,13 @@ function SectionToggle({
     <button
       type="button"
       onClick={onToggle}
-      className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+      className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
     >
       {open ? "Esconder" : "Mostrar"}
     </button>
   );
 }
+
 
 export default function PatientDetailPage() {
   const supabase = createClient();
@@ -1840,24 +1841,6 @@ export default function PatientDetailPage() {
       );
       cancelEditProblem(id);
       
-function SectionToggle({
-  open,
-  onToggle,
-}: {
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-    >
-      {open ? "Esconder" : "Mostrar"}
-    </button>
-  );
-}
-
 setSuccess("Problema atualizado com sucesso.");
     }
 

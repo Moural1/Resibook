@@ -57,9 +57,9 @@ const GUEST_ALLOWED_PATHS = [
 ];
 
 function isGuestAllowedPath(pathname: string) {
-  return GUEST_ALLOWED_PATHS.some((path) => {
-    return pathname === path || pathname.startsWith(`${path}/`);
-  });
+  return GUEST_ALLOWED_PATHS.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
 }
 
 async function getTableCount(
@@ -230,128 +230,33 @@ function SidebarContent({
   isAdmin?: boolean;
 }) {
   const fullPrimaryItems = [
-    {
-      href: "/dashboard",
-      label: "Visão geral",
-      icon: Home,
-      badge: null,
-    },
-    {
-      href: "/pacientes",
-      label: "Pacientes",
-      icon: Users,
-      badge: counts.pacientes,
-    },
-    {
-      href: "/prescricao",
-      label: "Prescrição",
-      icon: ClipboardList,
-      badge: counts.prescricoes,
-    },
-    {
-      href: "/exames-evolucao",
-      label: "Exames / Evolução",
-      icon: FlaskConical,
-      badge: counts.exames,
-    },
-    {
-      href: "/topicos",
-      label: "Tópicos",
-      icon: Stethoscope,
-      badge: counts.topicos,
-    },
-    {
-      href: "/flashcards",
-      label: "Flashcards",
-      icon: Brain,
-      badge: counts.flashcards,
-    },
-    {
-      href: "/flashcards-dificeis",
-      label: "Difíceis",
-      icon: Brain,
-      badge: counts.flashcardsDificeis,
-    },
-    {
-      href: "/cids",
-      label: "CIDs",
-      icon: Tags,
-      badge: counts.cids,
-    },
+    { href: "/dashboard", label: "Visão geral", icon: Home, badge: null },
+    { href: "/pacientes", label: "Pacientes", icon: Users, badge: counts.pacientes },
+    { href: "/prescricao", label: "Prescrição", icon: ClipboardList, badge: counts.prescricoes },
+    { href: "/exames-evolucao", label: "Exames / Evolução", icon: FlaskConical, badge: counts.exames },
+    { href: "/topicos", label: "Tópicos", icon: Stethoscope, badge: counts.topicos },
+    { href: "/flashcards", label: "Flashcards", icon: Brain, badge: counts.flashcards },
+    { href: "/flashcards-dificeis", label: "Difíceis", icon: Brain, badge: counts.flashcardsDificeis },
+    { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
   ];
 
   const guestPrimaryItems = [
-    {
-      href: "/prescricao",
-      label: "Prescrição",
-      icon: ClipboardList,
-      badge: null,
-    },
-    {
-      href: "/exames-evolucao",
-      label: "Exames / Evolução",
-      icon: FlaskConical,
-      badge: null,
-    },
-    {
-      href: "/topicos",
-      label: "Tópicos",
-      icon: Stethoscope,
-      badge: null,
-    },
-    {
-      href: "/cids",
-      label: "CIDs",
-      icon: Tags,
-      badge: null,
-    },
-    {
-      href: "/suporte",
-      label: "Suporte",
-      icon: LifeBuoy,
-      badge: null,
-    },
+    { href: "/prescricao", label: "Prescrição", icon: ClipboardList, badge: null },
+    { href: "/exames-evolucao", label: "Exames / Evolução", icon: FlaskConical, badge: null },
+    { href: "/topicos", label: "Tópicos", icon: Stethoscope, badge: null },
+    { href: "/cids", label: "CIDs", icon: Tags, badge: null },
+    { href: "/suporte", label: "Suporte", icon: LifeBuoy, badge: null },
   ];
 
   const secondaryItems = [
-    {
-      href: "/dados-da-conta",
-      label: "Dados da conta",
-      icon: Settings,
-      badge: null,
-    },
-    {
-      href: "/usuario",
-      label: "Usuário",
-      icon: User,
-      badge: null,
-    },
-    {
-      href: "/metricas",
-      label: "Métricas",
-      icon: BarChart3,
-      badge: null,
-    },
-    {
-      href: "/suporte",
-      label: "Suporte",
-      icon: LifeBuoy,
-      badge: null,
-    },
+    { href: "/dados-da-conta", label: "Dados da conta", icon: Settings, badge: null },
+    { href: "/usuario", label: "Usuário", icon: User, badge: null },
+    { href: "/metricas", label: "Métricas", icon: BarChart3, badge: null },
+    { href: "/suporte", label: "Suporte", icon: LifeBuoy, badge: null },
     ...(isAdmin
       ? [
-          {
-            href: "/modelos-prescricao",
-            label: "Modelos prescrição",
-            icon: ClipboardList,
-            badge: null,
-          },
-          {
-            href: "/acessos",
-            label: "Acessos",
-            icon: ShieldCheck,
-            badge: null,
-          },
+          { href: "/modelos-prescricao", label: "Modelos prescrição", icon: ClipboardList, badge: null },
+          { href: "/acessos", label: "Acessos", icon: ShieldCheck, badge: null },
         ]
       : []),
   ];
@@ -382,9 +287,7 @@ function SidebarContent({
               Sistema clínico
             </h1>
             <p className="mt-1 text-sm text-slate-300">
-              {isGuest
-                ? "Acesso convidado limitado."
-                : "Navegação rápida entre módulos."}
+              {isGuest ? "Acesso convidado limitado." : "Navegação rápida entre módulos."}
             </p>
           </div>
         </div>
@@ -409,9 +312,7 @@ function SidebarContent({
               {isGuest ? "Modo convidado" : "Operação clínica"}
             </p>
             <p className="mt-1 text-sm leading-6 text-slate-300">
-              {isGuest
-                ? "Acesso restrito a módulos liberados."
-                : "Fluxo rápido para plantão e estudo."}
+              {isGuest ? "Acesso restrito a módulos liberados." : "Fluxo rápido para plantão e estudo."}
             </p>
           </div>
         )}
@@ -439,35 +340,19 @@ function SidebarContent({
             <div className="flex items-start gap-3">
               <Lock className="mt-0.5 h-4 w-4 text-amber-200" />
               <div>
-                <p className="text-sm font-semibold text-amber-100">
-                  Perfil convidado
-                </p>
+                <p className="text-sm font-semibold text-amber-100">Perfil convidado</p>
                 <p className="mt-1 text-sm leading-6 text-amber-100/80">
                   As demais áreas do sistema estão bloqueadas para este usuário.
                 </p>
 
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Link
-                    href="/termos"
-                    onClick={onNavigate}
-                    className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15"
-                  >
+                  <Link href="/termos" onClick={onNavigate} className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15">
                     Termos
                   </Link>
-
-                  <Link
-                    href="/privacidade"
-                    onClick={onNavigate}
-                    className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15"
-                  >
+                  <Link href="/privacidade" onClick={onNavigate} className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15">
                     Privacidade
                   </Link>
-
-                  <Link
-                    href="/suporte"
-                    onClick={onNavigate}
-                    className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15"
-                  >
+                  <Link href="/suporte" onClick={onNavigate} className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15">
                     Suporte
                   </Link>
                 </div>
@@ -549,8 +434,7 @@ export default function AppShell({ children }: Props) {
         return;
       }
 
-      const email =
-        sessionData.session?.user?.email?.trim().toLowerCase() || "";
+      const email = sessionData.session?.user?.email?.trim().toLowerCase() || "";
       const userId = sessionData.session?.user?.id || null;
       const guest = email === GUEST_EMAIL;
 
@@ -567,7 +451,6 @@ export default function AppShell({ children }: Props) {
     checkGuestUser();
 
     const supabase = createClient();
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -636,16 +519,8 @@ export default function AppShell({ children }: Props) {
         flashcardsDificeisCount,
         cidsCount,
       ] = await Promise.all([
-        getTableCount(supabase, "patients", {
-          column: "user_id",
-          value: currentUserId,
-        }),
-
-        getTableCount(supabase, "prescriptions", {
-          column: "user_id",
-          value: currentUserId,
-        }),
-
+        getTableCount(supabase, "patients", { column: "user_id", value: currentUserId }),
+        getTableCount(supabase, "prescriptions", { column: "user_id", value: currentUserId }),
         getFirstAvailableCount(supabase, [
           "exam_templates",
           "exams",
@@ -653,13 +528,9 @@ export default function AppShell({ children }: Props) {
           "evolucoes",
           "evolutions",
         ]),
-
         getTableCount(supabase, "topicos_medicos"),
-
         getTableCount(supabase, "flashcards"),
-
         getFlashcardDificeisCount(supabase, currentUserId),
-
         getTableCount(supabase, "cids"),
       ]);
 
@@ -717,14 +588,11 @@ export default function AppShell({ children }: Props) {
             <Lock className="h-5 w-5" />
           </div>
 
-          <h1 className="mt-4 text-xl font-semibold text-slate-900">
-            Acesso restrito
-          </h1>
+          <h1 className="mt-4 text-xl font-semibold text-slate-900">Acesso restrito</h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Este usuário convidado tem acesso apenas a Prescrição, Exames /
-            Evolução, Tópicos, CIDs, Termos de Uso, Política de Privacidade e
-            Suporte.
+            Este usuário convidado tem acesso apenas a Prescrição, Exames / Evolução,
+            Tópicos, CIDs, Termos de Uso, Política de Privacidade e Suporte.
           </p>
 
           <button
