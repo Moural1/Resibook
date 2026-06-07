@@ -23,6 +23,7 @@ import {
   PanelLeftOpen,
   Lock,
   ShieldCheck,
+  LifeBuoy,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
 import { Topbar } from "./topbar";
@@ -52,6 +53,7 @@ const GUEST_ALLOWED_PATHS = [
   "/termos",
   "/privacidade",
   "/aceite-legal",
+  "/suporte",
 ];
 
 function isGuestAllowedPath(pathname: string) {
@@ -303,6 +305,12 @@ function SidebarContent({
       icon: Tags,
       badge: null,
     },
+    {
+      href: "/suporte",
+      label: "Suporte",
+      icon: LifeBuoy,
+      badge: null,
+    },
   ];
 
   const secondaryItems = [
@@ -322,6 +330,12 @@ function SidebarContent({
       href: "/metricas",
       label: "Métricas",
       icon: BarChart3,
+      badge: null,
+    },
+    {
+      href: "/suporte",
+      label: "Suporte",
+      icon: LifeBuoy,
       badge: null,
     },
     ...(isAdmin
@@ -385,8 +399,8 @@ function SidebarContent({
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-300">
               {isGuest
-                ? "Prescrição, exames, tópicos e CIDs liberados."
-                : "Pacientes, prescrição, revisão e exames."}
+                ? "Prescrição, exames, tópicos, CIDs e suporte liberados."
+                : "Pacientes, prescrição, revisão, exames e suporte."}
             </p>
           </div>
         ) : (
@@ -447,6 +461,14 @@ function SidebarContent({
                     className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15"
                   >
                     Privacidade
+                  </Link>
+
+                  <Link
+                    href="/suporte"
+                    onClick={onNavigate}
+                    className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15"
+                  >
+                    Suporte
                   </Link>
                 </div>
               </div>
@@ -701,8 +723,8 @@ export default function AppShell({ children }: Props) {
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Este usuário convidado tem acesso apenas a Prescrição, Exames /
-            Evolução, Tópicos, CIDs, Termos de Uso, Política de Privacidade e
-            aceite legal.
+            Evolução, Tópicos, CIDs, Suporte, Termos de Uso, Política de
+            Privacidade e aceite legal.
           </p>
 
           <button

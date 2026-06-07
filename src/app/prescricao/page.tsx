@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import PrescriptionTemplatesLive from "../../components/prescription-templates-live";
+import { ClipboardPlus, Edit3, Lock, X } from "lucide-react";
 
 type Prescription = {
   id: number;
@@ -194,6 +195,8 @@ export default function PrescricaoPage() {
   const [saving, setSaving] = useState(false);
   const [savingIds, setSavingIds] = useState<number[]>([]);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -444,6 +447,20 @@ export default function PrescricaoPage() {
     }));
   }
 
+  function openCreateDrawer() {
+    if (isGuest) {
+      setError("Usuário convidado não pode salvar prescrições.");
+      return;
+    }
+
+    setDrawerOpen(true);
+    setSuccess("");
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+  }
+
   function handleUseTemplate(draft: PrescriptionDraft) {
     setForm((current) => ({
       ...current,
@@ -453,6 +470,10 @@ export default function PrescricaoPage() {
       duracao: draft.duracao || "",
       orientacoes: draft.orientacoes || "",
     }));
+
+    if (!isGuest) {
+      setDrawerOpen(true);
+    }
 
     window.scrollTo({
       top: 0,
@@ -512,6 +533,7 @@ export default function PrescricaoPage() {
 
     setSaving(true);
     setError("");
+    setSuccess("");
 
     const { data, error } = await supabase
       .from("prescriptions")
@@ -530,6 +552,8 @@ export default function PrescricaoPage() {
         patient_id: current.patient_id,
         paciente_nome: current.paciente_nome,
       }));
+      setSuccess("Prescrição salva com sucesso.");
+      setDrawerOpen(false);
     }
 
     setSaving(false);
@@ -553,6 +577,7 @@ export default function PrescricaoPage() {
     const safeEditForm = sanitizePrescriptionForm(editForm, patients);
 
     setError("");
+    setSuccess("");
     setSavingIds((current) => [...current, id]);
 
     const { data, error } = await supabase
@@ -571,6 +596,7 @@ export default function PrescricaoPage() {
       setPrescriptions((current) =>
         current.map((item) => (item.id === id ? (data as Prescription) : item))
       );
+      setSuccess("Prescrição atualizada com sucesso.");
       cancelEdit(id);
     }
 
@@ -592,6 +618,7 @@ export default function PrescricaoPage() {
     if (!confirmed) return;
 
     setError("");
+    setSuccess("");
     setSavingIds((current) => [...current, id]);
 
     const { error } = await supabase
@@ -604,11 +631,16 @@ export default function PrescricaoPage() {
       setError(error.message);
     } else {
       setPrescriptions((current) => current.filter((item) => item.id !== id));
+      setSuccess("Prescrição apagada com sucesso.");
       cancelEdit(id);
     }
 
     setSavingIds((current) => current.filter((item) => item !== id));
   }
+
+  const patientLinkedLabel = !isGuest && form.patient_id
+    ? getOwnedPatient(form.patient_id, patients)?.nome || form.paciente_nome
+    : "";
 
   return (
     <div className="space-y-6">
@@ -626,18 +658,37 @@ export default function PrescricaoPage() {
             <p className="mt-2 text-sm text-slate-500 md:text-base">
               {isGuest
                 ? "Modo convidado: use os modelos compartilhados ou monte uma prescrição para copiar. O salvamento no banco está bloqueado."
-                : "Registro médico com formulário rápido, histórico privado do usuário logado e modelos prontos compartilhados."}
+                : "Registro médico com histórico privado do usuário logado e modelos prontos compartilhados."}
             </p>
           </div>
 
-          <div className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
-            {isGuest ? "Modo convidado" : `${total} ${total === 1 ? "item" : "itens"}`}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+              {isGuest ? "Modo convidado" : `${total} ${total === 1 ? "item" : "itens"}`}
+            </div>
+
+            {!isGuest ? (
+              <button
+                type="button"
+                onClick={openCreateDrawer}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+              >
+                <ClipboardPlus className="h-4 w-4" />
+                Nova prescrição
+              </button>
+            ) : null}
           </div>
         </div>
 
         {error ? (
           <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
             Erro: {error}
+          </div>
+        ) : null}
+
+        {success ? (
+          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            {success}
           </div>
         ) : null}
 
@@ -655,12 +706,11 @@ export default function PrescricaoPage() {
             <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Nova prescrição
+                  Modelos e uso rápido
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  {isGuest
-                    ? "Sem vínculo com pacientes. Copie o texto para uso manual."
-                    : "As prescrições salvas ficam privadas para o usuário logado."}
+                  Use um modelo pronto e, se quiser, abra o cadastro para salvar
+                  no seu histórico.
                 </p>
               </div>
 
@@ -674,130 +724,25 @@ export default function PrescricaoPage() {
               ) : null}
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Paciente vinculado
-                </label>
+            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+                Biblioteca compartilhada
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">
+                {templates.length} modelos prontos vindos de
+                <span className="mx-1 font-semibold">prescription_templates</span>
+                para consultar, copiar e aplicar no formulário.
+              </p>
 
-                <select
-                  value={isGuest ? "" : form.patient_id}
-                  onChange={(e) => updateForm("patient_id", e.target.value)}
-                  disabled={isGuest}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+              {!isGuest ? (
+                <button
+                  type="button"
+                  onClick={openCreateDrawer}
+                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl border border-blue-200 bg-white px-5 text-sm font-semibold text-blue-700"
                 >
-                  <option value="">Selecionar paciente (opcional)</option>
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Nome do paciente
-                </label>
-                <input
-                  value={isGuest ? "" : form.paciente_nome}
-                  onChange={(e) => updateForm("paciente_nome", e.target.value)}
-                  readOnly={Boolean(!isGuest && form.patient_id)}
-                  disabled={isGuest}
-                  placeholder={
-                    isGuest
-                      ? "Indisponível para convidado"
-                      : "Opcional para prescrição sem vínculo"
-                  }
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none disabled:cursor-not-allowed disabled:bg-slate-100 read-only:bg-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Medicamento
-                </label>
-                <input
-                  value={form.medicamento}
-                  onChange={(e) => updateForm("medicamento", e.target.value)}
-                  placeholder="Ex.: Dipirona 500 mg"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Via
-                </label>
-                <input
-                  value={form.via}
-                  onChange={(e) => updateForm("via", e.target.value)}
-                  placeholder="Ex.: IV"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Posologia
-                </label>
-                <input
-                  value={form.posologia}
-                  onChange={(e) => updateForm("posologia", e.target.value)}
-                  placeholder="Ex.: 12/12h"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Duração
-                </label>
-                <input
-                  value={form.duracao}
-                  onChange={(e) => updateForm("duracao", e.target.value)}
-                  placeholder="Ex.: 7 dias"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Orientações
-              </label>
-              <textarea
-                rows={5}
-                value={form.orientacoes}
-                onChange={(e) => updateForm("orientacoes", e.target.value)}
-                placeholder="Digite aqui as orientações da prescrição..."
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
-              />
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
-              <button
-                type="button"
-                onClick={resetForm}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-              >
-                Limpar formulário
-              </button>
-
-              <div className="flex flex-wrap gap-3">
-                <CopyButton text={draftText} />
-
-                {!isGuest ? (
-                  <button
-                    type="button"
-                    onClick={handleCreate}
-                    disabled={saving}
-                    className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {saving ? "Salvando..." : "Salvar prescrição"}
-                  </button>
-                ) : null}
-              </div>
+                  Abrir cadastro de prescrição
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -840,6 +785,17 @@ export default function PrescricaoPage() {
                       {ultima ? getPatientLabel(ultima) : "-"}
                     </p>
                   </div>
+
+                  {patientLinkedLabel ? (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                        Paciente selecionado
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-emerald-900">
+                        {patientLinkedLabel}
+                      </p>
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -852,17 +808,6 @@ export default function PrescricaoPage() {
                   </p>
                 </div>
               )}
-
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                  Biblioteca compartilhada
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-700">
-                  {templates.length} modelos prontos vindos de
-                  <span className="mx-1 font-semibold">prescription_templates</span>
-                  para consultar, copiar e usar no formulário.
-                </p>
-              </div>
             </div>
           </aside>
         </div>
@@ -985,8 +930,9 @@ export default function PrescricaoPage() {
                           <button
                             type="button"
                             onClick={() => startEdit(item)}
-                            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
                           >
+                            <Edit3 className="h-4 w-4" />
                             Editar
                           </button>
 
@@ -1165,6 +1111,179 @@ export default function PrescricaoPage() {
             </div>
           )}
         </section>
+      ) : null}
+
+      {drawerOpen && !isGuest ? (
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="absolute inset-0"
+            aria-label="Fechar cadastro"
+          />
+
+          <div className="relative h-full w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-900">
+                  Nova prescrição
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Cadastro em painel separado para deixar a listagem e os
+                  modelos mais limpos.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-6">
+              {patientLinkedLabel ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                    Usar modelo no paciente
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-emerald-900">
+                    {patientLinkedLabel}
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Paciente vinculado
+                  </label>
+
+                  <select
+                    value={form.patient_id}
+                    onChange={(e) => updateForm("patient_id", e.target.value)}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  >
+                    <option value="">Selecionar paciente (opcional)</option>
+                    {patients.map((patient) => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Nome do paciente
+                  </label>
+                  <input
+                    value={form.paciente_nome}
+                    onChange={(e) => updateForm("paciente_nome", e.target.value)}
+                    readOnly={Boolean(form.patient_id)}
+                    placeholder="Opcional para prescrição sem vínculo"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none read-only:bg-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Medicamento
+                  </label>
+                  <input
+                    value={form.medicamento}
+                    onChange={(e) => updateForm("medicamento", e.target.value)}
+                    placeholder="Ex.: Dipirona 500 mg"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Via
+                  </label>
+                  <input
+                    value={form.via}
+                    onChange={(e) => updateForm("via", e.target.value)}
+                    placeholder="Ex.: IV"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Posologia
+                  </label>
+                  <input
+                    value={form.posologia}
+                    onChange={(e) => updateForm("posologia", e.target.value)}
+                    placeholder="Ex.: 12/12h"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Duração
+                  </label>
+                  <input
+                    value={form.duracao}
+                    onChange={(e) => updateForm("duracao", e.target.value)}
+                    placeholder="Ex.: 7 dias"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Orientações
+                </label>
+                <textarea
+                  rows={6}
+                  value={form.orientacoes}
+                  onChange={(e) => updateForm("orientacoes", e.target.value)}
+                  placeholder="Digite aqui as orientações da prescrição..."
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+                />
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Prévia
+                </p>
+                <pre className="mt-3 whitespace-pre-wrap font-mono text-sm leading-7 text-slate-800">
+                  {draftText}
+                </pre>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                >
+                  Limpar formulário
+                </button>
+
+                <div className="flex flex-wrap gap-3">
+                  <CopyButton text={draftText} />
+
+                  <button
+                    type="button"
+                    onClick={handleCreate}
+                    disabled={saving}
+                    className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Salvando..." : "Salvar prescrição"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
