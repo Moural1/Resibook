@@ -25,6 +25,11 @@ type Patient = {
   hma: string | null;
   hpp: string | null;
   alergias: string | null;
+  comorbidades: string | null;
+  gestante: boolean | null;
+  funcao_renal_alterada: boolean | null;
+  hepatopatia: boolean | null;
+  idoso_fragil: boolean | null;
   diagnostico_principal: string | null;
   hipotese_diagnostica: string | null;
   medicamentos_em_uso: string | null;
@@ -50,6 +55,11 @@ type PatientForm = {
   hma: string;
   hpp: string;
   alergias: string;
+  comorbidades: string;
+  gestante: boolean;
+  funcao_renal_alterada: boolean;
+  hepatopatia: boolean;
+  idoso_fragil: boolean;
   medicamentos_em_uso: string;
   exame_fisico: string;
   hipotese_diagnostica: string;
@@ -83,6 +93,11 @@ const emptyForm: PatientForm = {
   hma: "",
   hpp: "",
   alergias: "",
+  comorbidades: "",
+  gestante: false,
+  funcao_renal_alterada: false,
+  hepatopatia: false,
+  idoso_fragil: false,
   medicamentos_em_uso: "",
   exame_fisico: "",
   hipotese_diagnostica: "",
@@ -160,6 +175,11 @@ function patientToForm(patient: Patient): PatientForm {
     hma: patient.hma || "",
     hpp: patient.hpp || "",
     alergias: patient.alergias || "",
+    comorbidades: patient.comorbidades || "",
+    gestante: Boolean(patient.gestante),
+    funcao_renal_alterada: Boolean(patient.funcao_renal_alterada),
+    hepatopatia: Boolean(patient.hepatopatia),
+    idoso_fragil: Boolean(patient.idoso_fragil),
     medicamentos_em_uso: patient.medicamentos_em_uso || "",
     exame_fisico: patient.exame_fisico || "",
     hipotese_diagnostica: getHipotese(patient),
@@ -189,6 +209,11 @@ function buildPayload(form: PatientForm, userId: string) {
     hma: form.hma.trim() || null,
     hpp: form.hpp.trim() || null,
     alergias: form.alergias.trim() || null,
+    comorbidades: form.comorbidades.trim() || null,
+    gestante: Boolean(form.gestante),
+    funcao_renal_alterada: Boolean(form.funcao_renal_alterada),
+    hepatopatia: Boolean(form.hepatopatia),
+    idoso_fragil: Boolean(form.idoso_fragil),
     medicamentos_em_uso: form.medicamentos_em_uso.trim() || null,
     exame_fisico: form.exame_fisico.trim() || null,
     diagnostico_principal: form.hipotese_diagnostica.trim() || null,
@@ -200,7 +225,7 @@ function buildPayload(form: PatientForm, userId: string) {
 }
 
 const patientSelect =
-  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, crm_medico, local_atendimento, queixa, queixa_principal, hma, hpp, alergias, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
+  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, crm_medico, local_atendimento, queixa, queixa_principal, hma, hpp, alergias, comorbidades, gestante, funcao_renal_alterada, hepatopatia, idoso_fragil, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
 
 function buildPatientSummary(patient: Patient) {
   const lines = [
@@ -223,6 +248,11 @@ function buildPatientSummary(patient: Patient) {
       : "",
     patient.crm_medico ? `MÉDICO / CRM: ${patient.crm_medico}` : "",
     patient.alergias ? `ALERGIAS:\n${patient.alergias}` : "",
+    patient.comorbidades ? `COMORBIDADES:\n${patient.comorbidades}` : "",
+    patient.gestante ? "GESTANTE: sim" : "",
+    patient.funcao_renal_alterada ? "FUNÇÃO RENAL ALTERADA: sim" : "",
+    patient.hepatopatia ? "HEPATOPATIA: sim" : "",
+    patient.idoso_fragil ? "IDOSO FRÁGIL: sim" : "",
     getQueixa(patient) ? `QUEIXA PRINCIPAL:\n${getQueixa(patient)}` : "",
     patient.hma ? `HMA:\n${patient.hma}` : "",
     patient.hpp ? `HPP:\n${patient.hpp}` : "",
@@ -877,6 +907,17 @@ export default function PacientesPage() {
                   </InfoBlock>
                   <InfoBlock title="HMA">{item.hma}</InfoBlock>
                   <InfoBlock title="HPP">{item.hpp}</InfoBlock>
+                  <InfoBlock title="Comorbidades">{item.comorbidades}</InfoBlock>
+                  <InfoBlock title="Perfil de risco">
+                    {[
+                      item.gestante ? "Gestante" : "",
+                      item.funcao_renal_alterada ? "Função renal alterada" : "",
+                      item.hepatopatia ? "Hepatopatia" : "",
+                      item.idoso_fragil ? "Idoso frágil" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" • ")}
+                  </InfoBlock>
                   <InfoBlock title="Hipótese diagnóstica">
                     {getHipotese(item)}
                   </InfoBlock>
@@ -1091,6 +1132,65 @@ export default function PacientesPage() {
                           rows={3}
                         />
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-semibold text-amber-900">
+                    Perfil de risco clínico estruturado
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-amber-800">
+                    Esses campos alimentam os alertas automáticos na página de prescrição.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <TextAreaField
+                      label="Comorbidades relevantes"
+                      value={form.comorbidades}
+                      onChange={(value) => updateForm("comorbidades", value)}
+                      placeholder="Ex.: DRC, cirrose, ICC, epilepsia, anticoagulação..."
+                      rows={4}
+                    />
+
+                    <div className="grid gap-3 rounded-2xl border border-amber-200 bg-white p-4">
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.gestante}
+                          onChange={(event) => updateForm("gestante", event.target.checked)}
+                        />
+                        Gestante
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.funcao_renal_alterada}
+                          onChange={(event) =>
+                            updateForm("funcao_renal_alterada", event.target.checked)
+                          }
+                        />
+                        Função renal alterada
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.hepatopatia}
+                          onChange={(event) => updateForm("hepatopatia", event.target.checked)}
+                        />
+                        Hepatopatia
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.idoso_fragil}
+                          onChange={(event) => updateForm("idoso_fragil", event.target.checked)}
+                        />
+                        Idoso frágil
+                      </label>
                     </div>
                   </div>
                 </div>

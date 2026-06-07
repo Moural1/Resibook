@@ -34,6 +34,11 @@ type Patient = {
   hma?: string | null;
   hpp?: string | null;
   alergias?: string | null;
+  comorbidades?: string | null;
+  gestante?: boolean | null;
+  funcao_renal_alterada?: boolean | null;
+  hepatopatia?: boolean | null;
+  idoso_fragil?: boolean | null;
   medicamentos_em_uso?: string | null;
   exame_fisico?: string | null;
   hipotese_diagnostica?: string | null;
@@ -516,6 +521,11 @@ function buildPatientSummary(
     getCarteirinha(patient) ? `CARTEIRINHA: ${getCarteirinha(patient)}` : "",
     returnDate ? `RETORNO PREVISTO: ${formatDateOnly(returnDate)}` : "",
     patient.alergias ? `ALERGIAS:\n${patient.alergias}` : "",
+    patient.comorbidades ? `COMORBIDADES:\n${patient.comorbidades}` : "",
+    patient.gestante ? "GESTANTE: sim" : "",
+    patient.funcao_renal_alterada ? "FUNÇÃO RENAL ALTERADA: sim" : "",
+    patient.hepatopatia ? "HEPATOPATIA: sim" : "",
+    patient.idoso_fragil ? "IDOSO FRÁGIL: sim" : "",
     patient.queixa ? `QUEIXA BASE:\n${patient.queixa}` : "",
     patient.hma ? `HMA BASE:\n${patient.hma}` : "",
     patient.hpp ? `HPP:\n${patient.hpp}` : "",

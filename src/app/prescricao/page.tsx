@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import PrescriptionTemplatesLive from "../../components/prescription-templates-live";
+import ClinicalAlerts from "../../components/clinical-alerts";
 import { ClipboardPlus, Edit3, Lock, X } from "lucide-react";
 
 type Prescription = {
@@ -22,6 +23,15 @@ type Prescription = {
 type Patient = {
   id: string;
   nome: string;
+  idade?: number | null;
+  alergias?: string | null;
+  comorbidades?: string | null;
+  hpp?: string | null;
+  medicamentos_em_uso?: string | null;
+  gestante?: boolean | null;
+  funcao_renal_alterada?: boolean | null;
+  hepatopatia?: boolean | null;
+  idoso_fragil?: boolean | null;
 };
 
 type PrescriptionTemplate = {
@@ -31,6 +41,15 @@ type PrescriptionTemplate = {
   conteudo: string;
   observacoes: string | null;
   source_file: string | null;
+  contraindicacoes?: string | null;
+  cuidados_especiais?: string | null;
+  alerta_gestante?: string | null;
+  alerta_idoso?: string | null;
+  alerta_drc?: string | null;
+  alerta_hepatopatia?: string | null;
+  alerta_alergias?: string | null;
+  alerta_interacoes?: string | null;
+  tags_risco?: string | null;
   created_at: string;
 };
 
@@ -290,7 +309,7 @@ export default function PrescricaoPage() {
     const templatesRes = await supabase
       .from("prescription_templates")
       .select(
-        "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, created_at"
       )
       .order("titulo", { ascending: true });
 
@@ -311,7 +330,7 @@ export default function PrescricaoPage() {
     const [patientsRes, prescriptionsRes] = await Promise.all([
       supabase
         .from("patients")
-        .select("id, nome")
+        .select("id, nome, idade, alergias, comorbidades, hpp, medicamentos_em_uso, gestante, funcao_renal_alterada, hepatopatia, idoso_fragil")
         .eq("user_id", userId)
         .order("nome", { ascending: true }),
 
@@ -377,6 +396,11 @@ export default function PrescricaoPage() {
     const safeForm = sanitizePrescriptionForm(form, isGuest ? [] : patients);
     return buildPrescriptionTextFromForm(safeForm);
   }, [form, isGuest, patients]);
+
+  const selectedPatient = useMemo(() => {
+    if (isGuest) return null;
+    return getOwnedPatient(form.patient_id, patients) || null;
+  }, [form.patient_id, isGuest, patients]);
 
   function updateForm<K extends keyof PrescriptionForm>(
     key: K,
@@ -956,6 +980,12 @@ export default function PrescricaoPage() {
                             </p>
                           </div>
 
+                          <ClinicalAlerts
+                            patient={getOwnedPatient(editForm.patient_id, patients)}
+                            medicationText={buildPrescriptionTextFromForm(editForm)}
+                            className="mb-4"
+                          />
+
                           <div className="grid gap-4 md:grid-cols-2">
                             <div>
                               <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -1154,6 +1184,11 @@ export default function PrescricaoPage() {
                   </p>
                 </div>
               ) : null}
+
+              <ClinicalAlerts
+                patient={selectedPatient}
+                medicationText={draftText}
+              />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>

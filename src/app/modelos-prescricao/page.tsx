@@ -11,6 +11,15 @@ type PrescriptionTemplate = {
   conteudo: string;
   observacoes: string | null;
   source_file: string | null;
+  contraindicacoes: string | null;
+  cuidados_especiais: string | null;
+  alerta_gestante: string | null;
+  alerta_idoso: string | null;
+  alerta_drc: string | null;
+  alerta_hepatopatia: string | null;
+  alerta_alergias: string | null;
+  alerta_interacoes: string | null;
+  tags_risco: string | null;
   created_at: string | null;
 };
 
@@ -20,6 +29,15 @@ type TemplateForm = {
   conteudo: string;
   observacoes: string;
   source_file: string;
+  contraindicacoes: string;
+  cuidados_especiais: string;
+  alerta_gestante: string;
+  alerta_idoso: string;
+  alerta_drc: string;
+  alerta_hepatopatia: string;
+  alerta_alergias: string;
+  alerta_interacoes: string;
+  tags_risco: string;
 };
 
 const ADMIN_EMAIL = "igormoura@resibook.com";
@@ -30,6 +48,15 @@ const emptyForm: TemplateForm = {
   conteudo: "",
   observacoes: "",
   source_file: "",
+  contraindicacoes: "",
+  cuidados_especiais: "",
+  alerta_gestante: "",
+  alerta_idoso: "",
+  alerta_drc: "",
+  alerta_hepatopatia: "",
+  alerta_alergias: "",
+  alerta_interacoes: "",
+  tags_risco: "",
 };
 
 function normalize(value?: string | null) {
@@ -60,6 +87,15 @@ function buildTemplateText(item: PrescriptionTemplate) {
     "",
     item.conteudo,
     item.observacoes ? `\nObservações:\n${item.observacoes}` : "",
+    item.contraindicacoes ? `\nContraindicações:\n${item.contraindicacoes}` : "",
+    item.cuidados_especiais ? `\nCuidados especiais:\n${item.cuidados_especiais}` : "",
+    item.alerta_gestante ? `\nGestante:\n${item.alerta_gestante}` : "",
+    item.alerta_idoso ? `\nIdoso:\n${item.alerta_idoso}` : "",
+    item.alerta_drc ? `\nDRC / renal:\n${item.alerta_drc}` : "",
+    item.alerta_hepatopatia ? `\nHepatopatia:\n${item.alerta_hepatopatia}` : "",
+    item.alerta_alergias ? `\nAlergias:\n${item.alerta_alergias}` : "",
+    item.alerta_interacoes ? `\nInterações:\n${item.alerta_interacoes}` : "",
+    item.tags_risco ? `\nTags de risco:\n${item.tags_risco}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -72,6 +108,15 @@ function buildPayload(form: TemplateForm) {
     conteudo: form.conteudo.trim(),
     observacoes: form.observacoes.trim() || null,
     source_file: form.source_file.trim() || null,
+    contraindicacoes: form.contraindicacoes.trim() || null,
+    cuidados_especiais: form.cuidados_especiais.trim() || null,
+    alerta_gestante: form.alerta_gestante.trim() || null,
+    alerta_idoso: form.alerta_idoso.trim() || null,
+    alerta_drc: form.alerta_drc.trim() || null,
+    alerta_hepatopatia: form.alerta_hepatopatia.trim() || null,
+    alerta_alergias: form.alerta_alergias.trim() || null,
+    alerta_interacoes: form.alerta_interacoes.trim() || null,
+    tags_risco: form.tags_risco.trim() || null,
   };
 }
 
@@ -82,6 +127,15 @@ function templateToForm(item: PrescriptionTemplate): TemplateForm {
     conteudo: item.conteudo || "",
     observacoes: item.observacoes || "",
     source_file: item.source_file || "",
+    contraindicacoes: item.contraindicacoes || "",
+    cuidados_especiais: item.cuidados_especiais || "",
+    alerta_gestante: item.alerta_gestante || "",
+    alerta_idoso: item.alerta_idoso || "",
+    alerta_drc: item.alerta_drc || "",
+    alerta_hepatopatia: item.alerta_hepatopatia || "",
+    alerta_alergias: item.alerta_alergias || "",
+    alerta_interacoes: item.alerta_interacoes || "",
+    tags_risco: item.tags_risco || "",
   };
 }
 
@@ -131,7 +185,7 @@ export default function ModelosPrescricaoPage() {
     const { data, error } = await supabase
       .from("prescription_templates")
       .select(
-        "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, created_at"
       )
       .order("categoria", { ascending: true, nullsFirst: false })
       .order("titulo", { ascending: true });
@@ -239,14 +293,14 @@ export default function ModelosPrescricaoPage() {
           .update(payload)
           .eq("id", editingId)
           .select(
-            "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+            "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, created_at"
           )
           .single()
       : await supabase
           .from("prescription_templates")
           .insert(payload)
           .select(
-            "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+            "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, created_at"
           )
           .single();
 
@@ -484,6 +538,84 @@ export default function ModelosPrescricaoPage() {
                   updateForm("source_file", event.target.value)
                 }
                 placeholder="Ex.: Protocolo interno, aula, revisão pessoal..."
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-900">
+              Estrutura de risco clínico
+            </p>
+            <p className="mt-1 text-sm leading-6 text-amber-800">
+              Esses campos alimentam a checagem automática na página de prescrição.
+            </p>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <textarea
+                rows={4}
+                value={form.contraindicacoes}
+                onChange={(event) => updateForm("contraindicacoes", event.target.value)}
+                placeholder="Contraindicações"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+              <textarea
+                rows={4}
+                value={form.cuidados_especiais}
+                onChange={(event) => updateForm("cuidados_especiais", event.target.value)}
+                placeholder="Cuidados especiais"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+              <textarea
+                rows={3}
+                value={form.alerta_gestante}
+                onChange={(event) => updateForm("alerta_gestante", event.target.value)}
+                placeholder="Alerta para gestante"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+              <textarea
+                rows={3}
+                value={form.alerta_idoso}
+                onChange={(event) => updateForm("alerta_idoso", event.target.value)}
+                placeholder="Alerta para idoso"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+              <textarea
+                rows={3}
+                value={form.alerta_drc}
+                onChange={(event) => updateForm("alerta_drc", event.target.value)}
+                placeholder="Alerta para DRC / função renal"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+              <textarea
+                rows={3}
+                value={form.alerta_hepatopatia}
+                onChange={(event) => updateForm("alerta_hepatopatia", event.target.value)}
+                placeholder="Alerta para hepatopatia"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+              <textarea
+                rows={3}
+                value={form.alerta_alergias}
+                onChange={(event) => updateForm("alerta_alergias", event.target.value)}
+                placeholder="Alerta para alergias"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+              <textarea
+                rows={3}
+                value={form.alerta_interacoes}
+                onChange={(event) => updateForm("alerta_interacoes", event.target.value)}
+                placeholder="Alerta para interações"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+            </div>
+
+            <div className="mt-4">
+              <textarea
+                rows={3}
+                value={form.tags_risco}
+                onChange={(event) => updateForm("tags_risco", event.target.value)}
+                placeholder="Tags de risco: ex. aine, quinolona, tetraciclina, anticoagulante"
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
               />
             </div>
