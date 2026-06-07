@@ -3,15 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
-import {
-  ClipboardCopy,
-  Edit3,
-  Lock,
-  Plus,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Edit3, Lock, Plus, Search, Trash2, X } from "lucide-react";
 
 type ExamTemplate = {
   id: number;
@@ -149,7 +141,7 @@ export default function ExamesEvolucaoPage() {
   const [categoria, setCategoria] = useState("");
   const [sexo, setSexo] = useState("");
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ExamTemplate | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
@@ -240,7 +232,7 @@ export default function ExamesEvolucaoPage() {
     }));
   }
 
-  function openCreateModal() {
+  function openCreateDrawer() {
     if (!isAdmin) {
       setError("Apenas o administrador pode criar modelos em exam_templates.");
       return;
@@ -248,12 +240,12 @@ export default function ExamesEvolucaoPage() {
 
     setEditingItem(null);
     setForm(emptyForm);
-    setModalOpen(true);
+    setDrawerOpen(true);
     setError("");
     setSuccess("");
   }
 
-  function openEditModal(item: ExamTemplate) {
+  function openEditDrawer(item: ExamTemplate) {
     if (!isAdmin) {
       setError("Apenas o administrador pode editar modelos em exam_templates.");
       return;
@@ -267,13 +259,13 @@ export default function ExamesEvolucaoPage() {
       arquivo_origem: item.arquivo_origem || item.source_file || "",
       conteudo: item.conteudo || "",
     });
-    setModalOpen(true);
+    setDrawerOpen(true);
     setError("");
     setSuccess("");
   }
 
-  function closeModal() {
-    setModalOpen(false);
+  function closeDrawer() {
+    setDrawerOpen(false);
     setEditingItem(null);
     setForm(emptyForm);
   }
@@ -336,7 +328,7 @@ export default function ExamesEvolucaoPage() {
         setSuccess("Modelo criado com sucesso.");
       }
 
-      closeModal();
+      closeDrawer();
     }
 
     setSaving(false);
@@ -423,7 +415,7 @@ export default function ExamesEvolucaoPage() {
           {isAdmin ? (
             <button
               type="button"
-              onClick={openCreateModal}
+              onClick={openCreateDrawer}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
             >
               <Plus className="h-4 w-4" />
@@ -561,7 +553,7 @@ export default function ExamesEvolucaoPage() {
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button
                       type="button"
-                      onClick={() => openEditModal(item)}
+                      onClick={() => openEditDrawer(item)}
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
                     >
                       <Edit3 className="h-4 w-4" />
@@ -590,10 +582,17 @@ export default function ExamesEvolucaoPage() {
         </section>
       )}
 
-      {modalOpen && isAdmin ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      {drawerOpen && isAdmin ? (
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="absolute inset-0"
+            aria-label="Fechar cadastro"
+          />
+
+          <div className="relative h-full w-full max-w-3xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
                   {editingItem ? "Editar modelo" : "Novo modelo"}
@@ -605,44 +604,44 @@ export default function ExamesEvolucaoPage() {
 
               <button
                 type="button"
-                onClick={closeModal}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+                onClick={closeDrawer}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <InputField
-                label="Categoria"
-                value={form.categoria}
-                onChange={(value) => updateForm("categoria", value)}
-                placeholder="Ex.: Exames laboratoriais"
-              />
+            <div className="space-y-6 px-6 py-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <InputField
+                  label="Categoria"
+                  value={form.categoria}
+                  onChange={(value) => updateForm("categoria", value)}
+                  placeholder="Ex.: Exames laboratoriais"
+                />
 
-              <InputField
-                label="Título"
-                value={form.titulo}
-                onChange={(value) => updateForm("titulo", value)}
-                placeholder="Ex.: Check-up inicial"
-              />
+                <InputField
+                  label="Título"
+                  value={form.titulo}
+                  onChange={(value) => updateForm("titulo", value)}
+                  placeholder="Ex.: Check-up inicial"
+                />
 
-              <InputField
-                label="Sexo"
-                value={form.sexo}
-                onChange={(value) => updateForm("sexo", value)}
-                placeholder="Ex.: Todos, Feminino, Masculino"
-              />
+                <InputField
+                  label="Sexo"
+                  value={form.sexo}
+                  onChange={(value) => updateForm("sexo", value)}
+                  placeholder="Ex.: Todos, Feminino, Masculino"
+                />
 
-              <InputField
-                label="Arquivo de origem"
-                value={form.arquivo_origem}
-                onChange={(value) => updateForm("arquivo_origem", value)}
-                placeholder="Ex.: protocolo.pdf"
-              />
-            </div>
+                <InputField
+                  label="Arquivo de origem"
+                  value={form.arquivo_origem}
+                  onChange={(value) => updateForm("arquivo_origem", value)}
+                  placeholder="Ex.: protocolo.pdf"
+                />
+              </div>
 
-            <div className="mt-4">
               <TextAreaField
                 label="Conteúdo"
                 value={form.conteudo}
@@ -650,30 +649,29 @@ export default function ExamesEvolucaoPage() {
                 placeholder="Digite o conteúdo do modelo..."
                 rows={10}
               />
-            </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <ClipboardCopy className="h-4 w-4" />
-                {saving
-                  ? "Salvando..."
-                  : editingItem
-                    ? "Salvar edição"
-                    : "Criar modelo"}
-              </button>
+              <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving
+                    ? "Salvando..."
+                    : editingItem
+                      ? "Salvar edição"
+                      : "Criar modelo"}
+                </button>
 
-              <button
-                type="button"
-                onClick={closeModal}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-              >
-                Cancelar
-              </button>
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         </div>

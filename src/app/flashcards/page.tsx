@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Lock } from "lucide-react";
+import { Lock, Plus, X } from "lucide-react";
 
 type Flashcard = {
   id: string;
@@ -66,12 +66,13 @@ export default function FlashcardsPage() {
   const [savingIds, setSavingIds] = useState<string[]>([]);
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [query, setQuery] = useState("");
   const [area, setArea] = useState("");
   const [materia, setMateria] = useState("");
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
   const [form, setForm] = useState<FlashcardForm>(emptyForm);
 
@@ -218,7 +219,7 @@ export default function FlashcardsPage() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function openCreateModal() {
+  function openCreateDrawer() {
     if (!isAdmin) {
       setError("Apenas o administrador pode criar flashcards compartilhados.");
       return;
@@ -226,10 +227,12 @@ export default function FlashcardsPage() {
 
     setEditingCard(null);
     setForm(emptyForm);
-    setModalOpen(true);
+    setDrawerOpen(true);
+    setError("");
+    setSuccess("");
   }
 
-  function openEditModal(card: Flashcard) {
+  function openEditDrawer(card: Flashcard) {
     if (!isAdmin) {
       setError("Apenas o administrador pode editar flashcards compartilhados.");
       return;
@@ -244,11 +247,13 @@ export default function FlashcardsPage() {
       verso: card.verso || "",
       dificil: Boolean(card.dificil),
     });
-    setModalOpen(true);
+    setDrawerOpen(true);
+    setError("");
+    setSuccess("");
   }
 
-  function closeModal() {
-    setModalOpen(false);
+  function closeDrawer() {
+    setDrawerOpen(false);
     setEditingCard(null);
     setForm(emptyForm);
   }
@@ -272,6 +277,7 @@ export default function FlashcardsPage() {
     const nextValue = !Boolean(card.dificil);
 
     setError("");
+    setSuccess("");
     setSavingIds((current) => [...current, card.id]);
 
     const response = nextValue
@@ -295,6 +301,11 @@ export default function FlashcardsPage() {
           item.id === card.id ? { ...item, dificil: nextValue } : item
         )
       );
+      setSuccess(
+        nextValue
+          ? "Flashcard marcado como difícil."
+          : "Flashcard removido dos difíceis."
+      );
     }
 
     setSavingIds((current) => current.filter((item) => item !== card.id));
@@ -313,6 +324,7 @@ export default function FlashcardsPage() {
 
     setSaving(true);
     setError("");
+    setSuccess("");
 
     const payload = {
       area: form.area.trim() || null,
@@ -356,8 +368,13 @@ export default function FlashcardsPage() {
       }
     }
 
-    closeModal();
     await loadCards();
+    setSuccess(
+      editingCard
+        ? "Flashcard atualizado com sucesso."
+        : "Flashcard criado com sucesso."
+    );
+    closeDrawer();
     setSaving(false);
   }
 
@@ -374,6 +391,7 @@ export default function FlashcardsPage() {
     if (!confirmed) return;
 
     setError("");
+    setSuccess("");
     setSavingIds((current) => [...current, id]);
 
     const { error } = await supabase.from("flashcards").delete().eq("id", id);
@@ -383,6 +401,7 @@ export default function FlashcardsPage() {
     } else {
       setCards((current) => current.filter((item) => item.id !== id));
       setRevealedIds((current) => current.filter((item) => item !== id));
+      setSuccess("Flashcard apagado com sucesso.");
     }
 
     setSavingIds((current) => current.filter((item) => item !== id));
@@ -462,8 +481,14 @@ export default function FlashcardsPage() {
               </p>
 
               {error ? (
-                <p className="mt-2 text-sm font-medium text-rose-600">
+                <p className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
                   Erro: {error}
+                </p>
+              ) : null}
+
+              {success ? (
+                <p className="mt-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                  {success}
                 </p>
               ) : null}
             </div>
@@ -471,9 +496,10 @@ export default function FlashcardsPage() {
             {isAdmin ? (
               <button
                 type="button"
-                onClick={openCreateModal}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+                onClick={openCreateDrawer}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
               >
+                <Plus className="h-4 w-4" />
                 Novo flashcard
               </button>
             ) : null}
@@ -646,7 +672,7 @@ export default function FlashcardsPage() {
                     <>
                       <button
                         type="button"
-                        onClick={() => openEditModal(item)}
+                        onClick={() => openEditDrawer(item)}
                         className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
                       >
                         Editar
@@ -669,10 +695,17 @@ export default function FlashcardsPage() {
         </section>
       )}
 
-      {modalOpen ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      {drawerOpen ? (
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="absolute inset-0"
+            aria-label="Fechar cadastro"
+          />
+
+          <div className="relative h-full w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
                   {editingCard ? "Editar flashcard" : "Novo flashcard"}
@@ -684,49 +717,49 @@ export default function FlashcardsPage() {
 
               <button
                 type="button"
-                onClick={closeModal}
-                className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                onClick={closeDrawer}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
               >
-                Fechar
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <input
-                value={form.area}
-                onChange={(e) => updateForm("area", e.target.value)}
-                placeholder="Área"
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
+            <div className="space-y-6 px-6 py-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  value={form.area}
+                  onChange={(e) => updateForm("area", e.target.value)}
+                  placeholder="Área"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                />
 
-              <input
-                value={form.materia}
-                onChange={(e) => updateForm("materia", e.target.value)}
-                placeholder="Matéria"
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
+                <input
+                  value={form.materia}
+                  onChange={(e) => updateForm("materia", e.target.value)}
+                  placeholder="Matéria"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                />
 
-              <input
-                value={form.tipo}
-                onChange={(e) => updateForm("tipo", e.target.value)}
-                placeholder="Tipo"
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-              />
-            </div>
+                <input
+                  value={form.tipo}
+                  onChange={(e) => updateForm("tipo", e.target.value)}
+                  placeholder="Tipo"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none md:col-span-2"
+                />
+              </div>
 
-            <div className="mt-4 grid gap-4">
               <textarea
                 value={form.frente}
                 onChange={(e) => updateForm("frente", e.target.value)}
                 placeholder="Frente"
-                className="min-h-[120px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
               <textarea
                 value={form.verso}
                 onChange={(e) => updateForm("verso", e.target.value)}
                 placeholder="Verso"
-                className="min-h-[160px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[180px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
               <label className="inline-flex items-center gap-3 text-sm text-slate-700">
@@ -737,29 +770,29 @@ export default function FlashcardsPage() {
                 />
                 Marcar como difícil para meu usuário
               </label>
-            </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving
-                  ? "Salvando..."
-                  : editingCard
-                    ? "Salvar edição"
-                    : "Criar flashcard"}
-              </button>
+              <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving
+                    ? "Salvando..."
+                    : editingCard
+                      ? "Salvar edição"
+                      : "Criar flashcard"}
+                </button>
 
-              <button
-                type="button"
-                onClick={closeModal}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-              >
-                Cancelar
-              </button>
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         </div>

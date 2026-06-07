@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
+import { Plus, X } from "lucide-react";
 
 type Patient = {
   id: string;
@@ -189,11 +190,15 @@ function buildPatientSummary(patient: Patient) {
     patient.telefone ? `TELEFONE: ${patient.telefone}` : "",
     patient.especialidade ? `ESPECIALIDADE: ${patient.especialidade}` : "",
     patient.plano_saude ? `PLANO DE SAÚDE: ${patient.plano_saude}` : "",
-    patient.numero_carteirinha ? `CARTEIRINHA: ${patient.numero_carteirinha}` : "",
+    patient.numero_carteirinha
+      ? `CARTEIRINHA: ${patient.numero_carteirinha}`
+      : "",
     patient.data_nascimento
       ? `DATA DE NASCIMENTO: ${formatDateOnly(patient.data_nascimento)}`
       : "",
-    patient.local_atendimento ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}` : "",
+    patient.local_atendimento
+      ? `LOCAL DE ATENDIMENTO: ${patient.local_atendimento}`
+      : "",
     patient.crm_medico ? `MÉDICO / CRM: ${patient.crm_medico}` : "",
     getQueixa(patient) ? `QUEIXA PRINCIPAL:\n${getQueixa(patient)}` : "",
     patient.hma ? `HMA:\n${patient.hma}` : "",
@@ -202,7 +207,9 @@ function buildPatientSummary(patient: Patient) {
       ? `MEDICAMENTOS EM USO:\n${patient.medicamentos_em_uso}`
       : "",
     patient.exame_fisico ? `EXAME FÍSICO:\n${patient.exame_fisico}` : "",
-    getHipotese(patient) ? `HIPÓTESE DIAGNÓSTICA:\n${getHipotese(patient)}` : "",
+    getHipotese(patient)
+      ? `HIPÓTESE DIAGNÓSTICA:\n${getHipotese(patient)}`
+      : "",
     patient.conduta_medica ? `CONDUTA MÉDICA:\n${patient.conduta_medica}` : "",
     patient.observacoes ? `OBSERVAÇÕES:\n${patient.observacoes}` : "",
     patient.retorno_previsto_em
@@ -302,7 +309,7 @@ export default function PacientesPage() {
   const [sexo, setSexo] = useState("");
   const [especialidade, setEspecialidade] = useState("");
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [form, setForm] = useState<PatientForm>(emptyForm);
 
@@ -348,6 +355,7 @@ export default function PacientesPage() {
 
   useEffect(() => {
     loadPatients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -428,24 +436,24 @@ export default function PacientesPage() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function openCreateModal() {
+  function openCreateDrawer() {
     setEditingPatient(null);
     setForm(emptyForm);
-    setModalOpen(true);
+    setDrawerOpen(true);
     setError("");
     setSuccess("");
   }
 
-  function openEditModal(patient: Patient) {
+  function openEditDrawer(patient: Patient) {
     setEditingPatient(patient);
     setForm(patientToForm(patient));
-    setModalOpen(true);
+    setDrawerOpen(true);
     setError("");
     setSuccess("");
   }
 
-  function closeModal() {
-    setModalOpen(false);
+  function closeDrawer() {
+    setDrawerOpen(false);
     setEditingPatient(null);
     setForm(emptyForm);
   }
@@ -496,7 +504,7 @@ export default function PacientesPage() {
         setSuccess("Paciente criado com sucesso.");
       }
 
-      closeModal();
+      closeDrawer();
     }
 
     setSaving(false);
@@ -588,9 +596,10 @@ export default function PacientesPage() {
 
             <button
               type="button"
-              onClick={openCreateModal}
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+              onClick={openCreateDrawer}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
             >
+              <Plus className="h-4 w-4" />
               Novo paciente
             </button>
           </div>
@@ -714,11 +723,17 @@ export default function PacientesPage() {
                 </div>
 
                 <div className="mt-4 grid gap-3">
-                  <InfoBlock title="Queixa principal">{getQueixa(item)}</InfoBlock>
+                  <InfoBlock title="Queixa principal">
+                    {getQueixa(item)}
+                  </InfoBlock>
                   <InfoBlock title="HMA">{item.hma}</InfoBlock>
                   <InfoBlock title="HPP">{item.hpp}</InfoBlock>
-                  <InfoBlock title="Hipótese diagnóstica">{getHipotese(item)}</InfoBlock>
-                  <InfoBlock title="Conduta médica">{item.conduta_medica}</InfoBlock>
+                  <InfoBlock title="Hipótese diagnóstica">
+                    {getHipotese(item)}
+                  </InfoBlock>
+                  <InfoBlock title="Conduta médica">
+                    {item.conduta_medica}
+                  </InfoBlock>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3">
@@ -733,7 +748,7 @@ export default function PacientesPage() {
 
                   <button
                     type="button"
-                    onClick={() => openEditModal(item)}
+                    onClick={() => openEditDrawer(item)}
                     className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
                   >
                     Editar
@@ -754,189 +769,209 @@ export default function PacientesPage() {
         </section>
       )}
 
-      {modalOpen ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      {drawerOpen ? (
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="absolute inset-0"
+            aria-label="Fechar cadastro"
+          />
+
+          <div className="relative h-full w-full max-w-4xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
                   {editingPatient ? "Editar paciente" : "Novo paciente"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Preencha o prontuário-base. Esses campos aparecem na impressão profissional.
+                  Preencha o prontuário-base. Esses campos aparecem na impressão
+                  profissional.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={closeModal}
-                className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                onClick={closeDrawer}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
               >
-                Fechar
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="mb-4 text-sm font-semibold text-slate-900">
-                Dados cadastrais
-              </p>
+            <div className="space-y-6 px-6 py-6">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="mb-4 text-sm font-semibold text-slate-900">
+                  Dados cadastrais
+                </p>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <InputField
-                  value={form.nome}
-                  onChange={(value) => updateForm("nome", value)}
-                  placeholder="Nome completo"
+                <div className="grid gap-4 md:grid-cols-2">
+                  <InputField
+                    value={form.nome}
+                    onChange={(value) => updateForm("nome", value)}
+                    placeholder="Nome completo"
+                  />
+
+                  <InputField
+                    type="number"
+                    value={form.idade}
+                    onChange={(value) => updateForm("idade", value)}
+                    placeholder="Idade"
+                  />
+
+                  <InputField
+                    value={form.sexo}
+                    onChange={(value) => updateForm("sexo", value)}
+                    placeholder="Sexo"
+                  />
+
+                  <InputField
+                    value={form.telefone}
+                    onChange={(value) => updateForm("telefone", value)}
+                    placeholder="Telefone"
+                  />
+
+                  <InputField
+                    value={form.especialidade}
+                    onChange={(value) => updateForm("especialidade", value)}
+                    placeholder="Especialidade / serviço"
+                  />
+
+                  <InputField
+                    type="date"
+                    value={form.data_nascimento}
+                    onChange={(value) => updateForm("data_nascimento", value)}
+                    placeholder="Data de nascimento"
+                  />
+
+                  <InputField
+                    type="date"
+                    value={form.retorno_previsto_em}
+                    onChange={(value) =>
+                      updateForm("retorno_previsto_em", value)
+                    }
+                    placeholder="Retorno previsto"
+                  />
+
+                  <InputField
+                    value={form.plano_saude}
+                    onChange={(value) => updateForm("plano_saude", value)}
+                    placeholder="Plano de saúde / convênio"
+                  />
+
+                  <InputField
+                    value={form.numero_carteirinha}
+                    onChange={(value) =>
+                      updateForm("numero_carteirinha", value)
+                    }
+                    placeholder="Número da carteirinha"
+                  />
+
+                  <InputField
+                    value={form.local_atendimento}
+                    onChange={(value) =>
+                      updateForm("local_atendimento", value)
+                    }
+                    placeholder="Local de atendimento / consultório"
+                  />
+
+                  <InputField
+                    value={form.crm_medico}
+                    onChange={(value) => updateForm("crm_medico", value)}
+                    placeholder="Médico / CRM para impressão"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                <TextAreaField
+                  label="Queixa principal"
+                  value={form.queixa_principal}
+                  onChange={(value) => updateForm("queixa_principal", value)}
+                  placeholder="Ex.: dor torácica há 2 dias; tristeza persistente; retorno de acompanhamento..."
                 />
 
-                <InputField
-                  type="number"
-                  value={form.idade}
-                  onChange={(value) => updateForm("idade", value)}
-                  placeholder="Idade"
+                <TextAreaField
+                  label="HMA — História da Moléstia Atual"
+                  value={form.hma}
+                  onChange={(value) => updateForm("hma", value)}
+                  placeholder="História cronológica, início, evolução, fatores de melhora/piora, sintomas associados..."
+                  rows={6}
                 />
 
-                <InputField
-                  value={form.sexo}
-                  onChange={(value) => updateForm("sexo", value)}
-                  placeholder="Sexo"
+                <TextAreaField
+                  label="HPP — História Patológica Pregressa"
+                  value={form.hpp}
+                  onChange={(value) => updateForm("hpp", value)}
+                  placeholder="Comorbidades, cirurgias, internações, alergias, antecedentes relevantes..."
+                  rows={5}
                 />
 
-                <InputField
-                  value={form.telefone}
-                  onChange={(value) => updateForm("telefone", value)}
-                  placeholder="Telefone"
+                <TextAreaField
+                  label="Medicamentos em uso"
+                  value={form.medicamentos_em_uso}
+                  onChange={(value) =>
+                    updateForm("medicamentos_em_uso", value)
+                  }
+                  placeholder="Nome, dose, via, frequência e adesão quando relevante..."
                 />
 
-                <InputField
-                  value={form.especialidade}
-                  onChange={(value) => updateForm("especialidade", value)}
-                  placeholder="Especialidade / serviço"
+                <TextAreaField
+                  label="Exame físico / exame do estado mental"
+                  value={form.exame_fisico}
+                  onChange={(value) => updateForm("exame_fisico", value)}
+                  placeholder="Estado geral, sinais vitais, exame segmentar ou exame psíquico..."
+                  rows={6}
                 />
 
-                <InputField
-                  type="date"
-                  value={form.data_nascimento}
-                  onChange={(value) => updateForm("data_nascimento", value)}
-                  placeholder="Data de nascimento"
+                <TextAreaField
+                  label="Hipótese diagnóstica"
+                  value={form.hipotese_diagnostica}
+                  onChange={(value) =>
+                    updateForm("hipotese_diagnostica", value)
+                  }
+                  placeholder="Hipótese principal e diferenciais..."
                 />
 
-                <InputField
-                  type="date"
-                  value={form.retorno_previsto_em}
-                  onChange={(value) => updateForm("retorno_previsto_em", value)}
-                  placeholder="Retorno previsto"
+                <TextAreaField
+                  label="Conduta médica"
+                  value={form.conduta_medica}
+                  onChange={(value) => updateForm("conduta_medica", value)}
+                  placeholder="Exames solicitados, prescrição, orientações, retorno, encaminhamentos..."
+                  rows={6}
                 />
 
-                <InputField
-                  value={form.plano_saude}
-                  onChange={(value) => updateForm("plano_saude", value)}
-                  placeholder="Plano de saúde / convênio"
-                />
-
-                <InputField
-                  value={form.numero_carteirinha}
-                  onChange={(value) => updateForm("numero_carteirinha", value)}
-                  placeholder="Número da carteirinha"
-                />
-
-                <InputField
-                  value={form.local_atendimento}
-                  onChange={(value) => updateForm("local_atendimento", value)}
-                  placeholder="Local de atendimento / consultório"
-                />
-
-                <InputField
-                  value={form.crm_medico}
-                  onChange={(value) => updateForm("crm_medico", value)}
-                  placeholder="Médico / CRM para impressão"
+                <TextAreaField
+                  label="Observações"
+                  value={form.observacoes}
+                  onChange={(value) => updateForm("observacoes", value)}
+                  placeholder="Informações adicionais, contexto familiar/social, pendências..."
+                  rows={4}
                 />
               </div>
-            </div>
 
-            <div className="mt-4 grid gap-4">
-              <TextAreaField
-                label="Queixa principal"
-                value={form.queixa_principal}
-                onChange={(value) => updateForm("queixa_principal", value)}
-                placeholder="Ex.: dor torácica há 2 dias; tristeza persistente; retorno de acompanhamento..."
-              />
+              <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving
+                    ? "Salvando..."
+                    : editingPatient
+                      ? "Salvar edição"
+                      : "Criar paciente"}
+                </button>
 
-              <TextAreaField
-                label="HMA — História da Moléstia Atual"
-                value={form.hma}
-                onChange={(value) => updateForm("hma", value)}
-                placeholder="História cronológica, início, evolução, fatores de melhora/piora, sintomas associados..."
-                rows={6}
-              />
-
-              <TextAreaField
-                label="HPP — História Patológica Pregressa"
-                value={form.hpp}
-                onChange={(value) => updateForm("hpp", value)}
-                placeholder="Comorbidades, cirurgias, internações, alergias, antecedentes relevantes..."
-                rows={5}
-              />
-
-              <TextAreaField
-                label="Medicamentos em uso"
-                value={form.medicamentos_em_uso}
-                onChange={(value) => updateForm("medicamentos_em_uso", value)}
-                placeholder="Nome, dose, via, frequência e adesão quando relevante..."
-              />
-
-              <TextAreaField
-                label="Exame físico / exame do estado mental"
-                value={form.exame_fisico}
-                onChange={(value) => updateForm("exame_fisico", value)}
-                placeholder="Estado geral, sinais vitais, exame segmentar ou exame psíquico..."
-                rows={6}
-              />
-
-              <TextAreaField
-                label="Hipótese diagnóstica"
-                value={form.hipotese_diagnostica}
-                onChange={(value) => updateForm("hipotese_diagnostica", value)}
-                placeholder="Hipótese principal e diferenciais..."
-              />
-
-              <TextAreaField
-                label="Conduta médica"
-                value={form.conduta_medica}
-                onChange={(value) => updateForm("conduta_medica", value)}
-                placeholder="Exames solicitados, prescrição, orientações, retorno, encaminhamentos..."
-                rows={6}
-              />
-
-              <TextAreaField
-                label="Observações"
-                value={form.observacoes}
-                onChange={(value) => updateForm("observacoes", value)}
-                placeholder="Informações adicionais, contexto familiar/social, pendências..."
-                rows={4}
-              />
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving
-                  ? "Salvando..."
-                  : editingPatient
-                  ? "Salvar edição"
-                  : "Criar paciente"}
-              </button>
-
-              <button
-                type="button"
-                onClick={closeModal}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-              >
-                Cancelar
-              </button>
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         </div>
