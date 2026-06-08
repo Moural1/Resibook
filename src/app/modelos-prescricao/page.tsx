@@ -1,8 +1,11 @@
-"use client";
+ "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
+
+type ReviewStatus = "rascunho" | "pendente" | "revisado";
+type RiskLevel = "baixo" | "moderado" | "alto";
 
 type PrescriptionTemplate = {
   id: number;
@@ -23,6 +26,12 @@ type PrescriptionTemplate = {
   risk_tags: string | null;
   condition_tags: string | null;
   interaction_tags: string | null;
+  review_status: ReviewStatus | null;
+  model_version: string | null;
+  risk_level: RiskLevel | null;
+  reviewed_by: string | null;
+  last_reviewed_at: string | null;
+  publicos_especiais: string | null;
   created_at: string | null;
 };
 
@@ -44,9 +53,27 @@ type TemplateForm = {
   risk_tags: string;
   condition_tags: string;
   interaction_tags: string;
+  review_status: ReviewStatus;
+  model_version: string;
+  risk_level: RiskLevel;
+  reviewed_by: string;
+  last_reviewed_at: string;
+  publicos_especiais: string;
 };
 
 const ADMIN_EMAIL = "igormoura@resibook.com";
+
+const REVIEW_STATUS_OPTIONS: Array<{ value: ReviewStatus; label: string }> = [
+  { value: "rascunho", label: "Rascunho" },
+  { value: "pendente", label: "Pendente de revisão" },
+  { value: "revisado", label: "Revisado" },
+];
+
+const RISK_LEVEL_OPTIONS: Array<{ value: RiskLevel; label: string }> = [
+  { value: "baixo", label: "Baixo" },
+  { value: "moderado", label: "Moderado" },
+  { value: "alto", label: "Alto" },
+];
 
 const emptyForm: TemplateForm = {
   categoria: "",
@@ -66,6 +93,12 @@ const emptyForm: TemplateForm = {
   risk_tags: "",
   condition_tags: "",
   interaction_tags: "",
+  review_status: "rascunho",
+  model_version: "v1",
+  risk_level: "baixo",
+  reviewed_by: "",
+  last_reviewed_at: "",
+  publicos_especiais: "",
 };
 
 function normalize(value?: string | null) {
@@ -89,10 +122,50 @@ function formatDate(value?: string | null) {
   }
 }
 
+function formatDateOnly(value?: string | null) {
+  if (!value) return "-";
+
+  try {
+    return new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function getReviewStatusBadgeClasses(status?: string | null) {
+  if (status === "revisado") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "pendente") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  return "border-slate-200 bg-slate-100 text-slate-600";
+}
+
+function getRiskLevelBadgeClasses(level?: string | null) {
+  if (level === "alto") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  if (level === "moderado") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  return "border-blue-200 bg-blue-50 text-blue-700";
+}
+
 function buildTemplateText(item: PrescriptionTemplate) {
   return [
     item.titulo,
     item.categoria ? `Categoria: ${item.categoria}` : "",
+    item.model_version ? `Versão: ${item.model_version}` : "",
+    item.review_status ? `Revisão: ${item.review_status}` : "",
+    item.risk_level ? `Nível de risco: ${item.risk_level}` : "",
+    item.publicos_especiais ? `Públicos especiais: ${item.publicos_especiais}` : "",
     "",
     item.conteudo,
     item.observacoes ? `\nObservações:\n${item.observacoes}` : "",
@@ -105,6 +178,9 @@ function buildTemplateText(item: PrescriptionTemplate) {
     item.alerta_alergias ? `\nAlergias:\n${item.alerta_alergias}` : "",
     item.alerta_interacoes ? `\nInterações:\n${item.alerta_interacoes}` : "",
     item.tags_risco ? `\nTags de risco:\n${item.tags_risco}` : "",
+    item.risk_tags ? `\nRisk tags:\n${item.risk_tags}` : "",
+    item.condition_tags ? `\nCondition tags:\n${item.condition_tags}` : "",
+    item.interaction_tags ? `\nInteraction tags:\n${item.interaction_tags}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -129,6 +205,12 @@ function buildPayload(form: TemplateForm) {
     risk_tags: form.risk_tags.trim() || null,
     condition_tags: form.condition_tags.trim() || null,
     interaction_tags: form.interaction_tags.trim() || null,
+    review_status: form.review_status || "rascunho",
+    model_version: form.model_version.trim() || "v1",
+    risk_level: form.risk_level || "baixo",
+    reviewed_by: form.reviewed_by.trim() || null,
+    last_reviewed_at: form.last_reviewed_at || null,
+    publicos_especiais: form.publicos_especiais.trim() || null,
   };
 }
 
@@ -151,8 +233,19 @@ function templateToForm(item: PrescriptionTemplate): TemplateForm {
     risk_tags: item.risk_tags || "",
     condition_tags: item.condition_tags || "",
     interaction_tags: item.interaction_tags || "",
+    review_status: item.review_status || "rascunho",
+    model_version: item.model_version || "v1",
+    risk_level: item.risk_level || "baixo",
+    reviewed_by: item.reviewed_by || "",
+    last_reviewed_at: item.last_reviewed_at
+      ? new Date(item.last_reviewed_at).toISOString().slice(0, 10)
+      : "",
+    publicos_especiais: item.publicos_especiais || "",
   };
 }
+
+const selectFields =
+  "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, review_status, model_version, risk_level, reviewed_by, last_reviewed_at, publicos_especiais, created_at";
 
 export default function ModelosPrescricaoPage() {
   const supabase = createClient();
@@ -167,6 +260,8 @@ export default function ModelosPrescricaoPage() {
 
   const [query, setQuery] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [reviewStatusFilter, setReviewStatusFilter] = useState("");
+  const [riskLevelFilter, setRiskLevelFilter] = useState("");
 
   const [form, setForm] = useState<TemplateForm>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -199,9 +294,7 @@ export default function ModelosPrescricaoPage() {
 
     const { data, error } = await supabase
       .from("prescription_templates")
-      .select(
-        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
-      )
+      .select(selectFields)
       .order("categoria", { ascending: true, nullsFirst: false })
       .order("titulo", { ascending: true });
 
@@ -236,13 +329,26 @@ export default function ModelosPrescricaoPage() {
         normalize(item.categoria).includes(q) ||
         normalize(item.conteudo).includes(q) ||
         normalize(item.observacoes).includes(q) ||
-        normalize(item.source_file).includes(q);
+        normalize(item.source_file).includes(q) ||
+        normalize(item.review_status).includes(q) ||
+        normalize(item.model_version).includes(q) ||
+        normalize(item.reviewed_by).includes(q) ||
+        normalize(item.publicos_especiais).includes(q);
 
       const matchesCategoria = !categoria || item.categoria === categoria;
+      const matchesReviewStatus =
+        !reviewStatusFilter || item.review_status === reviewStatusFilter;
+      const matchesRiskLevel =
+        !riskLevelFilter || item.risk_level === riskLevelFilter;
 
-      return matchesQuery && matchesCategoria;
+      return (
+        matchesQuery &&
+        matchesCategoria &&
+        matchesReviewStatus &&
+        matchesRiskLevel
+      );
     });
-  }, [templates, query, categoria]);
+  }, [templates, query, categoria, reviewStatusFilter, riskLevelFilter]);
 
   function updateForm<K extends keyof TemplateForm>(
     key: K,
@@ -307,16 +413,12 @@ export default function ModelosPrescricaoPage() {
           .from("prescription_templates")
           .update(payload)
           .eq("id", editingId)
-          .select(
-            "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
-          )
+          .select(selectFields)
           .single()
       : await supabase
           .from("prescription_templates")
           .insert(payload)
-          .select(
-            "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
-          )
+          .select(selectFields)
           .single();
 
     if (response.error) {
@@ -433,6 +535,10 @@ export default function ModelosPrescricaoPage() {
             <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
               Prescrições prontas
             </span>
+
+            <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              Revisão clínica
+            </span>
           </div>
 
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
@@ -466,8 +572,7 @@ export default function ModelosPrescricaoPage() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Use um conteúdo bem prático, já no formato que quer copiar no
-                plantão.
+                Agora com revisão clínica, versão e classificação de risco.
               </p>
             </div>
 
@@ -482,7 +587,7 @@ export default function ModelosPrescricaoPage() {
             ) : null}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Categoria
@@ -491,7 +596,7 @@ export default function ModelosPrescricaoPage() {
               <input
                 value={form.categoria}
                 onChange={(event) => updateForm("categoria", event.target.value)}
-                placeholder="Ex.: Analgesia, Antibióticos, Psiquiatria..."
+                placeholder="Ex.: Analgesia, Antibióticos..."
                 className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
@@ -505,6 +610,104 @@ export default function ModelosPrescricaoPage() {
                 value={form.titulo}
                 onChange={(event) => updateForm("titulo", event.target.value)}
                 placeholder="Ex.: Amoxicilina + clavulanato adulto"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Versão do modelo
+              </label>
+
+              <input
+                value={form.model_version}
+                onChange={(event) => updateForm("model_version", event.target.value)}
+                placeholder="Ex.: v1, v2, v3"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Nível de risco
+              </label>
+
+              <select
+                value={form.risk_level}
+                onChange={(event) =>
+                  updateForm("risk_level", event.target.value as RiskLevel)
+                }
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+              >
+                {RISK_LEVEL_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Status de revisão
+              </label>
+
+              <select
+                value={form.review_status}
+                onChange={(event) =>
+                  updateForm("review_status", event.target.value as ReviewStatus)
+                }
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+              >
+                {REVIEW_STATUS_OPTIONS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Revisado por
+              </label>
+
+              <input
+                value={form.reviewed_by}
+                onChange={(event) => updateForm("reviewed_by", event.target.value)}
+                placeholder="Ex.: Igor Moura"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Última revisão
+              </label>
+
+              <input
+                type="date"
+                value={form.last_reviewed_at}
+                onChange={(event) =>
+                  updateForm("last_reviewed_at", event.target.value)
+                }
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Públicos especiais
+              </label>
+
+              <input
+                value={form.publicos_especiais}
+                onChange={(event) =>
+                  updateForm("publicos_especiais", event.target.value)
+                }
+                placeholder="Ex.: gestante, idoso, renal, hepatopata"
                 className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
@@ -710,11 +913,11 @@ export default function ModelosPrescricaoPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_260px_auto]">
+        <div className="mt-5 grid gap-3 xl:grid-cols-[1fr_220px_220px_220px_auto]">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por título, categoria, conteúdo ou observação..."
+            placeholder="Buscar por título, categoria, versão, revisor..."
             className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
           />
 
@@ -731,11 +934,39 @@ export default function ModelosPrescricaoPage() {
             ))}
           </select>
 
+          <select
+            value={reviewStatusFilter}
+            onChange={(event) => setReviewStatusFilter(event.target.value)}
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          >
+            <option value="">Todos os status</option>
+            {REVIEW_STATUS_OPTIONS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={riskLevelFilter}
+            onChange={(event) => setRiskLevelFilter(event.target.value)}
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+          >
+            <option value="">Todos os riscos</option>
+            {RISK_LEVEL_OPTIONS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+
           <button
             type="button"
             onClick={() => {
               setQuery("");
               setCategoria("");
+              setReviewStatusFilter("");
+              setRiskLevelFilter("");
             }}
             className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
           >
@@ -763,14 +994,42 @@ export default function ModelosPrescricaoPage() {
                         </span>
                       ) : null}
 
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                        {formatDate(item.created_at)}
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${getReviewStatusBadgeClasses(
+                          item.review_status
+                        )}`}
+                      >
+                        {item.review_status || "rascunho"}
                       </span>
+
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${getRiskLevelBadgeClasses(
+                          item.risk_level
+                        )}`}
+                      >
+                        risco {item.risk_level || "baixo"}
+                      </span>
+
+                      {item.model_version ? (
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                          {item.model_version}
+                        </span>
+                      ) : null}
                     </div>
 
                     <h3 className="mt-3 text-lg font-semibold text-slate-900">
                       {item.titulo}
                     </h3>
+
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+                      <span>Criado em: {formatDate(item.created_at)}</span>
+                      {item.last_reviewed_at ? (
+                        <span>Última revisão: {formatDateOnly(item.last_reviewed_at)}</span>
+                      ) : null}
+                      {item.reviewed_by ? (
+                        <span>Revisado por: {item.reviewed_by}</span>
+                      ) : null}
+                    </div>
                   </div>
 
                   <CopyButton text={buildTemplateText(item)} />
@@ -781,6 +1040,18 @@ export default function ModelosPrescricaoPage() {
                     {item.conteudo}
                   </pre>
                 </div>
+
+                {item.publicos_especiais ? (
+                  <div className="mt-4 rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-700">
+                      Públicos especiais
+                    </p>
+
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-purple-950">
+                      {item.publicos_especiais}
+                    </p>
+                  </div>
+                ) : null}
 
                 {item.observacoes ? (
                   <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
