@@ -14,6 +14,15 @@ export type PatientRiskProfile = {
   funcao_renal_alterada?: boolean | null;
   hepatopatia?: boolean | null;
   idoso_fragil?: boolean | null;
+  diabetes?: boolean | null;
+  epilepsia?: boolean | null;
+  asma?: boolean | null;
+  gastrite_ulcera?: boolean | null;
+  insuficiencia_cardiaca?: boolean | null;
+  arritmia_qt_longo?: boolean | null;
+  uso_anticoagulante?: boolean | null;
+  uso_isrs?: boolean | null;
+  uso_sedativos?: boolean | null;
 };
 
 export type TemplateRiskProfile = {
@@ -182,6 +191,12 @@ function buildPatientConditionTags(patient?: PatientRiskProfile | null) {
   if (patient.funcao_renal_alterada) tags.add("drc");
   if (patient.hepatopatia) tags.add("hepatopatia");
   if (patient.idoso_fragil || (patient.idade ?? 0) >= 60) tags.add("idoso_fragil");
+  if (patient.epilepsia) tags.add("epilepsia");
+  if (patient.arritmia_qt_longo) tags.add("arritmia_qt");
+  if (patient.gastrite_ulcera) tags.add("gastrite_ulcera");
+  if (patient.insuficiencia_cardiaca) tags.add("insuficiencia_cardiaca");
+  if (patient.asma) tags.add("asma");
+  if (patient.diabetes) tags.add("diabetes");
 
   if (includesAny(text, ["epilepsia", "convulsao", "convulsão", "crise convulsiva"])) {
     tags.add("epilepsia");
@@ -218,9 +233,16 @@ function buildPatientConditionTags(patient?: PatientRiskProfile | null) {
   return tags;
 }
 
-function buildPatientInteractionTags(medsText?: string | null) {
+function buildPatientInteractionTags(
+  medsText?: string | null,
+  patient?: PatientRiskProfile | null
+) {
   const text = normalizeText(medsText);
   const tags = new Set<string>();
+
+  if (patient?.uso_anticoagulante) tags.add("anticoagulante");
+  if (patient?.uso_isrs) tags.add("isrs");
+  if (patient?.uso_sedativos) tags.add("sedativos");
 
   if (includesAny(text, ANTICOAGULANTS)) tags.add("anticoagulante");
   if (includesAny(text, ISRS)) tags.add("isrs");
@@ -308,20 +330,20 @@ export function buildClinicalAlerts(
   const isPregnant =
     Boolean(patient.gestante) ||
     includesAny(historyText, ["gestante", "gestacao", "gestação", "gravida", "grávida"]);
-  const hasEpilepsy = includesAny(historyText, [
+  const hasEpilepsy = Boolean(patient.epilepsia) || includesAny(historyText, [
     "epilepsia",
     "convulsao",
     "convulsão",
     "crise convulsiva",
   ]);
-  const hasQtRisk = includesAny(historyText, [
+  const hasQtRisk = Boolean(patient.arritmia_qt_longo) || includesAny(historyText, [
     "qt longo",
     "arritmia",
     "palpitacao",
     "palpitação",
     "torsades",
   ]);
-  const hasGiRisk = includesAny(historyText, [
+  const hasGiRisk = Boolean(patient.gastrite_ulcera) || includesAny(historyText, [
     "gastrite",
     "ulcera",
     "úlcera",
@@ -329,21 +351,21 @@ export function buildClinicalAlerts(
     "hemorragia digestiva",
     "melena",
   ]);
-  const hasHeartFailure = includesAny(historyText, [
+  const hasHeartFailure = Boolean(patient.insuficiencia_cardiaca) || includesAny(historyText, [
     "insuficiencia cardiaca",
     "insuficiência cardíaca",
     "icc",
     "ic",
   ]);
-  const hasAsthma = includesAny(historyText, ["asma", "broncoespasmo"]);
-  const hasDiabetes = includesAny(historyText, ["diabetes", "dm1", "dm2"]);
-  const usesAnticoagulant = includesAny(medsInUse, ANTICOAGULANTS);
-  const usesSsri = includesAny(medsInUse, ISRS);
-  const usesSedatives = includesAny(medsInUse, [...BENZOS, ...ANTIPSYCHOTICS, ...OPIOIDS]);
+  const hasAsthma = Boolean(patient.asma) || includesAny(historyText, ["asma", "broncoespasmo"]);
+  const hasDiabetes = Boolean(patient.diabetes) || includesAny(historyText, ["diabetes", "dm1", "dm2"]);
+  const usesAnticoagulant = Boolean(patient.uso_anticoagulante) || includesAny(medsInUse, ANTICOAGULANTS);
+  const usesSsri = Boolean(patient.uso_isrs) || includesAny(medsInUse, ISRS);
+  const usesSedatives = Boolean(patient.uso_sedativos) || includesAny(medsInUse, [...BENZOS, ...ANTIPSYCHOTICS, ...OPIOIDS]);
   const usesHyperkalemiaRiskMeds = includesAny(medsInUse, HYPERKALEMIA_MEDS);
 
   const patientConditionTags = buildPatientConditionTags(patient);
-  const patientInteractionTags = buildPatientInteractionTags(patient.medicamentos_em_uso);
+  const patientInteractionTags = buildPatientInteractionTags(patient.medicamentos_em_uso, patient);
   const templateRiskTags = parseTags(
     [templateMeta?.risk_tags, templateMeta?.tags_risco].filter(Boolean).join(",")
   );

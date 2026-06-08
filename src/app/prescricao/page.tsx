@@ -35,6 +35,15 @@ type Patient = {
   funcao_renal_alterada?: boolean | null;
   hepatopatia?: boolean | null;
   idoso_fragil?: boolean | null;
+  diabetes?: boolean | null;
+  epilepsia?: boolean | null;
+  asma?: boolean | null;
+  gastrite_ulcera?: boolean | null;
+  insuficiencia_cardiaca?: boolean | null;
+  arritmia_qt_longo?: boolean | null;
+  uso_anticoagulante?: boolean | null;
+  uso_isrs?: boolean | null;
+  uso_sedativos?: boolean | null;
 };
 
 type PrescriptionTemplate = {
@@ -380,7 +389,7 @@ export default function PrescricaoPage() {
     const [patientsRes, prescriptionsRes] = await Promise.all([
       supabase
         .from("patients")
-        .select("id, nome, idade, alergias, comorbidades, hpp, medicamentos_em_uso, gestante, funcao_renal_alterada, hepatopatia, idoso_fragil")
+        .select("id, nome, idade, alergias, comorbidades, hpp, medicamentos_em_uso, gestante, funcao_renal_alterada, hepatopatia, idoso_fragil, diabetes, epilepsia, asma, gastrite_ulcera, insuficiencia_cardiaca, arritmia_qt_longo, uso_anticoagulante, uso_isrs, uso_sedativos")
         .eq("user_id", userId)
         .order("nome", { ascending: true }),
 

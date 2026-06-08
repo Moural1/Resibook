@@ -30,6 +30,15 @@ type Patient = {
   funcao_renal_alterada: boolean | null;
   hepatopatia: boolean | null;
   idoso_fragil: boolean | null;
+  diabetes: boolean | null;
+  epilepsia: boolean | null;
+  asma: boolean | null;
+  gastrite_ulcera: boolean | null;
+  insuficiencia_cardiaca: boolean | null;
+  arritmia_qt_longo: boolean | null;
+  uso_anticoagulante: boolean | null;
+  uso_isrs: boolean | null;
+  uso_sedativos: boolean | null;
   diagnostico_principal: string | null;
   hipotese_diagnostica: string | null;
   medicamentos_em_uso: string | null;
@@ -60,6 +69,15 @@ type PatientForm = {
   funcao_renal_alterada: boolean;
   hepatopatia: boolean;
   idoso_fragil: boolean;
+  diabetes: boolean;
+  epilepsia: boolean;
+  asma: boolean;
+  gastrite_ulcera: boolean;
+  insuficiencia_cardiaca: boolean;
+  arritmia_qt_longo: boolean;
+  uso_anticoagulante: boolean;
+  uso_isrs: boolean;
+  uso_sedativos: boolean;
   medicamentos_em_uso: string;
   exame_fisico: string;
   hipotese_diagnostica: string;
@@ -98,6 +116,15 @@ const emptyForm: PatientForm = {
   funcao_renal_alterada: false,
   hepatopatia: false,
   idoso_fragil: false,
+  diabetes: false,
+  epilepsia: false,
+  asma: false,
+  gastrite_ulcera: false,
+  insuficiencia_cardiaca: false,
+  arritmia_qt_longo: false,
+  uso_anticoagulante: false,
+  uso_isrs: false,
+  uso_sedativos: false,
   medicamentos_em_uso: "",
   exame_fisico: "",
   hipotese_diagnostica: "",
@@ -180,6 +207,15 @@ function patientToForm(patient: Patient): PatientForm {
     funcao_renal_alterada: Boolean(patient.funcao_renal_alterada),
     hepatopatia: Boolean(patient.hepatopatia),
     idoso_fragil: Boolean(patient.idoso_fragil),
+    diabetes: Boolean(patient.diabetes),
+    epilepsia: Boolean(patient.epilepsia),
+    asma: Boolean(patient.asma),
+    gastrite_ulcera: Boolean(patient.gastrite_ulcera),
+    insuficiencia_cardiaca: Boolean(patient.insuficiencia_cardiaca),
+    arritmia_qt_longo: Boolean(patient.arritmia_qt_longo),
+    uso_anticoagulante: Boolean(patient.uso_anticoagulante),
+    uso_isrs: Boolean(patient.uso_isrs),
+    uso_sedativos: Boolean(patient.uso_sedativos),
     medicamentos_em_uso: patient.medicamentos_em_uso || "",
     exame_fisico: patient.exame_fisico || "",
     hipotese_diagnostica: getHipotese(patient),
@@ -214,6 +250,15 @@ function buildPayload(form: PatientForm, userId: string) {
     funcao_renal_alterada: Boolean(form.funcao_renal_alterada),
     hepatopatia: Boolean(form.hepatopatia),
     idoso_fragil: Boolean(form.idoso_fragil),
+    diabetes: Boolean(form.diabetes),
+    epilepsia: Boolean(form.epilepsia),
+    asma: Boolean(form.asma),
+    gastrite_ulcera: Boolean(form.gastrite_ulcera),
+    insuficiencia_cardiaca: Boolean(form.insuficiencia_cardiaca),
+    arritmia_qt_longo: Boolean(form.arritmia_qt_longo),
+    uso_anticoagulante: Boolean(form.uso_anticoagulante),
+    uso_isrs: Boolean(form.uso_isrs),
+    uso_sedativos: Boolean(form.uso_sedativos),
     medicamentos_em_uso: form.medicamentos_em_uso.trim() || null,
     exame_fisico: form.exame_fisico.trim() || null,
     diagnostico_principal: form.hipotese_diagnostica.trim() || null,
@@ -225,7 +270,7 @@ function buildPayload(form: PatientForm, userId: string) {
 }
 
 const patientSelect =
-  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, crm_medico, local_atendimento, queixa, queixa_principal, hma, hpp, alergias, comorbidades, gestante, funcao_renal_alterada, hepatopatia, idoso_fragil, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
+  "id, user_id, nome, idade, sexo, telefone, especialidade, plano_saude, numero_carteirinha, data_nascimento, crm_medico, local_atendimento, queixa, queixa_principal, hma, hpp, alergias, comorbidades, gestante, funcao_renal_alterada, hepatopatia, idoso_fragil, diabetes, epilepsia, asma, gastrite_ulcera, insuficiencia_cardiaca, arritmia_qt_longo, uso_anticoagulante, uso_isrs, uso_sedativos, diagnostico_principal, hipotese_diagnostica, medicamentos_em_uso, exame_fisico, conduta_medica, observacoes, retorno_previsto_em, created_at";
 
 function buildPatientSummary(patient: Patient) {
   const lines = [
@@ -253,6 +298,15 @@ function buildPatientSummary(patient: Patient) {
     patient.funcao_renal_alterada ? "FUNÇÃO RENAL ALTERADA: sim" : "",
     patient.hepatopatia ? "HEPATOPATIA: sim" : "",
     patient.idoso_fragil ? "IDOSO FRÁGIL: sim" : "",
+    patient.diabetes ? "DIABETES: sim" : "",
+    patient.epilepsia ? "EPILEPSIA: sim" : "",
+    patient.asma ? "ASMA: sim" : "",
+    patient.gastrite_ulcera ? "GASTRITE/ÚLCERA: sim" : "",
+    patient.insuficiencia_cardiaca ? "INSUFICIÊNCIA CARDÍACA: sim" : "",
+    patient.arritmia_qt_longo ? "ARRITMIA / QT LONGO: sim" : "",
+    patient.uso_anticoagulante ? "USO DE ANTICOAGULANTE: sim" : "",
+    patient.uso_isrs ? "USO DE ISRS: sim" : "",
+    patient.uso_sedativos ? "USO DE SEDATIVOS: sim" : "",
     getQueixa(patient) ? `QUEIXA PRINCIPAL:\n${getQueixa(patient)}` : "",
     patient.hma ? `HMA:\n${patient.hma}` : "",
     patient.hpp ? `HPP:\n${patient.hpp}` : "",
@@ -1190,6 +1244,93 @@ export default function PacientesPage() {
                           onChange={(event) => updateForm("idoso_fragil", event.target.checked)}
                         />
                         Idoso frágil
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.diabetes}
+                          onChange={(event) => updateForm("diabetes", event.target.checked)}
+                        />
+                        Diabetes
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.epilepsia}
+                          onChange={(event) => updateForm("epilepsia", event.target.checked)}
+                        />
+                        Epilepsia / convulsão
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.asma}
+                          onChange={(event) => updateForm("asma", event.target.checked)}
+                        />
+                        Asma / broncoespasmo
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.gastrite_ulcera}
+                          onChange={(event) => updateForm("gastrite_ulcera", event.target.checked)}
+                        />
+                        Gastrite / úlcera / sangramento GI
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.insuficiencia_cardiaca}
+                          onChange={(event) =>
+                            updateForm("insuficiencia_cardiaca", event.target.checked)
+                          }
+                        />
+                        Insuficiência cardíaca
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.arritmia_qt_longo}
+                          onChange={(event) =>
+                            updateForm("arritmia_qt_longo", event.target.checked)
+                          }
+                        />
+                        Arritmia / QT longo
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.uso_anticoagulante}
+                          onChange={(event) =>
+                            updateForm("uso_anticoagulante", event.target.checked)
+                          }
+                        />
+                        Uso de anticoagulante
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.uso_isrs}
+                          onChange={(event) => updateForm("uso_isrs", event.target.checked)}
+                        />
+                        Uso de ISRS
+                      </label>
+
+                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.uso_sedativos}
+                          onChange={(event) => updateForm("uso_sedativos", event.target.checked)}
+                        />
+                        Uso de sedativos / opioides / benzos
                       </label>
                     </div>
                   </div>
