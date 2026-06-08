@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import PrescriptionTemplatesLive from "../../components/prescription-templates-live";
-import ClinicalAlerts from "../../components/clinical-alerts";
+import ClinicalAlerts, {
+  buildClinicalAlerts,
+  type ClinicalAlert,
+} from "../../components/clinical-alerts";
 import { ClipboardPlus, Edit3, Lock, X } from "lucide-react";
 
 type Prescription = {
@@ -260,6 +263,8 @@ export default function PrescricaoPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingSave, setPendingSave] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -447,10 +452,22 @@ export default function PrescricaoPage() {
     return getOwnedPatient(form.patient_id, patients) || null;
   }, [form.patient_id, isGuest, patients]);
 
+  const draftAlerts = useMemo(
+    () => buildClinicalAlerts(selectedPatient, draftText, selectedTemplateMeta),
+    [selectedPatient, draftText, selectedTemplateMeta]
+  );
+
+  const highRiskAlerts = useMemo(
+    () => draftAlerts.filter((alert) => alert.level === "high"),
+    [draftAlerts]
+  );
+
   function updateForm<K extends keyof PrescriptionForm>(
     key: K,
     value: PrescriptionForm[K]
   ) {
+    setConfirmOpen(false);
+    setPendingSave(false);
     setForm((current) => {
       if (key === "patient_id") {
         const found = getOwnedPatient(String(value), patients);
@@ -510,6 +527,8 @@ export default function PrescricaoPage() {
 
   function resetForm() {
     setSelectedTemplateMeta(null);
+    setConfirmOpen(false);
+    setPendingSave(false);
     setForm(emptyForm);
   }
 
@@ -524,11 +543,15 @@ export default function PrescricaoPage() {
   }
 
   function closeDrawer() {
+    setConfirmOpen(false);
+    setPendingSave(false);
     setDrawerOpen(false);
   }
 
   function handleUseTemplate(draft: PrescriptionDraft) {
     const matchedTemplate = findMatchingTemplateFromDraft(draft, templates);
+    setConfirmOpen(false);
+    setPendingSave(false);
     setSelectedTemplateMeta(matchedTemplate);
 
     setForm((current) => ({
@@ -579,7 +602,7 @@ export default function PrescricaoPage() {
     });
   }
 
-  async function handleCreate() {
+  async function persistCreate() {
     if (isGuest) {
       setError("Usuário convidado não pode salvar prescrições.");
       return;
@@ -617,16 +640,31 @@ export default function PrescricaoPage() {
       setError(error.message);
     } else if (data) {
       setPrescriptions((current) => [data as Prescription, ...current]);
-      setForm((current) => ({
-        ...emptyForm,
-        patient_id: current.patient_id,
-        paciente_nome: current.paciente_nome,
-      }));
+      setForm(emptyForm);
+      setSelectedTemplateMeta(null);
+      setConfirmOpen(false);
+      setPendingSave(false);
       setSuccess("Prescrição salva com sucesso.");
       setDrawerOpen(false);
     }
 
     setSaving(false);
+  }
+
+  async function handleCreate() {
+    if (highRiskAlerts.length > 0 && !pendingSave) {
+      setConfirmOpen(true);
+      setError("");
+      setSuccess("");
+      return;
+    }
+
+    await persistCreate();
+  }
+
+  async function handleConfirmSave() {
+    setPendingSave(true);
+    await persistCreate();
   }
 
   async function handleUpdate(id: number) {
@@ -1189,6 +1227,90 @@ export default function PrescricaoPage() {
         </section>
       ) : null}
 
+
+      {confirmOpen ? (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 px-4">
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmOpen(false);
+              setPendingSave(false);
+            }}
+            className="absolute inset-0"
+            aria-label="Fechar confirmação"
+          />
+
+          <div className="relative w-full max-w-2xl rounded-[28px] border border-rose-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">
+                  Revisão obrigatória
+                </span>
+                <h3 className="mt-4 text-2xl font-semibold text-slate-900">
+                  Confirmar prescrição com alertas importantes
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Revise os alertas de alto risco abaixo antes de continuar. O objetivo é reduzir erros sem bloquear o seu fluxo clínico.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setPendingSave(false);
+                }}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {highRiskAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className="rounded-2xl border border-rose-200 bg-rose-50 p-4"
+                >
+                  <p className="text-sm font-semibold text-rose-900">
+                    {alert.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-rose-800">
+                    {alert.message}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+              Revise alergias, gestação, função renal/hepática, idade e interações antes de confirmar.
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setPendingSave(false);
+                }}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+              >
+                Voltar e revisar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmSave}
+                disabled={saving}
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-rose-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Salvando..." : "Confirmar e salvar mesmo assim"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {drawerOpen && !isGuest ? (
         <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
           <button
@@ -1341,6 +1463,17 @@ export default function PrescricaoPage() {
                 </pre>
               </div>
 
+              {highRiskAlerts.length > 0 ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">
+                    Confirmação obrigatória antes de salvar
+                  </p>
+                  <p className="mt-2 text-sm text-rose-900">
+                    Esta prescrição tem {highRiskAlerts.length} alerta{highRiskAlerts.length > 1 ? "s" : ""} de alto risco. Ao clicar em salvar, o ResiBook vai abrir uma revisão final antes de confirmar.
+                  </p>
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
                 <button
                   type="button"
@@ -1359,7 +1492,7 @@ export default function PrescricaoPage() {
                     disabled={saving}
                     className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {saving ? "Salvando..." : "Salvar prescrição"}
+                    {saving ? "Salvando..." : highRiskAlerts.length > 0 ? "Revisar alertas e salvar" : "Salvar prescrição"}
                   </button>
                 </div>
               </div>

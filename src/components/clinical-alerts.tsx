@@ -1,8 +1,8 @@
 "use client";
 
-type ClinicalAlertLevel = "high" | "medium" | "info";
+export type ClinicalAlertLevel = "high" | "medium" | "info";
 
-type PatientRiskProfile = {
+export type PatientRiskProfile = {
   id?: string;
   nome?: string | null;
   idade?: number | null;
@@ -16,7 +16,7 @@ type PatientRiskProfile = {
   idoso_fragil?: boolean | null;
 };
 
-type TemplateRiskProfile = {
+export type TemplateRiskProfile = {
   titulo?: string | null;
   contraindicacoes?: string | null;
   cuidados_especiais?: string | null;
@@ -39,7 +39,7 @@ type ClinicalAlertsProps = {
   className?: string;
 };
 
-type ClinicalAlert = {
+export type ClinicalAlert = {
   id: string;
   level: ClinicalAlertLevel;
   title: string;
@@ -206,7 +206,7 @@ function buildPatientInteractionTags(medsText?: string | null) {
   return tags;
 }
 
-function buildAlerts(
+export function buildClinicalAlerts(
   patient?: PatientRiskProfile | null,
   medicationText?: string | null,
   templateMeta?: TemplateRiskProfile | null
@@ -600,7 +600,7 @@ export default function ClinicalAlerts({
   templateMeta,
   className = "",
 }: ClinicalAlertsProps) {
-  const alerts = buildAlerts(patient, medicationText, templateMeta);
+  const alerts = buildClinicalAlerts(patient, medicationText, templateMeta);
 
   if (!patient || alerts.length === 0) return null;
 
