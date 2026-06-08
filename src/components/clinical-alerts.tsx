@@ -46,6 +46,88 @@ export type ClinicalAlert = {
   message: string;
 };
 
+const BETA_LACTAMS = [
+  "amoxicilina",
+  "amoxicilina clavulanato",
+  "amoxicilina-clavulanato",
+  "ampicilina",
+  "penicilina",
+  "benzetacil",
+  "ceftriaxona",
+  "cefalexina",
+  "cefadroxil",
+  "cefuroxima",
+];
+
+const DYPIRONE = ["dipirona", "metamizol", "novalgina"];
+const SULFAS = [
+  "sulfametoxazol trimetoprim",
+  "sulfametoxazol-trimetoprim",
+  "trimetoprim sulfametoxazol",
+  "bactrim",
+  "sulfatrim",
+];
+const AINES = [
+  "aine",
+  "ibuprofeno",
+  "diclofenaco",
+  "cetoprofeno",
+  "naproxeno",
+  "nimesulida",
+  "meloxicam",
+  "celecoxibe",
+  "etoricoxibe",
+  "indometacina",
+  "piroxicam",
+];
+const QUINOLONES = [
+  "ciprofloxacino",
+  "levofloxacino",
+  "moxifloxacino",
+  "ofloxacino",
+  "norfloxacino",
+  "quinolona",
+  "fluoroquinolona",
+];
+const TETRACYCLINES = ["doxiciclina", "tetraciclina", "minociclina"];
+const MACROLIDES = ["azitromicina", "claritromicina", "eritromicina"];
+const AMINOGLYCOSIDES = ["gentamicina", "amicacina", "tobramicina"];
+const OPIOIDS = ["tramadol", "codeina", "codeína", "morfina", "oxicodona", "fentanil"];
+const BENZOS = ["clonazepam", "diazepam", "alprazolam", "lorazepam", "midazolam"];
+const ANTIPSYCHOTICS = ["quetiapina", "risperidona", "haloperidol", "olanzapina"];
+const HEPATIC_RISK_DRUGS = [
+  "paracetamol",
+  "acetaminofeno",
+  "valproato",
+  "acido valproico",
+  "ácido valpróico",
+  "isoniazida",
+  "fluconazol",
+  "metronidazol",
+];
+const QT_RISK_DRUGS = [...QUINOLONES, ...MACROLIDES, ...ANTIPSYCHOTICS];
+const ANTICOAGULANTS = [
+  "varfarina",
+  "marevan",
+  "rivaroxabana",
+  "apixabana",
+  "dabigatrana",
+  "edoxabana",
+  "clopidogrel",
+  "heparina",
+  "enoxaparina",
+  "aas",
+];
+const ISRS = [
+  "sertralina",
+  "fluoxetina",
+  "escitalopram",
+  "paroxetina",
+  "citalopram",
+  "fluvoxamina",
+];
+const HYPERKALEMIA_MEDS = ["losartana", "enalapril", "captopril", "valsartana", "espironolactona"];
+
 function normalizeText(value?: string | null) {
   return (value || "")
     .normalize("NFD")
@@ -54,7 +136,7 @@ function normalizeText(value?: string | null) {
     .trim();
 }
 
-function includesAny(value: string, terms: string[]) {
+function includesAny(value: string, terms: readonly string[]) {
   return terms.some((term) => value.includes(normalizeText(term)));
 }
 
@@ -71,12 +153,13 @@ function hasTag(tags: Set<string>, tag: string) {
   return tags.has(normalizeText(tag));
 }
 
-function pushAlert(
-  alerts: ClinicalAlert[],
-  alert: ClinicalAlert
-) {
+function pushAlert(alerts: ClinicalAlert[], alert: ClinicalAlert) {
   if (alerts.some((item) => item.id === alert.id)) return;
   alerts.push(alert);
+}
+
+function withReason(base: string, reason: string) {
+  return `${base} Motivo: ${reason}`;
 }
 
 function buildPatientConditionTags(patient?: PatientRiskProfile | null) {
@@ -100,19 +183,19 @@ function buildPatientConditionTags(patient?: PatientRiskProfile | null) {
   if (patient.hepatopatia) tags.add("hepatopatia");
   if (patient.idoso_fragil || (patient.idade ?? 0) >= 60) tags.add("idoso_fragil");
 
-  if (includesAny(text, ["epilepsia", "convulsao", "convulsão"])) {
+  if (includesAny(text, ["epilepsia", "convulsao", "convulsão", "crise convulsiva"])) {
     tags.add("epilepsia");
   }
 
-  if (includesAny(text, ["qt longo", "arritmia", "palpitacao", "palpitação"])) {
+  if (includesAny(text, ["qt longo", "arritmia", "palpitacao", "palpitação", "torsades"])) {
     tags.add("arritmia_qt");
   }
 
-  if (includesAny(text, ["gastrite", "ulcera", "úlcera", "sangramento digestivo", "hemorragia digestiva"])) {
+  if (includesAny(text, ["gastrite", "ulcera", "úlcera", "sangramento digestivo", "hemorragia digestiva", "melena"])) {
     tags.add("gastrite_ulcera");
   }
 
-  if (includesAny(text, ["insuficiencia cardiaca", "insuficiência cardíaca"])) {
+  if (includesAny(text, ["insuficiencia cardiaca", "insuficiência cardíaca", "icc", "ic"])) {
     tags.add("insuficiencia_cardiaca");
   }
 
@@ -139,67 +222,14 @@ function buildPatientInteractionTags(medsText?: string | null) {
   const text = normalizeText(medsText);
   const tags = new Set<string>();
 
-  if (
-    includesAny(text, [
-      "varfarina",
-      "marevan",
-      "rivaroxabana",
-      "apixabana",
-      "dabigatrana",
-      "edoxabana",
-      "heparina",
-      "enoxaparina",
-      "clopidogrel",
-      "aas",
-    ])
-  ) {
-    tags.add("anticoagulante");
-  }
+  if (includesAny(text, ANTICOAGULANTS)) tags.add("anticoagulante");
+  if (includesAny(text, ISRS)) tags.add("isrs");
 
-  if (
-    includesAny(text, [
-      "sertralina",
-      "fluoxetina",
-      "escitalopram",
-      "paroxetina",
-      "citalopram",
-      "fluvoxamina",
-    ])
-  ) {
-    tags.add("isrs");
-  }
-
-  if (
-    includesAny(text, [
-      "clonazepam",
-      "diazepam",
-      "alprazolam",
-      "lorazepam",
-      "midazolam",
-      "quetiapina",
-      "olanzapina",
-      "risperidona",
-      "haloperidol",
-      "tramadol",
-      "morfina",
-      "codeina",
-      "codeína",
-      "oxicodona",
-      "fentanil",
-    ])
-  ) {
+  if (includesAny(text, [...BENZOS, ...ANTIPSYCHOTICS, ...OPIOIDS])) {
     tags.add("sedativos");
   }
 
-  if (
-    includesAny(text, [
-      "losartana",
-      "enalapril",
-      "captopril",
-      "valsartana",
-      "espironolactona",
-    ])
-  ) {
+  if (includesAny(text, HYPERKALEMIA_MEDS)) {
     tags.add("ieca_bra_espironolactona");
   }
 
@@ -253,36 +283,64 @@ export function buildClinicalAlerts(
   const isElderly = age >= 60 || Boolean(patient.idoso_fragil);
   const hasRenalRisk =
     Boolean(patient.funcao_renal_alterada) ||
-    includesAny(historyText, ["drc", "doenca renal", "doença renal", "renal", "dialise", "diálise"]);
+    includesAny(historyText, [
+      "drc",
+      "doenca renal",
+      "doença renal",
+      "insuficiencia renal",
+      "insuficiência renal",
+      "renal",
+      "dialise",
+      "diálise",
+      "creatinina elevada",
+    ]);
   const hasLiverRisk =
     Boolean(patient.hepatopatia) ||
-    includesAny(historyText, ["cirrose", "hepatopatia", "hepatite", "figado", "fígado"]);
+    includesAny(historyText, [
+      "cirrose",
+      "hepatopatia",
+      "hepatite",
+      "figado",
+      "fígado",
+      "insuficiencia hepatica",
+      "insuficiência hepática",
+    ]);
   const isPregnant =
     Boolean(patient.gestante) ||
     includesAny(historyText, ["gestante", "gestacao", "gestação", "gravida", "grávida"]);
-  const hasEpilepsy =
-    includesAny(historyText, ["epilepsia", "convulsao", "convulsão", "crise convulsiva"]);
-  const usesAnticoagulant =
-    includesAny(medsInUse, [
-      "varfarina",
-      "marevan",
-      "rivaroxabana",
-      "apixabana",
-      "dabigatrana",
-      "clopidogrel",
-      "enoxaparina",
-      "heparina",
-      "aas",
-    ]);
-  const usesSsri =
-    includesAny(medsInUse, [
-      "sertralina",
-      "fluoxetina",
-      "escitalopram",
-      "paroxetina",
-      "citalopram",
-      "fluvoxamina",
-    ]);
+  const hasEpilepsy = includesAny(historyText, [
+    "epilepsia",
+    "convulsao",
+    "convulsão",
+    "crise convulsiva",
+  ]);
+  const hasQtRisk = includesAny(historyText, [
+    "qt longo",
+    "arritmia",
+    "palpitacao",
+    "palpitação",
+    "torsades",
+  ]);
+  const hasGiRisk = includesAny(historyText, [
+    "gastrite",
+    "ulcera",
+    "úlcera",
+    "sangramento digestivo",
+    "hemorragia digestiva",
+    "melena",
+  ]);
+  const hasHeartFailure = includesAny(historyText, [
+    "insuficiencia cardiaca",
+    "insuficiência cardíaca",
+    "icc",
+    "ic",
+  ]);
+  const hasAsthma = includesAny(historyText, ["asma", "broncoespasmo"]);
+  const hasDiabetes = includesAny(historyText, ["diabetes", "dm1", "dm2"]);
+  const usesAnticoagulant = includesAny(medsInUse, ANTICOAGULANTS);
+  const usesSsri = includesAny(medsInUse, ISRS);
+  const usesSedatives = includesAny(medsInUse, [...BENZOS, ...ANTIPSYCHOTICS, ...OPIOIDS]);
+  const usesHyperkalemiaRiskMeds = includesAny(medsInUse, HYPERKALEMIA_MEDS);
 
   const patientConditionTags = buildPatientConditionTags(patient);
   const patientInteractionTags = buildPatientInteractionTags(patient.medicamentos_em_uso);
@@ -299,7 +357,10 @@ export function buildClinicalAlerts(
       title: "Risco renal",
       message:
         templateMeta?.alerta_drc ||
-        "O modelo foi marcado com risco renal e o paciente tem contexto compatível com DRC/função renal alterada.",
+        withReason(
+          "O modelo foi marcado com risco renal.",
+          "paciente com DRC/função renal alterada."
+        ),
     });
   }
 
@@ -310,7 +371,10 @@ export function buildClinicalAlerts(
       title: "Risco na gestação",
       message:
         templateMeta?.alerta_gestante ||
-        "O modelo foi marcado com alerta para gestação e o paciente está marcado como gestante.",
+        withReason(
+          "O modelo foi marcado com alerta para gestação.",
+          "paciente marcada como gestante."
+        ),
     });
   }
 
@@ -321,7 +385,10 @@ export function buildClinicalAlerts(
       title: "Cautela em idoso",
       message:
         templateMeta?.alerta_idoso ||
-        "O modelo foi marcado com cautela para idoso e o paciente está em faixa/condição de maior risco.",
+        withReason(
+          "O modelo foi marcado com cautela para idoso.",
+          "faixa etária/fragilidade do paciente."
+        ),
     });
   }
 
@@ -332,7 +399,10 @@ export function buildClinicalAlerts(
       title: "Cautela hepática",
       message:
         templateMeta?.alerta_hepatopatia ||
-        "O modelo foi marcado com cautela hepática e o paciente tem contexto compatível com hepatopatia.",
+        withReason(
+          "O modelo foi marcado com cautela hepática.",
+          "paciente com hepatopatia."
+        ),
     });
   }
 
@@ -343,7 +413,10 @@ export function buildClinicalAlerts(
       title: "Interação com anticoagulante",
       message:
         templateMeta?.alerta_interacoes ||
-        "O modelo foi marcado com interação relevante para anticoagulantes e o paciente usa medicação compatível.",
+        withReason(
+          "O modelo foi marcado com interação relevante para anticoagulantes.",
+          "paciente usa anticoagulante/antiagregante."
+        ),
     });
   }
 
@@ -354,7 +427,10 @@ export function buildClinicalAlerts(
       title: "Interação com ISRS",
       message:
         templateMeta?.alerta_interacoes ||
-        "O modelo foi marcado com interação relevante para ISRS e o paciente usa medicação compatível.",
+        withReason(
+          "O modelo foi marcado com interação relevante para ISRS.",
+          "paciente usa medicamento compatível."
+        ),
     });
   }
 
@@ -365,7 +441,10 @@ export function buildClinicalAlerts(
       title: "Risco de sedação associada",
       message:
         templateMeta?.alerta_interacoes ||
-        "O modelo foi marcado com sedação/interação com depressores do SNC e o paciente já usa droga compatível.",
+        withReason(
+          "O modelo foi marcado com sedação/interação com depressores do SNC.",
+          "paciente já usa medicação sedativa."
+        ),
     });
   }
 
@@ -376,39 +455,56 @@ export function buildClinicalAlerts(
       title: "Risco gastrointestinal",
       message:
         templateMeta?.cuidados_especiais ||
-        "O modelo foi marcado com cautela gastrointestinal e o paciente tem histórico compatível.",
+        withReason(
+          "O modelo foi marcado com cautela gastrointestinal.",
+          "paciente tem histórico compatível."
+        ),
     });
   }
 
-  if (
-    includesAny(text, ["amoxicilina", "penicilina", "ampicilina", "amoxicilina clavulanato", "amoxicilina-clavulanato", "benzetacil", "ceftriaxona", "cefalexina"]) &&
-    includesAny(allergiesText, ["penicilina", "amoxicilina", "beta lactam", "betalactam", "cefalosporina"])
-  ) {
+  if (includesAny(text, BETA_LACTAMS) && includesAny(allergiesText, ["penicilina", "amoxicilina", "beta lactam", "betalactam", "cefalosporina"])) {
     pushAlert(alerts, {
       id: "beta-lactam-allergy",
       level: "high",
       title: "Alergia compatível com betalactâmico",
       message:
         templateMeta?.alerta_alergias ||
-        "A prescrição contém penicilina/cefalosporina e o paciente tem histórico sugestivo de alergia relacionada.",
+        withReason(
+          "A prescrição contém penicilina/cefalosporina.",
+          "histórico de alergia compatível no paciente."
+        ),
     });
   }
 
-  if (
-    includesAny(text, ["dipirona", "metamizol", "novalgina"]) &&
-    includesAny(allergiesText, ["dipirona", "metamizol", "novalgina", "pirazolona", "pirazolonico", "pirazolônico"])
-  ) {
+  if (includesAny(text, DYPIRONE) && includesAny(allergiesText, ["dipirona", "metamizol", "novalgina", "pirazolona", "pirazolonico", "pirazolônico"])) {
     pushAlert(alerts, {
       id: "dipyrone-allergy",
       level: "high",
       title: "Alergia compatível com dipirona",
       message:
         templateMeta?.alerta_alergias ||
-        "A prescrição contém dipirona/metamizol e o paciente tem histórico sugestivo de alergia relacionada.",
+        withReason(
+          "A prescrição contém dipirona/metamizol.",
+          "histórico de alergia compatível no paciente."
+        ),
     });
   }
 
-  if (includesAny(text, ["aine", "ibuprofeno", "diclofenaco", "cetoprofeno", "naproxeno", "nimesulida", "meloxicam", "celecoxibe", "etoricoxibe"])) {
+  if (includesAny(text, SULFAS) && includesAny(allergiesText, ["sulfa", "sulfonamida", "bactrim", "sulfametoxazol"])) {
+    pushAlert(alerts, {
+      id: "sulfa-allergy",
+      level: "high",
+      title: "Alergia compatível com sulfa",
+      message:
+        templateMeta?.alerta_alergias ||
+        withReason(
+          "A prescrição contém sulfametoxazol-trimetoprim.",
+          "histórico de alergia compatível no paciente."
+        ),
+    });
+  }
+
+  if (includesAny(text, AINES)) {
     if (hasRenalRisk) {
       pushAlert(alerts, {
         id: "aine-renal",
@@ -416,7 +512,10 @@ export function buildClinicalAlerts(
         title: "AINE em paciente com risco renal",
         message:
           templateMeta?.alerta_drc ||
-          "AINE pode agravar função renal. Rever necessidade, dose e hidratação.",
+          withReason(
+            "AINE pode agravar função renal.",
+            "paciente com DRC/função renal alterada."
+          ),
       });
     }
 
@@ -427,7 +526,10 @@ export function buildClinicalAlerts(
         title: "AINE com anticoagulante/antiagregante",
         message:
           templateMeta?.alerta_interacoes ||
-          "Há aumento de risco de sangramento com essa combinação.",
+          withReason(
+            "Há aumento de risco de sangramento.",
+            "AINE associado a anticoagulante/antiagregante em uso."
+          ),
       });
     }
 
@@ -438,7 +540,10 @@ export function buildClinicalAlerts(
         title: "AINE com ISRS",
         message:
           templateMeta?.alerta_interacoes ||
-          "Pode aumentar risco de sangramento gastrointestinal.",
+          withReason(
+            "Pode aumentar risco de sangramento gastrointestinal.",
+            "paciente usa ISRS."
+          ),
       });
     }
 
@@ -449,7 +554,48 @@ export function buildClinicalAlerts(
         title: "AINE em idoso",
         message:
           templateMeta?.alerta_idoso ||
-          "Usar com cautela em idoso pelo risco renal, gastrointestinal e cardiovascular.",
+          withReason(
+            "Usar com cautela em idoso.",
+            "maior risco renal, gastrointestinal e cardiovascular."
+          ),
+      });
+    }
+
+    if (hasGiRisk) {
+      pushAlert(alerts, {
+        id: "aine-gi",
+        level: "high",
+        title: "AINE com risco gastrointestinal",
+        message:
+          templateMeta?.cuidados_especiais ||
+          withReason(
+            "Rever risco-benefício e proteção gástrica.",
+            "história de gastrite/úlcera/sangramento digestivo."
+          ),
+      });
+    }
+
+    if (hasHeartFailure) {
+      pushAlert(alerts, {
+        id: "aine-hf",
+        level: "medium",
+        title: "AINE em insuficiência cardíaca",
+        message: withReason(
+          "AINE pode piorar retenção hídrica e descompensação.",
+          "paciente com insuficiência cardíaca."
+        ),
+      });
+    }
+
+    if (hasAsthma) {
+      pushAlert(alerts, {
+        id: "aine-asthma",
+        level: "medium",
+        title: "AINE em paciente com asma",
+        message: withReason(
+          "Alguns pacientes apresentam broncoespasmo associado a AINE.",
+          "histórico de asma/broncoespasmo."
+        ),
       });
     }
   }
@@ -461,11 +607,14 @@ export function buildClinicalAlerts(
       title: "Nitrofurantoína com função renal alterada",
       message:
         templateMeta?.alerta_drc ||
-        "A eficácia e a segurança podem ficar comprometidas em insuficiência renal.",
+        withReason(
+          "A eficácia e a segurança podem ficar comprometidas.",
+          "paciente com insuficiência renal/DRC."
+        ),
     });
   }
 
-  if (includesAny(text, ["ciprofloxacino", "levofloxacino", "moxifloxacino", "ofloxacino", "norfloxacino", "quinolona", "fluoroquinolona"])) {
+  if (includesAny(text, QUINOLONES)) {
     if (isPregnant) {
       pushAlert(alerts, {
         id: "quinolona-pregnancy",
@@ -473,7 +622,10 @@ export function buildClinicalAlerts(
         title: "Quinolona em gestante",
         message:
           templateMeta?.alerta_gestante ||
-          "Evitar em gestação salvo avaliação clínica específica.",
+          withReason(
+            "Evitar em gestação salvo avaliação clínica específica.",
+            "paciente marcada como gestante."
+          ),
       });
     }
 
@@ -484,19 +636,89 @@ export function buildClinicalAlerts(
         title: "Quinolona em idoso",
         message:
           templateMeta?.alerta_idoso ||
-          "Maior cautela por eventos adversos, alterações neurológicas e tendíneas.",
+          withReason(
+            "Maior cautela por eventos adversos neurológicos e tendíneos.",
+            "faixa etária/fragilidade do paciente."
+          ),
+      });
+    }
+
+    if (hasEpilepsy) {
+      pushAlert(alerts, {
+        id: "quinolona-seizure",
+        level: "medium",
+        title: "Quinolona em paciente com risco convulsivo",
+        message: withReason(
+          "Pode reduzir limiar convulsivo em alguns contextos.",
+          "paciente com epilepsia/convulsão."
+        ),
+      });
+    }
+
+    if (hasQtRisk) {
+      pushAlert(alerts, {
+        id: "quinolona-qt",
+        level: "high",
+        title: "Quinolona com risco de QT",
+        message: withReason(
+          "Rever risco-benefício e contexto cardiológico.",
+          "paciente com arritmia/QT longo."
+        ),
       });
     }
   }
 
-  if (includesAny(text, ["doxiciclina", "tetraciclina", "minociclina"]) && isPregnant) {
+  if (includesAny(text, TETRACYCLINES) && isPregnant) {
     pushAlert(alerts, {
       id: "tetracycline-pregnancy",
       level: "high",
       title: "Tetraciclina em gestante",
       message:
         templateMeta?.alerta_gestante ||
-        "Evitar em gestação, salvo exceção clínica muito bem indicada.",
+        withReason(
+          "Evitar em gestação salvo exceção clínica muito bem indicada.",
+          "paciente marcada como gestante."
+        ),
+    });
+  }
+
+  if (includesAny(text, MACROLIDES)) {
+    if (hasQtRisk) {
+      pushAlert(alerts, {
+        id: "macrolide-qt",
+        level: "high",
+        title: "Macrolídeo com risco de QT",
+        message: withReason(
+          "Macrolídeos exigem mais cautela em contexto arrítmico.",
+          "paciente com arritmia/QT longo."
+        ),
+      });
+    }
+
+    if (usesAnticoagulant) {
+      pushAlert(alerts, {
+        id: "macrolide-anticoagulant",
+        level: "medium",
+        title: "Macrolídeo com anticoagulante",
+        message:
+          templateMeta?.alerta_interacoes ||
+          withReason(
+            "Rever interação e monitorização clínica.",
+            "paciente usa anticoagulante/antiagregante."
+          ),
+      });
+    }
+  }
+
+  if (includesAny(text, AMINOGLYCOSIDES) && hasRenalRisk) {
+    pushAlert(alerts, {
+      id: "aminoglycoside-renal",
+      level: "high",
+      title: "Aminoglicosídeo em paciente com risco renal",
+      message: withReason(
+        "Gentamicina/amicacina elevam cautela por nefrotoxicidade.",
+        "paciente com DRC/função renal alterada."
+      ),
     });
   }
 
@@ -507,18 +729,62 @@ export function buildClinicalAlerts(
       title: "Risco convulsivo",
       message:
         templateMeta?.cuidados_especiais ||
-        "Tramadol ou bupropiona em paciente com epilepsia/convulsão exigem revisão clínica.",
+        withReason(
+          "Tramadol ou bupropiona exigem revisão clínica.",
+          "paciente com epilepsia/convulsão."
+        ),
     });
   }
 
-  if (includesAny(text, ["tramadol", "codeina", "codeína", "morfina", "oxicodona", "fentanil"]) && isElderly) {
+  if (includesAny(text, OPIOIDS) && isElderly) {
     pushAlert(alerts, {
       id: "opioid-elderly",
       level: "medium",
       title: "Opioide em idoso",
       message:
         templateMeta?.alerta_idoso ||
-        "Maior cautela por sedação, queda, delirium e constipação.",
+        withReason(
+          "Maior cautela por sedação, queda, delirium e constipação.",
+          "faixa etária/fragilidade do paciente."
+        ),
+    });
+  }
+
+  if (includesAny(text, OPIOIDS) && usesSedatives) {
+    pushAlert(alerts, {
+      id: "opioid-sedative",
+      level: "high",
+      title: "Opioide com outras drogas sedativas",
+      message:
+        templateMeta?.alerta_interacoes ||
+        withReason(
+          "Associação aumenta risco de sedação excessiva e depressão do SNC.",
+          "paciente já usa droga sedativa."
+        ),
+    });
+  }
+
+  if (includesAny(text, BENZOS) && isElderly) {
+    pushAlert(alerts, {
+      id: "benzo-elderly",
+      level: "medium",
+      title: "Benzodiazepínico em idoso",
+      message: withReason(
+        "Maior cautela por confusão, queda e sedação.",
+        "faixa etária/fragilidade do paciente."
+      ),
+    });
+  }
+
+  if (includesAny(text, BENZOS) && includesAny(text, OPIOIDS)) {
+    pushAlert(alerts, {
+      id: "benzo-opioid",
+      level: "high",
+      title: "Benzodiazepínico com opioide",
+      message: withReason(
+        "Associação aumenta risco de sedação importante e depressão respiratória.",
+        "dois grupos sedativos na mesma prescrição."
+      ),
     });
   }
 
@@ -529,19 +795,137 @@ export function buildClinicalAlerts(
       title: "Metformina em paciente com risco renal",
       message:
         templateMeta?.alerta_drc ||
-        "Rever função renal e adequação do uso.",
+        withReason(
+          "Rever função renal e adequação do uso.",
+          "paciente com DRC/função renal alterada."
+        ),
     });
   }
 
-  if (includesAny(text, ["paracetamol", "acetaminofeno", "valproato", "acido valproico", "ácido valpróico", "isoniazida", "fluconazol", "metronidazol"]) && hasLiverRisk) {
+  if (includesAny(text, HEPATIC_RISK_DRUGS) && hasLiverRisk) {
     pushAlert(alerts, {
       id: "hepatic-risk",
       level: "high",
       title: "Medicamento com cautela hepática",
       message:
         templateMeta?.alerta_hepatopatia ||
-        "A prescrição contém fármaco com potencial de impacto hepático em paciente com hepatopatia.",
+        withReason(
+          "Há potencial de impacto hepático relevante.",
+          "paciente com hepatopatia."
+        ),
     });
+  }
+
+  if (includesAny(text, ["fluconazol", "metronidazol"]) && usesAnticoagulant) {
+    pushAlert(alerts, {
+      id: "azole-metronidazole-anticoagulant",
+      level: "high",
+      title: "Interação com anticoagulante",
+      message:
+        templateMeta?.alerta_interacoes ||
+        withReason(
+          "Fluconazol/metronidazol podem aumentar risco de sangramento em algumas combinações.",
+          "paciente usa anticoagulante/antiagregante."
+        ),
+    });
+  }
+
+  if (includesAny(text, SULFAS) && usesAnticoagulant) {
+    pushAlert(alerts, {
+      id: "sulfa-anticoagulant",
+      level: "high",
+      title: "Sulfa com anticoagulante",
+      message: withReason(
+        "Pode elevar risco de sangramento.",
+        "paciente usa anticoagulante/antiagregante."
+      ),
+    });
+  }
+
+  if (includesAny(text, SULFAS) && hasRenalRisk) {
+    pushAlert(alerts, {
+      id: "sulfa-renal",
+      level: "medium",
+      title: "Sulfa em paciente com risco renal",
+      message: withReason(
+        "Pode exigir ajuste e monitorização conforme contexto clínico.",
+        "paciente com DRC/função renal alterada."
+      ),
+    });
+  }
+
+  if (includesAny(text, SULFAS) && usesHyperkalemiaRiskMeds) {
+    pushAlert(alerts, {
+      id: "sulfa-hyperkalemia",
+      level: "high",
+      title: "Risco de hipercalemia",
+      message: withReason(
+        "Sulfametoxazol-trimetoprim exige cautela com potássio.",
+        "paciente usa IECA/BRA/espironolactona."
+      ),
+    });
+  }
+
+  if (includesAny(text, ["espironolactona"]) && hasRenalRisk) {
+    pushAlert(alerts, {
+      id: "spironolactone-renal",
+      level: "high",
+      title: "Espironolactona em paciente com risco renal",
+      message: withReason(
+        "Monitorar potássio e função renal.",
+        "paciente com DRC/função renal alterada."
+      ),
+    });
+  }
+
+  if (includesAny(text, ["glibenclamida", "gliclazida"]) && isElderly) {
+    pushAlert(alerts, {
+      id: "sulfonylurea-elderly",
+      level: "medium",
+      title: "Sulfonilureia em idoso",
+      message: withReason(
+        "Maior cautela por hipoglicemia.",
+        "faixa etária/fragilidade do paciente."
+      ),
+    });
+  }
+
+  if (includesAny(text, ["prednisona", "prednisolona", "dexametasona", "metilprednisolona", "hidrocortisona"]) && hasDiabetes) {
+    pushAlert(alerts, {
+      id: "corticoid-diabetes",
+      level: "medium",
+      title: "Corticoide em paciente com diabetes",
+      message: withReason(
+        "Pode descompensar glicemia.",
+        "paciente com diabetes."
+      ),
+    });
+  }
+
+  if (includesAny(text, ["aspirina", "acido acetilsalicilico", "ácido acetilsalicílico", "aas"])) {
+    if (usesAnticoagulant) {
+      pushAlert(alerts, {
+        id: "aas-anticoagulant",
+        level: "high",
+        title: "AAS com anticoagulante/antiagregante",
+        message: withReason(
+          "Risco aumentado de sangramento.",
+          "paciente usa anticoagulante/antiagregante."
+        ),
+      });
+    }
+
+    if (hasGiRisk) {
+      pushAlert(alerts, {
+        id: "aas-gi",
+        level: "high",
+        title: "AAS em paciente com risco gastrointestinal",
+        message: withReason(
+          "Rever risco-benefício e proteção gástrica.",
+          "história de gastrite/úlcera/sangramento digestivo."
+        ),
+      });
+    }
   }
 
   if (includesAny(text, ["isotretinoina", "isotretinoína"]) && isPregnant) {
@@ -551,7 +935,10 @@ export function buildClinicalAlerts(
       title: "Medicamento teratogênico em gestante",
       message:
         templateMeta?.alerta_gestante ||
-        "A prescrição contém fármaco com contraindicação forte em gestação.",
+        withReason(
+          "A prescrição contém fármaco com contraindicação forte em gestação.",
+          "paciente marcada como gestante."
+        ),
     });
   }
 
@@ -604,6 +991,10 @@ export default function ClinicalAlerts({
 
   if (!patient || alerts.length === 0) return null;
 
+  const highCount = alerts.filter((item) => item.level === "high").length;
+  const mediumCount = alerts.filter((item) => item.level === "medium").length;
+  const infoCount = alerts.filter((item) => item.level === "info").length;
+
   return (
     <section
       className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${className}`.trim()}
@@ -614,8 +1005,28 @@ export default function ClinicalAlerts({
         </span>
 
         <p className="text-sm text-slate-500">
-          Checagem automática baseada no perfil do paciente, tags do modelo e texto atual da prescrição.
+          Checagem automática baseada no perfil do paciente, tags do modelo e regras críticas mais confiáveis.
         </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {highCount ? (
+          <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-700">
+            {highCount} alto risco
+          </span>
+        ) : null}
+
+        {mediumCount ? (
+          <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
+            {mediumCount} cautela
+          </span>
+        ) : null}
+
+        {infoCount ? (
+          <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
+            {infoCount} lembrete
+          </span>
+        ) : null}
       </div>
 
       <div className="mt-4 space-y-3">

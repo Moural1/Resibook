@@ -1250,7 +1250,7 @@ export default function PrescricaoPage() {
                   Confirmar prescrição com alertas importantes
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Revise os alertas de alto risco abaixo antes de continuar. O objetivo é reduzir erros sem bloquear o seu fluxo clínico.
+                  Revise os alertas de alto risco abaixo antes de continuar. Esta confirmação prioriza alergias, gestação, risco renal, sangramento, sedação, convulsão e QT.
                 </p>
               </div>
 
