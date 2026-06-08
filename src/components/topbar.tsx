@@ -131,30 +131,30 @@ function badgeLabel(type: SearchResult["type"]) {
 
 function badgeClass(type: SearchResult["type"]) {
   if (type === "paciente") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
   }
 
   if (type === "prescricao") {
-    return "border-blue-200 bg-blue-50 text-blue-700";
+    return "border-blue-200/80 bg-blue-50 text-blue-700";
   }
 
   if (type === "modelo_prescricao") {
-    return "border-indigo-200 bg-indigo-50 text-indigo-700";
+    return "border-indigo-200/80 bg-indigo-50 text-indigo-700";
   }
 
   if (type === "exame") {
-    return "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700";
+    return "border-fuchsia-200/80 bg-fuchsia-50 text-fuchsia-700";
   }
 
   if (type === "topico") {
-    return "border-cyan-200 bg-cyan-50 text-cyan-700";
+    return "border-cyan-200/80 bg-cyan-50 text-cyan-700";
   }
 
   if (type === "flashcard") {
-    return "border-pink-200 bg-pink-50 text-pink-700";
+    return "border-pink-200/80 bg-pink-50 text-pink-700";
   }
 
-  return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-amber-200/80 bg-amber-50 text-amber-700";
 }
 
 function ResultIcon({ type }: { type: SearchResult["type"] }) {
@@ -173,64 +173,20 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
 }
 
 const fullQuickLinks = [
-  {
-    href: "/pacientes",
-    label: "Pacientes",
-    icon: Users,
-  },
-  {
-    href: "/prescricao",
-    label: "Prescrição",
-    icon: ClipboardList,
-  },
-  {
-    href: "/exames-evolucao",
-    label: "Exames",
-    icon: FlaskConical,
-  },
-  {
-    href: "/topicos",
-    label: "Tópicos",
-    icon: Stethoscope,
-  },
-  {
-    href: "/revisao-topicos",
-    label: "Revisão",
-    icon: BookOpen,
-  },
-  {
-    href: "/flashcards",
-    label: "Flashcards",
-    icon: Brain,
-  },
-  {
-    href: "/cids",
-    label: "CIDs",
-    icon: Tags,
-  },
+  { href: "/pacientes", label: "Pacientes", icon: Users },
+  { href: "/prescricao", label: "Prescrição", icon: ClipboardList },
+  { href: "/exames-evolucao", label: "Exames", icon: FlaskConical },
+  { href: "/topicos", label: "Tópicos", icon: Stethoscope },
+  { href: "/revisao-topicos", label: "Revisão", icon: BookOpen },
+  { href: "/flashcards", label: "Flashcards", icon: Brain },
+  { href: "/cids", label: "CIDs", icon: Tags },
 ];
 
 const guestQuickLinks = [
-  {
-    href: "/prescricao",
-    label: "Prescrição",
-    icon: ClipboardList,
-  },
-  {
-    href: "/exames-evolucao",
-    label: "Exames",
-    icon: FlaskConical,
-  },
-  {
-    href: "/topicos",
-    label: "Tópicos",
-    icon: Stethoscope,
-  },
-  {
-    href: "/cids",
-    label: "CIDs",
-    icon: Tags,
-  },
+  { href: "/prescricao", label: "Prescrição", icon: ClipboardList },
+  { href: "/exames-evolucao", label: "Exames", icon: FlaskConical },
+  { href: "/topicos", label: "Tópicos", icon: Stethoscope },
+  { href: "/cids", label: "CIDs", icon: Tags },
 ];
 
 export function Topbar() {
@@ -548,13 +504,13 @@ export function Topbar() {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
       <div
         ref={wrapperRef}
-        className="relative flex items-center gap-3 px-4 py-4 md:px-6 lg:px-8"
+        className="relative flex items-center gap-3 px-4 py-3 md:px-6 lg:px-8"
       >
         <div className="min-w-0 flex-1">
-          <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4">
+          <div className="flex h-11 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/90 px-4 shadow-sm shadow-slate-950/[0.02]">
             <Search className="h-4 w-4 text-slate-400" />
 
             <input
@@ -578,8 +534,8 @@ export function Topbar() {
               }}
               placeholder={
                 isGuest
-                  ? "Buscar prescrições prontas, tópicos, exames e CIDs..."
-                  : "Buscar pacientes, tópicos, prescrições, exames, CIDs, flashcards..."
+                  ? "Buscar prescrições, tópicos, exames e CIDs..."
+                  : "Buscar pacientes, tópicos, prescrições, exames, CIDs e flashcards..."
               }
               className="h-full w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
             />
@@ -601,9 +557,9 @@ export function Topbar() {
           </div>
 
           {open && query.trim() ? (
-            <div className="absolute left-4 right-4 top-[76px] z-50 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl md:left-6 md:right-6 lg:left-8 lg:right-8">
-              <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <div className="absolute left-4 right-4 top-[68px] z-50 overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.14)] md:left-6 md:right-6 lg:left-8 lg:right-8">
+              <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                   <Sparkles className="h-3.5 w-3.5" />
                   Busca global
                 </div>
@@ -638,7 +594,7 @@ export function Topbar() {
                           setOpen(false);
                           setQuery("");
                         }}
-                        className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-slate-300 hover:bg-white"
+                        className="block rounded-2xl border border-slate-200/90 bg-slate-50/70 px-4 py-3 transition hover:border-slate-300 hover:bg-white"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-start gap-3">
@@ -661,7 +617,7 @@ export function Topbar() {
                           </div>
 
                           <span
-                            className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold ${badgeClass(
+                            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${badgeClass(
                               item.type
                             )}`}
                           >
@@ -685,7 +641,7 @@ export function Topbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="inline-flex h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
               >
                 <Icon className="h-3.5 w-3.5" />
                 {item.label}

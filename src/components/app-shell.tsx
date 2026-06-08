@@ -141,7 +141,7 @@ function Badge({ value }: { value?: number | null }) {
   if (value === null || value === undefined) return null;
 
   return (
-    <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] text-cyan-200">
+    <span className="inline-flex min-w-[28px] items-center justify-center rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-300">
       {value}
     </span>
   );
@@ -164,12 +164,12 @@ function NavSection({
   onNavigate?: () => void;
 }) {
   return (
-    <div>
-      <div className="mb-3 px-1 text-[11px] font-bold uppercase tracking-[0.28em] text-slate-400">
+    <section>
+      <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
         {title}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {items.map((item) => {
           const Icon = item.icon;
           const active =
@@ -180,37 +180,44 @@ function NavSection({
               key={item.href}
               href={item.href}
               onClick={onNavigate}
-              className={`group flex items-center justify-between rounded-2xl border px-3 py-3 transition ${
+              className={`group flex items-center justify-between rounded-xl border px-3 py-2.5 transition ${
                 active
-                  ? "border-cyan-400/60 bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.7))]"
-                  : "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]"
+                  ? "border-cyan-400/20 bg-white/[0.07] shadow-[inset_0_0_0_1px_rgba(103,232,249,0.08)]"
+                  : "border-transparent bg-transparent hover:border-white/8 hover:bg-white/[0.035]"
               }`}
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] ring-1 ring-white/10">
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                    active
+                      ? "border-cyan-300/15 bg-cyan-400/[0.08]"
+                      : "border-white/8 bg-white/[0.03]"
+                  }`}
+                >
                   <Icon
-                    className={`h-5 w-5 ${
-                      active ? "text-cyan-300" : "text-slate-300"
+                    className={`h-4 w-4 ${
+                      active ? "text-cyan-200" : "text-slate-300"
                     }`}
                   />
                 </div>
 
-                <span className="truncate text-base font-semibold text-white">
+                <span
+                  className={`truncate text-[14px] font-medium ${
+                    active ? "text-white" : "text-slate-200"
+                  }`}
+                >
                   {item.label}
                 </span>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="ml-3 flex shrink-0 items-center">
                 <Badge value={item.badge} />
-                <span className="text-xl text-slate-500 transition group-hover:text-slate-300">
-                  ›
-                </span>
               </div>
             </Link>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -255,7 +262,12 @@ function SidebarContent({
     { href: "/suporte", label: "Suporte", icon: LifeBuoy, badge: null },
     ...(isAdmin
       ? [
-          { href: "/modelos-prescricao", label: "Modelos prescrição", icon: ClipboardList, badge: null },
+          {
+            href: "/modelos-prescricao",
+            label: "Modelos prescrição",
+            icon: ClipboardList,
+            badge: null,
+          },
           { href: "/acessos", label: "Acessos", icon: ShieldCheck, badge: null },
         ]
       : []),
@@ -265,10 +277,10 @@ function SidebarContent({
   const visibleSecondaryItems = isGuest ? [] : secondaryItems;
 
   return (
-    <div className="flex h-full flex-col bg-[#07183d] text-white">
-      <div className="border-b border-white/10 px-5 py-5">
+    <div className="flex h-full flex-col bg-[#081a3a] text-white">
+      <div className="border-b border-white/8 px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] p-2">
             <Image
               src="/logo-resibook.png"
               alt="ResiBook"
@@ -280,45 +292,45 @@ function SidebarContent({
           </div>
 
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-cyan-300">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-300/90">
               ResiBook
             </p>
-            <h1 className="mt-1 truncate text-xl font-bold tracking-tight">
+            <h1 className="mt-0.5 truncate text-[18px] font-semibold tracking-tight text-white">
               Sistema clínico
             </h1>
-            <p className="mt-1 text-sm text-slate-300">
-              {isGuest ? "Acesso convidado limitado." : "Navegação rápida entre módulos."}
-            </p>
           </div>
         </div>
 
-        {!isMobile ? (
-          <div className="mt-4 rounded-[20px] border border-white/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(8,15,44,0.45))] p-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
-              {isGuest ? "Modo convidado" : "Ambiente"}
-            </p>
-            <h2 className="mt-1.5 text-xl font-bold leading-tight text-white">
-              {isGuest ? "Acesso limitado" : "Operação clínica"}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              {isGuest
-                ? "Prescrição, exames, tópicos, CIDs e suporte liberados."
-                : "Pacientes, prescrição, revisão, exames e suporte."}
-            </p>
-          </div>
-        ) : (
-          <div className="mt-4 rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-sm font-semibold text-white">
-              {isGuest ? "Modo convidado" : "Operação clínica"}
-            </p>
-            <p className="mt-1 text-sm leading-6 text-slate-300">
-              {isGuest ? "Acesso restrito a módulos liberados." : "Fluxo rápido para plantão e estudo."}
-            </p>
-          </div>
-        )}
+        <div
+          className={`mt-4 rounded-2xl border px-3.5 py-3 ${
+            isGuest
+              ? "border-amber-300/15 bg-amber-400/[0.06]"
+              : "border-white/8 bg-white/[0.035]"
+          }`}
+        >
+          <p
+            className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${
+              isGuest ? "text-amber-200" : "text-slate-400"
+            }`}
+          >
+            {isGuest ? "Modo" : "Ambiente"}
+          </p>
+
+          <p className="mt-1 text-sm font-semibold text-white">
+            {isGuest ? "Acesso convidado" : "Operação clínica"}
+          </p>
+        </div>
+
+        {isMobile ? (
+          <p className="mt-3 text-xs leading-5 text-slate-400">
+            {isGuest
+              ? "Acesso restrito aos módulos liberados."
+              : "Navegação compacta para rotina clínica."}
+          </p>
+        ) : null}
       </div>
 
-      <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
+      <div className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
         <NavSection
           title={isGuest ? "Acesso liberado" : "Principal"}
           items={primaryItems}
@@ -336,23 +348,37 @@ function SidebarContent({
         ) : null}
 
         {isGuest ? (
-          <div className="rounded-[22px] border border-amber-300/20 bg-amber-400/10 p-4">
+          <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-4">
             <div className="flex items-start gap-3">
               <Lock className="mt-0.5 h-4 w-4 text-amber-200" />
               <div>
-                <p className="text-sm font-semibold text-amber-100">Perfil convidado</p>
+                <p className="text-sm font-semibold text-amber-100">
+                  Perfil convidado
+                </p>
                 <p className="mt-1 text-sm leading-6 text-amber-100/80">
                   As demais áreas do sistema estão bloqueadas para este usuário.
                 </p>
 
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Link href="/termos" onClick={onNavigate} className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15">
+                  <Link
+                    href="/termos"
+                    onClick={onNavigate}
+                    className="rounded-full border border-amber-200/15 bg-white/10 px-3 py-1 text-xs font-medium text-amber-100 hover:bg-white/15"
+                  >
                     Termos
                   </Link>
-                  <Link href="/privacidade" onClick={onNavigate} className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15">
+                  <Link
+                    href="/privacidade"
+                    onClick={onNavigate}
+                    className="rounded-full border border-amber-200/15 bg-white/10 px-3 py-1 text-xs font-medium text-amber-100 hover:bg-white/15"
+                  >
                     Privacidade
                   </Link>
-                  <Link href="/suporte" onClick={onNavigate} className="rounded-full border border-amber-200/20 bg-white/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-white/15">
+                  <Link
+                    href="/suporte"
+                    onClick={onNavigate}
+                    className="rounded-full border border-amber-200/15 bg-white/10 px-3 py-1 text-xs font-medium text-amber-100 hover:bg-white/15"
+                  >
                     Suporte
                   </Link>
                 </div>
@@ -362,18 +388,16 @@ function SidebarContent({
         ) : null}
       </div>
 
-      <div className="border-t border-white/10 p-4">
-        <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-          <p className="text-sm font-semibold text-white">
-            {isGuest ? "Sessão convidado" : "Fluxo recomendado"}
+      <div className="border-t border-white/8 p-3">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {isGuest ? "Sessão" : "Conta"}
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            {isGuest
-              ? "Use apenas os módulos liberados pelo administrador."
-              : "Paciente → Prescrição → Exames → Tópicos → Flashcards."}
+          <p className="mt-1 text-sm text-slate-300">
+            {isGuest ? "Usuário convidado ativo." : "Encerrar sessão com segurança."}
           </p>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <LogoutButton />
           </div>
         </div>
@@ -574,7 +598,7 @@ export default function AppShell({ children }: Props) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-medium text-slate-600 shadow-sm">
-          Carregando acesso...
+          Carregando acesso.
         </div>
       </div>
     );
@@ -588,7 +612,9 @@ export default function AppShell({ children }: Props) {
             <Lock className="h-5 w-5" />
           </div>
 
-          <h1 className="mt-4 text-xl font-semibold text-slate-900">Acesso restrito</h1>
+          <h1 className="mt-4 text-xl font-semibold text-slate-900">
+            Acesso restrito
+          </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Este usuário convidado tem acesso apenas a Prescrição, Exames / Evolução,
@@ -610,7 +636,7 @@ export default function AppShell({ children }: Props) {
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
       {desktopSidebarOpen ? (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[320px] border-r border-slate-200 lg:block print:hidden">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[296px] border-r border-slate-200/80 lg:block print:hidden">
           <SidebarContent
             pathname={pathname}
             counts={counts}
@@ -623,16 +649,16 @@ export default function AppShell({ children }: Props) {
       <button
         type="button"
         onClick={() => setDesktopSidebarOpen((current) => !current)}
-        className={`fixed top-1/2 z-[65] hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
-          desktopSidebarOpen ? "left-[296px]" : "left-4"
+        className={`fixed top-1/2 z-[65] hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
+          desktopSidebarOpen ? "left-[274px]" : "left-4"
         }`}
         aria-label={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
         title={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
       >
         {desktopSidebarOpen ? (
-          <PanelLeftClose className="h-5 w-5" />
+          <PanelLeftClose className="h-4.5 w-4.5" />
         ) : (
-          <PanelLeftOpen className="h-5 w-5" />
+          <PanelLeftOpen className="h-4.5 w-4.5" />
         )}
       </button>
 
@@ -640,7 +666,7 @@ export default function AppShell({ children }: Props) {
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="fixed bottom-4 left-4 z-50 inline-flex h-13 min-h-13 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-950/20"
+          className="fixed bottom-4 left-4 z-50 inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-950 px-4 text-sm font-semibold text-white shadow-xl shadow-slate-950/20"
           aria-label="Abrir menu"
         >
           <Menu className="h-5 w-5" />
@@ -662,7 +688,7 @@ export default function AppShell({ children }: Props) {
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white backdrop-blur transition hover:bg-white/15"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white backdrop-blur transition hover:bg-white/15"
                 aria-label="Fechar menu"
               >
                 <X className="h-5 w-5" />
@@ -683,7 +709,7 @@ export default function AppShell({ children }: Props) {
 
       <div
         className={`min-h-screen transition-[padding] duration-200 print:pl-0 ${
-          desktopSidebarOpen ? "lg:pl-[320px]" : "lg:pl-0"
+          desktopSidebarOpen ? "lg:pl-[296px]" : "lg:pl-0"
         }`}
       >
         <div className="print:hidden">

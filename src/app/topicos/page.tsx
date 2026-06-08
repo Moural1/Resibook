@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
-import { Edit3, Plus, X } from "lucide-react";
+import { BookOpen, Edit3, Plus, Sparkles, Stethoscope, X } from "lucide-react";
 
 type TopicoMedico = {
   id: number;
@@ -21,6 +22,17 @@ type TopicoMedico = {
   prioridade: number | null;
   fonte: string | null;
   atualizado_em: string | null;
+};
+
+type RelatedFlashcard = {
+  id: string;
+  area: string | null;
+  materia: string | null;
+  tipo: string | null;
+  frente: string | null;
+  verso: string | null;
+  source_group: string | null;
+  source_file: string | null;
 };
 
 type TopicoForm = {
@@ -69,6 +81,25 @@ function normalize(value?: string | null) {
 function formatLabel(value?: string | null) {
   if (!value) return "Sem área";
   return value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "Sem data";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function buildParagraphs(value?: string | null) {
+  return (value || "")
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
 }
 
 function buildFullText(item: TopicoMedico) {
@@ -130,72 +161,184 @@ function buildPayload(form: TopicoForm) {
   };
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children?: string | null;
-}) {
-  if (!children) return null;
+function RichText({ value }: { value?: string | null }) {
+  const blocks = buildParagraphs(value);
+
+  if (blocks.length === 0) {
+    return <p className="text-sm leading-7 text-slate-400">Sem conteúdo</p>;
+  }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-        {title}
-      </p>
-      <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-        {children}
-      </p>
+    <div className="space-y-4">
+      {blocks.map((block, index) => {
+        const lines = block
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        const isList =
+          lines.length > 1 &&
+          lines.every((line) => /^[-•]/.test(line) || /^\d+[\.\)]/.test(line));
+
+        if (isList) {
+          const ordered = lines.every((line) => /^\d+[\.\)]/.test(line));
+
+          if (ordered) {
+            return (
+              <ol key={index} className="ml-5 list-decimal space-y-2 text-sm leading-7 text-slate-700">
+                {lines.map((line, lineIndex) => (
+                  <li key={lineIndex}>{line.replace(/^\d+[\.\)]\s*/, "")}</li>
+                ))}
+              </ol>
+            );
+          }
+
+          return (
+            <ul key={index} className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700">
+              {lines.map((line, lineIndex) => (
+                <li key={lineIndex}>{line.replace(/^[-•]\s*/, "")}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={index} className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+            {block}
+          </p>
+        );
+      })}
     </div>
   );
 }
 
-function TextAreaField({
-  label,
+function Section({
+  title,
   value,
-  onChange,
-  placeholder,
-  rows = 4,
+  tone = "slate",
 }: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  rows?: number;
+  title: string;
+  value?: string | null;
+  tone?: "slate" | "rose" | "blue" | "emerald" | "amber";
 }) {
+  if (!value) return null;
+
+  const toneClass = {
+    slate: "border-slate-200 bg-slate-50",
+    rose: "border-rose-200 bg-rose-50",
+    blue: "border-blue-200 bg-blue-50",
+    emerald: "border-emerald-200 bg-emerald-50",
+    amber: "border-amber-200 bg-amber-50",
+  }[tone];
+
   return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <textarea
-        rows={rows}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
-      />
+    <div className={`rounded-[24px] border p-5 ${toneClass}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+        {title}
+      </p>
+      <div className="mt-3">
+        <RichText value={value} />
+      </div>
     </div>
+  );
+}
+
+function RelatedCardsPanel({
+  cards,
+}: {
+  cards: RelatedFlashcard[];
+}) {
+  const [openIds, setOpenIds] = useState<string[]>([]);
+
+  function toggle(id: string) {
+    setOpenIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    );
+  }
+
+  if (cards.length === 0) return null;
+
+  return (
+    <section className="rounded-[26px] border border-violet-200 bg-violet-50/70 p-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="inline-flex rounded-full border border-violet-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
+          Revisão rápida
+        </span>
+        <p className="text-sm text-violet-900">
+          Flashcards relacionados a este tópico para revisão objetiva.
+        </p>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {cards.map((card) => {
+          const open = openIds.includes(card.id);
+
+          return (
+            <article
+              key={card.id}
+              className="rounded-[22px] border border-white/70 bg-white p-4 shadow-sm"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                {card.materia ? (
+                  <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-semibold text-violet-700">
+                    {card.materia}
+                  </span>
+                ) : null}
+
+                {card.tipo ? (
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+                    {card.tipo}
+                  </span>
+                ) : null}
+              </div>
+
+              <h4 className="mt-3 text-base font-semibold text-slate-900">
+                {card.frente}
+              </h4>
+
+              {open ? (
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <RichText value={card.verso} />
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggle(card.id)}
+                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white"
+                >
+                  {open ? "Ocultar resposta" : "Revelar resposta"}
+                </button>
+
+                {card.verso ? <CopyButton text={`${card.frente}\n\n${card.verso}`} /> : null}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
 export default function TopicosPage() {
   const supabase = createClient();
 
+  const [topicos, setTopicos] = useState<TopicoMedico[]>([]);
+  const [flashcards, setFlashcards] = useState<RelatedFlashcard[]>([]);
+  const [checkingUser, setCheckingUser] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingUser, setCheckingUser] = useState(true);
 
-  const [topicos, setTopicos] = useState<TopicoMedico[]>([]);
   const [query, setQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
-
-  const [form, setForm] = useState<TopicoForm>(emptyForm);
-  const [editingItem, setEditingItem] = useState<TopicoMedico | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<TopicoMedico | null>(null);
+  const [form, setForm] = useState<TopicoForm>(emptyForm);
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingIds, setSavingIds] = useState<number[]>([]);
   const [error, setError] = useState("");
@@ -205,10 +348,8 @@ export default function TopicosPage() {
     const { data, error } = await supabase.auth.getSession();
 
     if (error) {
-      setIsGuest(false);
-      setIsAdmin(false);
-      setCheckingUser(false);
       setError(error.message);
+      setCheckingUser(false);
       return;
     }
 
@@ -223,19 +364,34 @@ export default function TopicosPage() {
     setLoading(true);
     setError("");
 
-    const { data, error } = await supabase
-      .from("topicos_medicos")
-      .select(
-        "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em"
-      )
-      .order("area", { ascending: true })
-      .order("titulo", { ascending: true });
+    const [topicosRes, flashcardsRes] = await Promise.all([
+      supabase
+        .from("topicos_medicos")
+        .select(
+          "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em"
+        )
+        .order("area", { ascending: true })
+        .order("titulo", { ascending: true }),
 
-    if (error) {
-      setError(error.message);
+      supabase
+        .from("flashcards")
+        .select("id, area, materia, tipo, frente, verso, source_group, source_file")
+        .order("materia", { ascending: true, nullsFirst: false })
+        .order("card_number", { ascending: true, nullsFirst: false }),
+    ]);
+
+    if (topicosRes.error) {
+      setError(topicosRes.error.message);
       setTopicos([]);
     } else {
-      setTopicos((data as TopicoMedico[]) || []);
+      setTopicos((topicosRes.data as TopicoMedico[]) || []);
+    }
+
+    if (flashcardsRes.error) {
+      setError((current) => current || flashcardsRes.error?.message || "");
+      setFlashcards([]);
+    } else {
+      setFlashcards((flashcardsRes.data as RelatedFlashcard[]) || []);
     }
 
     setLoading(false);
@@ -288,10 +444,7 @@ export default function TopicosPage() {
 
   const hasFilters = Boolean(query || selectedArea);
 
-  function updateForm<K extends keyof TopicoForm>(
-    key: K,
-    value: TopicoForm[K]
-  ) {
+  function updateForm<K extends keyof TopicoForm>(key: K, value: TopicoForm[K]) {
     setForm((current) => ({
       ...current,
       [key]: value,
@@ -332,7 +485,7 @@ export default function TopicosPage() {
 
   async function handleSave() {
     if (!isAdmin) {
-      setError("Apenas o administrador pode criar ou editar tópicos.");
+      setError("Apenas o administrador pode salvar tópicos.");
       return;
     }
 
@@ -347,42 +500,30 @@ export default function TopicosPage() {
 
     const payload = buildPayload(form);
 
-    const result = editingItem
+    const response = editingItem
       ? await supabase
           .from("topicos_medicos")
           .update(payload)
           .eq("id", editingItem.id)
-          .select(
-            "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em"
-          )
+          .select("*")
           .single()
-      : await supabase
-          .from("topicos_medicos")
-          .insert(payload)
-          .select(
-            "id, area, titulo, resumo, diagnostico, criterios, exames, tratamento, conduta_urgencia, internacao_referencia, pegadinhas, tags, prioridade, fonte, atualizado_em"
-          )
-          .single();
+      : await supabase.from("topicos_medicos").insert(payload).select("*").single();
 
-    if (result.error) {
-      setError(result.error.message);
-      setSaving(false);
-      return;
-    }
-
-    if (result.data) {
-      const saved = result.data as TopicoMedico;
+    if (response.error) {
+      setError(response.error.message);
+    } else if (response.data) {
+      const saved = response.data as TopicoMedico;
 
       setTopicos((current) => {
-        const next = editingItem
-          ? current.map((item) => (item.id === saved.id ? saved : item))
-          : [...current, saved];
+        if (editingItem) {
+          return current
+            .map((item) => (item.id === editingItem.id ? saved : item))
+            .sort((a, b) => `${a.area}-${a.titulo}`.localeCompare(`${b.area}-${b.titulo}`, "pt-BR"));
+        }
 
-        return next.sort((a, b) => {
-          const areaCompare = a.area.localeCompare(b.area, "pt-BR");
-          if (areaCompare !== 0) return areaCompare;
-          return a.titulo.localeCompare(b.titulo, "pt-BR");
-        });
+        return [...current, saved].sort((a, b) =>
+          `${a.area}-${a.titulo}`.localeCompare(`${b.area}-${b.titulo}`, "pt-BR")
+        );
       });
 
       setSuccess(
@@ -412,10 +553,7 @@ export default function TopicosPage() {
     setSuccess("");
     setSavingIds((current) => [...current, id]);
 
-    const { error } = await supabase
-      .from("topicos_medicos")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("topicos_medicos").delete().eq("id", id);
 
     if (error) {
       setError(error.message);
@@ -430,46 +568,98 @@ export default function TopicosPage() {
     setSavingIds((current) => current.filter((item) => item !== id));
   }
 
+  function getRelatedFlashcards(item: TopicoMedico) {
+    const area = normalize(item.area);
+    const title = normalize(item.titulo);
+    const tags = normalize(item.tags)
+      .split(/[,\n;]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    const titleTokens = title
+      .split(/\s+/)
+      .filter((token) => token.length >= 4);
+
+    const scored = flashcards
+      .map((card) => {
+        const haystack = normalize(
+          [
+            card.area,
+            card.materia,
+            card.tipo,
+            card.frente,
+            card.verso,
+            card.source_group,
+            card.source_file,
+          ].join(" ")
+        );
+
+        let score = 0;
+
+        if (area && haystack.includes(area)) score += 8;
+        if (title && haystack.includes(title)) score += 10;
+
+        for (const tag of tags) {
+          if (tag && haystack.includes(tag)) score += 6;
+        }
+
+        for (const token of titleTokens) {
+          if (haystack.includes(token)) score += 3;
+        }
+
+        if (normalize(card.materia) === area) score += 4;
+        if (normalize(card.tipo) === title) score += 4;
+
+        return { card, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    return scored.slice(0, 4).map((item) => item.card);
+  }
+
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
+      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-6 py-8 text-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
+                <span className="inline-flex rounded-full border border-cyan-200/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">
                   Biblioteca clínica
                 </span>
 
-                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
                   Tópicos médicos
                 </span>
 
                 <span
                   className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
                     isAdmin
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-amber-200 bg-amber-50 text-amber-700"
+                      ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
+                      : "border-amber-300/30 bg-amber-400/10 text-amber-100"
                   }`}
                 >
                   {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
                 </span>
               </div>
 
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-                Tópicos clínicos
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
+                Tópicos clínicos com revisão integrada
               </h1>
 
-              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-                Biblioteca médica estruturada por área, com diagnóstico,
-                critérios, exames, tratamento, urgência, internação/referência
-                e pegadinhas de prova.
+              <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-300">
+                Biblioteca médica estruturada por área, com diagnóstico, critérios, exames,
+                tratamento, urgência, internação/referência e agora também flashcards
+                relacionados para revisão rápida dentro de cada tema.
               </p>
 
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-200">
                 <span>Total carregado do banco: {topicos.length}</span>
                 <span>•</span>
                 <span>Exibindo: {filtered.length}</span>
+                <span>•</span>
+                <span>Flashcards disponíveis: {flashcards.length}</span>
               </div>
             </div>
 
@@ -477,7 +667,7 @@ export default function TopicosPage() {
               <button
                 type="button"
                 onClick={openCreateDrawer}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-900"
               >
                 <Plus className="h-4 w-4" />
                 Novo tópico
@@ -485,136 +675,187 @@ export default function TopicosPage() {
             ) : null}
           </div>
 
-          {!isAdmin ? (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              {isGuest
-                ? "Convidado: leitura e cópia liberadas. Edição bloqueada."
-                : "Usuário comum: leitura e cópia liberadas. Apenas o admin gerencia a biblioteca."}
+          {error ? (
+            <div className="mt-5 rounded-2xl border border-rose-300/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-100">
+              Erro: {error}
             </div>
           ) : null}
 
-          {error ? (
-            <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-              Erro: {error}
-            </p>
-          ) : null}
-
           {success ? (
-            <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            <div className="mt-5 rounded-2xl border border-emerald-300/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
               {success}
-            </p>
+            </div>
           ) : null}
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-          <div className="grid gap-3 md:grid-cols-[1fr_280px_auto]">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por tema, diagnóstico, exame, tratamento..."
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            />
+        <div className="grid gap-4 bg-slate-50 p-6 md:grid-cols-3">
+          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
+                <Stethoscope className="h-5 w-5" />
+              </div>
+              <span className="text-2xl font-bold tracking-tight text-slate-900">
+                {areas.length}
+              </span>
+            </div>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Áreas clínicas
+            </p>
+          </div>
 
-            <select
-              value={selectedArea}
-              onChange={(event) => setSelectedArea(event.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="">Todas as áreas</option>
-              {areas.map((area) => (
-                <option key={area} value={area}>
-                  {formatLabel(area)}
-                </option>
-              ))}
-            </select>
+          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <span className="text-2xl font-bold tracking-tight text-slate-900">
+                {flashcards.length}
+              </span>
+            </div>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Flashcards relacionados
+            </p>
+          </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setSelectedArea("");
-              }}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
-            >
-              {hasFilters ? "Limpar filtros" : "Filtros"}
-            </button>
+          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                <BookOpen className="h-5 w-5" />
+              </div>
+              <span className="text-2xl font-bold tracking-tight text-slate-900">
+                {filtered.length}
+              </span>
+            </div>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Tópicos visíveis
+            </p>
           </div>
         </div>
       </section>
 
-      {loading || checkingUser ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
-          Carregando tópicos médicos...
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">
+              Busca e filtros
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Procure pelo tema, área, resumo, tratamento, urgência ou tags.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_260px_auto]">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar tópico..."
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          />
+
+          <select
+            value={selectedArea}
+            onChange={(e) => setSelectedArea(e.target.value)}
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          >
+            <option value="">Todas as áreas</option>
+            {areas.map((area) => (
+              <option key={area} value={area}>
+                {formatLabel(area)}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setSelectedArea("");
+            }}
+            className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
+          >
+            {hasFilters ? "Limpar filtros" : "Filtros"}
+          </button>
+        </div>
+      </section>
+
+      {checkingUser || loading ? (
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-14 text-center text-sm text-slate-500 shadow-sm">
+          Carregando tópicos...
         </section>
-      ) : Object.keys(grouped).length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
-          Nenhum tópico encontrado.
+      ) : filtered.length === 0 ? (
+        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-14 text-center text-sm text-slate-500 shadow-sm">
+          Nenhum tópico encontrado para esse filtro.
         </section>
       ) : (
         Object.entries(grouped).map(([area, items]) => (
-          <section
-            key={area}
-            className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <div className="border-b border-slate-200 pb-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">
-                    Área
-                  </p>
+          <section key={area} className="space-y-4">
+            <div className="flex flex-col gap-2 px-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-600">
+                  {formatLabel(area)}
+                </p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+                  {formatLabel(area)}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {items.length} tópico{items.length > 1 ? "s" : ""} nesta área
+                </p>
+              </div>
 
-                  <h2 className="mt-1 text-xl font-semibold text-slate-900">
-                    {formatLabel(area)}
-                  </h2>
-                </div>
-
-                <span className="rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700">
-                  {items.length} {items.length === 1 ? "item" : "itens"}
-                </span>
+              <div className="self-start rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700">
+                {items.length} {items.length === 1 ? "item" : "itens"}
               </div>
             </div>
 
-            <div className="mt-5 grid gap-4">
+            <div className="grid gap-5">
               {items.map((item) => {
                 const savingItem = savingIds.includes(item.id);
+                const related = getRelatedFlashcards(item);
 
                 return (
                   <article
                     key={item.id}
-                    className="rounded-[24px] border border-slate-200 bg-slate-50 p-5"
+                    className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm"
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
-                        {item.area}
-                      </span>
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+                            {formatLabel(item.area)}
+                          </span>
 
-                      {item.prioridade ? (
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                          Prioridade {item.prioridade}
-                        </span>
-                      ) : null}
+                          {item.prioridade ? (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                              Prioridade {item.prioridade}
+                            </span>
+                          ) : null}
 
-                      {item.fonte ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                          {item.fonte}
-                        </span>
-                      ) : null}
-                    </div>
+                          {item.fonte ? (
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                              {item.fonte}
+                            </span>
+                          ) : null}
 
-                    <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-2xl font-semibold tracking-tight text-slate-900">
+                          {item.atualizado_em ? (
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                              Atualizado em {formatDate(item.atualizado_em)}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <h3 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
                           {item.titulo}
                         </h3>
 
                         {item.tags ? (
-                          <p className="mt-2 text-sm text-slate-500">
+                          <p className="mt-2 text-sm leading-6 text-slate-500">
                             Tags: {item.tags}
                           </p>
                         ) : null}
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-3">
                         <CopyButton text={buildFullText(item)} />
 
                         {isAdmin ? (
@@ -622,8 +863,7 @@ export default function TopicosPage() {
                             <button
                               type="button"
                               onClick={() => openEditDrawer(item)}
-                              disabled={savingItem}
-                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
                             >
                               <Edit3 className="h-4 w-4" />
                               Editar
@@ -633,57 +873,29 @@ export default function TopicosPage() {
                               type="button"
                               onClick={() => handleDelete(item.id, item.titulo)}
                               disabled={savingItem}
-                              className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {savingItem ? "Apagando..." : "Apagar"}
                             </button>
                           </>
-                        ) : (
-                          <span className="inline-flex h-10 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-800">
-                            Somente leitura
-                          </span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
 
-                    {item.resumo ? (
-                      <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-blue-700">
-                          Resumo
-                        </p>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                          {item.resumo}
-                        </p>
-                      </div>
-                    ) : null}
-
-                    <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                      <Section title="Diagnóstico">{item.diagnostico}</Section>
-                      <Section title="Critérios / classificação">
-                        {item.criterios}
-                      </Section>
-                      <Section title="Exames">{item.exames}</Section>
-                      <Section title="Tratamento / conduta">
-                        {item.tratamento}
-                      </Section>
-                      <Section title="Conduta na urgência">
-                        {item.conduta_urgencia}
-                      </Section>
-                      <Section title="Internação / referência">
-                        {item.internacao_referencia}
-                      </Section>
+                    <div className="mt-6 grid gap-4 xl:grid-cols-2">
+                      <Section title="Resumo" value={item.resumo} tone="blue" />
+                      <Section title="Diagnóstico" value={item.diagnostico} tone="emerald" />
+                      <Section title="Critérios / classificação" value={item.criterios} tone="amber" />
+                      <Section title="Exames" value={item.exames} tone="slate" />
+                      <Section title="Tratamento / conduta" value={item.tratamento} tone="blue" />
+                      <Section title="Conduta na urgência" value={item.conduta_urgencia} tone="rose" />
+                      <Section title="Internação / referência" value={item.internacao_referencia} tone="emerald" />
+                      <Section title="Pegadinhas de prova" value={item.pegadinhas} tone="amber" />
                     </div>
 
-                    {item.pegadinhas ? (
-                      <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-rose-700">
-                          Pegadinhas de prova
-                        </p>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                          {item.pegadinhas}
-                        </p>
-                      </div>
-                    ) : null}
+                    <div className="mt-6">
+                      <RelatedCardsPanel cards={related} />
+                    </div>
                   </article>
                 );
               })}
@@ -692,23 +904,23 @@ export default function TopicosPage() {
         ))
       )}
 
-      {drawerOpen && isAdmin ? (
-        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+      {drawerOpen ? (
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50">
           <button
             type="button"
             onClick={closeDrawer}
             className="absolute inset-0"
-            aria-label="Fechar cadastro"
+            aria-label="Fechar edição"
           />
 
-          <div className="relative h-full w-full max-w-3xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+          <div className="relative h-full w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
                   {editingItem ? "Editar tópico" : "Novo tópico"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Cadastro em painel separado para não poluir a listagem.
+                  Apenas o administrador pode alterar a biblioteca de tópicos.
                 </p>
               </div>
 
@@ -721,96 +933,98 @@ export default function TopicosPage() {
               </button>
             </div>
 
-            <div className="space-y-6 px-6 py-6">
+            <div className="space-y-5 px-6 py-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <input
                   value={form.area}
-                  onChange={(event) => updateForm("area", event.target.value)}
+                  onChange={(e) => updateForm("area", e.target.value)}
                   placeholder="Área"
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
 
                 <input
                   value={form.titulo}
-                  onChange={(event) => updateForm("titulo", event.target.value)}
+                  onChange={(e) => updateForm("titulo", e.target.value)}
                   placeholder="Título"
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
 
                 <input
-                  type="number"
-                  min="1"
-                  max="5"
+                  value={form.tags}
+                  onChange={(e) => updateForm("tags", e.target.value)}
+                  placeholder="Tags"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                />
+
+                <input
                   value={form.prioridade}
-                  onChange={(event) =>
-                    updateForm("prioridade", event.target.value)
-                  }
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  onChange={(e) => updateForm("prioridade", e.target.value)}
+                  placeholder="Prioridade"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
 
                 <input
                   value={form.fonte}
-                  onChange={(event) => updateForm("fonte", event.target.value)}
+                  onChange={(e) => updateForm("fonte", e.target.value)}
                   placeholder="Fonte"
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none md:col-span-2"
                 />
               </div>
 
-              <TextAreaField
-                label="Resumo"
+              <textarea
                 value={form.resumo}
-                onChange={(value) => updateForm("resumo", value)}
+                onChange={(e) => updateForm("resumo", e.target.value)}
+                placeholder="Resumo"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
-              <TextAreaField
-                label="Diagnóstico"
+              <textarea
                 value={form.diagnostico}
-                onChange={(value) => updateForm("diagnostico", value)}
+                onChange={(e) => updateForm("diagnostico", e.target.value)}
+                placeholder="Diagnóstico"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
-              <TextAreaField
-                label="Critérios / classificação"
+              <textarea
                 value={form.criterios}
-                onChange={(value) => updateForm("criterios", value)}
+                onChange={(e) => updateForm("criterios", e.target.value)}
+                placeholder="Critérios / classificação"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
-              <TextAreaField
-                label="Exames"
+              <textarea
                 value={form.exames}
-                onChange={(value) => updateForm("exames", value)}
+                onChange={(e) => updateForm("exames", e.target.value)}
+                placeholder="Exames"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
-              <TextAreaField
-                label="Tratamento / conduta"
+              <textarea
                 value={form.tratamento}
-                onChange={(value) => updateForm("tratamento", value)}
+                onChange={(e) => updateForm("tratamento", e.target.value)}
+                placeholder="Tratamento / conduta"
+                className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
-              <TextAreaField
-                label="Conduta na urgência"
+              <textarea
                 value={form.conduta_urgencia}
-                onChange={(value) => updateForm("conduta_urgencia", value)}
+                onChange={(e) => updateForm("conduta_urgencia", e.target.value)}
+                placeholder="Conduta na urgência"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
-              <TextAreaField
-                label="Internação / referência"
+              <textarea
                 value={form.internacao_referencia}
-                onChange={(value) =>
-                  updateForm("internacao_referencia", value)
-                }
+                onChange={(e) => updateForm("internacao_referencia", e.target.value)}
+                placeholder="Internação / referência"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
-              <TextAreaField
-                label="Pegadinhas de prova"
+              <textarea
                 value={form.pegadinhas}
-                onChange={(value) => updateForm("pegadinhas", value)}
-              />
-
-              <TextAreaField
-                label="Tags"
-                value={form.tags}
-                onChange={(value) => updateForm("tags", value)}
-                rows={2}
+                onChange={(e) => updateForm("pegadinhas", e.target.value)}
+                placeholder="Pegadinhas de prova"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
               <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
@@ -818,7 +1032,7 @@ export default function TopicosPage() {
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving
                     ? "Salvando..."
@@ -830,7 +1044,7 @@ export default function TopicosPage() {
                 <button
                   type="button"
                   onClick={closeDrawer}
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
                 >
                   Cancelar
                 </button>
