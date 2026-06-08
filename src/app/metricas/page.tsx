@@ -8,6 +8,7 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  CheckCircle2,
   HeartPulse,
   Pill,
   ShieldAlert,
@@ -40,6 +41,20 @@ type Prescription = {
   paciente_nome?: string | null;
   medicamento?: string | null;
   via?: string | null;
+  created_at?: string | null;
+};
+
+
+type HighRiskConfirmationLog = {
+  id: number;
+  prescription_id?: number | null;
+  patient_id?: string | null;
+  paciente_nome?: string | null;
+  medication_text?: string | null;
+  high_risk_count: number;
+  high_risk_titles?: string[] | null;
+  confirmation_reason?: string | null;
+  confirmed_at?: string | null;
   created_at?: string | null;
 };
 
@@ -77,6 +92,38 @@ function extractMedicationLabel(value?: string | null) {
 
   const firstLine = clean.split("\n")[0]?.trim() || clean;
   return firstLine.length > 56 ? `${firstLine.slice(0, 56)}...` : firstLine;
+}
+
+
+function buildTopConfirmedAlerts(logs: HighRiskConfirmationLog[]) {
+  const counter = new Map<string, number>();
+
+  logs.forEach((item) => {
+    (item.high_risk_titles || []).forEach((title) => {
+      const clean = (title || "").trim();
+      if (!clean) return;
+      counter.set(clean, (counter.get(clean) || 0) + 1);
+    });
+  });
+
+  return Array.from(counter.entries())
+    .map(([title, count]) => ({ title, count }))
+    .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, "pt-BR"))
+    .slice(0, 8);
+}
+
+function buildTopConfirmedMedications(logs: HighRiskConfirmationLog[]) {
+  const counter = new Map<string, number>();
+
+  logs.forEach((item) => {
+    const label = extractMedicationLabel(item.medication_text);
+    counter.set(label, (counter.get(label) || 0) + 1);
+  });
+
+  return Array.from(counter.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"))
+    .slice(0, 8);
 }
 
 function computePatientRiskScore(patient: Patient) {
@@ -192,6 +239,7 @@ export default function MetricasPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [confirmations, setConfirmations] = useState<HighRiskConfirmationLog[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -219,11 +267,12 @@ export default function MetricasPage() {
       if (!userId || guest) {
         setPatients([]);
         setPrescriptions([]);
+        setConfirmations([]);
         setLoading(false);
         return;
       }
 
-      const [patientsRes, prescriptionsRes] = await Promise.all([
+      const [patientsRes, prescriptionsRes, confirmationsRes] = await Promise.all([
         supabase
           .from("patients")
           .select(
@@ -237,6 +286,14 @@ export default function MetricasPage() {
           .select("id, patient_id, paciente_nome, medicamento, via, created_at")
           .eq("user_id", userId)
           .order("created_at", { ascending: false }),
+
+        supabase
+          .from("high_risk_confirmation_logs")
+          .select(
+            "id, prescription_id, patient_id, paciente_nome, medication_text, high_risk_count, high_risk_titles, confirmation_reason, confirmed_at, created_at"
+          )
+          .eq("user_id", userId)
+          .order("confirmed_at", { ascending: false }),
       ]);
 
       if (patientsRes.error) {
@@ -251,6 +308,13 @@ export default function MetricasPage() {
         setPrescriptions([]);
       } else {
         setPrescriptions((prescriptionsRes.data as Prescription[]) || []);
+      }
+
+      if (confirmationsRes.error) {
+        setError((current) => current || confirmationsRes.error.message);
+        setConfirmations([]);
+      } else {
+        setConfirmations((confirmationsRes.data as HighRiskConfirmationLog[]) || []);
       }
 
       setLoading(false);
@@ -272,6 +336,15 @@ export default function MetricasPage() {
     const highRiskPatients = buildHighRiskPatients(patients);
     const riskBreakdown = buildRiskBreakdown(patients);
     const topMedications = buildTopMedicationRows(prescriptions);
+    const thisMonthConfirmations = confirmations.filter(
+      (item) => (item.confirmed_at || item.created_at) && (item.confirmed_at || item.created_at)! >= monthStartIso
+    ).length;
+    const totalConfirmedAlerts = confirmations.reduce(
+      (sum, item) => sum + (item.high_risk_count || 0),
+      0
+    );
+    const topConfirmedAlerts = buildTopConfirmedAlerts(confirmations);
+    const topConfirmedMedications = buildTopConfirmedMedications(confirmations);
 
     const patientsWithAnyRisk = patients.filter(
       (patient) => computePatientRiskScore(patient) > 0
@@ -288,6 +361,7 @@ export default function MetricasPage() {
         : "0.0";
 
     const recentPrescriptions = prescriptions.slice(0, 8);
+    const recentConfirmations = confirmations.slice(0, 8);
 
     return {
       now,
@@ -300,8 +374,13 @@ export default function MetricasPage() {
       patientsWithAnyRisk,
       averageRiskScore,
       recentPrescriptions,
+      recentConfirmations,
+      thisMonthConfirmations,
+      totalConfirmedAlerts,
+      topConfirmedAlerts,
+      topConfirmedMedications,
     };
-  }, [patients, prescriptions]);
+  }, [patients, prescriptions, confirmations]);
 
   if (loading) {
     return (
@@ -362,7 +441,7 @@ export default function MetricasPage() {
         </p>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <Card
           icon={<Users className="h-5 w-5" />}
           title="Pacientes"
@@ -389,6 +468,20 @@ export default function MetricasPage() {
           title="Score médio de risco"
           value={metrics.averageRiskScore}
           hint="Baseado nos fatores estruturados cadastrados"
+        />
+
+        <Card
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          title="Confirmações de alto risco"
+          value={metrics.recentConfirmations.length}
+          hint={`${metrics.thisMonthConfirmations} registradas no mês atual`}
+        />
+
+        <Card
+          icon={<BarChart3 className="h-5 w-5" />}
+          title="Alertas críticos confirmados"
+          value={metrics.totalConfirmedAlerts}
+          hint="Soma dos alertas vermelhos confirmados"
         />
       </section>
 
@@ -520,6 +613,130 @@ export default function MetricasPage() {
                 Ainda não há pacientes com score clínico elevado.
               </div>
             )}
+          </div>
+        </div>
+
+
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Auditoria de risco alto</h2>
+                <p className="text-sm text-slate-500">
+                  O que mais está exigindo confirmação antes de salvar.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-2">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Alertas mais confirmados
+                </h3>
+
+                <div className="mt-4 space-y-3">
+                  {metrics.topConfirmedAlerts.length ? (
+                    metrics.topConfirmedAlerts.map((item) => (
+                      <div
+                        key={item.title}
+                        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                      >
+                        <span className="text-sm font-medium text-slate-700">{item.title}</span>
+                        <span className="text-sm font-semibold text-slate-900">{item.count}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                      Ainda não há confirmações de alto risco registradas.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Medicamentos mais confirmados
+                </h3>
+
+                <div className="mt-4 space-y-3">
+                  {metrics.topConfirmedMedications.length ? (
+                    metrics.topConfirmedMedications.map((item) => (
+                      <div
+                        key={item.name}
+                        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                      >
+                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                        <span className="text-sm font-semibold text-slate-900">{item.count}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                      Assim que você confirmar riscos altos, eles aparecem aqui.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                <Activity className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Confirmações recentes</h2>
+                <p className="text-sm text-slate-500">
+                  Últimas confirmações de prescrição com alerta alto.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {metrics.recentConfirmations.length ? (
+                metrics.recentConfirmations.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {item.paciente_nome || "Paciente não vinculado"}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-xs text-slate-500">
+                          {extractMedicationLabel(item.medication_text)}
+                        </p>
+                      </div>
+
+                      <span className="whitespace-nowrap text-xs text-slate-500">
+                        {formatDate(item.confirmed_at || item.created_at)}
+                      </span>
+                    </div>
+
+                    {item.high_risk_titles?.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.high_risk_titles.map((title, index) => (
+                          <span
+                            key={`${item.id}-${index}`}
+                            className="inline-flex rounded-full border border-rose-200 bg-white px-3 py-1 text-[11px] font-medium text-rose-700"
+                          >
+                            {title}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                  Ainda não há confirmações recentes.
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
