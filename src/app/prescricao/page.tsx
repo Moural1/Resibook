@@ -65,6 +65,12 @@ type PrescriptionTemplate = {
   risk_tags?: string | null;
   condition_tags?: string | null;
   interaction_tags?: string | null;
+  review_status?: "rascunho" | "pendente" | "revisado" | null;
+  model_version?: string | null;
+  risk_level?: "baixo" | "moderado" | "alto" | null;
+  reviewed_by?: string | null;
+  last_reviewed_at?: string | null;
+  publicos_especiais?: string | null;
   created_at: string;
 };
 
@@ -709,7 +715,7 @@ export default function PrescricaoPage() {
     const templatesRes = await supabase
       .from("prescription_templates")
       .select(
-        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
+        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, review_status, model_version, risk_level, reviewed_by, last_reviewed_at, publicos_especiais, created_at"
       )
       .order("titulo", { ascending: true });
 

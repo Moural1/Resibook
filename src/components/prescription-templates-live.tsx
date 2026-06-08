@@ -12,6 +12,12 @@ type PrescriptionTemplate = {
   conteudo: string;
   observacoes: string | null;
   source_file: string | null;
+  review_status?: "rascunho" | "pendente" | "revisado" | null;
+  model_version?: string | null;
+  risk_level?: "baixo" | "moderado" | "alto" | null;
+  reviewed_by?: string | null;
+  last_reviewed_at?: string | null;
+  publicos_especiais?: string | null;
   created_at: string;
 };
 
@@ -48,6 +54,46 @@ function includesSearch(parts: Array<string | null | undefined>, query: string) 
 function formatLabel(value?: string | null) {
   if (!value) return "Sem categoria";
   return value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function formatReviewStatus(value?: PrescriptionTemplate["review_status"]) {
+  if (value === "revisado") return "Revisado";
+  if (value === "pendente") return "Pendente";
+  return "Rascunho";
+}
+
+function reviewStatusClasses(value?: PrescriptionTemplate["review_status"]) {
+  if (value === "revisado") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+  if (value === "pendente") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+  return "border-slate-200 bg-slate-100 text-slate-600";
+}
+
+function formatRiskLevel(value?: PrescriptionTemplate["risk_level"]) {
+  if (value === "alto") return "Alto risco";
+  if (value === "moderado") return "Risco moderado";
+  return "Baixo risco";
+}
+
+function riskLevelClasses(value?: PrescriptionTemplate["risk_level"]) {
+  if (value === "alto") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+  if (value === "moderado") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+  return "border-blue-200 bg-blue-50 text-blue-700";
+}
+
+function parseSpecialAudiences(value?: string | null) {
+  return (value || "")
+    .split(",")
+    .map((item) => formatLabel(item))
+    .filter(Boolean)
+    .slice(0, 4);
 }
 
 function groupTemplates(items: PrescriptionTemplate[]) {
@@ -106,6 +152,8 @@ export default function PrescriptionTemplatesLive({
 
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [reviewFilter, setReviewFilter] = useState<"" | "revisado" | "pendente" | "rascunho">("");
+  const [riskFilter, setRiskFilter] = useState<"" | "alto" | "moderado" | "baixo">("");
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [hydratedFromUrl, setHydratedFromUrl] = useState(false);
 
@@ -113,9 +161,13 @@ export default function PrescriptionTemplatesLive({
     const params = new URLSearchParams(window.location.search);
     const urlQuery = params.get("q") || initialQuery || "";
     const urlCategory = params.get("categoria") || "";
+    const urlReview = (params.get("revisao") as "" | "revisado" | "pendente" | "rascunho") || "";
+    const urlRisk = (params.get("risco") as "" | "alto" | "moderado" | "baixo") || "";
 
     setQuery(urlQuery);
     setSelectedCategory(urlCategory);
+    setReviewFilter(urlReview);
+    setRiskFilter(urlRisk);
     setHydratedFromUrl(true);
   }, [initialQuery]);
 
@@ -126,10 +178,12 @@ export default function PrescriptionTemplatesLive({
 
     if (query.trim()) params.set("q", query.trim());
     if (selectedCategory) params.set("categoria", selectedCategory);
+    if (reviewFilter) params.set("revisao", reviewFilter);
+    if (riskFilter) params.set("risco", riskFilter);
 
     const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(next, { scroll: false });
-  }, [query, selectedCategory, pathname, router, hydratedFromUrl]);
+  }, [query, selectedCategory, reviewFilter, riskFilter, pathname, router, hydratedFromUrl]);
 
   useEffect(() => {
     try {
@@ -197,10 +251,12 @@ export default function PrescriptionTemplatesLive({
 
       const matchesCategory =
         !selectedCategory || itemCategory === selectedCategory;
+      const matchesReview = !reviewFilter || (item.review_status || "rascunho") === reviewFilter;
+      const matchesRisk = !riskFilter || (item.risk_level || "baixo") === riskFilter;
 
-      return matchesQuery && matchesCategory;
+      return matchesQuery && matchesCategory && matchesReview && matchesRisk;
     });
-  }, [templates, query, selectedCategory]);
+  }, [templates, query, selectedCategory, reviewFilter, riskFilter]);
 
   const favorites = useMemo(() => {
     const map = new Map(templates.map((item) => [item.id, item]));
@@ -226,10 +282,12 @@ export default function PrescriptionTemplatesLive({
 
       const matchesCategory =
         !selectedCategory || itemCategory === selectedCategory;
+      const matchesReview = !reviewFilter || (item.review_status || "rascunho") === reviewFilter;
+      const matchesRisk = !riskFilter || (item.risk_level || "baixo") === riskFilter;
 
-      return matchesQuery && matchesCategory;
+      return matchesQuery && matchesCategory && matchesReview && matchesRisk;
     });
-  }, [favorites, query, selectedCategory]);
+  }, [favorites, query, selectedCategory, reviewFilter, riskFilter]);
 
   const groupedTemplates = useMemo(
     () => groupTemplates(filteredTemplates),
@@ -261,6 +319,28 @@ export default function PrescriptionTemplatesLive({
             {formatLabel(item.categoria)}
           </span>
 
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${reviewStatusClasses(
+              item.review_status
+            )}`}
+          >
+            {formatReviewStatus(item.review_status)}
+          </span>
+
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${riskLevelClasses(
+              item.risk_level
+            )}`}
+          >
+            {formatRiskLevel(item.risk_level)}
+          </span>
+
+          {item.model_version ? (
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+              {item.model_version}
+            </span>
+          ) : null}
+
           {item.source_file ? (
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
               {item.source_file}
@@ -278,6 +358,31 @@ export default function PrescriptionTemplatesLive({
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 {item.observacoes}
               </p>
+            ) : null}
+
+            {(item.reviewed_by || item.last_reviewed_at || item.publicos_especiais) ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {item.reviewed_by ? (
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+                    Revisado por {item.reviewed_by}
+                  </span>
+                ) : null}
+
+                {item.last_reviewed_at ? (
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+                    Revisão {new Intl.DateTimeFormat("pt-BR").format(new Date(item.last_reviewed_at))}
+                  </span>
+                ) : null}
+
+                {parseSpecialAudiences(item.publicos_especiais).map((audience) => (
+                  <span
+                    key={`${item.id}-${audience}`}
+                    className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-[11px] font-semibold text-purple-700"
+                  >
+                    {audience}
+                  </span>
+                ))}
+              </div>
             ) : null}
           </div>
 
@@ -336,7 +441,7 @@ export default function PrescriptionTemplatesLive({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_260px_auto]">
+        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px_220px_auto]">
           <input
             type="text"
             value={query}
@@ -358,15 +463,47 @@ export default function PrescriptionTemplatesLive({
             ))}
           </select>
 
+          <select
+            value={reviewFilter}
+            onChange={(e) =>
+              setReviewFilter(
+                e.target.value as "" | "revisado" | "pendente" | "rascunho"
+              )
+            }
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+          >
+            <option value="">Todas as revisões</option>
+            <option value="revisado">Só revisados</option>
+            <option value="pendente">Pendentes</option>
+            <option value="rascunho">Rascunhos</option>
+          </select>
+
+          <select
+            value={riskFilter}
+            onChange={(e) =>
+              setRiskFilter(
+                e.target.value as "" | "alto" | "moderado" | "baixo"
+              )
+            }
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+          >
+            <option value="">Todos os riscos</option>
+            <option value="alto">Alto risco</option>
+            <option value="moderado">Moderado</option>
+            <option value="baixo">Baixo</option>
+          </select>
+
           <button
             type="button"
             onClick={() => {
               setQuery("");
               setSelectedCategory("");
+              setReviewFilter("");
+              setRiskFilter("");
             }}
             className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            {hasFilters ? "Limpar" : "Filtros"}
+            {hasFilters || reviewFilter || riskFilter ? "Limpar" : "Filtros"}
           </button>
         </div>
 
@@ -375,9 +512,13 @@ export default function PrescriptionTemplatesLive({
             {filteredTemplates.length} de {templates.length} modelos
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
               {favorites.length} favoritos
+            </span>
+
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              {templates.filter((item) => (item.review_status || "rascunho") === "revisado").length} revisados
             </span>
 
             {selectedCategory ? (
