@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
+import ModulePageHeader from "../../components/module-page-header";
 import { BookOpen, Edit3, Plus, Sparkles, Stethoscope, X } from "lucide-react";
 
 type TopicoMedico = {
@@ -261,12 +262,12 @@ function RelatedCardsPanel({
   if (cards.length === 0) return null;
 
   return (
-    <section className="rounded-[26px] border border-violet-200 bg-violet-50/70 p-5">
+    <section className="rounded-[26px] border border-cyan-200/70 bg-cyan-50/60 p-5">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="inline-flex rounded-full border border-violet-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
+        <span className="inline-flex rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
           Revisão rápida
         </span>
-        <p className="text-sm text-violet-900">
+        <p className="text-sm text-slate-700">
           Flashcards relacionados a este tópico para revisão objetiva.
         </p>
       </div>
@@ -282,7 +283,7 @@ function RelatedCardsPanel({
             >
               <div className="flex flex-wrap items-center gap-2">
                 {card.materia ? (
-                  <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-semibold text-violet-700">
+                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
                     {card.materia}
                   </span>
                 ) : null}
@@ -620,78 +621,42 @@ export default function TopicosPage() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-6 py-8 text-white">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex rounded-full border border-cyan-200/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">
-                  Biblioteca clínica
-                </span>
-
-                <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
-                  Tópicos médicos
-                </span>
-
-                <span
-                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
-                    isAdmin
-                      ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
-                      : "border-amber-300/30 bg-amber-400/10 text-amber-100"
-                  }`}
-                >
-                  {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
-                </span>
-              </div>
-
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
-                Tópicos clínicos com revisão integrada
-              </h1>
-
-              <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-300">
-                Biblioteca médica estruturada por área, com diagnóstico, critérios, exames,
-                tratamento, urgência, internação/referência e agora também flashcards
-                relacionados para revisão rápida dentro de cada tema.
-              </p>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-200">
-                <span>Total carregado do banco: {topicos.length}</span>
-                <span>•</span>
-                <span>Exibindo: {filtered.length}</span>
-                <span>•</span>
-                <span>Flashcards disponíveis: {flashcards.length}</span>
-              </div>
-            </div>
-
-            {isAdmin ? (
-              <button
-                type="button"
-                onClick={openCreateDrawer}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-900"
-              >
-                <Plus className="h-4 w-4" />
-                Novo tópico
-              </button>
-            ) : null}
-          </div>
-
-          {error ? (
-            <div className="mt-5 rounded-2xl border border-rose-300/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-100">
-              Erro: {error}
-            </div>
-          ) : null}
-
-          {success ? (
-            <div className="mt-5 rounded-2xl border border-emerald-300/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
-              {success}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="grid gap-4 bg-slate-50 p-6 md:grid-cols-3">
+      <ModulePageHeader
+        eyebrow="Biblioteca clínica"
+        title="Tópicos clínicos com revisão integrada"
+        description="Biblioteca médica estruturada por área, com diagnóstico, critérios, exames, tratamento, urgência, internação/referência e flashcards relacionados para revisão rápida dentro de cada tema."
+        badges={[
+          { label: "Tópicos médicos", tone: "cyan" },
+          { label: "Biblioteca clínica", tone: "slate" },
+          {
+            label: isAdmin ? "Admin pode gerenciar" : "Somente leitura",
+            tone: isAdmin ? "emerald" : "amber",
+          },
+        ]}
+        metrics={[
+          { label: "Total carregado do banco", value: topicos.length },
+          { label: "Exibindo", value: filtered.length },
+          { label: "Flashcards disponíveis", value: flashcards.length },
+        ]}
+        error={error}
+        success={success}
+        actions={
+          isAdmin ? (
+            <button
+              type="button"
+              onClick={openCreateDrawer}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Novo tópico
+            </button>
+          ) : null
+        }
+      >
+        <div className="grid gap-4 bg-slate-50 md:grid-cols-3">
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50 text-cyan-700">
                 <Stethoscope className="h-5 w-5" />
               </div>
               <span className="text-2xl font-bold tracking-tight text-slate-900">
@@ -705,21 +670,7 @@ export default function TopicosPage() {
 
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <span className="text-2xl font-bold tracking-tight text-slate-900">
-                {flashcards.length}
-              </span>
-            </div>
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Flashcards relacionados
-            </p>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <BookOpen className="h-5 w-5" />
               </div>
               <span className="text-2xl font-bold tracking-tight text-slate-900">
@@ -727,11 +678,25 @@ export default function TopicosPage() {
               </span>
             </div>
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Tópicos visíveis
+              Tópicos filtrados
+            </p>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <span className="text-2xl font-bold tracking-tight text-slate-900">
+                {flashcards.length}
+              </span>
+            </div>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Flashcards ligados
             </p>
           </div>
         </div>
-      </section>
+      </ModulePageHeader>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">

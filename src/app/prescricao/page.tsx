@@ -8,6 +8,7 @@ import ClinicalAlerts, {
   buildClinicalAlerts,
   type ClinicalAlert,
 } from "../../components/clinical-alerts";
+import ModulePageHeader from "../../components/module-page-header";
 import { ClipboardPlus, Edit3, Lock, Printer, X } from "lucide-react";
 
 type Prescription = {
@@ -1219,64 +1220,48 @@ export default function PrescricaoPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-        <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
-              Prescrição
-            </p>
-
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-4xl">
-              Prescrição clínica
-            </h1>
-
-            <p className="mt-2 text-sm text-slate-500 md:text-base">
-              {isGuest
-                ? "Modo convidado: use os modelos compartilhados ou monte uma prescrição para copiar. O salvamento no banco está bloqueado."
-                : "Registro médico com histórico privado do usuário logado e modelos prontos compartilhados."}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
-              {isGuest ? "Modo convidado" : `${total} ${total === 1 ? "item" : "itens"}`}
+      <ModulePageHeader
+        eyebrow="Módulo assistencial"
+        title="Prescrição clínica"
+        description={
+          isGuest
+            ? "Modo convidado: use os modelos compartilhados ou monte uma prescrição para copiar. O salvamento no banco está bloqueado."
+            : "Registro médico com histórico privado do usuário logado e modelos prontos compartilhados."
+        }
+        badges={[
+          { label: "Prescrição", tone: "blue" },
+          { label: "Biblioteca compartilhada", tone: "slate" },
+          {
+            label: isGuest ? "Modo convidado" : `${total} ${total === 1 ? "item" : "itens"}`,
+            tone: isGuest ? "amber" : "blue",
+          },
+        ]}
+        error={error}
+        success={success}
+        notice={
+          isGuest ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              Acesso convidado: você pode consultar e copiar modelos de
+              <span className="mx-1">prescription_templates</span>
+              e montar um rascunho local, mas não pode salvar, editar, apagar ou
+              acessar dados privados de pacientes e prescrições.
             </div>
-
-            {!isGuest ? (
-              <button
-                type="button"
-                onClick={openCreateDrawer}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-              >
-                <ClipboardPlus className="h-4 w-4" />
-                Nova prescrição
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        {error ? (
-          <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            Erro: {error}
-          </div>
-        ) : null}
-
-        {success ? (
-          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-            {success}
-          </div>
-        ) : null}
-
-        {isGuest ? (
-          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            Acesso convidado: você pode consultar e copiar modelos de
-            <span className="mx-1">prescription_templates</span>
-            e montar um rascunho local, mas não pode salvar, editar, apagar ou
-            acessar dados privados de pacientes e prescrições.
-          </div>
-        ) : null}
-
-        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          ) : null
+        }
+        actions={
+          !isGuest ? (
+            <button
+              type="button"
+              onClick={openCreateDrawer}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+            >
+              <ClipboardPlus className="h-4 w-4" />
+              Nova prescrição
+            </button>
+          ) : null
+        }
+      >
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -1386,7 +1371,7 @@ export default function PrescricaoPage() {
             </div>
           </aside>
         </div>
-      </section>
+      </ModulePageHeader>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

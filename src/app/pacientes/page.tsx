@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
+import ModulePageHeader from "../../components/module-page-header";
 import { AlertTriangle, Plus, X } from "lucide-react";
 
 type Patient = {
@@ -768,69 +769,39 @@ export default function PacientesPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                  Pacientes
-                </span>
-
-                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  Prontuário profissional
-                </span>
-
-                <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                  {recentCount} novos em 7 dias
-                </span>
-              </div>
-
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-                Pacientes
-              </h1>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Cadastro clínico completo com dados cadastrais, plano de saúde,
-                alergias, queixa, HMA, HPP, exame físico, hipótese diagnóstica e
-                conduta.
-              </p>
-
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
-                <span>
-                  {loading
-                    ? "Carregando..."
-                    : `Total do seu usuário: ${patients.length}`}
-                </span>
-                <span>•</span>
-                <span>Exibindo: {filtered.length}</span>
-              </div>
-
-              {error ? (
-                <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-                  Erro: {error}
-                </p>
-              ) : null}
-
-              {success ? (
-                <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                  {success}
-                </p>
-              ) : null}
-            </div>
-
-            <button
-              type="button"
-              onClick={openCreateDrawer}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Novo paciente
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+      <ModulePageHeader
+        eyebrow="Módulo clínico"
+        title="Pacientes"
+        description="Cadastro clínico completo com dados cadastrais, plano de saúde, alergias, queixa, HMA, HPP, exame físico, hipótese diagnóstica e conduta."
+        badges={[
+          { label: "Pacientes", tone: "emerald" },
+          { label: "Prontuário profissional", tone: "slate" },
+          { label: `${recentCount} novos em 7 dias`, tone: "blue" },
+        ]}
+        metrics={[
+          {
+            label: "Total do seu usuário",
+            value: loading ? "Carregando..." : patients.length,
+          },
+          {
+            label: "Exibindo",
+            value: filtered.length,
+          },
+        ]}
+        error={error}
+        success={success}
+        actions={
+          <button
+            type="button"
+            onClick={openCreateDrawer}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+          >
+            <Plus className="h-4 w-4" />
+            Novo paciente
+          </button>
+        }
+      >
+        <div className="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
           <input
             type="text"
             value={query}
@@ -879,7 +850,7 @@ export default function PacientesPage() {
             </button>
           </div>
         </div>
-      </section>
+      </ModulePageHeader>
 
       {loading ? (
         <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">

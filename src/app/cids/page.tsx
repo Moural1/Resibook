@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
+import ModulePageHeader from "../../components/module-page-header";
 import { Edit3, Lock, Plus, X } from "lucide-react";
 
 type CidItem = {
@@ -316,83 +317,51 @@ export default function CidsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-                  Referência rápida
-                </span>
-
-                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  Biblioteca compartilhada
-                </span>
-
-                <span
-                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
-                    isAdmin
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-amber-200 bg-amber-50 text-amber-700"
-                  }`}
-                >
-                  {isAdmin ? "Admin pode gerenciar" : "Somente leitura"}
-                </span>
-              </div>
-
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-                CIDs
-              </h1>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Consulta de CIDs com busca, filtros e cópia rápida. A
-                biblioteca é compartilhada para todos os autenticados; somente o
-                administrador pode criar, editar ou apagar.
-              </p>
-
-              <p className="mt-3 text-sm font-medium text-slate-700">
-                {loading
-                  ? "Carregando..."
-                  : `Total carregado do banco: ${allCids.length}`}
-              </p>
-            </div>
-
-            {isAdmin ? (
-              <button
-                type="button"
-                onClick={openCreateDrawer}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-              >
-                <Plus className="h-4 w-4" />
-                Novo CID
-              </button>
-            ) : null}
-          </div>
-
-          {!isAdmin ? (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+      <ModulePageHeader
+        eyebrow="Referência clínica"
+        title="CIDs"
+        description="Consulta de CIDs com busca, filtros e cópia rápida. A biblioteca é compartilhada para todos os autenticados; somente o administrador pode criar, editar ou apagar."
+        badges={[
+          { label: "Referência rápida", tone: "cyan" },
+          { label: "Biblioteca compartilhada", tone: "slate" },
+          {
+            label: isAdmin ? "Admin pode gerenciar" : "Somente leitura",
+            tone: isAdmin ? "emerald" : "amber",
+          },
+        ]}
+        metrics={[
+          {
+            label: "Total carregado do banco",
+            value: loading ? "Carregando..." : allCids.length,
+          },
+        ]}
+        error={error}
+        success={success}
+        notice={
+          !isAdmin ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
                 {isGuest
                   ? "Convidado: leitura e cópia liberadas. Edição bloqueada."
-                  : "Usuário comum: leitura e cópia liberadas. Apenas o admin gerencia a biblioteca."}
+                  : "Usuário comum: consulta liberada. Apenas o administrador pode gerenciar CIDs."}
               </div>
             </div>
-          ) : null}
-
-          {success ? (
-            <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-              {success}
-            </p>
-          ) : null}
-
-          {error ? (
-            <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-              Erro: {error}
-            </p>
-          ) : null}
-        </div>
-      </section>
+          ) : null
+        }
+        actions={
+          isAdmin ? (
+            <button
+              type="button"
+              onClick={openCreateDrawer}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Novo CID
+            </button>
+          ) : null
+        }
+      />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">

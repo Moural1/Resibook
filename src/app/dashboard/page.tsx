@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Lock } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  ClipboardList,
+  FileStack,
+  FlaskConical,
+  Lock,
+  Stethoscope,
+  Tags,
+  Users,
+  Brain,
+  BarChart3,
+} from "lucide-react";
 
 type Patient = {
   id: string;
@@ -311,27 +323,29 @@ export default function DashboardPage() {
   if (!loading && sessionReady && isGuest) {
     return (
       <div className="space-y-6">
-        <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
-          <div className="mx-auto max-w-xl text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
-              <Lock className="h-5 w-5" />
+        <section className="overflow-hidden rounded-[28px] border border-amber-200/80 bg-white shadow-sm">
+          <div className="border-b border-amber-100 bg-[linear-gradient(180deg,#fffdf8_0%,#ffffff_100%)] p-6">
+            <div className="mx-auto max-w-xl text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700">
+                <Lock className="h-5 w-5" />
+              </div>
+
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+                Acesso restrito
+              </h1>
+
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                O perfil convidado não pode visualizar dashboard privado, métricas
+                assistenciais, pacientes recentes nem prescrições recentes.
+              </p>
+
+              <Link
+                href="/prescricao"
+                className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Ir para prescrição
+              </Link>
             </div>
-
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
-              Acesso restrito
-            </h1>
-
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              O perfil convidado não pode visualizar dashboard privado, métricas
-              assistenciais, pacientes recentes nem prescrições recentes.
-            </p>
-
-            <Link
-              href="/prescricao"
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-            >
-              Ir para prescrição
-            </Link>
           </div>
         </section>
       </div>
@@ -340,180 +354,195 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
-            ResiBook
-          </span>
+      <section className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03]">
+        <div className="border-b border-slate-200/80 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fbff_100%)] p-6 md:p-8">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex rounded-full border border-cyan-200/80 bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+              ResiBook
+            </span>
 
-          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-            Painel principal
-          </span>
+            <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+              Painel principal
+            </span>
 
-          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            Privado por usuário
-          </span>
+            <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              Privado por usuário
+            </span>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-3xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
+                Dashboard clínico
+              </h1>
+
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
+                Visão geral do seu login. Pacientes, prescrições e atividades
+                clínicas são filtrados por usuário; bibliotecas médicas seguem
+                compartilhadas.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+              <HeaderPill label="Pacientes" value={counts.patients} />
+              <HeaderPill label="Prescrições" value={counts.prescriptions} />
+              <HeaderPill label="Difíceis" value={counts.flashcardsDificeis} />
+            </div>
+          </div>
+
+          {error ? (
+            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+              Erro: {error}
+            </div>
+          ) : null}
+
+          {loading ? (
+            <p className="mt-5 text-sm font-medium text-slate-500">
+              Carregando dados do dashboard...
+            </p>
+          ) : null}
         </div>
 
-        <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">
-          Dashboard clínico
-        </h1>
+        <div className="p-4 md:p-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              title="Pacientes"
+              value={counts.patients}
+              description="Cadastros do seu login"
+              href="/pacientes"
+              icon={Users}
+            />
 
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-          Visão geral do seu login. Pacientes, prescrições e atividades clínicas
-          são filtrados por usuário; bibliotecas médicas seguem compartilhadas.
-        </p>
+            <MetricCard
+              title="Prescrições"
+              value={counts.prescriptions}
+              description="Itens salvos por você"
+              href="/prescricao"
+              icon={ClipboardList}
+            />
 
-        {error ? (
-          <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            Erro: {error}
+            <MetricCard
+              title="Exames / Evolução"
+              value={counts.examTemplates}
+              description="Biblioteca compartilhada"
+              href="/exames-evolucao"
+              icon={FlaskConical}
+            />
+
+            <MetricCard
+              title="Tópicos"
+              value={counts.topicosMedicos}
+              description="Biblioteca médica"
+              href="/topicos"
+              icon={Stethoscope}
+            />
+
+            <MetricCard
+              title="Flashcards"
+              value={counts.flashcards}
+              description="Biblioteca compartilhada"
+              href="/flashcards"
+              icon={Brain}
+            />
+
+            <MetricCard
+              title="Difíceis"
+              value={counts.flashcardsDificeis}
+              description="Marcados por você"
+              href="/flashcards-dificeis"
+              icon={FileStack}
+            />
+
+            <MetricCard
+              title="CIDs"
+              value={counts.cids}
+              description="Base de consulta"
+              href="/cids"
+              icon={Tags}
+            />
+
+            <MetricCard
+              title="Revisão"
+              value={counts.topicosMedicos}
+              description="Modo estudo"
+              href="/topicos"
+              icon={BookOpen}
+            />
           </div>
-        ) : null}
-
-        {loading ? (
-          <p className="mt-5 text-sm font-medium text-slate-500">
-            Carregando dados do dashboard...
-          </p>
-        ) : null}
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title="Pacientes"
-            value={counts.patients}
-            description="Cadastros do seu login"
-            href="/pacientes"
-          />
-
-          <MetricCard
-            title="Prescrições"
-            value={counts.prescriptions}
-            description="Itens salvos por você"
-            href="/prescricao"
-          />
-
-          <MetricCard
-            title="Exames / Evolução"
-            value={counts.examTemplates}
-            description="Biblioteca compartilhada"
-            href="/exames-evolucao"
-          />
-
-          <MetricCard
-            title="Tópicos"
-            value={counts.topicosMedicos}
-            description="Biblioteca médica"
-            href="/topicos"
-          />
-
-          <MetricCard
-            title="Flashcards"
-            value={counts.flashcards}
-            description="Biblioteca compartilhada"
-            href="/flashcards"
-          />
-
-          <MetricCard
-            title="Difíceis"
-            value={counts.flashcardsDificeis}
-            description="Marcados por você"
-            href="/flashcards-dificeis"
-          />
-
-          <MetricCard
-            title="CIDs"
-            value={counts.cids}
-            description="Base de consulta"
-            href="/cids"
-          />
-
-          <MetricCard
-            title="Revisão"
-            value={counts.topicosMedicos}
-            description="Modo estudo"
-            href="/topicos"
-          />
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="border-b border-slate-200 pb-4">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Atalhos rápidos
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Fluxos mais usados no dia a dia.
-            </p>
-          </div>
+      <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+        <section className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-950/[0.02]">
+          <SectionHeader
+            title="Atalhos rápidos"
+            description="Fluxos mais usados no dia a dia."
+          />
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <ShortcutCard
               href="/pacientes"
-              emoji="🧑‍⚕️"
               title="Abrir pacientes"
               description="Cadastro, busca e edição rápida."
+              icon={Users}
             />
 
             <ShortcutCard
               href="/prescricao"
-              emoji="📋"
               title="Abrir prescrição"
               description="Biblioteca, formulário e histórico."
+              icon={ClipboardList}
             />
 
             <ShortcutCard
               href="/exames-evolucao"
-              emoji="🧪"
               title="Abrir exames"
               description="Blocos clínicos e evolução."
+              icon={FlaskConical}
             />
 
             <ShortcutCard
               href="/topicos"
-              emoji="📚"
               title="Abrir tópicos"
               description="Consultar biblioteca médica."
+              icon={Stethoscope}
             />
 
             <ShortcutCard
               href="/flashcards"
-              emoji="🧠"
               title="Abrir flashcards"
               description="Revisão médica rápida."
+              icon={Brain}
             />
 
             <ShortcutCard
               href="/flashcards-dificeis"
-              emoji="🔥"
               title="Revisar difíceis"
               description="Foco no que você marcou."
+              icon={FileStack}
             />
 
             <ShortcutCard
               href="/cids"
-              emoji="🏷️"
               title="Consultar CIDs"
               description="Buscar códigos e descrições."
+              icon={Tags}
             />
 
             <ShortcutCard
               href="/metricas"
-              emoji="📊"
               title="Métricas"
               description="Ver seus indicadores clínicos."
+              icon={BarChart3}
             />
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="border-b border-slate-200 pb-4">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Favoritos salvos
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Modelos favoritos para acesso rápido neste navegador.
-            </p>
-          </div>
+        <section className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-950/[0.02]">
+          <SectionHeader
+            title="Favoritos salvos"
+            description="Modelos favoritos para acesso rápido neste navegador."
+          />
 
           <div className="mt-5 space-y-4">
             <FavoriteStatCard
@@ -530,11 +559,11 @@ export default function DashboardPage() {
               href="/exames-evolucao"
             />
 
-            <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm font-semibold text-slate-900">
+            <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50/80 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Fluxo recomendado
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm leading-6 text-slate-700">
                 Paciente → Prescrição → Exames/Evolução → Tópicos → Flashcards.
               </p>
             </div>
@@ -637,52 +666,98 @@ export default function DashboardPage() {
   );
 }
 
+function HeaderPill({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white/80 px-3.5 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="border-b border-slate-200 pb-4">
+      <h2 className="text-lg font-semibold tracking-tight text-slate-900 md:text-xl">
+        {title}
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">{description}</p>
+    </div>
+  );
+}
+
 function MetricCard({
   title,
   value,
   description,
   href,
+  icon: Icon,
 }: {
   title: string;
   value: number;
   description: string;
   href: string;
+  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <Link
       href={href}
-      className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:border-slate-300 hover:bg-white"
+      className="group rounded-[22px] border border-slate-200 bg-slate-50/80 p-5 transition hover:border-slate-300 hover:bg-white hover:shadow-sm"
     >
-      <p className="text-sm font-medium text-slate-500">{title}</p>
-      <p className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600">
+          <Icon className="h-4.5 w-4.5" />
+        </div>
+
+        <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-slate-500" />
+      </div>
+
+      <p className="mt-4 text-sm font-medium text-slate-500">{title}</p>
+      <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-950">
         {value}
       </p>
-      <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
     </Link>
   );
 }
 
 function ShortcutCard({
   href,
-  emoji,
   title,
   description,
+  icon: Icon,
 }: {
   href: string;
-  emoji: string;
   title: string;
   description: string;
+  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <Link
       href={href}
-      className="flex items-start gap-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
+      className="group flex items-start gap-4 rounded-[20px] border border-slate-200 bg-slate-50/80 p-4 transition hover:border-slate-300 hover:bg-white"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
-        {emoji}
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600">
+        <Icon className="h-4.5 w-4.5" />
       </div>
 
-      <div>
+      <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-900">{title}</p>
         <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
       </div>
@@ -704,15 +779,15 @@ function FavoriteStatCard({
   return (
     <Link
       href={href}
-      className="block rounded-[24px] border border-slate-200 bg-slate-50 p-5 transition hover:border-slate-300 hover:bg-white"
+      className="block rounded-[22px] border border-slate-200 bg-slate-50/80 p-5 transition hover:border-slate-300 hover:bg-white"
     >
       <div className="flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">{title}</p>
           <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
         </div>
 
-        <div className="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-lg font-bold text-amber-700">
+        <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-semibold text-slate-800">
           {value}
         </div>
       </div>
@@ -732,13 +807,15 @@ function RecentPanel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-950/[0.02]">
       <div className="flex items-end justify-between gap-4 border-b border-slate-200 pb-4">
-        <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
+        <h2 className="text-lg font-semibold tracking-tight text-slate-900 md:text-xl">
+          {title}
+        </h2>
 
         <Link
           href={actionHref}
-          className="text-sm font-medium text-blue-600 transition hover:text-blue-700"
+          className="text-sm font-medium text-slate-600 transition hover:text-slate-900"
         >
           {actionLabel}
         </Link>
@@ -759,14 +836,14 @@ function RecentRow({
   meta: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-[20px] border border-slate-200 bg-slate-50/80 p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900">{title}</p>
+          <p className="truncate text-sm font-semibold text-slate-900">{title}</p>
           <p className="mt-1 text-sm leading-6 text-slate-500">{subtitle}</p>
         </div>
 
-        <span className="shrink-0 text-xs font-medium text-slate-400">
+        <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">
           {meta}
         </span>
       </div>
@@ -776,7 +853,7 @@ function RecentRow({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+    <div className="rounded-[20px] border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-500">
       {text}
     </div>
   );
