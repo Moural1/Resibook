@@ -27,23 +27,23 @@ type Props = {
 
 function badgeToneClass(tone: HeaderBadge["tone"] = "slate") {
   if (tone === "blue") {
-    return "border-blue-200 bg-blue-50 text-blue-700";
+    return "border-blue-200/80 bg-blue-50 text-blue-700";
   }
 
   if (tone === "cyan") {
-    return "border-cyan-200 bg-cyan-50 text-cyan-700";
+    return "border-cyan-200/80 bg-cyan-50 text-cyan-700";
   }
 
   if (tone === "emerald") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
   }
 
   if (tone === "amber") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
+    return "border-amber-200/80 bg-amber-50 text-amber-700";
   }
 
   if (tone === "rose") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
+    return "border-rose-200/80 bg-rose-50 text-rose-700";
   }
 
   return "border-slate-200 bg-slate-50 text-slate-600";
@@ -62,24 +62,24 @@ export default function ModulePageHeader({
   children,
 }: Props) {
   return (
-    <section className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03]">
-      <div className="border-b border-slate-200/80 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fbff_100%)] p-6 md:p-8">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+    <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.025]">
+      <div className="border-b border-slate-200/80 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fbff_72%,#f7fafc_100%)] p-5 md:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 max-w-4xl">
             {eyebrow ? (
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-700">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-700">
                 {eyebrow}
               </p>
             ) : null}
 
             {badges.length > 0 ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2.5">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 {badges.map((badge) => (
                   <span
                     key={`${badge.label}-${badge.tone || "slate"}`}
-                    className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${
-                      badgeToneClass(badge.tone)
-                    }`}
+                    className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${badgeToneClass(
+                      badge.tone
+                    )}`}
                   >
                     {badge.label}
                   </span>
@@ -87,12 +87,12 @@ export default function ModulePageHeader({
               </div>
             ) : null}
 
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
+            <h1 className="mt-4 text-[28px] font-semibold tracking-tight text-slate-950 md:text-[38px]">
               {title}
             </h1>
 
             {description ? (
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-[15px]">
                 {description}
               </p>
             ) : null}
@@ -134,7 +134,7 @@ export default function ModulePageHeader({
         {notice ? <div className="mt-5">{notice}</div> : null}
       </div>
 
-      {children ? <div className="p-4 md:p-6">{children}</div> : null}
+      {children ? <div className="p-4 md:p-5">{children}</div> : null}
     </section>
   );
 }
