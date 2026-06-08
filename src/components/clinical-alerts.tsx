@@ -39,7 +39,7 @@ type ClinicalAlertsProps = {
   className?: string;
 };
 
-export type ClinicalAlertItem = {
+type ClinicalAlert = {
   id: string;
   level: ClinicalAlertLevel;
   title: string;
@@ -72,8 +72,8 @@ function hasTag(tags: Set<string>, tag: string) {
 }
 
 function pushAlert(
-  alerts: ClinicalAlertItem[],
-  alert: ClinicalAlertItem
+  alerts: ClinicalAlert[],
+  alert: ClinicalAlert
 ) {
   if (alerts.some((item) => item.id === alert.id)) return;
   alerts.push(alert);
@@ -206,14 +206,14 @@ function buildPatientInteractionTags(medsText?: string | null) {
   return tags;
 }
 
-export function buildClinicalAlerts(
+function buildAlerts(
   patient?: PatientRiskProfile | null,
   medicationText?: string | null,
   templateMeta?: TemplateRiskProfile | null
-): ClinicalAlertItem[] {
+): ClinicalAlert[] {
   if (!patient || !medicationText?.trim()) return [];
 
-  const alerts: ClinicalAlertItem[] = [];
+  const alerts: ClinicalAlert[] = [];
   const prescriptionText = normalizeText(medicationText);
   const templateText = normalizeText(
     [
@@ -391,6 +391,20 @@ export function buildClinicalAlerts(
       message:
         templateMeta?.alerta_alergias ||
         "A prescrição contém penicilina/cefalosporina e o paciente tem histórico sugestivo de alergia relacionada.",
+    });
+  }
+
+  if (
+    includesAny(text, ["dipirona", "metamizol", "novalgina"]) &&
+    includesAny(allergiesText, ["dipirona", "metamizol", "novalgina", "pirazolona", "pirazolonico", "pirazolônico"])
+  ) {
+    pushAlert(alerts, {
+      id: "dipyrone-allergy",
+      level: "high",
+      title: "Alergia compatível com dipirona",
+      message:
+        templateMeta?.alerta_alergias ||
+        "A prescrição contém dipirona/metamizol e o paciente tem histórico sugestivo de alergia relacionada.",
     });
   }
 
@@ -586,7 +600,7 @@ export default function ClinicalAlerts({
   templateMeta,
   className = "",
 }: ClinicalAlertsProps) {
-  const alerts = buildClinicalAlerts(patient, medicationText, templateMeta);
+  const alerts = buildAlerts(patient, medicationText, templateMeta);
 
   if (!patient || alerts.length === 0) return null;
 
