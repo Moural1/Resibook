@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Lock, Plus, X } from "lucide-react";
+import { BookOpen, Brain, Lock, Plus, Sparkles, Target, X } from "lucide-react";
 
 type Flashcard = {
   id: string;
@@ -50,6 +50,132 @@ function normalize(value?: string | null) {
     .trim();
 }
 
+function buildParagraphs(value?: string | null) {
+  return (value || "")
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+}
+
+function renderRichText(
+  value?: string | null,
+  emptyText = "Sem conteúdo"
+) {
+  const blocks = buildParagraphs(value);
+
+  if (blocks.length === 0) {
+    return <p className="text-sm leading-7 text-slate-400">{emptyText}</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, index) => {
+        const lines = block
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        const isBulletList =
+          lines.length > 1 &&
+          lines.every((line) => /^[-•]/.test(line) || /^\d+[\.\)]/.test(line));
+
+        if (isBulletList) {
+          const ordered = lines.every((line) => /^\d+[\.\)]/.test(line));
+
+          if (ordered) {
+            return (
+              <ol
+                key={index}
+                className="ml-5 list-decimal space-y-2 text-sm leading-7 text-slate-700"
+              >
+                {lines.map((line, lineIndex) => (
+                  <li key={lineIndex}>
+                    {line.replace(/^\d+[\.\)]\s*/, "")}
+                  </li>
+                ))}
+              </ol>
+            );
+          }
+
+          return (
+            <ul
+              key={index}
+              className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700"
+            >
+              {lines.map((line, lineIndex) => (
+                <li key={lineIndex}>
+                  {line.replace(/^[-•]\s*/, "")}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        if (lines.length === 1) {
+          const line = lines[0];
+          const labelMatch = line.match(/^([^:]{2,40}):\s*(.+)$/);
+
+          if (labelMatch) {
+            return (
+              <div
+                key={index}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+              >
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                  {labelMatch[1]}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-slate-700">
+                  {labelMatch[2]}
+                </p>
+              </div>
+            );
+          }
+        }
+
+        return (
+          <p key={index} className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+            {block}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  tone = "slate",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  tone?: "slate" | "blue" | "rose" | "emerald";
+}) {
+  const styles = {
+    slate: "border-slate-200 bg-white text-slate-900",
+    blue: "border-blue-200 bg-blue-50 text-blue-900",
+    rose: "border-rose-200 bg-rose-50 text-rose-900",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  }[tone];
+
+  return (
+    <div className={`rounded-[24px] border p-4 shadow-sm ${styles}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 ring-1 ring-black/5">
+          {icon}
+        </div>
+        <span className="text-2xl font-bold tracking-tight">{value}</span>
+      </div>
+      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+        {label}
+      </p>
+    </div>
+  );
+}
+
 export default function FlashcardsPage() {
   const supabase = createClient();
   const router = useRouter();
@@ -71,17 +197,11 @@ export default function FlashcardsPage() {
   const [query, setQuery] = useState("");
   const [area, setArea] = useState("");
   const [materia, setMateria] = useState("");
+  const [mode, setMode] = useState<"todos" | "dificeis" | "revelados">("todos");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
   const [form, setForm] = useState<FlashcardForm>(emptyForm);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setQuery(params.get("q") || "");
-    setArea(params.get("area") || "");
-    setMateria(params.get("materia") || "");
-  }, []);
 
   async function loadCards() {
     setLoading(true);
@@ -169,34 +289,43 @@ export default function FlashcardsPage() {
     if (query.trim()) params.set("q", query.trim());
     if (area) params.set("area", area);
     if (materia) params.set("materia", materia);
+    if (mode !== "todos") params.set("mode", mode);
 
-    const next = params.toString()
-      ? `${pathname}?${params.toString()}`
-      : pathname;
-
+    const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(next, { scroll: false });
-  }, [query, area, materia, pathname, router]);
+  }, [area, materia, mode, pathname, query, router]);
 
-  const areas = useMemo(() => {
-    return Array.from(
-      new Set(cards.map((item) => item.area).filter(Boolean))
-    ) as string[];
-  }, [cards]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setQuery(params.get("q") || "");
+    setArea(params.get("area") || "");
+    setMateria(params.get("materia") || "");
+    const nextMode = params.get("mode");
+    if (nextMode === "dificeis" || nextMode === "revelados") {
+      setMode(nextMode);
+    }
+  }, []);
 
-  const materias = useMemo(() => {
-    return Array.from(
-      new Set(cards.map((item) => item.materia).filter(Boolean))
-    ) as string[];
-  }, [cards]);
+  const areas = useMemo(
+    () =>
+      Array.from(
+        new Set(cards.map((item) => item.area).filter(Boolean) as string[])
+      ).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [cards]
+  );
 
-  const difficultCount = useMemo(() => {
-    return cards.filter((item) => item.dificil).length;
-  }, [cards]);
+  const materias = useMemo(
+    () =>
+      Array.from(
+        new Set(cards.map((item) => item.materia).filter(Boolean) as string[])
+      ).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [cards]
+  );
 
   const filtered = useMemo(() => {
-    return cards.filter((item) => {
-      const normalizedQuery = normalize(query);
+    const normalizedQuery = normalize(query);
 
+    return cards.filter((item) => {
       const matchesQuery =
         !normalizedQuery ||
         normalize(item.frente).includes(normalizedQuery) ||
@@ -207,10 +336,20 @@ export default function FlashcardsPage() {
 
       const matchesArea = !area || item.area === area;
       const matchesMateria = !materia || item.materia === materia;
+      const matchesMode =
+        mode === "todos"
+          ? true
+          : mode === "dificeis"
+            ? item.dificil
+            : revealedIds.includes(item.id);
 
-      return matchesQuery && matchesArea && matchesMateria;
+      return matchesQuery && matchesArea && matchesMateria && matchesMode;
     });
-  }, [cards, query, area, materia]);
+  }, [area, cards, materia, mode, query, revealedIds]);
+
+  const revealedCount = revealedIds.length;
+  const difficultCount = cards.filter((item) => item.dificil).length;
+  const visibleAreas = new Set(filtered.map((item) => item.area).filter(Boolean)).size;
 
   function updateForm<K extends keyof FlashcardForm>(
     key: K,
@@ -245,7 +384,7 @@ export default function FlashcardsPage() {
       tipo: card.tipo || "",
       frente: card.frente || "",
       verso: card.verso || "",
-      dificil: Boolean(card.dificil),
+      dificil: card.dificil,
     });
     setDrawerOpen(true);
     setError("");
@@ -437,151 +576,185 @@ export default function FlashcardsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-pink-700">
-                  Biblioteca médica
-                </span>
-
-                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  Compartilhada
-                </span>
-
-                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                  {difficultCount} difíceis no seu usuário
-                </span>
-
-                {isAdmin ? (
-                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    Admin pode gerenciar
-                  </span>
-                ) : (
-                  <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                    Usuário pode consultar e marcar
-                  </span>
-                )}
+      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-6 py-8 text-white">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-blue-100">
+                Biblioteca de estudo
               </div>
-
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-                Flashcards
+              <h1 className="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
+                Flashcards mais organizados, mais bonitos e melhores para revisar
               </h1>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Biblioteca compartilhada. A marcação de difícil é individual por
-                login. O CRUD da biblioteca é apenas do administrador.
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                Busca rápida, filtros por área e matéria, respostas com melhor leitura
+                e uma experiência de estudo com mais hierarquia visual.
               </p>
-
-              <p className="mt-3 text-sm font-medium text-slate-700">
-                {loading
-                  ? "Carregando..."
-                  : `Total carregado do banco: ${cards.length}`}
-              </p>
-
-              {error ? (
-                <p className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-                  Erro: {error}
-                </p>
-              ) : null}
-
-              {success ? (
-                <p className="mt-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                  {success}
-                </p>
-              ) : null}
             </div>
 
             {isAdmin ? (
               <button
                 type="button"
                 onClick={openCreateDrawer}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-900"
               >
                 <Plus className="h-4 w-4" />
                 Novo flashcard
               </button>
             ) : null}
           </div>
+
+          {error ? (
+            <div className="mt-5 rounded-2xl border border-rose-300/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-100">
+              Erro: {error}
+            </div>
+          ) : null}
+
+          {success ? (
+            <div className="mt-5 rounded-2xl border border-emerald-300/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
+              {success}
+            </div>
+          ) : null}
         </div>
 
-        <div className="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar frente, verso, matéria, tipo..."
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+        <div className="grid gap-4 bg-slate-50 p-6 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            icon={<BookOpen className="h-5 w-5 text-slate-700" />}
+            label="Total"
+            value={cards.length}
           />
+          <StatCard
+            icon={<Brain className="h-5 w-5 text-rose-700" />}
+            label="Difíceis"
+            value={difficultCount}
+            tone="rose"
+          />
+          <StatCard
+            icon={<Sparkles className="h-5 w-5 text-blue-700" />}
+            label="Revelados"
+            value={revealedCount}
+            tone="blue"
+          />
+          <StatCard
+            icon={<Target className="h-5 w-5 text-emerald-700" />}
+            label="Áreas visíveis"
+            value={visibleAreas}
+            tone="emerald"
+          />
+        </div>
+      </section>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <select
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="">— todas as áreas —</option>
-              {areas.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">
+              Filtros e modos de revisão
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Filtre por conteúdo, foque no que está difícil ou acompanhe o que você já abriu.
+            </p>
+          </div>
 
-            <select
-              value={materia}
-              onChange={(e) => setMateria(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="">— todas as matérias —</option>
-              {materias.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setArea("");
-                setMateria("");
-              }}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
-            >
-              Limpar filtros
-            </button>
+          <div className="flex flex-wrap gap-2">
+            {[
+              ["todos", "Todos"],
+              ["dificeis", "Só difíceis"],
+              ["revelados", "Já revelados"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setMode(value as "todos" | "dificeis" | "revelados")}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  mode === value
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-200 bg-white text-slate-700"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <span>
-            {loading
-              ? "Carregando resultados..."
-              : `${filtered.length} resultado(s).`}
+        <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr_auto]">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por frente, verso, área, matéria ou tipo..."
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          />
+
+          <select
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          >
+            <option value="">— todas as áreas —</option>
+            {areas.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={materia}
+            onChange={(e) => setMateria(e.target.value)}
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+          >
+            <option value="">— todas as matérias —</option>
+            {materias.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setArea("");
+              setMateria("");
+              setMode("todos");
+            }}
+            className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
+          >
+            Limpar filtros
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm font-medium text-slate-400">
+            {filtered.length} de {cards.length} flashcards
           </span>
 
-          <Link
-            href="/flashcards-dificeis"
-            className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-700"
-          >
-            Ver difíceis
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {area ? (
+              <span className="rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700">
+                Área: {area}
+              </span>
+            ) : null}
+            {materia ? (
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                Matéria: {materia}
+              </span>
+            ) : null}
+          </div>
         </div>
       </section>
 
       {loading ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-14 text-center text-sm text-slate-500 shadow-sm">
           Carregando flashcards...
         </section>
       ) : filtered.length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
+        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-14 text-center text-sm text-slate-500 shadow-sm">
           Nenhum flashcard encontrado.
         </section>
       ) : (
-        <section className="grid gap-4 xl:grid-cols-2">
+        <section className="grid gap-5 xl:grid-cols-2">
           {filtered.map((item) => {
             const revealed = revealedIds.includes(item.id);
             const savingItem = savingIds.includes(item.id);
@@ -589,56 +762,73 @@ export default function FlashcardsPage() {
             return (
               <article
                 key={item.id}
-                className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md"
+                className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  {item.area ? (
-                    <span className="rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700">
-                      {item.area}
-                    </span>
-                  ) : null}
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex flex-wrap gap-2">
+                    {item.area ? (
+                      <span className="rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700">
+                        {item.area}
+                      </span>
+                    ) : null}
 
-                  {item.materia ? (
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                      {item.materia}
-                    </span>
-                  ) : null}
+                    {item.materia ? (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                        {item.materia}
+                      </span>
+                    ) : null}
 
-                  {item.tipo ? (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                      {item.tipo}
-                    </span>
-                  ) : null}
+                    {item.tipo ? (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                        {item.tipo}
+                      </span>
+                    ) : null}
 
-                  {item.dificil ? (
-                    <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                      Difícil para você
-                    </span>
-                  ) : null}
+                    {item.dificil ? (
+                      <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                        Difícil para você
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {revealed ? "Resposta aberta" : "Resposta fechada"}
+                  </span>
                 </div>
 
                 <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
                     Frente
                   </p>
-                  <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
-                    {item.frente || "Sem frente"}
-                  </h2>
+                  <div className="mt-3">
+                    {renderRichText(item.frente, "Sem frente")}
+                  </div>
                 </div>
 
                 <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    Verso
-                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                      Verso
+                    </p>
+
+                    {revealed ? (
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                        Leitura organizada
+                      </span>
+                    ) : null}
+                  </div>
 
                   {revealed ? (
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                      {item.verso || "Sem verso"}
-                    </p>
+                    <div className="mt-4">
+                      {renderRichText(item.verso, "Sem verso")}
+                    </div>
                   ) : (
-                    <p className="mt-3 text-sm leading-7 text-slate-400">
-                      Resposta oculta. Clique abaixo para revelar.
-                    </p>
+                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
+                      <p className="text-sm leading-7 text-slate-400">
+                        Resposta oculta. Clique abaixo para revelar com espaçamento,
+                        blocos e leitura melhor organizada.
+                      </p>
+                    </div>
                   )}
                 </div>
 
@@ -696,7 +886,7 @@ export default function FlashcardsPage() {
       )}
 
       {drawerOpen ? (
-        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50">
           <button
             type="button"
             onClick={closeDrawer}
@@ -752,15 +942,25 @@ export default function FlashcardsPage() {
                 value={form.frente}
                 onChange={(e) => updateForm("frente", e.target.value)}
                 placeholder="Frente"
-                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
               <textarea
                 value={form.verso}
                 onChange={(e) => updateForm("verso", e.target.value)}
                 placeholder="Verso"
-                className="min-h-[180px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[220px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
+
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-semibold text-blue-900">
+                  Dica de formatação
+                </p>
+                <p className="mt-2 text-sm leading-6 text-blue-800">
+                  Use uma linha em branco entre blocos. Se quiser listas, escreva cada item
+                  em uma linha começando com “-” ou “1.” que a leitura ficará melhor na tela.
+                </p>
+              </div>
 
               <label className="inline-flex items-center gap-3 text-sm text-slate-700">
                 <input

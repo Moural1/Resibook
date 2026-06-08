@@ -30,6 +30,27 @@ function normalize(value?: string | null) {
     .trim();
 }
 
+function buildParagraphs(value?: string | null) {
+  return (value || "")
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+}
+
+function renderRichText(value?: string | null) {
+  const blocks = buildParagraphs(value);
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, index) => (
+        <p key={index} className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+          {block}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export default function FlashcardsDificeisPage() {
   const supabase = createClient();
 
@@ -58,69 +79,61 @@ export default function FlashcardsDificeisPage() {
       return;
     }
 
-    const userId = sessionData.session?.user?.id || null;
-    const email = sessionData.session?.user?.email?.trim().toLowerCase() || "";
+    const user = sessionData.session?.user || null;
+    const email = user?.email?.trim().toLowerCase() || "";
+    const userId = user?.id || null;
     const guest = email === GUEST_EMAIL;
 
     setCurrentUserId(userId);
     setIsGuest(guest);
     setSessionReady(true);
 
-    if (!userId) {
+    if (!userId || guest) {
       setCards([]);
       setLoading(false);
       return;
     }
 
-    if (guest) {
-      setCards([]);
-      setLoading(false);
-      return;
-    }
+    const [cardsRes, marksRes] = await Promise.all([
+      supabase
+        .from("flashcards")
+        .select("id, area, materia, tipo, frente, verso")
+        .order("area", { ascending: true, nullsFirst: false })
+        .order("materia", { ascending: true, nullsFirst: false }),
 
-    const marksRes = await supabase
-      .from("flashcard_user_marks")
-      .select("flashcard_id, dificil")
-      .eq("user_id", userId)
-      .eq("dificil", true);
-
-    if (marksRes.error) {
-      setError(marksRes.error.message);
-      setCards([]);
-      setLoading(false);
-      return;
-    }
-
-    const ids = ((marksRes.data || []) as MarkRow[])
-      .filter((item) => item.dificil === true)
-      .map((item) => String(item.flashcard_id));
-
-    if (ids.length === 0) {
-      setCards([]);
-      setLoading(false);
-      return;
-    }
-
-    const cardsRes = await supabase
-      .from("flashcards")
-      .select("id, area, materia, tipo, frente, verso")
-      .in("id", ids)
-      .order("area", { ascending: true, nullsFirst: false })
-      .order("materia", { ascending: true, nullsFirst: false });
+      supabase
+        .from("flashcard_user_marks")
+        .select("flashcard_id, dificil")
+        .eq("user_id", userId)
+        .eq("dificil", true),
+    ]);
 
     if (cardsRes.error) {
       setError(cardsRes.error.message);
       setCards([]);
-    } else {
-      setCards(
-        ((cardsRes.data || []) as Omit<Flashcard, "dificil">[]).map((item) => ({
-          ...item,
-          id: String(item.id),
-          dificil: true,
-        }))
-      );
+      setLoading(false);
+      return;
     }
 
+    if (marksRes.error) {
+      setError(marksRes.error.message);
+    }
+
+    const difficultIds = new Set(
+      ((marksRes.data || []) as MarkRow[])
+        .filter((item) => item.dificil === true)
+        .map((item) => String(item.flashcard_id))
+    );
+
+    const mapped = ((cardsRes.data || []) as Omit<Flashcard, "dificil">[])
+      .map((item) => ({
+        ...item,
+        id: String(item.id),
+        dificil: difficultIds.has(String(item.id)),
+      }))
+      .filter((item) => item.dificil);
+
+    setCards(mapped);
     setLoading(false);
   }
 
@@ -131,10 +144,8 @@ export default function FlashcardsDificeisPage() {
 
   const filtered = useMemo(() => {
     const normalizedQuery = normalize(query);
-
     return cards.filter((item) => {
       if (!normalizedQuery) return true;
-
       return (
         normalize(item.frente).includes(normalizedQuery) ||
         normalize(item.verso).includes(normalizedQuery) ||
@@ -147,9 +158,7 @@ export default function FlashcardsDificeisPage() {
 
   function toggleReveal(id: string) {
     setRevealedIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     );
   }
 
@@ -188,31 +197,28 @@ export default function FlashcardsDificeisPage() {
 
   if (!loading && sessionReady && isGuest) {
     return (
-      <div className="space-y-6">
-        <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
-          <div className="mx-auto max-w-xl text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
-              <Lock className="h-5 w-5" />
-            </div>
-
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
-              Acesso restrito
-            </h1>
-
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              O perfil convidado não pode visualizar nem alterar marcações
-              individuais de flashcards difíceis.
-            </p>
-
-            <Link
-              href="/topicos"
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-            >
-              Ir para tópicos
-            </Link>
+      <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
+        <div className="mx-auto max-w-xl text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+            <Lock className="h-5 w-5" />
           </div>
-        </section>
-      </div>
+
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+            Acesso restrito
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            O modo convidado não pode acessar flashcards difíceis.
+          </p>
+
+          <Link
+            href="/flashcards"
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+          >
+            Voltar para flashcards
+          </Link>
+        </div>
+      </section>
     );
   }
 
@@ -220,57 +226,44 @@ export default function FlashcardsDificeisPage() {
     <div className="space-y-6">
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">
-              Revisão focada
-            </span>
-
-            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              Flashcards difíceis
-            </span>
-          </div>
-
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
             Flashcards difíceis
           </h1>
-
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Esta página mostra apenas os cards marcados como difíceis pelo seu
-            login. A marcação não interfere no usuário de outra pessoa.
-          </p>
-
-          <p className="mt-3 text-sm font-medium text-slate-700">
-            {loading ? "Carregando..." : `${cards.length} flashcard(s) difíceis`}
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            Aqui ficam só os cards marcados como mais difíceis para você, com leitura mais limpa e revisão mais objetiva.
           </p>
 
           {error ? (
-            <p className="mt-2 text-sm font-medium text-rose-600">
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
               Erro: {error}
-            </p>
+            </div>
           ) : null}
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+        <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <input
-            type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar dentro dos difíceis..."
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+            placeholder="Buscar nos difíceis..."
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none md:max-w-xl"
           />
+
+          <span className="text-sm font-medium text-slate-400">
+            {filtered.length} de {cards.length} cards
+          </span>
         </div>
       </section>
 
       {loading ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500 shadow-sm">
           Carregando flashcards difíceis...
         </section>
       ) : filtered.length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
-          Nenhum flashcard difícil encontrado para o seu usuário.
+        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500 shadow-sm">
+          Nenhum flashcard difícil encontrado.
         </section>
       ) : (
-        <section className="grid gap-4 xl:grid-cols-2">
+        <section className="grid gap-5 xl:grid-cols-2">
           {filtered.map((item) => {
             const revealed = revealedIds.includes(item.id);
             const savingItem = savingIds.includes(item.id);
@@ -280,27 +273,19 @@ export default function FlashcardsDificeisPage() {
                 key={item.id}
                 className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
               >
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap gap-2">
                   {item.area ? (
                     <span className="rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700">
                       {item.area}
                     </span>
                   ) : null}
-
                   {item.materia ? (
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
                       {item.materia}
                     </span>
                   ) : null}
-
-                  {item.tipo ? (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                      {item.tipo}
-                    </span>
-                  ) : null}
-
                   <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                    Difícil para você
+                    Difícil
                   </span>
                 </div>
 
@@ -308,10 +293,7 @@ export default function FlashcardsDificeisPage() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
                     Frente
                   </p>
-
-                  <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
-                    {item.frente || "Sem frente"}
-                  </h2>
+                  <div className="mt-3">{renderRichText(item.frente)}</div>
                 </div>
 
                 <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5">
@@ -320,9 +302,7 @@ export default function FlashcardsDificeisPage() {
                   </p>
 
                   {revealed ? (
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                      {item.verso || "Sem verso"}
-                    </p>
+                    <div className="mt-4">{renderRichText(item.verso)}</div>
                   ) : (
                     <p className="mt-3 text-sm leading-7 text-slate-400">
                       Resposta oculta. Clique abaixo para revelar.

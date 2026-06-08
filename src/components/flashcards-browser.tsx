@@ -19,6 +19,49 @@ type Props = {
   flashcards: FlashcardItem[];
 };
 
+function buildParagraphs(value?: string | null) {
+  return (value || "")
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+}
+
+function renderRichText(value?: string | null) {
+  const blocks = buildParagraphs(value);
+
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, index) => {
+        const lines = block
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        const isList =
+          lines.length > 1 &&
+          lines.every((line) => /^[-•]/.test(line) || /^\d+[\.\)]/.test(line));
+
+        if (isList) {
+          return (
+            <ul key={index} className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700">
+              {lines.map((line, lineIndex) => (
+                <li key={lineIndex}>{line.replace(/^[-•]\s*/, "").replace(/^\d+[\.\)]\s*/, "")}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={index} className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+            {block}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function FlashcardsBrowser({ flashcards }: Props) {
   const [query, setQuery] = useState("");
 
@@ -42,11 +85,11 @@ export default function FlashcardsBrowser({ flashcards }: Props) {
       <div className="border-b border-slate-200 pb-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
               Flashcards cadastrados
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Busca instantânea por grupo, conteúdo, arquivo ou tags.
+              Busca instantânea por grupo, conteúdo, arquivo ou tags com leitura mais organizada.
             </p>
           </div>
 
@@ -85,7 +128,7 @@ export default function FlashcardsBrowser({ flashcards }: Props) {
           {filteredFlashcards.map((card) => (
             <div
               key={card.id}
-              className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm"
+              className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap gap-2">
@@ -115,28 +158,26 @@ export default function FlashcardsBrowser({ flashcards }: Props) {
               </div>
 
               <div className="mt-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
                   Frente
                 </p>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-900">
-                  {card.frente}
-                </p>
+                <div className="mt-3">
+                  {renderRichText(card.frente)}
+                </div>
               </div>
 
-              <div className="mt-4 rounded-2xl bg-slate-950 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Verso
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Resposta
                 </p>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-200">
-                  {card.verso}
-                </p>
+                <div className="mt-3">
+                  {renderRichText(card.verso)}
+                </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
                 <span>{card.source_file || "Sem arquivo"}</span>
-                <span>
-                  {card.card_number ? `Card #${card.card_number}` : "Sem número"}
-                </span>
+                <span>Card #{card.card_number || "-"}</span>
               </div>
             </div>
           ))}
