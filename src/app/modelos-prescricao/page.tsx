@@ -20,6 +20,9 @@ type PrescriptionTemplate = {
   alerta_alergias: string | null;
   alerta_interacoes: string | null;
   tags_risco: string | null;
+  risk_tags: string | null;
+  condition_tags: string | null;
+  interaction_tags: string | null;
   created_at: string | null;
 };
 
@@ -38,6 +41,9 @@ type TemplateForm = {
   alerta_alergias: string;
   alerta_interacoes: string;
   tags_risco: string;
+  risk_tags: string;
+  condition_tags: string;
+  interaction_tags: string;
 };
 
 const ADMIN_EMAIL = "igormoura@resibook.com";
@@ -57,6 +63,9 @@ const emptyForm: TemplateForm = {
   alerta_alergias: "",
   alerta_interacoes: "",
   tags_risco: "",
+  risk_tags: "",
+  condition_tags: "",
+  interaction_tags: "",
 };
 
 function normalize(value?: string | null) {
@@ -117,6 +126,9 @@ function buildPayload(form: TemplateForm) {
     alerta_alergias: form.alerta_alergias.trim() || null,
     alerta_interacoes: form.alerta_interacoes.trim() || null,
     tags_risco: form.tags_risco.trim() || null,
+    risk_tags: form.risk_tags.trim() || null,
+    condition_tags: form.condition_tags.trim() || null,
+    interaction_tags: form.interaction_tags.trim() || null,
   };
 }
 
@@ -136,6 +148,9 @@ function templateToForm(item: PrescriptionTemplate): TemplateForm {
     alerta_alergias: item.alerta_alergias || "",
     alerta_interacoes: item.alerta_interacoes || "",
     tags_risco: item.tags_risco || "",
+    risk_tags: item.risk_tags || "",
+    condition_tags: item.condition_tags || "",
+    interaction_tags: item.interaction_tags || "",
   };
 }
 
@@ -185,7 +200,7 @@ export default function ModelosPrescricaoPage() {
     const { data, error } = await supabase
       .from("prescription_templates")
       .select(
-        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, created_at"
+        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
       )
       .order("categoria", { ascending: true, nullsFirst: false })
       .order("titulo", { ascending: true });
@@ -293,14 +308,14 @@ export default function ModelosPrescricaoPage() {
           .update(payload)
           .eq("id", editingId)
           .select(
-            "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, created_at"
+            "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
           )
           .single()
       : await supabase
           .from("prescription_templates")
           .insert(payload)
           .select(
-            "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, created_at"
+            "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
           )
           .single();
 
@@ -616,6 +631,36 @@ export default function ModelosPrescricaoPage() {
                 value={form.tags_risco}
                 onChange={(event) => updateForm("tags_risco", event.target.value)}
                 placeholder="Tags de risco: ex. aine, quinolona, tetraciclina, anticoagulante"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+            </div>
+
+            <div className="mt-4">
+              <textarea
+                rows={3}
+                value={form.risk_tags}
+                onChange={(event) => updateForm("risk_tags", event.target.value)}
+                placeholder="Risk tags padronizadas: ex. renal, gestante, idoso, hepatica, sangramento, sedacao"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+            </div>
+
+            <div className="mt-4">
+              <textarea
+                rows={3}
+                value={form.condition_tags}
+                onChange={(event) => updateForm("condition_tags", event.target.value)}
+                placeholder="Condition tags: ex. drc, gestacao, idoso_fragil, epilepsia, gastrite_ulcera, diabetes"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+            </div>
+
+            <div className="mt-4">
+              <textarea
+                rows={3}
+                value={form.interaction_tags}
+                onChange={(event) => updateForm("interaction_tags", event.target.value)}
+                placeholder="Interaction tags: ex. anticoagulante, isrs, sedativos, ieca_bra_espironolactona"
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
               />
             </div>

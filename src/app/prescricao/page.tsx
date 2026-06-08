@@ -50,6 +50,9 @@ type PrescriptionTemplate = {
   alerta_alergias?: string | null;
   alerta_interacoes?: string | null;
   tags_risco?: string | null;
+  risk_tags?: string | null;
+  condition_tags?: string | null;
+  interaction_tags?: string | null;
   created_at: string;
 };
 
@@ -188,6 +191,45 @@ function buildPayload(form: PrescriptionForm, userId: string, patients: Patient[
   };
 }
 
+
+function matchScoreForTemplate(
+  template: PrescriptionTemplate,
+  draft: PrescriptionDraft
+) {
+  const titulo = normalize(template.titulo);
+  const conteudo = normalize(template.conteudo);
+  const observacoes = normalize(template.observacoes);
+
+  let score = 0;
+
+  if (draft.medicamento && titulo.includes(normalize(draft.medicamento))) score += 4;
+  if (draft.medicamento && conteudo.includes(normalize(draft.medicamento))) score += 4;
+  if (draft.via && conteudo.includes(normalize(draft.via))) score += 1;
+  if (draft.posologia && conteudo.includes(normalize(draft.posologia))) score += 2;
+  if (draft.duracao && conteudo.includes(normalize(draft.duracao))) score += 1;
+  if (draft.orientacoes && (conteudo.includes(normalize(draft.orientacoes)) || observacoes.includes(normalize(draft.orientacoes)))) score += 1;
+
+  return score;
+}
+
+function findMatchingTemplateFromDraft(
+  draft: PrescriptionDraft,
+  templates: PrescriptionTemplate[]
+) {
+  let best: PrescriptionTemplate | null = null;
+  let bestScore = 0;
+
+  for (const template of templates) {
+    const score = matchScoreForTemplate(template, draft);
+    if (score > bestScore) {
+      best = template;
+      bestScore = score;
+    }
+  }
+
+  return bestScore >= 4 ? best : null;
+}
+
 export default function PrescricaoPage() {
   const supabase = createClient();
 
@@ -201,6 +243,8 @@ export default function PrescricaoPage() {
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [templates, setTemplates] = useState<PrescriptionTemplate[]>([]);
+  const [selectedTemplateMeta, setSelectedTemplateMeta] =
+    useState<PrescriptionTemplate | null>(null);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
 
   const [form, setForm] = useState<PrescriptionForm>(emptyForm);
@@ -234,6 +278,7 @@ export default function PrescricaoPage() {
     if (checkingUser) return;
 
     if (isGuest || !currentUserId) {
+      setSelectedTemplateMeta(null);
       setForm((current) => ({
         ...current,
         patient_id: "",
@@ -309,7 +354,7 @@ export default function PrescricaoPage() {
     const templatesRes = await supabase
       .from("prescription_templates")
       .select(
-        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, created_at"
+        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
       )
       .order("titulo", { ascending: true });
 
@@ -464,6 +509,7 @@ export default function PrescricaoPage() {
   }
 
   function resetForm() {
+    setSelectedTemplateMeta(null);
     setForm((current) => ({
       ...emptyForm,
       patient_id: isGuest ? "" : current.patient_id,
@@ -486,6 +532,9 @@ export default function PrescricaoPage() {
   }
 
   function handleUseTemplate(draft: PrescriptionDraft) {
+    const matchedTemplate = findMatchingTemplateFromDraft(draft, templates);
+    setSelectedTemplateMeta(matchedTemplate);
+
     setForm((current) => ({
       ...current,
       medicamento: draft.medicamento || "",
@@ -506,6 +555,7 @@ export default function PrescricaoPage() {
   }
 
   function startEdit(item: Prescription) {
+    setSelectedTemplateMeta(null);
     setEditingId(item.id);
     setEditForms((current) => ({
       ...current,
@@ -1188,6 +1238,7 @@ export default function PrescricaoPage() {
               <ClinicalAlerts
                 patient={selectedPatient}
                 medicationText={draftText}
+                templateMeta={selectedTemplateMeta}
               />
 
               <div className="grid gap-4 md:grid-cols-2">
