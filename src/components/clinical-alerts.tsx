@@ -39,7 +39,7 @@ type ClinicalAlertsProps = {
   className?: string;
 };
 
-type ClinicalAlert = {
+export type ClinicalAlertItem = {
   id: string;
   level: ClinicalAlertLevel;
   title: string;
@@ -72,8 +72,8 @@ function hasTag(tags: Set<string>, tag: string) {
 }
 
 function pushAlert(
-  alerts: ClinicalAlert[],
-  alert: ClinicalAlert
+  alerts: ClinicalAlertItem[],
+  alert: ClinicalAlertItem
 ) {
   if (alerts.some((item) => item.id === alert.id)) return;
   alerts.push(alert);
@@ -206,14 +206,14 @@ function buildPatientInteractionTags(medsText?: string | null) {
   return tags;
 }
 
-function buildAlerts(
+export function buildClinicalAlerts(
   patient?: PatientRiskProfile | null,
   medicationText?: string | null,
   templateMeta?: TemplateRiskProfile | null
-): ClinicalAlert[] {
+): ClinicalAlertItem[] {
   if (!patient || !medicationText?.trim()) return [];
 
-  const alerts: ClinicalAlert[] = [];
+  const alerts: ClinicalAlertItem[] = [];
   const prescriptionText = normalizeText(medicationText);
   const templateText = normalizeText(
     [
@@ -586,7 +586,7 @@ export default function ClinicalAlerts({
   templateMeta,
   className = "",
 }: ClinicalAlertsProps) {
-  const alerts = buildAlerts(patient, medicationText, templateMeta);
+  const alerts = buildClinicalAlerts(patient, medicationText, templateMeta);
 
   if (!patient || alerts.length === 0) return null;
 

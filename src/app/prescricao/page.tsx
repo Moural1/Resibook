@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import PrescriptionTemplatesLive from "../../components/prescription-templates-live";
-import ClinicalAlerts from "../../components/clinical-alerts";
+import ClinicalAlerts, {
+  buildClinicalAlerts,
+  type ClinicalAlertItem,
+} from "../../components/clinical-alerts";
 import { ClipboardPlus, Edit3, Lock, X } from "lucide-react";
 
 type Prescription = {
@@ -72,6 +75,22 @@ type PrescriptionForm = {
   posologia: string;
   duracao: string;
   orientacoes: string;
+};
+
+type AlertLogRecord = {
+  id: number;
+  user_id?: string | null;
+  patient_id?: string | null;
+  prescription_id?: number | null;
+  template_id?: number | null;
+  patient_name?: string | null;
+  medication_text?: string | null;
+  alert_count: number;
+  high_count: number;
+  medium_count: number;
+  info_count: number;
+  alerts_json?: ClinicalAlertItem[] | null;
+  created_at: string;
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
@@ -230,6 +249,25 @@ function findMatchingTemplateFromDraft(
   return bestScore >= 4 ? best : null;
 }
 
+function countAlertsByLevel(alerts: ClinicalAlertItem[]) {
+  return alerts.reduce(
+    (acc, item) => {
+      acc.total += 1;
+      if (item.level === "high") acc.high += 1;
+      else if (item.level === "medium") acc.medium += 1;
+      else acc.info += 1;
+      return acc;
+    },
+    { total: 0, high: 0, medium: 0, info: 0 }
+  );
+}
+
+function buildAlertReasonText(alerts: ClinicalAlertItem[]) {
+  return alerts
+    .map((item) => `${item.title}: ${item.message}`)
+    .join("\n\n");
+}
+
 export default function PrescricaoPage() {
   const supabase = createClient();
 
@@ -246,6 +284,7 @@ export default function PrescricaoPage() {
   const [selectedTemplateMeta, setSelectedTemplateMeta] =
     useState<PrescriptionTemplate | null>(null);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [recentAlertLogs, setRecentAlertLogs] = useState<AlertLogRecord[]>([]);
 
   const [form, setForm] = useState<PrescriptionForm>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -368,11 +407,12 @@ export default function PrescricaoPage() {
     if (guest || !userId) {
       setPatients([]);
       setPrescriptions([]);
+      setRecentAlertLogs([]);
       setLoading(false);
       return;
     }
 
-    const [patientsRes, prescriptionsRes] = await Promise.all([
+    const [patientsRes, prescriptionsRes, logsRes] = await Promise.all([
       supabase
         .from("patients")
         .select("id, nome, idade, alergias, comorbidades, hpp, medicamentos_em_uso, gestante, funcao_renal_alterada, hepatopatia, idoso_fragil")
@@ -386,6 +426,15 @@ export default function PrescricaoPage() {
         )
         .eq("user_id", userId)
         .order("created_at", { ascending: false }),
+
+      supabase
+        .from("clinical_alert_logs")
+        .select(
+          "id, user_id, patient_id, prescription_id, template_id, patient_name, medication_text, alert_count, high_count, medium_count, info_count, alerts_json, created_at"
+        )
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
 
     let nextError = templatesRes.error?.message || "";
@@ -406,6 +455,16 @@ export default function PrescricaoPage() {
         "Erro ao carregar prescrições.";
     } else {
       setPrescriptions((prescriptionsRes.data as Prescription[]) || []);
+    }
+
+    if (logsRes.error) {
+      setRecentAlertLogs([]);
+      nextError =
+        nextError ||
+        logsRes.error.message ||
+        "Erro ao carregar histórico de alertas.";
+    } else {
+      setRecentAlertLogs((logsRes.data as unknown as AlertLogRecord[]) || []);
     }
 
     setError(nextError);
@@ -583,6 +642,45 @@ export default function PrescricaoPage() {
     });
   }
 
+  async function saveAlertLog(params: {
+    userId: string;
+    prescriptionId?: number | null;
+    patient?: Patient | null;
+    template?: PrescriptionTemplate | null;
+    medicationText: string;
+    alerts: ClinicalAlertItem[];
+  }) {
+    if (!params.userId || params.alerts.length === 0) return;
+
+    const counts = countAlertsByLevel(params.alerts);
+
+    const payload = {
+      user_id: params.userId,
+      patient_id: params.patient?.id || null,
+      prescription_id: params.prescriptionId || null,
+      template_id: params.template?.id || null,
+      patient_name: params.patient?.nome || null,
+      medication_text: params.medicationText || null,
+      alert_count: counts.total,
+      high_count: counts.high,
+      medium_count: counts.medium,
+      info_count: counts.info,
+      alerts_json: params.alerts,
+    };
+
+    const { data, error } = await supabase
+      .from("clinical_alert_logs")
+      .insert(payload)
+      .select(
+        "id, patient_id, prescription_id, template_id, patient_name, medication_text, alert_count, high_count, medium_count, info_count, alerts_json, created_at"
+      )
+      .single();
+
+    if (!error && data) {
+      setRecentAlertLogs((current) => [data as unknown as AlertLogRecord, ...current].slice(0, 8));
+    }
+  }
+
   async function handleCreate() {
     if (isGuest) {
       setError("Usuário convidado não pode salvar prescrições.");
@@ -620,13 +718,34 @@ export default function PrescricaoPage() {
     if (error) {
       setError(error.message);
     } else if (data) {
+      const currentPatient = getOwnedPatient(safeForm.patient_id, patients);
+      const currentAlerts = buildClinicalAlerts(
+        currentPatient,
+        buildPrescriptionTextFromForm(safeForm),
+        selectedTemplateMeta
+      );
+
       setPrescriptions((current) => [data as Prescription, ...current]);
+
+      await saveAlertLog({
+        userId: currentUserId,
+        prescriptionId: (data as Prescription).id,
+        patient: currentPatient,
+        template: selectedTemplateMeta,
+        medicationText: buildPrescriptionTextFromForm(safeForm),
+        alerts: currentAlerts,
+      });
+
       setForm((current) => ({
         ...emptyForm,
         patient_id: current.patient_id,
         paciente_nome: current.paciente_nome,
       }));
-      setSuccess("Prescrição salva com sucesso.");
+      setSuccess(
+        currentAlerts.length > 0
+          ? "Prescrição salva com sucesso e alertas registrados no histórico."
+          : "Prescrição salva com sucesso."
+      );
       setDrawerOpen(false);
     }
 
@@ -667,10 +786,31 @@ export default function PrescricaoPage() {
     if (error) {
       setError(error.message);
     } else if (data) {
+      const currentPatient = getOwnedPatient(safeEditForm.patient_id, patients);
+      const currentAlerts = buildClinicalAlerts(
+        currentPatient,
+        buildPrescriptionTextFromForm(safeEditForm),
+        null
+      );
+
       setPrescriptions((current) =>
         current.map((item) => (item.id === id ? (data as Prescription) : item))
       );
-      setSuccess("Prescrição atualizada com sucesso.");
+
+      await saveAlertLog({
+        userId: currentUserId,
+        prescriptionId: id,
+        patient: currentPatient,
+        template: null,
+        medicationText: buildPrescriptionTextFromForm(safeEditForm),
+        alerts: currentAlerts,
+      });
+
+      setSuccess(
+        currentAlerts.length > 0
+          ? "Prescrição atualizada com sucesso e alertas registrados no histórico."
+          : "Prescrição atualizada com sucesso."
+      );
       cancelEdit(id);
     }
 
@@ -1373,4 +1513,110 @@ export default function PrescricaoPage() {
       ) : null}
     </div>
   );
+
+      {!isGuest ? (
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                Auditoria clínica
+              </p>
+              <h2 className="mt-2 text-lg font-semibold text-slate-900">
+                Histórico recente de alertas exibidos
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Registra os alertas mostrados quando você salva ou atualiza uma prescrição.
+              </p>
+            </div>
+
+            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {recentAlertLogs.length} registro(s) recente(s)
+            </span>
+          </div>
+
+          {recentAlertLogs.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+              Nenhum alerta foi registrado ainda. Salve uma prescrição com alertas para começar o histórico.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {recentAlertLogs.map((log) => (
+                <article
+                  key={log.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {log.patient_name || "Paciente não identificado"}
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                        {formatDate(log.created_at)}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                        {log.alert_count} alerta(s)
+                      </span>
+                      {log.high_count > 0 ? (
+                        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                          {log.high_count} alto risco
+                        </span>
+                      ) : null}
+                      {log.medium_count > 0 ? (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                          {log.medium_count} cautela
+                        </span>
+                      ) : null}
+                      {log.info_count > 0 ? (
+                        <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                          {log.info_count} lembrete
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                      Prescrição analisada
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                      {log.medication_text || "Sem texto salvo."}
+                    </p>
+                  </div>
+
+                  {Array.isArray(log.alerts_json) && log.alerts_json.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {log.alerts_json.map((alert, index) => (
+                        <div
+                          key={`${log.id}-${alert.id}-${index}`}
+                          className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-900">
+                              {alert.title}
+                            </p>
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
+                              {alert.level === "high"
+                                ? "alto risco"
+                                : alert.level === "medium"
+                                ? "cautela"
+                                : "lembrete"}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">
+                            {alert.message}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+
 }
