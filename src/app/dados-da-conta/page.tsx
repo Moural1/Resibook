@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ModulePageHeader from "../../components/module-page-header";
 import {
   AlertTriangle,
   Brain,
@@ -408,41 +409,27 @@ export default function DadosDaContaPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-5 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                Dados da conta
-              </span>
 
-              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                Backup e exportação
-              </span>
-
-              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                RLS ativo
-              </span>
-
-              {session.isGuest ? (
-                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                  Modo convidado
-                </span>
-              ) : null}
+      <ModulePageHeader
+        eyebrow="Área de conta"
+        title="Central de dados"
+        description="Exporte os dados do ResiBook em JSON para manter uma cópia local segura. Esta página respeita as regras de segurança do banco: cada usuário exporta apenas os dados que tem permissão para acessar."
+        badges={[
+          { label: "Dados da conta", tone: "blue" },
+          { label: "Backup e exportação", tone: "slate" },
+          { label: "RLS ativo", tone: "emerald" },
+          ...(session.isGuest ? [{ label: "Modo convidado", tone: "amber" as const }] : []),
+        ]}
+        error={error}
+        success={success}
+        notice={
+          session.isGuest ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              O usuário convidado exporta apenas bibliotecas compartilhadas permitidas. Dados privados como pacientes, prescrições, evoluções e marcações individuais não são exportados neste perfil.
             </div>
-
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-              Central de dados
-            </h1>
-
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Exporte os dados do ResiBook em JSON para manter uma cópia local
-              segura. Esta página respeita as regras de segurança do banco:
-              cada usuário exporta apenas os dados que tem permissão para
-              acessar.
-            </p>
-          </div>
-
+          ) : null
+        }
+        actions={
           <button
             type="button"
             onClick={handleExportAll}
@@ -457,32 +444,12 @@ export default function DadosDaContaPage() {
             <Download className="h-4 w-4" />
             {loadingAll ? "Exportando..." : "Exportar backup completo"}
           </button>
-        </div>
-
-        {error ? (
-          <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            Erro: {error}
-          </div>
-        ) : null}
-
-        {success ? (
-          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-            {success}
-          </div>
-        ) : null}
-
-        {session.isGuest ? (
-          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            O usuário convidado exporta apenas bibliotecas compartilhadas
-            permitidas. Dados privados como pacientes, prescrições, evoluções e
-            marcações individuais não são exportados neste perfil.
-          </div>
-        ) : null}
-
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-[22px] border border-slate-200 bg-white p-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <Database className="h-5 w-5" />
               </div>
 
@@ -502,52 +469,51 @@ export default function DadosDaContaPage() {
             </p>
           </div>
 
-          <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-5">
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
                 <ShieldCheck className="h-5 w-5" />
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Sucesso
                 </p>
 
-                <p className="mt-1 text-2xl font-semibold text-emerald-950">
+                <p className="mt-1 text-2xl font-semibold text-slate-900">
                   {successCount}
                 </p>
               </div>
             </div>
 
-            <p className="mt-3 text-sm leading-6 text-emerald-900">
+            <p className="mt-3 text-sm leading-6 text-slate-500">
               Módulos exportados com sucesso.
             </p>
           </div>
 
-          <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5">
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-amber-700 shadow-sm">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
                 <AlertTriangle className="h-5 w-5" />
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Pendências
                 </p>
 
-                <p className="mt-1 text-2xl font-semibold text-amber-950">
+                <p className="mt-1 text-2xl font-semibold text-slate-900">
                   {errorCount}
                 </p>
               </div>
             </div>
 
-            <p className="mt-3 text-sm leading-6 text-amber-900">
+            <p className="mt-3 text-sm leading-6 text-slate-500">
               Módulos com erro na última tentativa de exportação.
             </p>
           </div>
         </div>
-      </section>
-
+      </ModulePageHeader>
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -700,7 +666,7 @@ export default function DadosDaContaPage() {
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="border-b border-slate-200 pb-5">
-          <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
             Documentos legais
           </span>
 
@@ -720,7 +686,7 @@ export default function DadosDaContaPage() {
             href="/termos"
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-blue-200 hover:bg-blue-50"
+            className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-slate-300 hover:bg-white"
           >
             <p className="text-sm font-semibold text-slate-900">
               Termos de Uso
@@ -732,7 +698,7 @@ export default function DadosDaContaPage() {
               ResiBook.
             </p>
 
-            <p className="mt-4 text-sm font-semibold text-blue-700">
+            <p className="mt-4 text-sm font-semibold text-slate-700">
               Abrir termos →
             </p>
           </a>
@@ -741,7 +707,7 @@ export default function DadosDaContaPage() {
             href="/privacidade"
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-emerald-200 hover:bg-emerald-50"
+            className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-slate-300 hover:bg-white"
           >
             <p className="text-sm font-semibold text-slate-900">
               Política de Privacidade
@@ -752,7 +718,7 @@ export default function DadosDaContaPage() {
               segurança, logs de acesso, exportações e direitos dos titulares.
             </p>
 
-            <p className="mt-4 text-sm font-semibold text-emerald-700">
+            <p className="mt-4 text-sm font-semibold text-slate-700">
               Abrir política →
             </p>
           </a>
