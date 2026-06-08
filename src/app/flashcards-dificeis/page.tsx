@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import ModulePageHeader from "../../components/module-page-header";
 import { Lock } from "lucide-react";
 
 type Flashcard = {
@@ -224,35 +225,32 @@ export default function FlashcardsDificeisPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-            Flashcards difíceis
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Aqui ficam só os cards marcados como mais difíceis para você, com leitura mais limpa e revisão mais objetiva.
-          </p>
-
-          {error ? (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-              Erro: {error}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <ModulePageHeader
+        eyebrow="Revisão individual"
+        title="Flashcards difíceis"
+        description="Aqui ficam só os cards marcados como mais difíceis para você, com leitura mais limpa e revisão mais objetiva."
+        badges={[
+          { label: "Flashcards difíceis", tone: "amber" },
+          { label: "Revisão individual", tone: "slate" },
+        ]}
+        metrics={[
+          { label: "Total", value: cards.length },
+          { label: "Revelados", value: revealedIds.length },
+        ]}
+        error={error}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar nos difíceis..."
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none md:max-w-xl"
+            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none md:max-w-xl"
           />
-
-          <span className="text-sm font-medium text-slate-400">
-            {filtered.length} de {cards.length} cards
+          <span className="text-sm font-medium text-slate-500">
+            {filtered.length} de {cards.length} flashcards
           </span>
         </div>
-      </section>
+      </ModulePageHeader>
 
       {loading ? (
         <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500 shadow-sm">
@@ -284,7 +282,7 @@ export default function FlashcardsDificeisPage() {
                       {item.materia}
                     </span>
                   ) : null}
-                  <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                     Difícil
                   </span>
                 </div>

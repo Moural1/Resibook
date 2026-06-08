@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ModulePageHeader from "../../components/module-page-header";
 import { BookOpen, Brain, Lock, Plus, Sparkles, Target, X } from "lucide-react";
 
 type Flashcard = {
@@ -147,29 +148,20 @@ function StatCard({
   icon,
   label,
   value,
-  tone = "slate",
 }: {
   icon: React.ReactNode;
   label: string;
   value: string | number;
-  tone?: "slate" | "blue" | "rose" | "emerald";
 }) {
-  const styles = {
-    slate: "border-slate-200 bg-white text-slate-900",
-    blue: "border-blue-200 bg-blue-50 text-blue-900",
-    rose: "border-rose-200 bg-rose-50 text-rose-900",
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  }[tone];
-
   return (
-    <div className={`rounded-[24px] border p-4 shadow-sm ${styles}`}>
+    <div className="rounded-[22px] border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 ring-1 ring-black/5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
           {icon}
         </div>
-        <span className="text-2xl font-bold tracking-tight">{value}</span>
+        <span className="text-2xl font-semibold tracking-tight text-slate-900">{value}</span>
       </div>
-      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </p>
     </div>
@@ -576,73 +568,46 @@ export default function FlashcardsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-6 py-8 text-white">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-blue-100">
-                Biblioteca de estudo
-              </div>
-              <h1 className="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
-                Flashcards mais organizados, mais bonitos e melhores para revisar
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-                Busca rápida, filtros por área e matéria, respostas com melhor leitura
-                e uma experiência de estudo com mais hierarquia visual.
-              </p>
-            </div>
-
-            {isAdmin ? (
-              <button
-                type="button"
-                onClick={openCreateDrawer}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-900"
-              >
-                <Plus className="h-4 w-4" />
-                Novo flashcard
-              </button>
-            ) : null}
-          </div>
-
-          {error ? (
-            <div className="mt-5 rounded-2xl border border-rose-300/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-100">
-              Erro: {error}
-            </div>
-          ) : null}
-
-          {success ? (
-            <div className="mt-5 rounded-2xl border border-emerald-300/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
-              {success}
-            </div>
-          ) : null}
+      <ModulePageHeader
+        eyebrow="Biblioteca de estudo"
+        title="Flashcards"
+        description="Busca rápida, filtros por área e matéria, respostas com melhor leitura e uma experiência de estudo mais limpa e clínica."
+        badges={[
+          { label: "Flashcards", tone: "blue" },
+          { label: "Biblioteca compartilhada", tone: "slate" },
+          {
+            label: isAdmin ? "Admin pode gerenciar" : "Revisão individual",
+            tone: isAdmin ? "emerald" : "cyan",
+          },
+        ]}
+        metrics={[
+          { label: "Total", value: cards.length },
+          { label: "Difíceis", value: difficultCount },
+          { label: "Revelados", value: revealedCount },
+          { label: "Áreas visíveis", value: visibleAreas },
+        ]}
+        error={error}
+        success={success}
+        actions={
+          isAdmin ? (
+            <button
+              type="button"
+              onClick={openCreateDrawer}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Novo flashcard
+            </button>
+          ) : null
+        }
+      >
+        <div className="grid gap-4 lg:grid-cols-4">
+          <StatCard icon={<BookOpen className="h-5 w-5" />} label="Total" value={cards.length} />
+          <StatCard icon={<Brain className="h-5 w-5" />} label="Difíceis" value={difficultCount} />
+          <StatCard icon={<Sparkles className="h-5 w-5" />} label="Revelados" value={revealedCount} />
+          <StatCard icon={<Target className="h-5 w-5" />} label="Áreas visíveis" value={visibleAreas} />
         </div>
-
-        <div className="grid gap-4 bg-slate-50 p-6 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            icon={<BookOpen className="h-5 w-5 text-slate-700" />}
-            label="Total"
-            value={cards.length}
-          />
-          <StatCard
-            icon={<Brain className="h-5 w-5 text-rose-700" />}
-            label="Difíceis"
-            value={difficultCount}
-            tone="rose"
-          />
-          <StatCard
-            icon={<Sparkles className="h-5 w-5 text-blue-700" />}
-            label="Revelados"
-            value={revealedCount}
-            tone="blue"
-          />
-          <StatCard
-            icon={<Target className="h-5 w-5 text-emerald-700" />}
-            label="Áreas visíveis"
-            value={visibleAreas}
-            tone="emerald"
-          />
-        </div>
-      </section>
+      </ModulePageHeader>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
@@ -732,12 +697,12 @@ export default function FlashcardsPage() {
 
           <div className="flex flex-wrap gap-2">
             {area ? (
-              <span className="rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
                 Área: {area}
               </span>
             ) : null}
             {materia ? (
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
                 Matéria: {materia}
               </span>
             ) : null}
@@ -767,7 +732,7 @@ export default function FlashcardsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex flex-wrap gap-2">
                     {item.area ? (
-                      <span className="rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
                         {item.area}
                       </span>
                     ) : null}
@@ -779,13 +744,13 @@ export default function FlashcardsPage() {
                     ) : null}
 
                     {item.tipo ? (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
                         {item.tipo}
                       </span>
                     ) : null}
 
                     {item.dificil ? (
-                      <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                         Difícil para você
                       </span>
                     ) : null}
@@ -812,7 +777,7 @@ export default function FlashcardsPage() {
                     </p>
 
                     {revealed ? (
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
                         Leitura organizada
                       </span>
                     ) : null}
@@ -952,11 +917,11 @@ export default function FlashcardsPage() {
                 className="min-h-[220px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
               />
 
-              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-                <p className="text-sm font-semibold text-blue-900">
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
+                <p className="text-sm font-semibold text-cyan-900">
                   Dica de formatação
                 </p>
-                <p className="mt-2 text-sm leading-6 text-blue-800">
+                <p className="mt-2 text-sm leading-6 text-cyan-800">
                   Use uma linha em branco entre blocos. Se quiser listas, escreva cada item
                   em uma linha começando com “-” ou “1.” que a leitura ficará melhor na tela.
                 </p>

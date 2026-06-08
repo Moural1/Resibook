@@ -17,7 +17,6 @@ import {
   Tags,
   Stethoscope,
   Settings,
-  User,
   BarChart3,
   PanelLeftClose,
   PanelLeftOpen,
@@ -141,7 +140,7 @@ function Badge({ value }: { value?: number | null }) {
   if (value === null || value === undefined) return null;
 
   return (
-    <span className="inline-flex min-w-[26px] items-center justify-center rounded-full border border-white/8 bg-white/[0.045] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-300">
+    <span className="inline-flex min-w-[24px] items-center justify-center rounded-full border border-white/8 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-400">
       {value}
     </span>
   );
@@ -165,7 +164,7 @@ function NavSection({
 }) {
   return (
     <section>
-      <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+      <div className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
         {title}
       </div>
 
@@ -180,22 +179,22 @@ function NavSection({
               key={item.href}
               href={item.href}
               onClick={onNavigate}
-              className={`group flex items-center justify-between rounded-xl border px-3 py-2 transition ${
+              className={`group flex items-center justify-between rounded-xl border px-2.5 py-2 transition ${
                 active
-                  ? "border-cyan-400/18 bg-white/[0.065] shadow-[inset_0_0_0_1px_rgba(103,232,249,0.07)]"
+                  ? "border-cyan-300/16 bg-white/[0.065] shadow-[inset_0_0_0_1px_rgba(125,211,252,0.06)]"
                   : "border-transparent bg-transparent hover:border-white/7 hover:bg-white/[0.03]"
               }`}
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <div
-                  className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-lg border ${
+                  className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border ${
                     active
-                      ? "border-cyan-300/15 bg-cyan-400/[0.07]"
+                      ? "border-cyan-300/12 bg-cyan-400/[0.07]"
                       : "border-white/7 bg-white/[0.025]"
                   }`}
                 >
                   <Icon
-                    className={`h-4 w-4 ${
+                    className={`h-[15px] w-[15px] ${
                       active ? "text-cyan-200" : "text-slate-300"
                     }`}
                   />
@@ -210,7 +209,7 @@ function NavSection({
                 </span>
               </div>
 
-              <div className="ml-3 flex shrink-0 items-center">
+              <div className="ml-2 flex shrink-0 items-center">
                 <Badge value={item.badge} />
               </div>
             </Link>
@@ -277,9 +276,9 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col bg-[#081a3a] text-white">
-      <div className="border-b border-white/7 px-4 py-4">
+      <div className="border-b border-white/7 px-3.5 py-3.5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10.5 w-10.5 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] p-2">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/8 bg-white/[0.035] p-2">
             <Image
               src="/logo-resibook.png"
               alt="ResiBook"
@@ -291,31 +290,31 @@ function SidebarContent({
           </div>
 
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-300/90">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/85">
               ResiBook
             </p>
-            <h1 className="mt-0.5 truncate text-[18px] font-semibold tracking-tight text-white">
+            <h1 className="mt-0.5 truncate text-[17px] font-semibold tracking-tight text-white">
               Sistema clínico
             </h1>
           </div>
         </div>
 
         <div
-          className={`mt-4 rounded-2xl border px-3.5 py-3 ${
+          className={`mt-3.5 rounded-2xl border px-3 py-2.5 ${
             isGuest
               ? "border-amber-300/15 bg-amber-400/[0.06]"
-              : "border-white/7 bg-white/[0.03]"
+              : "border-white/8 bg-white/[0.035]"
           }`}
         >
           <p
-            className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${
+            className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${
               isGuest ? "text-amber-200" : "text-slate-400"
             }`}
           >
             {isGuest ? "Modo" : "Ambiente"}
           </p>
 
-          <p className="mt-1 text-sm font-semibold text-white">
+          <p className="mt-1 text-[13px] font-semibold text-white">
             {isGuest ? "Acesso convidado" : "Operação clínica"}
           </p>
         </div>
@@ -329,7 +328,7 @@ function SidebarContent({
         ) : null}
       </div>
 
-      <div className="resibook-sidebar-scroll flex-1 space-y-4 overflow-y-auto px-3 py-3">
+      <div className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
         <NavSection
           title={isGuest ? "Acesso liberado" : "Principal"}
           items={primaryItems}
@@ -387,30 +386,20 @@ function SidebarContent({
         ) : null}
       </div>
 
-      <div className="border-t border-white/7 p-3">
-        <div className="rounded-2xl border border-white/7 bg-white/[0.028] p-3">
-          {!isGuest ? (
-            <div className="mb-3 flex items-center gap-2 rounded-xl border border-white/7 bg-white/[0.03] px-3 py-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/7 bg-white/[0.03]">
-                <User className="h-4 w-4 text-slate-300" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Conta
-                </p>
-                <p className="truncate text-sm font-medium text-slate-200">
-                  Usuário e sessão
-                </p>
-              </div>
+      <div className="border-t border-white/7 p-2.5">
+        <div className="rounded-2xl border border-white/7 bg-white/[0.025] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {isGuest ? "Sessão" : "Conta"}
+              </p>
+              <p className="mt-1 text-[13px] text-slate-300">
+                {isGuest ? "Usuário convidado ativo." : "Saída segura do ambiente clínico."}
+              </p>
             </div>
-          ) : null}
 
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            {isGuest ? "Sessão" : "Encerrar sessão"}
-          </p>
-          <p className="mt-1 text-sm text-slate-300">
-            {isGuest ? "Usuário convidado ativo." : "Saída segura do ambiente clínico."}
-          </p>
+
+          </div>
 
           <div className="mt-3">
             <LogoutButton />
@@ -651,7 +640,7 @@ export default function AppShell({ children }: Props) {
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
       {desktopSidebarOpen ? (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] border-r border-slate-200/80 lg:block print:hidden">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[286px] border-r border-slate-200/80 lg:block print:hidden">
           <SidebarContent
             pathname={pathname}
             counts={counts}
@@ -664,8 +653,8 @@ export default function AppShell({ children }: Props) {
       <button
         type="button"
         onClick={() => setDesktopSidebarOpen((current) => !current)}
-        className={`fixed top-1/2 z-[65] hidden h-10.5 w-10.5 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
-          desktopSidebarOpen ? "left-[270px]" : "left-4"
+        className={`fixed top-1/2 z-[65] hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
+          desktopSidebarOpen ? "left-[264px]" : "left-4"
         }`}
         aria-label={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
         title={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
@@ -681,7 +670,7 @@ export default function AppShell({ children }: Props) {
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="fixed bottom-4 left-4 z-50 inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-950 px-4 text-sm font-semibold text-white shadow-xl shadow-slate-950/20"
+          className="fixed bottom-4 left-4 z-50 inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-950 px-4 text-sm font-semibold text-white shadow-xl shadow-slate-950/20"
           aria-label="Abrir menu"
         >
           <Menu className="h-5 w-5" />
@@ -698,7 +687,7 @@ export default function AppShell({ children }: Props) {
             aria-label="Fechar menu"
           />
 
-          <div className="absolute inset-y-0 left-0 flex w-[88vw] max-w-[336px] flex-col shadow-2xl">
+          <div className="absolute inset-y-0 left-0 flex w-[88vw] max-w-[340px] flex-col shadow-2xl">
             <div className="absolute right-3 top-3 z-20">
               <button
                 type="button"
@@ -724,14 +713,14 @@ export default function AppShell({ children }: Props) {
 
       <div
         className={`min-h-screen transition-[padding] duration-200 print:pl-0 ${
-          desktopSidebarOpen ? "lg:pl-[292px]" : "lg:pl-0"
+          desktopSidebarOpen ? "lg:pl-[286px]" : "lg:pl-0"
         }`}
       >
         <div className="print:hidden">
           <Topbar />
         </div>
 
-        <main className="px-3 pb-24 pt-4 sm:px-4 md:px-6 md:py-5 lg:px-8 print:px-0 print:py-0">
+        <main className="px-3 pb-24 pt-4 sm:px-4 md:px-6 md:py-6 lg:px-8 print:px-0 print:py-0">
           <div className="mx-auto w-full max-w-7xl print:max-w-none">
             {children}
           </div>

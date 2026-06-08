@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ModulePageHeader from "../../components/module-page-header";
 import CopyButton from "../../components/copy-button";
 import { Edit3, Lock, Plus, Search, Trash2, X } from "lucide-react";
 
@@ -92,7 +93,7 @@ function TextAreaField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-50"
       />
     </div>
   );
@@ -119,7 +120,7 @@ function InputField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-50"
       />
     </div>
   );
@@ -371,48 +372,44 @@ export default function ExamesEvolucaoPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-5 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-700">
-                Exames / Evolução
-              </span>
-
-              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                Biblioteca compartilhada
-              </span>
-
-              <span
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                  isAdmin
-                    ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border border-blue-200 bg-blue-50 text-blue-700"
-                }`}
-              >
-                {isAdmin ? "Admin pode gerenciar" : "Consulta e cópia liberadas"}
-              </span>
+      <ModulePageHeader
+        eyebrow="Módulo assistencial"
+        title="Exames e evolução"
+        description="Biblioteca de blocos clínicos para consulta, cópia rápida e uso como apoio em evolução ou solicitação de exames."
+        badges={[
+          { label: "Exames / Evolução", tone: "blue" },
+          { label: "Biblioteca compartilhada", tone: "slate" },
+          {
+            label: isAdmin ? "Admin pode gerenciar" : "Consulta e cópia liberadas",
+            tone: isAdmin ? "emerald" : "cyan",
+          },
+        ]}
+        metrics={[
+          {
+            label: "Total carregado",
+            value: loading ? "Carregando..." : items.length,
+          },
+          {
+            label: "Exibindo",
+            value: filtered.length,
+          },
+        ]}
+        error={error}
+        success={success}
+        notice={
+          !isAdmin ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                {isGuest
+                  ? "Convidado: leitura e cópia liberadas."
+                  : "Somente o administrador gerencia a biblioteca."}
+              </div>
             </div>
-
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-              Exames e evolução
-            </h1>
-
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Biblioteca de blocos clínicos para consulta, cópia rápida e uso
-              como apoio em evolução ou solicitação de exames.
-            </p>
-
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700">
-              <span>
-                {loading ? "Carregando..." : `Total carregado: ${items.length}`}
-              </span>
-              <span>•</span>
-              <span>Exibindo: {filtered.length}</span>
-            </div>
-          </div>
-
-          {isAdmin ? (
+          ) : null
+        }
+        actions={
+          isAdmin ? (
             <button
               type="button"
               onClick={openCreateDrawer}
@@ -421,31 +418,10 @@ export default function ExamesEvolucaoPage() {
               <Plus className="h-4 w-4" />
               Novo modelo
             </button>
-          ) : (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                {isGuest
-                  ? "Convidado: leitura e cópia liberadas."
-                  : "Somente o admin gerencia a biblioteca."}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {error ? (
-          <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            Erro: {error}
-          </div>
-        ) : null}
-
-        {success ? (
-          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-            {success}
-          </div>
-        ) : null}
-
-        <div className="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          ) : null
+        }
+      >
+        <div className="space-y-4 rounded-[22px] border border-slate-200 bg-slate-50/80 p-4 md:p-5">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -453,7 +429,7 @@ export default function ExamesEvolucaoPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Buscar por título, categoria, conteúdo, origem..."
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none"
             />
           </div>
 
@@ -461,7 +437,7 @@ export default function ExamesEvolucaoPage() {
             <select
               value={categoria}
               onChange={(event) => setCategoria(event.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             >
               <option value="">— todas as categorias —</option>
               {categorias.map((item) => (
@@ -474,7 +450,7 @@ export default function ExamesEvolucaoPage() {
             <select
               value={sexo}
               onChange={(event) => setSexo(event.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
             >
               <option value="">— todos os sexos —</option>
               {sexos.map((item) => (
@@ -491,13 +467,13 @@ export default function ExamesEvolucaoPage() {
                 setCategoria("");
                 setSexo("");
               }}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
             >
               {hasFilters ? "Limpar filtros" : "Filtros"}
             </button>
           </div>
         </div>
-      </section>
+      </ModulePageHeader>
 
       {loading || checkingUser ? (
         <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
@@ -508,22 +484,22 @@ export default function ExamesEvolucaoPage() {
           Nenhum modelo encontrado.
         </section>
       ) : (
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
           <div className="grid gap-4 xl:grid-cols-2">
             {filtered.map((item) => (
               <article
                 key={item.id}
-                className="rounded-[24px] border border-slate-200 bg-slate-50 p-5"
+                className="rounded-[22px] border border-slate-200 bg-slate-50/75 p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                      <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
                         {item.categoria || "Sem categoria"}
                       </span>
 
                       {item.sexo ? (
-                        <span className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3 py-1 text-xs font-semibold text-fuchsia-700">
+                        <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                           {item.sexo}
                         </span>
                       ) : null}
@@ -572,8 +548,7 @@ export default function ExamesEvolucaoPage() {
                   </div>
                 ) : (
                   <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-                    Somente leitura: use o botão de copiar para reutilizar este
-                    modelo.
+                    Somente leitura: use o botão de copiar para reutilizar este modelo.
                   </div>
                 )}
               </article>
@@ -660,8 +635,8 @@ export default function ExamesEvolucaoPage() {
                   {saving
                     ? "Salvando..."
                     : editingItem
-                      ? "Salvar edição"
-                      : "Criar modelo"}
+                    ? "Salvar edição"
+                    : "Criar modelo"}
                 </button>
 
                 <button
