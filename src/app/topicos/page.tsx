@@ -226,10 +226,10 @@ function Section({
 
   const toneClass = {
     slate: "border-slate-200 bg-slate-50",
-    rose: "border-rose-200 bg-rose-50",
-    blue: "border-blue-200 bg-blue-50",
-    emerald: "border-emerald-200 bg-emerald-50",
-    amber: "border-amber-200 bg-amber-50",
+    rose: "border-slate-200 bg-slate-50",
+    blue: "border-slate-200 bg-slate-50",
+    emerald: "border-slate-200 bg-slate-50",
+    amber: "border-slate-200 bg-slate-50",
   }[tone];
 
   return (
@@ -262,12 +262,12 @@ function RelatedCardsPanel({
   if (cards.length === 0) return null;
 
   return (
-    <section className="rounded-[26px] border border-cyan-200/70 bg-cyan-50/60 p-5">
+    <section className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-5">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="inline-flex rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
+        <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
           Revisão rápida
         </span>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-slate-600">
           Flashcards relacionados a este tópico para revisão objetiva.
         </p>
       </div>
@@ -283,7 +283,7 @@ function RelatedCardsPanel({
             >
               <div className="flex flex-wrap items-center gap-2">
                 {card.materia ? (
-                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700">
                     {card.materia}
                   </span>
                 ) : null}
@@ -314,7 +314,9 @@ function RelatedCardsPanel({
                   {open ? "Ocultar resposta" : "Revelar resposta"}
                 </button>
 
-                {card.verso ? <CopyButton text={`${card.frente}\n\n${card.verso}`} /> : null}
+                {card.verso ? <CopyButton text={`${card.frente}
+
+${card.verso}`} /> : null}
               </div>
             </article>
           );
