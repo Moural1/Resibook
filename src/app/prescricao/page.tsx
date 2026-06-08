@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import PrescriptionTemplatesLive from "../../components/prescription-templates-live";
+import ClinicalAlerts, {
+  buildClinicalAlerts,
+  type ClinicalAlert,
+} from "../../components/clinical-alerts";
 import { ClipboardPlus, Edit3, Lock, Printer, X } from "lucide-react";
 
 type Prescription = {
@@ -22,6 +26,24 @@ type Prescription = {
 type Patient = {
   id: string;
   nome: string;
+  idade?: number | null;
+  alergias?: string | null;
+  comorbidades?: string | null;
+  hpp?: string | null;
+  medicamentos_em_uso?: string | null;
+  gestante?: boolean | null;
+  funcao_renal_alterada?: boolean | null;
+  hepatopatia?: boolean | null;
+  idoso_fragil?: boolean | null;
+  diabetes?: boolean | null;
+  epilepsia?: boolean | null;
+  asma?: boolean | null;
+  gastrite_ulcera?: boolean | null;
+  insuficiencia_cardiaca?: boolean | null;
+  arritmia_qt_longo?: boolean | null;
+  uso_anticoagulante?: boolean | null;
+  uso_isrs?: boolean | null;
+  uso_sedativos?: boolean | null;
 };
 
 type PrescriptionTemplate = {
@@ -31,7 +53,34 @@ type PrescriptionTemplate = {
   conteudo: string;
   observacoes: string | null;
   source_file: string | null;
+  contraindicacoes?: string | null;
+  cuidados_especiais?: string | null;
+  alerta_gestante?: string | null;
+  alerta_idoso?: string | null;
+  alerta_drc?: string | null;
+  alerta_hepatopatia?: string | null;
+  alerta_alergias?: string | null;
+  alerta_interacoes?: string | null;
+  tags_risco?: string | null;
+  risk_tags?: string | null;
+  condition_tags?: string | null;
+  interaction_tags?: string | null;
   created_at: string;
+};
+
+
+type HighRiskConfirmationLog = {
+  id: number;
+  user_id?: string | null;
+  patient_id?: string | null;
+  prescription_id?: number | null;
+  paciente_nome?: string | null;
+  medication_text?: string | null;
+  high_risk_count: number;
+  high_risk_titles?: string[] | null;
+  confirmation_reason?: string | null;
+  confirmed_at?: string | null;
+  created_at?: string | null;
 };
 
 type PrescriptionDraft = {
@@ -293,167 +342,124 @@ function buildPrescriptionPrintHtml(
             color: #1d4ed8;
             margin-bottom: 8px;
           }
+          .alert p {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #1e3a8a;
+          }
           .section {
             border: 1px solid #e2e8f0;
             border-radius: 22px;
             overflow: hidden;
-            margin-bottom: 16px;
-            page-break-inside: avoid;
           }
           .section-head {
             padding: 14px 18px;
-            background: linear-gradient(180deg, #f8fbff 0%, #f3f7fd 100%);
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
             border-bottom: 1px solid #e2e8f0;
+          }
+          .section-head span {
+            display: block;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #2563eb;
+            margin-bottom: 6px;
           }
           .section-head h3 {
             margin: 0;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.16em;
+            font-size: 18px;
+            font-weight: 800;
             color: #0f172a;
           }
-          .section-body {
+          .section-body { padding: 18px; }
+          .rx-box {
+            border-radius: 18px;
+            background: #07183d;
             padding: 18px;
           }
-          .mono {
+          pre {
+            margin: 0;
             white-space: pre-wrap;
-            font-family: "Courier New", monospace;
+            font-family: "Courier New", Courier, monospace;
             font-size: 15px;
-            line-height: 1.8;
-            color: #0f172a;
+            line-height: 1.75;
+            color: #f8fafc;
           }
-          .grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
-          }
-          .field {
-            border-radius: 16px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            padding: 14px;
-            min-height: 84px;
-          }
-          .field span {
-            display: block;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.16em;
-            color: #64748b;
-            font-weight: 800;
-            margin-bottom: 8px;
-          }
-          .field strong {
-            display: block;
-            font-size: 15px;
-            line-height: 1.6;
-            color: #0f172a;
-          }
-          .empty {
-            color: #94a3b8;
-            font-style: italic;
-          }
-          .footer {
-            border-top: 1px solid #e2e8f0;
-            padding: 14px 18px 18px;
-            color: #64748b;
-            font-size: 11px;
+          .footnote {
+            margin-top: 18px;
+            font-size: 12px;
             line-height: 1.7;
+            color: #64748b;
           }
+          .empty { color: #94a3b8; }
           @media print {
             body { background: white; padding: 0; }
-            .sheet { box-shadow: none; border-radius: 0; border: none; max-width: none; }
+            .sheet {
+              box-shadow: none;
+              border: none;
+              border-radius: 0;
+              max-width: none;
+            }
           }
         </style>
       </head>
       <body>
-        <main class="sheet">
+        <div class="sheet">
           <section class="hero">
             <div class="hero-top">
               <div class="brand">
                 <div class="brand-mark">R</div>
                 <div>
                   <h1>RESIBOOK</h1>
-                  <p>Prescrição médica • versão para impressão/PDF</p>
+                  <p>Prescrição clínica pronta para impressão</p>
                 </div>
               </div>
-
               <div class="meta">
-                <div>Emitido em: <strong>${escapeHtml(emittedAt)}</strong></div>
-                <div>Modo: <strong>${mode === "draft" ? "Rascunho" : "Registrada"}</strong></div>
+                <div>Emitido em: ${escapeHtml(emittedAt)}</div>
+                <div>Modo: ${escapeHtml(mode === "draft" ? "Rascunho" : "Prescrição salva")}</div>
               </div>
             </div>
 
             <div class="hero-body">
               <div class="patient-block">
-                <span class="chip">${mode === "draft" ? "Pré-visualização" : "Prescrição pronta"}</span>
-                <h2>${safePatient}</h2>
-                <p>Documento limpo para impressão ou exportação em PDF diretamente pelo navegador.</p>
+                <span class="chip">Prescrição</span>
+                <h2>${safeMedication}</h2>
+                <p>${safePatient}</p>
               </div>
 
               <div class="hero-card">
+                <div class="row"><span>Paciente</span><strong>${safePatient}</strong></div>
                 <div class="row"><span>Medicamento</span><strong>${safeMedication}</strong></div>
-                <div class="row"><span>Via</span><strong>${escapeHtml(item.via || "Não informada")}</strong></div>
-                <div class="row"><span>Duração</span><strong>${escapeHtml(item.duracao || "Não informada")}</strong></div>
+                <div class="row"><span>Tipo</span><strong>${escapeHtml(mode === "draft" ? "Rascunho" : "Salva")}</strong></div>
               </div>
             </div>
           </section>
 
           <section class="content">
             <div class="alert">
-              <strong>Uso clínico</strong>
-              Revisar identificação do paciente, posologia, duração, via e orientações antes da assinatura ou envio.
+              <strong>Ferramenta de apoio</strong>
+              <p>Revise dose, função renal/hepática, alergias, gestação e interações antes do uso clínico.</p>
             </div>
 
             <section class="section">
               <div class="section-head">
-                <h3>Prescrição formatada</h3>
+                <span>Prescrição</span>
+                <h3>Conteúdo pronto para impressão / PDF</h3>
               </div>
               <div class="section-body">
-                <div class="mono">${textToHtml(prescriptionText)}</div>
-              </div>
-            </section>
-
-            <section class="section">
-              <div class="section-head">
-                <h3>Campos estruturados</h3>
-              </div>
-              <div class="section-body">
-                <div class="grid">
-                  <div class="field">
-                    <span>Medicamento</span>
-                    <strong>${textToHtml(item.medicamento)}</strong>
-                  </div>
-                  <div class="field">
-                    <span>Via</span>
-                    <strong>${textToHtml(item.via)}</strong>
-                  </div>
-                  <div class="field">
-                    <span>Posologia</span>
-                    <strong>${textToHtml(item.posologia)}</strong>
-                  </div>
-                  <div class="field">
-                    <span>Duração</span>
-                    <strong>${textToHtml(item.duracao)}</strong>
-                  </div>
+                <div class="rx-box">
+                  <pre>${escapeHtml(prescriptionText)}</pre>
                 </div>
-              </div>
-            </section>
 
-            <section class="section">
-              <div class="section-head">
-                <h3>Orientações</h3>
-              </div>
-              <div class="section-body">
-                <div class="mono">${textToHtml(item.orientacoes)}</div>
+                <p class="footnote">
+                  Documento gerado pelo ResiBook para impressão ou exportação em PDF.
+                </p>
               </div>
             </section>
           </section>
-
-          <footer class="footer">
-            Documento gerado pelo ResiBook. Para salvar em PDF, use a opção de impressão do navegador e escolha "Salvar como PDF".
-          </footer>
-        </main>
+        </div>
       </body>
     </html>
   `;
@@ -513,6 +519,68 @@ function buildPayload(form: PrescriptionForm, userId: string, patients: Patient[
   };
 }
 
+function buildHighRiskConfirmationPayload(params: {
+  userId: string;
+  prescriptionId: number;
+  patientId?: string | null;
+  pacienteNome?: string | null;
+  medicationText?: string | null;
+  alerts: ClinicalAlert[];
+  confirmationReason?: string | null;
+}) {
+  return {
+    user_id: params.userId,
+    prescription_id: params.prescriptionId,
+    patient_id: params.patientId || null,
+    paciente_nome: params.pacienteNome || null,
+    medication_text: params.medicationText || null,
+    high_risk_count: params.alerts.length,
+    high_risk_titles: params.alerts.map((alert) => alert.title),
+    confirmation_reason: params.confirmationReason?.trim() || null,
+    confirmed_at: new Date().toISOString(),
+  };
+}
+
+
+
+function matchScoreForTemplate(
+  template: PrescriptionTemplate,
+  draft: PrescriptionDraft
+) {
+  const titulo = normalize(template.titulo);
+  const conteudo = normalize(template.conteudo);
+  const observacoes = normalize(template.observacoes);
+
+  let score = 0;
+
+  if (draft.medicamento && titulo.includes(normalize(draft.medicamento))) score += 4;
+  if (draft.medicamento && conteudo.includes(normalize(draft.medicamento))) score += 4;
+  if (draft.via && conteudo.includes(normalize(draft.via))) score += 1;
+  if (draft.posologia && conteudo.includes(normalize(draft.posologia))) score += 2;
+  if (draft.duracao && conteudo.includes(normalize(draft.duracao))) score += 1;
+  if (draft.orientacoes && (conteudo.includes(normalize(draft.orientacoes)) || observacoes.includes(normalize(draft.orientacoes)))) score += 1;
+
+  return score;
+}
+
+function findMatchingTemplateFromDraft(
+  draft: PrescriptionDraft,
+  templates: PrescriptionTemplate[]
+) {
+  let best: PrescriptionTemplate | null = null;
+  let bestScore = 0;
+
+  for (const template of templates) {
+    const score = matchScoreForTemplate(template, draft);
+    if (score > bestScore) {
+      best = template;
+      bestScore = score;
+    }
+  }
+
+  return bestScore >= 4 ? best : null;
+}
+
 export default function PrescricaoPage() {
   const supabase = createClient();
 
@@ -526,6 +594,8 @@ export default function PrescricaoPage() {
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [templates, setTemplates] = useState<PrescriptionTemplate[]>([]);
+  const [selectedTemplateMeta, setSelectedTemplateMeta] =
+    useState<PrescriptionTemplate | null>(null);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
 
   const [form, setForm] = useState<PrescriptionForm>(emptyForm);
@@ -541,6 +611,10 @@ export default function PrescricaoPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingSave, setPendingSave] = useState(false);
+  const [confirmationReason, setConfirmationReason] = useState("");
+  const [recentConfirmations, setRecentConfirmations] = useState<HighRiskConfirmationLog[]>([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -559,6 +633,7 @@ export default function PrescricaoPage() {
     if (checkingUser) return;
 
     if (isGuest || !currentUserId) {
+      setSelectedTemplateMeta(null);
       setForm((current) => ({
         ...current,
         patient_id: "",
@@ -634,7 +709,7 @@ export default function PrescricaoPage() {
     const templatesRes = await supabase
       .from("prescription_templates")
       .select(
-        "id, categoria, titulo, conteudo, observacoes, source_file, created_at"
+        "id, categoria, titulo, conteudo, observacoes, source_file, contraindicacoes, cuidados_especiais, alerta_gestante, alerta_idoso, alerta_drc, alerta_hepatopatia, alerta_alergias, alerta_interacoes, tags_risco, risk_tags, condition_tags, interaction_tags, created_at"
       )
       .order("titulo", { ascending: true });
 
@@ -648,14 +723,15 @@ export default function PrescricaoPage() {
     if (guest || !userId) {
       setPatients([]);
       setPrescriptions([]);
+      setRecentConfirmations([]);
       setLoading(false);
       return;
     }
 
-    const [patientsRes, prescriptionsRes] = await Promise.all([
+    const [patientsRes, prescriptionsRes, confirmationsRes] = await Promise.all([
       supabase
         .from("patients")
-        .select("id, nome")
+        .select("id, nome, idade, alergias, comorbidades, hpp, medicamentos_em_uso, gestante, funcao_renal_alterada, hepatopatia, idoso_fragil, diabetes, epilepsia, asma, gastrite_ulcera, insuficiencia_cardiaca, arritmia_qt_longo, uso_anticoagulante, uso_isrs, uso_sedativos")
         .eq("user_id", userId)
         .order("nome", { ascending: true }),
 
@@ -666,6 +742,15 @@ export default function PrescricaoPage() {
         )
         .eq("user_id", userId)
         .order("created_at", { ascending: false }),
+
+      supabase
+        .from("high_risk_confirmation_logs")
+        .select(
+          "id, user_id, patient_id, prescription_id, paciente_nome, medication_text, high_risk_count, high_risk_titles, confirmation_reason, confirmed_at, created_at"
+        )
+        .eq("user_id", userId)
+        .order("confirmed_at", { ascending: false })
+        .limit(6),
     ]);
 
     let nextError = templatesRes.error?.message || "";
@@ -686,6 +771,16 @@ export default function PrescricaoPage() {
         "Erro ao carregar prescrições.";
     } else {
       setPrescriptions((prescriptionsRes.data as Prescription[]) || []);
+    }
+
+    if (confirmationsRes.error) {
+      setRecentConfirmations([]);
+      nextError =
+        nextError ||
+        confirmationsRes.error.message ||
+        "Erro ao carregar auditoria de confirmações.";
+    } else {
+      setRecentConfirmations((confirmationsRes.data as HighRiskConfirmationLog[]) || []);
     }
 
     setError(nextError);
@@ -722,10 +817,28 @@ export default function PrescricaoPage() {
     return buildPrescriptionTextFromForm(safeForm);
   }, [form, isGuest, patients]);
 
+  const selectedPatient = useMemo(() => {
+    if (isGuest) return null;
+    return getOwnedPatient(form.patient_id, patients) || null;
+  }, [form.patient_id, isGuest, patients]);
+
+  const draftAlerts = useMemo(
+    () => buildClinicalAlerts(selectedPatient, draftText, selectedTemplateMeta),
+    [selectedPatient, draftText, selectedTemplateMeta]
+  );
+
+  const highRiskAlerts = useMemo(
+    () => draftAlerts.filter((alert) => alert.level === "high"),
+    [draftAlerts]
+  );
+
   function updateForm<K extends keyof PrescriptionForm>(
     key: K,
     value: PrescriptionForm[K]
   ) {
+    setConfirmOpen(false);
+    setPendingSave(false);
+    setConfirmationReason("");
     setForm((current) => {
       if (key === "patient_id") {
         const found = getOwnedPatient(String(value), patients);
@@ -784,11 +897,10 @@ export default function PrescricaoPage() {
   }
 
   function resetForm() {
-    setForm((current) => ({
-      ...emptyForm,
-      patient_id: isGuest ? "" : current.patient_id,
-      paciente_nome: isGuest ? "" : current.paciente_nome,
-    }));
+    setSelectedTemplateMeta(null);
+    setConfirmOpen(false);
+    setPendingSave(false);
+    setForm(emptyForm);
   }
 
   function openCreateDrawer() {
@@ -802,40 +914,69 @@ export default function PrescricaoPage() {
   }
 
   function closeDrawer() {
+    setConfirmOpen(false);
+    setPendingSave(false);
     setDrawerOpen(false);
   }
 
   function openPrintHtml(html: string) {
-    const printWindow = window.open("", "_blank", "width=1100,height=800");
+    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=960,height=720");
+
     if (!printWindow) {
-      alert("Não foi possível abrir a janela de impressão.");
+      setError("Não foi possível abrir a janela de impressão. Verifique se o navegador bloqueou pop-ups.");
       return;
     }
 
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
+    printWindow.focus();
 
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-      }, 250);
-    };
+    window.setTimeout(() => {
+      printWindow.print();
+    }, 250);
   }
 
   function handlePrintDraft() {
     const safeForm = sanitizePrescriptionForm(form, isGuest ? [] : patients);
-    const html = buildPrescriptionPrintHtml(safeForm, "draft");
+    const html = buildPrescriptionPrintHtml(
+      {
+        paciente_nome: safeForm.paciente_nome,
+        medicamento: safeForm.medicamento,
+        via: safeForm.via,
+        posologia: safeForm.posologia,
+        duracao: safeForm.duracao,
+        orientacoes: safeForm.orientacoes,
+      },
+      "draft"
+    );
+
     openPrintHtml(html);
   }
 
   function handlePrintSaved(item: Prescription) {
-    const html = buildPrescriptionPrintHtml(item, "saved");
+    const html = buildPrescriptionPrintHtml(
+      {
+        paciente_nome: item.paciente_nome,
+        medicamento: item.medicamento,
+        via: item.via,
+        posologia: item.posologia,
+        duracao: item.duracao,
+        orientacoes: item.orientacoes,
+      },
+      "saved"
+    );
+
     openPrintHtml(html);
   }
 
+
   function handleUseTemplate(draft: PrescriptionDraft) {
+    const matchedTemplate = findMatchingTemplateFromDraft(draft, templates);
+    setConfirmOpen(false);
+    setPendingSave(false);
+    setSelectedTemplateMeta(matchedTemplate);
+
     setForm((current) => ({
       ...current,
       medicamento: draft.medicamento || "",
@@ -856,6 +997,7 @@ export default function PrescricaoPage() {
   }
 
   function startEdit(item: Prescription) {
+    setSelectedTemplateMeta(null);
     setEditingId(item.id);
     setEditForms((current) => ({
       ...current,
@@ -883,7 +1025,38 @@ export default function PrescricaoPage() {
     });
   }
 
-  async function handleCreate() {
+  async function registerHighRiskConfirmation(savedPrescription: Prescription, safeForm: PrescriptionForm) {
+    if (!currentUserId || highRiskAlerts.length === 0) return;
+
+    const payload = buildHighRiskConfirmationPayload({
+      userId: currentUserId,
+      prescriptionId: savedPrescription.id,
+      patientId: safeForm.patient_id || null,
+      pacienteNome: safeForm.paciente_nome || null,
+      medicationText: buildPrescriptionTextFromForm(safeForm),
+      alerts: highRiskAlerts,
+      confirmationReason,
+    });
+
+    const { data, error } = await supabase
+      .from("high_risk_confirmation_logs")
+      .insert(payload)
+      .select(
+        "id, user_id, patient_id, prescription_id, paciente_nome, medication_text, high_risk_count, high_risk_titles, confirmation_reason, confirmed_at, created_at"
+      )
+      .single();
+
+    if (error) {
+      setSuccess("Prescrição salva com sucesso. A auditoria da confirmação de alto risco não pôde ser registrada.");
+      return;
+    }
+
+    if (data) {
+      setRecentConfirmations((current) => [data as HighRiskConfirmationLog, ...current].slice(0, 6));
+    }
+  }
+
+  async function persistCreate() {
     if (isGuest) {
       setError("Usuário convidado não pode salvar prescrições.");
       return;
@@ -921,16 +1094,38 @@ export default function PrescricaoPage() {
       setError(error.message);
     } else if (data) {
       setPrescriptions((current) => [data as Prescription, ...current]);
-      setForm((current) => ({
-        ...emptyForm,
-        patient_id: current.patient_id,
-        paciente_nome: current.paciente_nome,
-      }));
-      setSuccess("Prescrição salva com sucesso.");
+
+      if (highRiskAlerts.length > 0 && pendingSave) {
+        await registerHighRiskConfirmation(data as Prescription, safeForm);
+      } else {
+        setSuccess("Prescrição salva com sucesso.");
+      }
+
+      setForm(emptyForm);
+      setSelectedTemplateMeta(null);
+      setConfirmOpen(false);
+      setPendingSave(false);
+      setConfirmationReason("");
       setDrawerOpen(false);
     }
 
     setSaving(false);
+  }
+
+  async function handleCreate() {
+    if (highRiskAlerts.length > 0 && !pendingSave) {
+      setConfirmOpen(true);
+      setError("");
+      setSuccess("");
+      return;
+    }
+
+    await persistCreate();
+  }
+
+  async function handleConfirmSave() {
+    setPendingSave(true);
+    await persistCreate();
   }
 
   async function handleUpdate(id: number) {
@@ -1187,6 +1382,79 @@ export default function PrescricaoPage() {
         </div>
       </section>
 
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Auditoria de confirmações de risco alto
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Últimas confirmações feitas ao salvar prescrições com alertas críticos.
+            </p>
+          </div>
+
+          <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+            {recentConfirmations.length} recentes
+          </span>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {recentConfirmations.length ? (
+            recentConfirmations.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {item.paciente_nome || "Paciente não vinculado"}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                      {item.medication_text || "Prescrição clínica"}
+                    </p>
+                  </div>
+
+                  <span className="whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                    {item.high_risk_count} alerta{item.high_risk_count === 1 ? "" : "s"}
+                  </span>
+                </div>
+
+                {item.high_risk_titles?.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {item.high_risk_titles.map((title, index) => (
+                      <span
+                        key={`${item.id}-${index}`}
+                        className="inline-flex rounded-full border border-rose-200 bg-white px-3 py-1 text-[11px] font-medium text-rose-700"
+                      >
+                        {title}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+
+                {item.confirmation_reason ? (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                    <span className="font-semibold text-slate-900">Motivo informado:</span>{" "}
+                    {item.confirmation_reason}
+                  </div>
+                ) : null}
+
+                <p className="mt-3 text-xs text-slate-500">
+                  Confirmado em {formatDate(item.confirmed_at || item.created_at)}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+              Ainda não há confirmações de risco alto registradas.
+            </div>
+          )}
+        </div>
+      </section>
+
+
+
       <PrescriptionTemplatesLive
         templates={templates}
         onUseTemplate={handleUseTemplate}
@@ -1337,6 +1605,12 @@ export default function PrescricaoPage() {
                               Altere os campos abaixo e salve.
                             </p>
                           </div>
+
+                          <ClinicalAlerts
+                            patient={getOwnedPatient(editForm.patient_id, patients)}
+                            medicationText={buildPrescriptionTextFromForm(editForm)}
+                            className="mb-4"
+                          />
 
                           <div className="grid gap-4 md:grid-cols-2">
                             <div>
@@ -1495,6 +1769,105 @@ export default function PrescricaoPage() {
         </section>
       ) : null}
 
+
+      {confirmOpen ? (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 px-4">
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmOpen(false);
+              setPendingSave(false);
+            }}
+            className="absolute inset-0"
+            aria-label="Fechar confirmação"
+          />
+
+          <div className="relative w-full max-w-2xl rounded-[28px] border border-rose-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">
+                  Revisão obrigatória
+                </span>
+                <h3 className="mt-4 text-2xl font-semibold text-slate-900">
+                  Confirmar prescrição com alertas importantes
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Revise os alertas de alto risco abaixo antes de continuar. Esta confirmação prioriza alergias, gestação, risco renal, sangramento, sedação, convulsão e QT.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setPendingSave(false);
+                  setConfirmationReason("");
+                }}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {highRiskAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className="rounded-2xl border border-rose-200 bg-rose-50 p-4"
+                >
+                  <p className="text-sm font-semibold text-rose-900">
+                    {alert.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-rose-800">
+                    {alert.message}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Motivo da confirmação (opcional)
+              </label>
+              <textarea
+                rows={3}
+                value={confirmationReason}
+                onChange={(event) => setConfirmationReason(event.target.value)}
+                placeholder="Ex.: paciente já usou previamente, risco-benefício revisado, sem alternativa melhor no contexto."
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+              />
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+              Revise alergias, gestação, função renal/hepática, idade e interações antes de confirmar.
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setPendingSave(false);
+                  setConfirmationReason("");
+                }}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+              >
+                Voltar e revisar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmSave}
+                disabled={saving}
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-rose-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Salvando..." : "Confirmar e salvar mesmo assim"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {drawerOpen && !isGuest ? (
         <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
           <button
@@ -1536,6 +1909,12 @@ export default function PrescricaoPage() {
                   </p>
                 </div>
               ) : null}
+
+              <ClinicalAlerts
+                patient={selectedPatient}
+                medicationText={draftText}
+                templateMeta={selectedTemplateMeta}
+              />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -1641,6 +2020,17 @@ export default function PrescricaoPage() {
                 </pre>
               </div>
 
+              {highRiskAlerts.length > 0 ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">
+                    Confirmação obrigatória antes de salvar
+                  </p>
+                  <p className="mt-2 text-sm text-rose-900">
+                    Esta prescrição tem {highRiskAlerts.length} alerta{highRiskAlerts.length > 1 ? "s" : ""} de alto risco. Ao clicar em salvar, o ResiBook vai abrir uma revisão final antes de confirmar.
+                  </p>
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
                 <button
                   type="button"
@@ -1668,7 +2058,7 @@ export default function PrescricaoPage() {
                     disabled={saving}
                     className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {saving ? "Salvando..." : "Salvar prescrição"}
+                    {saving ? "Salvando..." : highRiskAlerts.length > 0 ? "Revisar alertas e salvar" : "Salvar prescrição"}
                   </button>
                 </div>
               </div>
