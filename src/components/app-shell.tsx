@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { SupabaseClient, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -501,6 +501,7 @@ function SidebarContent({
 export default function AppShell({ children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const checkedInitialAccessRef = useRef(false);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
@@ -601,7 +602,9 @@ export default function AppShell({ children }: Props) {
     }
 
     async function checkInitialSession() {
-      if (mounted) {
+      const isFirstAccessCheck = !checkedInitialAccessRef.current;
+
+      if (mounted && isFirstAccessCheck) {
         setCheckingUser(true);
       }
 
@@ -621,6 +624,8 @@ export default function AppShell({ children }: Props) {
         resetSessionState();
         redirectTo("/login");
       } finally {
+        checkedInitialAccessRef.current = true;
+
         if (mounted) {
           setCheckingUser(false);
         }
