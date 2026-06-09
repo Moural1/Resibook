@@ -15,6 +15,10 @@ import {
   Stethoscope,
   Tags,
   Users,
+  Mail,
+  BadgeCheck,
+  UserRound,
+  IdCard,
 } from "lucide-react";
 
 type ExportResult = {
@@ -101,7 +105,7 @@ const exportConfigs: ExportConfig[] = [
   {
     table: "flashcards",
     label: "Flashcards",
-    description: "Flashcards de revisão compartilhados entre usuários.",
+    description: "Biblioteca de revisão rápida por área e matéria.",
     icon: Brain,
     select: "id, area, materia, tipo, frente, verso, dificil",
     guestAllowed: false,
@@ -234,6 +238,40 @@ async function fetchTableData(config: ExportConfig, session: SessionInfo) {
     data: data || [],
     error: null,
   };
+}
+
+function InfoCard({
+  icon: Icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-[22px] border border-slate-200 bg-white p-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+          <Icon className="h-4.5 w-4.5" />
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {label}
+          </p>
+          <p className="mt-2 break-all text-sm font-semibold text-slate-900">
+            {value}
+          </p>
+          {hint ? (
+            <p className="mt-2 text-sm leading-6 text-slate-500">{hint}</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function DadosDaContaPage() {
@@ -409,111 +447,75 @@ export default function DadosDaContaPage() {
 
   return (
     <div className="space-y-6">
-
       <ModulePageHeader
         eyebrow="Área de conta"
-        title="Central de dados"
-        description="Exporte os dados do ResiBook em JSON para manter uma cópia local segura. Esta página respeita as regras de segurança do banco: cada usuário exporta apenas os dados que tem permissão para acessar."
+        title="Dados da conta"
+        description="Perfil profissional, identificação da conta e exportação segura dos dados permitidos ao usuário logado."
         badges={[
           { label: "Dados da conta", tone: "blue" },
           { label: "Backup e exportação", tone: "slate" },
           { label: "RLS ativo", tone: "emerald" },
           ...(session.isGuest ? [{ label: "Modo convidado", tone: "amber" as const }] : []),
         ]}
+        metrics={[
+          { label: "Registros", value: totalExported },
+          { label: "Sucesso", value: successCount },
+          { label: "Pendências", value: errorCount },
+        ]}
         error={error}
         success={success}
-        notice={
-          session.isGuest ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              O usuário convidado exporta apenas bibliotecas compartilhadas permitidas. Dados privados como pacientes, prescrições, evoluções e marcações individuais não são exportados neste perfil.
-            </div>
-          ) : null
-        }
-        actions={
-          <button
-            type="button"
-            onClick={handleExportAll}
-            disabled={
-              checkingSession ||
-              !session.userId ||
-              loadingAll ||
-              loadingTable !== null
-            }
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download className="h-4 w-4" />
-            {loadingAll ? "Exportando..." : "Exportar backup completo"}
-          </button>
-        }
-      >
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[22px] border border-slate-200 bg-white p-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
-                <Database className="h-5 w-5" />
-              </div>
+      />
 
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Registros
-                </p>
-
-                <p className="mt-1 text-2xl font-semibold text-slate-900">
-                  {totalExported}
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Total contabilizado na última exportação realizada nesta sessão.
-            </p>
-          </div>
-
-          <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Sucesso
-                </p>
-
-                <p className="mt-1 text-2xl font-semibold text-slate-900">
-                  {successCount}
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Módulos exportados com sucesso.
-            </p>
-          </div>
-
-          <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Pendências
-                </p>
-
-                <p className="mt-1 text-2xl font-semibold text-slate-900">
-                  {errorCount}
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Módulos com erro na última tentativa de exportação.
-            </p>
-          </div>
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="border-b border-slate-200 pb-4">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900">
+            Perfil profissional
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Identificação básica da conta atual. Os campos clínicos abaixo são apenas informativos nesta versão.
+          </p>
         </div>
-      </ModulePageHeader>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <InfoCard
+            icon={UserRound}
+            label="Nome completo do médico"
+            value="Não informado nesta conta"
+            hint="Se quiser, depois dá para ligar este campo a um cadastro próprio."
+          />
+          <InfoCard
+            icon={BadgeCheck}
+            label="Especialidade"
+            value="Não informada"
+            hint="Campo visual para organização profissional."
+          />
+          <InfoCard
+            icon={Mail}
+            label="E-mail do site"
+            value={session.email || "Não identificado"}
+            hint="E-mail usado na sessão atual do ResiBook."
+          />
+          <InfoCard
+            icon={IdCard}
+            label="CRM"
+            value="Não informado"
+            hint="Pode ser integrado depois a um cadastro de perfil."
+          />
+          <InfoCard
+            icon={ShieldCheck}
+            label="Perfil de acesso"
+            value={session.isGuest ? "Convidado" : "Autenticado"}
+            hint="Define quais módulos e exportações estão liberados."
+          />
+          <InfoCard
+            icon={Database}
+            label="ID da conta"
+            value={session.userId || "Não identificado"}
+            hint="Identificador técnico da conta autenticada."
+          />
+        </div>
+      </section>
+
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -547,7 +549,7 @@ export default function DadosDaContaPage() {
         <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
                 <Database className="h-5 w-5" />
               </div>
 
@@ -607,11 +609,7 @@ export default function DadosDaContaPage() {
 
                       {currentResult ? (
                         <span
-                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                            currentResult.ok
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : "border-rose-200 bg-rose-50 text-rose-700"
-                          }`}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
                         >
                           {currentResult.ok
                             ? `${currentResult.count} registros`
