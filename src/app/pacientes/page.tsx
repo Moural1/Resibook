@@ -1,12 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
-import { AlertTriangle, Plus, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  ClipboardList,
+  FileText,
+  HeartPulse,
+  IdCard,
+  Phone,
+  Plus,
+  Search,
+  ShieldAlert,
+  Stethoscope,
+  UserRound,
+  X,
+} from "lucide-react";
 
 type Patient = {
   id: string;
@@ -178,8 +193,30 @@ function getHipotese(patient: Patient) {
 function buildAlergiaResumo(value?: string | null) {
   const clean = (value || "").trim();
   if (!clean) return "";
-  if (clean.length <= 40) return clean;
-  return `${clean.slice(0, 40)}...`;
+  if (clean.length <= 52) return clean;
+  return `${clean.slice(0, 52)}...`;
+}
+
+function getRiskFlags(patient: Patient) {
+  return [
+    patient.gestante ? "Gestante" : "",
+    patient.funcao_renal_alterada ? "Função renal alterada" : "",
+    patient.hepatopatia ? "Hepatopatia" : "",
+    patient.idoso_fragil ? "Idoso frágil" : "",
+    patient.diabetes ? "Diabetes" : "",
+    patient.epilepsia ? "Epilepsia / convulsão" : "",
+    patient.asma ? "Asma / broncoespasmo" : "",
+    patient.gastrite_ulcera ? "Gastrite / úlcera / sangramento GI" : "",
+    patient.insuficiencia_cardiaca ? "Insuficiência cardíaca" : "",
+    patient.arritmia_qt_longo ? "Arritmia / QT longo" : "",
+    patient.uso_anticoagulante ? "Uso de anticoagulante" : "",
+    patient.uso_isrs ? "Uso de ISRS" : "",
+    patient.uso_sedativos ? "Uso de sedativos / opioides / benzos" : "",
+  ].filter(Boolean);
+}
+
+function hasRiskFlags(patient: Patient) {
+  return Boolean(patient.alergias || getRiskFlags(patient).length > 0);
 }
 
 function patientToForm(patient: Patient): PatientForm {
@@ -331,15 +368,33 @@ function buildPatientSummary(patient: Patient) {
 function InfoBlock({
   title,
   children,
+  tone = "default",
 }: {
   title: string;
   children?: string | null;
+  tone?: "default" | "risk" | "clinical" | "plan";
 }) {
   if (!children) return null;
 
+  const toneClass = {
+    default: "border-slate-200 bg-white",
+    risk: "border-rose-200 bg-rose-50/70",
+    clinical: "border-slate-200 bg-slate-50/80",
+    plan: "border-emerald-200 bg-emerald-50/50",
+  }[tone];
+
+  const titleClass = {
+    default: "text-slate-500",
+    risk: "text-rose-700",
+    clinical: "text-slate-600",
+    plan: "text-emerald-700",
+  }[tone];
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <p
+        className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${titleClass}`}
+      >
         {title}
       </p>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
@@ -364,7 +419,7 @@ function TextAreaField({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </label>
       <textarea
@@ -372,7 +427,7 @@ function TextAreaField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
       />
     </div>
   );
@@ -394,7 +449,7 @@ function InputField({
   return (
     <div>
       {label ? (
-        <label className="mb-2 block text-sm font-medium text-slate-700">
+        <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
           {label}
         </label>
       ) : null}
@@ -404,8 +459,36 @@ function InputField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
       />
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
+          {icon}
+        </div>
+
+        <span className="text-2xl font-semibold tracking-tight text-slate-900">
+          {value}
+        </span>
+      </div>
+
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
     </div>
   );
 }
@@ -559,6 +642,15 @@ export default function PacientesPage() {
       if (!patient.created_at) return false;
       return now - new Date(patient.created_at).getTime() <= sevenDays;
     }).length;
+  }, [patients]);
+
+  const riskCount = useMemo(() => {
+    return patients.filter((patient) => hasRiskFlags(patient)).length;
+  }, [patients]);
+
+  const retornoCount = useMemo(() => {
+    return patients.filter((patient) => Boolean(patient.retorno_previsto_em))
+      .length;
   }, [patients]);
 
   const exameFisicoTemplates = useMemo(() => {
@@ -770,22 +862,26 @@ export default function PacientesPage() {
   return (
     <div className="space-y-6">
       <ModulePageHeader
-        eyebrow="Módulo clínico"
+        eyebrow="Prontuário clínico"
         title="Pacientes"
-        description="Cadastro clínico completo com dados cadastrais, plano de saúde, alergias, queixa, HMA, HPP, exame físico, hipótese diagnóstica e conduta."
+        description="Cadastro clínico longitudinal com identificação, queixa, antecedentes, alertas de risco, exame físico, hipótese diagnóstica e conduta."
         badges={[
-          { label: "Pacientes", tone: "emerald" },
-          { label: "Prontuário profissional", tone: "slate" },
+          { label: "Prontuário médico", tone: "emerald" },
+          { label: "Dados privados do usuário", tone: "slate" },
           { label: `${recentCount} novos em 7 dias`, tone: "blue" },
         ]}
         metrics={[
           {
-            label: "Total do seu usuário",
+            label: "Pacientes",
             value: loading ? "Carregando..." : patients.length,
           },
           {
             label: "Exibindo",
             value: filtered.length,
+          },
+          {
+            label: "Com alertas",
+            value: riskCount,
           },
         ]}
         error={error}
@@ -794,198 +890,368 @@ export default function PacientesPage() {
           <button
             type="button"
             onClick={openCreateDrawer}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             <Plus className="h-4 w-4" />
             Novo paciente
           </button>
         }
       >
-        <div className="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar nome, alergias, queixa, HMA, HPP, diagnóstico, medicamento, plano de saúde..."
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+        <div className="grid gap-4 md:grid-cols-4">
+          <StatCard
+            icon={<UserRound className="h-5 w-5" />}
+            label="Pacientes"
+            value={loading ? "..." : patients.length}
           />
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <select
-              value={sexo}
-              onChange={(event) => setSexo(event.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="">— todos os sexos —</option>
-              {sexos.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+          <StatCard
+            icon={<ShieldAlert className="h-5 w-5" />}
+            label="Com alertas"
+            value={riskCount}
+          />
 
-            <select
-              value={especialidade}
-              onChange={(event) => setEspecialidade(event.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="">— todas as especialidades —</option>
-              {especialidades.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+          <StatCard
+            icon={<CalendarDays className="h-5 w-5" />}
+            label="Retornos"
+            value={retornoCount}
+          />
 
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setSexo("");
-                setEspecialidade("");
-              }}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
-            >
-              {hasFilters ? "Limpar filtros" : "Filtros"}
-            </button>
+          <StatCard
+            icon={<FileText className="h-5 w-5" />}
+            label="Exibindo"
+            value={filtered.length}
+          />
+        </div>
+
+        <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+            <div className="min-w-0 flex-1">
+              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Busca no prontuário
+              </label>
+
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Buscar nome, alergias, queixa, HMA, HPP, diagnóstico, medicamento, plano..."
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3 xl:w-[720px]">
+              <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Sexo
+                </label>
+
+                <select
+                  value={sexo}
+                  onChange={(event) => setSexo(event.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                >
+                  <option value="">Todos</option>
+                  {sexos.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Especialidade
+                </label>
+
+                <select
+                  value={especialidade}
+                  onChange={(event) => setEspecialidade(event.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                >
+                  <option value="">Todas</option>
+                  {especialidades.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-transparent">
+                  Ações
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setSexo("");
+                    setEspecialidade("");
+                  }}
+                  disabled={!hasFilters}
+                  className={`inline-flex h-12 w-full items-center justify-center rounded-2xl px-6 text-sm font-semibold transition ${
+                    hasFilters
+                      ? "bg-slate-900 text-white hover:bg-slate-800"
+                      : "cursor-not-allowed border border-slate-200 bg-white text-slate-400"
+                  }`}
+                >
+                  {hasFilters ? "Limpar filtros" : "Sem filtros ativos"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </ModulePageHeader>
 
       {loading ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm font-medium text-slate-600 shadow-sm">
           Carregando pacientes...
         </section>
       ) : filtered.length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
-          Nenhum paciente encontrado.
+        <section className="rounded-[28px] border border-dashed border-slate-300 bg-white px-4 py-14 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500">
+            <Search className="h-5 w-5" />
+          </div>
+
+          <h2 className="mt-4 text-lg font-semibold text-slate-900">
+            Nenhum paciente encontrado
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Ajuste a busca ou limpe os filtros para visualizar os prontuários.
+          </p>
         </section>
       ) : (
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="grid gap-4 xl:grid-cols-2">
-            {filtered.map((item) => (
-              <article
-                key={item.id}
-                className="rounded-[22px] border border-slate-200 bg-slate-50 p-5"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        Paciente
-                      </span>
+        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+          <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Lista de prontuários
+              </p>
 
-                      {item.especialidade ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                          {item.especialidade}
-                        </span>
-                      ) : null}
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+                Pacientes em acompanhamento
+              </h2>
 
-                      {item.plano_saude ? (
-                        <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                          {item.plano_saude}
-                        </span>
-                      ) : null}
+              <p className="mt-1 text-sm text-slate-500">
+                {filtered.length} paciente{filtered.length > 1 ? "s" : ""} em
+                exibição.
+              </p>
+            </div>
 
-                      {item.alergias ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                          {buildAlergiaResumo(item.alergias)}
-                        </span>
-                      ) : null}
+            <div className="flex flex-wrap gap-2">
+              {hasFilters ? (
+                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                  Filtro ativo
+                </span>
+              ) : null}
 
-                      {item.data_nascimento ? (
-                        <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
-                          Nasc.: {formatDateOnly(item.data_nascimento)}
-                        </span>
-                      ) : null}
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                Prontuário clínico
+              </span>
+            </div>
+          </div>
 
-                      {item.retorno_previsto_em ? (
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                          Retorno: {formatDateOnly(item.retorno_previsto_em)}
-                        </span>
-                      ) : null}
+          <div className="grid gap-5 xl:grid-cols-2">
+            {filtered.map((item) => {
+              const risks = getRiskFlags(item);
+              const hasAllergy = Boolean(item.alergias);
+              const hasAnyRisk = hasAllergy || risks.length > 0;
+
+              return (
+                <article
+                  key={item.id}
+                  className={`overflow-hidden rounded-[28px] border bg-white shadow-sm transition hover:border-slate-300 ${
+                    hasAnyRisk ? "border-rose-200" : "border-slate-200"
+                  }`}
+                >
+                  <div
+                    className={`border-b px-5 py-4 ${
+                      hasAnyRisk
+                        ? "border-rose-200 bg-rose-50/55"
+                        : "border-slate-200 bg-slate-50/80"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                            <IdCard className="h-3.5 w-3.5 text-slate-500" />
+                            Prontuário
+                          </span>
+
+                          {item.especialidade ? (
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                              {item.especialidade}
+                            </span>
+                          ) : null}
+
+                          {item.plano_saude ? (
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                              {item.plano_saude}
+                            </span>
+                          ) : null}
+
+                          {hasAllergy ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Alergia: {buildAlergiaResumo(item.alergias)}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <h3 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">
+                          {item.nome}
+                        </h3>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+                          <span>{item.sexo || "Sexo não informado"}</span>
+
+                          {typeof item.idade === "number" ? (
+                            <span>{item.idade} anos</span>
+                          ) : null}
+
+                          {item.data_nascimento ? (
+                            <span>
+                              Nasc.: {formatDateOnly(item.data_nascimento)}
+                            </span>
+                          ) : null}
+
+                          {item.telefone ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Phone className="h-3.5 w-3.5" />
+                              {item.telefone}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 rounded-2xl border border-white/70 bg-white/80 px-3 py-2 text-right">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                          Cadastro
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-slate-600">
+                          {formatDate(item.created_at)}
+                        </p>
+                      </div>
                     </div>
 
-                    <h3 className="mt-3 text-xl font-semibold text-slate-900">
-                      {item.nome}
-                    </h3>
+                    {hasAnyRisk ? (
+                      <div className="mt-4 rounded-2xl border border-rose-200 bg-white px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700">
+                            <ShieldAlert className="h-4 w-4" />
+                          </div>
 
-                    <p className="mt-1 text-sm text-slate-500">
-                      {item.sexo || "Sexo não informado"}
-                      {typeof item.idade === "number"
-                        ? ` • ${item.idade} anos`
-                        : ""}
-                      {item.telefone ? ` • ${item.telefone}` : ""}
-                    </p>
+                          <div>
+                            <p className="text-sm font-semibold text-rose-900">
+                              Alertas clínicos ativos
+                            </p>
+
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {hasAllergy ? (
+                                <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                                  Alergia registrada
+                                </span>
+                              ) : null}
+
+                              {risks.map((risk) => (
+                                <span
+                                  key={`${item.id}-${risk}`}
+                                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800"
+                                >
+                                  {risk}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
-                  <span className="shrink-0 text-xs font-medium text-slate-400">
-                    {formatDate(item.created_at)}
-                  </span>
-                </div>
+                  <div className="p-5">
+                    <div className="grid gap-3">
+                      <InfoBlock title="Alergias" tone="risk">
+                        {item.alergias}
+                      </InfoBlock>
 
-                <div className="mt-4 grid gap-3">
-                  <InfoBlock title="Alergias">{item.alergias}</InfoBlock>
-                  <InfoBlock title="Queixa principal">
-                    {getQueixa(item)}
-                  </InfoBlock>
-                  <InfoBlock title="HMA">{item.hma}</InfoBlock>
-                  <InfoBlock title="HPP">{item.hpp}</InfoBlock>
-                  <InfoBlock title="Comorbidades">{item.comorbidades}</InfoBlock>
-                  <InfoBlock title="Perfil de risco">
-                    {[
-                      item.gestante ? "Gestante" : "",
-                      item.funcao_renal_alterada ? "Função renal alterada" : "",
-                      item.hepatopatia ? "Hepatopatia" : "",
-                      item.idoso_fragil ? "Idoso frágil" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" • ")}
-                  </InfoBlock>
-                  <InfoBlock title="Hipótese diagnóstica">
-                    {getHipotese(item)}
-                  </InfoBlock>
-                  <InfoBlock title="Conduta médica">
-                    {item.conduta_medica}
-                  </InfoBlock>
-                </div>
+                      <InfoBlock title="Queixa principal" tone="clinical">
+                        {getQueixa(item)}
+                      </InfoBlock>
 
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <CopyButton text={buildPatientSummary(item)} />
+                      <InfoBlock title="HMA" tone="clinical">
+                        {item.hma}
+                      </InfoBlock>
 
-                  <Link
-                    href={`/pacientes/${item.id}`}
-                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700"
-                  >
-                    Abrir prontuário
-                  </Link>
+                      <InfoBlock title="HPP" tone="clinical">
+                        {item.hpp}
+                      </InfoBlock>
 
-                  <button
-                    type="button"
-                    onClick={() => openEditDrawer(item)}
-                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-                  >
-                    Editar
-                  </button>
+                      <InfoBlock title="Comorbidades" tone="risk">
+                        {item.comorbidades}
+                      </InfoBlock>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id, item.nome)}
-                    disabled={deletingId === item.id}
-                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {deletingId === item.id ? "Apagando..." : "Apagar"}
-                  </button>
-                </div>
-              </article>
-            ))}
+                      <InfoBlock title="Medicamentos em uso">
+                        {item.medicamentos_em_uso}
+                      </InfoBlock>
+
+                      <InfoBlock title="Exame físico">
+                        {item.exame_fisico}
+                      </InfoBlock>
+
+                      <InfoBlock title="Hipótese diagnóstica">
+                        {getHipotese(item)}
+                      </InfoBlock>
+
+                      <InfoBlock title="Conduta médica" tone="plan">
+                        {item.conduta_medica}
+                      </InfoBlock>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <CopyButton text={buildPatientSummary(item)} />
+
+                      <Link
+                        href={`/pacientes/${item.id}`}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                        Abrir prontuário
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => openEditDrawer(item)}
+                        className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id, item.nome)}
+                        disabled={deletingId === item.id}
+                        className="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deletingId === item.id ? "Apagando..." : "Apagar"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
 
       {drawerOpen ? (
-        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50 backdrop-blur-[2px]">
           <button
             type="button"
             onClick={closeDrawer}
@@ -996,29 +1262,45 @@ export default function PacientesPage() {
           <div className="relative h-full w-full max-w-4xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-900">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Prontuário clínico
+                </p>
+
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
                   {editingPatient ? "Editar paciente" : "Novo paciente"}
                 </h2>
+
                 <p className="mt-1 text-sm text-slate-500">
-                  Preencha o prontuário-base. Esses campos aparecem na impressão
-                  profissional.
+                  Preencha o prontuário-base. Os alertas de risco são usados na
+                  prescrição e na visualização clínica.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-6 px-6 py-6">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="mb-4 text-sm font-semibold text-slate-900">
-                  Dados cadastrais
-                </p>
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
+                    <UserRound className="h-4 w-4" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Identificação do paciente
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Dados cadastrais, contato, convênio e local de atendimento.
+                    </p>
+                  </div>
+                </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <InputField
@@ -1109,313 +1391,385 @@ export default function PacientesPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4">
-                <TextAreaField
-                  label="Queixa principal"
-                  value={form.queixa_principal}
-                  onChange={(value) => updateForm("queixa_principal", value)}
-                  placeholder="Ex.: dor torácica há 2 dias; tristeza persistente; retorno de acompanhamento..."
-                />
+              <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                    <Stethoscope className="h-4 w-4" />
+                  </div>
 
-                <TextAreaField
-                  label="HMA — História da Moléstia Atual"
-                  value={form.hma}
-                  onChange={(value) => updateForm("hma", value)}
-                  placeholder="História cronológica, início, evolução, fatores de melhora/piora, sintomas associados..."
-                  rows={6}
-                />
-
-                <TextAreaField
-                  label="HPP — História Patológica Pregressa"
-                  value={form.hpp}
-                  onChange={(value) => updateForm("hpp", value)}
-                  placeholder="Comorbidades, cirurgias, internações, antecedentes relevantes..."
-                  rows={5}
-                />
-
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 rounded-xl bg-white p-2 text-rose-700">
-                      <AlertTriangle className="h-4 w-4" />
-                    </div>
-
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-rose-900">
-                        Alergias — destaque clínico
-                      </p>
-                      <p className="mt-1 text-sm leading-6 text-rose-800">
-                        Esse campo aparece com destaque visual no card do
-                        paciente para evitar passar despercebido.
-                      </p>
-
-                      <div className="mt-4">
-                        <TextAreaField
-                          label="Alergias"
-                          value={form.alergias}
-                          onChange={(value) => updateForm("alergias", value)}
-                          placeholder="Ex.: Dipirona, Penicilina, contraste iodado, látex..."
-                          rows={3}
-                        />
-                      </div>
-                    </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      História clínica
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Queixa, HMA, antecedentes e medicamentos em uso.
+                    </p>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-sm font-semibold text-amber-900">
-                    Perfil de risco clínico estruturado
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-amber-800">
-                    Esses campos alimentam os alertas automáticos na página de prescrição.
-                  </p>
+                <div className="grid gap-4">
+                  <TextAreaField
+                    label="Queixa principal"
+                    value={form.queixa_principal}
+                    onChange={(value) => updateForm("queixa_principal", value)}
+                    placeholder="Ex.: dor torácica há 2 dias; tristeza persistente; retorno de acompanhamento..."
+                  />
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <TextAreaField
-                      label="Comorbidades relevantes"
-                      value={form.comorbidades}
-                      onChange={(value) => updateForm("comorbidades", value)}
-                      placeholder="Ex.: DRC, cirrose, ICC, epilepsia, anticoagulação..."
-                      rows={4}
-                    />
+                  <TextAreaField
+                    label="HMA — História da Moléstia Atual"
+                    value={form.hma}
+                    onChange={(value) => updateForm("hma", value)}
+                    placeholder="História cronológica, início, evolução, fatores de melhora/piora, sintomas associados..."
+                    rows={6}
+                  />
 
-                    <div className="grid gap-3 rounded-2xl border border-amber-200 bg-white p-4">
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.gestante}
-                          onChange={(event) => updateForm("gestante", event.target.checked)}
-                        />
-                        Gestante
-                      </label>
+                  <TextAreaField
+                    label="HPP — História Patológica Pregressa"
+                    value={form.hpp}
+                    onChange={(value) => updateForm("hpp", value)}
+                    placeholder="Comorbidades, cirurgias, internações, antecedentes relevantes..."
+                    rows={5}
+                  />
 
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.funcao_renal_alterada}
-                          onChange={(event) =>
-                            updateForm("funcao_renal_alterada", event.target.checked)
-                          }
-                        />
-                        Função renal alterada
-                      </label>
+                  <TextAreaField
+                    label="Medicamentos em uso"
+                    value={form.medicamentos_em_uso}
+                    onChange={(value) =>
+                      updateForm("medicamentos_em_uso", value)
+                    }
+                    placeholder="Nome, dose, via, frequência e adesão quando relevante..."
+                  />
+                </div>
+              </div>
 
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.hepatopatia}
-                          onChange={(event) => updateForm("hepatopatia", event.target.checked)}
-                        />
-                        Hepatopatia
-                      </label>
+              <div className="rounded-[24px] border border-rose-200 bg-rose-50/70 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-xl bg-white p-2 text-rose-700">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
 
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.idoso_fragil}
-                          onChange={(event) => updateForm("idoso_fragil", event.target.checked)}
-                        />
-                        Idoso frágil
-                      </label>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-rose-900">
+                      Alergias — alerta crítico
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-rose-800">
+                      Esse campo aparece com destaque no card do paciente e
+                      também entra no resumo copiado.
+                    </p>
 
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.diabetes}
-                          onChange={(event) => updateForm("diabetes", event.target.checked)}
-                        />
-                        Diabetes
-                      </label>
-
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.epilepsia}
-                          onChange={(event) => updateForm("epilepsia", event.target.checked)}
-                        />
-                        Epilepsia / convulsão
-                      </label>
-
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.asma}
-                          onChange={(event) => updateForm("asma", event.target.checked)}
-                        />
-                        Asma / broncoespasmo
-                      </label>
-
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.gastrite_ulcera}
-                          onChange={(event) => updateForm("gastrite_ulcera", event.target.checked)}
-                        />
-                        Gastrite / úlcera / sangramento GI
-                      </label>
-
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.insuficiencia_cardiaca}
-                          onChange={(event) =>
-                            updateForm("insuficiencia_cardiaca", event.target.checked)
-                          }
-                        />
-                        Insuficiência cardíaca
-                      </label>
-
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.arritmia_qt_longo}
-                          onChange={(event) =>
-                            updateForm("arritmia_qt_longo", event.target.checked)
-                          }
-                        />
-                        Arritmia / QT longo
-                      </label>
-
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.uso_anticoagulante}
-                          onChange={(event) =>
-                            updateForm("uso_anticoagulante", event.target.checked)
-                          }
-                        />
-                        Uso de anticoagulante
-                      </label>
-
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.uso_isrs}
-                          onChange={(event) => updateForm("uso_isrs", event.target.checked)}
-                        />
-                        Uso de ISRS
-                      </label>
-
-                      <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={form.uso_sedativos}
-                          onChange={(event) => updateForm("uso_sedativos", event.target.checked)}
-                        />
-                        Uso de sedativos / opioides / benzos
-                      </label>
+                    <div className="mt-4">
+                      <TextAreaField
+                        label="Alergias"
+                        value={form.alergias}
+                        onChange={(value) => updateForm("alergias", value)}
+                        placeholder="Ex.: Dipirona, Penicilina, contraste iodado, látex..."
+                        rows={3}
+                      />
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <TextAreaField
-                  label="Medicamentos em uso"
-                  value={form.medicamentos_em_uso}
-                  onChange={(value) =>
-                    updateForm("medicamentos_em_uso", value)
-                  }
-                  placeholder="Nome, dose, via, frequência e adesão quando relevante..."
-                />
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        Exame físico / exame do estado mental
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Você pode digitar manualmente ou importar dos modelos
-                        prontos de exames-evolução.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => importExamTemplate("masculino")}
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-                      >
-                        Substituir homem
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => importExamTemplate("feminino")}
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-                      >
-                        Substituir mulher
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => importExamTemplate("todos")}
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700"
-                      >
-                        Substituir genérico
-                      </button>
-                    </div>
+              <div className="rounded-[24px] border border-amber-200 bg-amber-50/75 p-5">
+                <div className="mb-5 flex items-start gap-3 border-b border-amber-200 pb-4">
+                  <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-amber-800">
+                    <HeartPulse className="h-5 w-5" />
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-base font-semibold text-amber-950">
+                      Perfil de risco clínico estruturado
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-amber-900">
+                      Esses campos alimentam os alertas automáticos na página de
+                      prescrição. Não remova nem deixe de revisar.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-[1fr_1.15fr]">
+                  <TextAreaField
+                    label="Comorbidades relevantes"
+                    value={form.comorbidades}
+                    onChange={(value) => updateForm("comorbidades", value)}
+                    placeholder="Ex.: DRC, cirrose, ICC, epilepsia, anticoagulação..."
+                    rows={4}
+                  />
+
+                  <div className="grid gap-3 rounded-2xl border border-amber-200 bg-white p-4 md:grid-cols-2">
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.gestante}
+                        onChange={(event) =>
+                          updateForm("gestante", event.target.checked)
+                        }
+                      />
+                      Gestante
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.funcao_renal_alterada}
+                        onChange={(event) =>
+                          updateForm(
+                            "funcao_renal_alterada",
+                            event.target.checked
+                          )
+                        }
+                      />
+                      Função renal alterada
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.hepatopatia}
+                        onChange={(event) =>
+                          updateForm("hepatopatia", event.target.checked)
+                        }
+                      />
+                      Hepatopatia
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.idoso_fragil}
+                        onChange={(event) =>
+                          updateForm("idoso_fragil", event.target.checked)
+                        }
+                      />
+                      Idoso frágil
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.diabetes}
+                        onChange={(event) =>
+                          updateForm("diabetes", event.target.checked)
+                        }
+                      />
+                      Diabetes
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.epilepsia}
+                        onChange={(event) =>
+                          updateForm("epilepsia", event.target.checked)
+                        }
+                      />
+                      Epilepsia / convulsão
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.asma}
+                        onChange={(event) =>
+                          updateForm("asma", event.target.checked)
+                        }
+                      />
+                      Asma / broncoespasmo
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.gastrite_ulcera}
+                        onChange={(event) =>
+                          updateForm("gastrite_ulcera", event.target.checked)
+                        }
+                      />
+                      Gastrite / úlcera / sangramento GI
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.insuficiencia_cardiaca}
+                        onChange={(event) =>
+                          updateForm(
+                            "insuficiencia_cardiaca",
+                            event.target.checked
+                          )
+                        }
+                      />
+                      Insuficiência cardíaca
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.arritmia_qt_longo}
+                        onChange={(event) =>
+                          updateForm("arritmia_qt_longo", event.target.checked)
+                        }
+                      />
+                      Arritmia / QT longo
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.uso_anticoagulante}
+                        onChange={(event) =>
+                          updateForm(
+                            "uso_anticoagulante",
+                            event.target.checked
+                          )
+                        }
+                      />
+                      Uso de anticoagulante
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.uso_isrs}
+                        onChange={(event) =>
+                          updateForm("uso_isrs", event.target.checked)
+                        }
+                      />
+                      Uso de ISRS
+                    </label>
+
+                    <label className="flex items-center gap-3 text-sm font-medium text-slate-700 md:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={form.uso_sedativos}
+                        onChange={(event) =>
+                          updateForm("uso_sedativos", event.target.checked)
+                        }
+                      />
+                      Uso de sedativos / opioides / benzos
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-base font-semibold text-slate-900">
+                      Exame físico / exame do estado mental
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Digite manualmente ou importe dos modelos de Exames /
+                      Evolução.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => appendExamTemplate("masculino")}
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                      onClick={() => importExamTemplate("masculino")}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
-                      Acrescentar homem
+                      Substituir homem
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => appendExamTemplate("feminino")}
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                      onClick={() => importExamTemplate("feminino")}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
-                      Acrescentar mulher
+                      Substituir mulher
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => appendExamTemplate("todos")}
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                      onClick={() => importExamTemplate("todos")}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
                     >
-                      Acrescentar genérico
+                      Substituir genérico
                     </button>
-                  </div>
-
-                  <div className="mt-4">
-                    <TextAreaField
-                      label="Conteúdo do exame físico"
-                      value={form.exame_fisico}
-                      onChange={(value) => updateForm("exame_fisico", value)}
-                      placeholder="Estado geral, sinais vitais, exame segmentar ou exame psíquico..."
-                      rows={8}
-                    />
                   </div>
                 </div>
 
-                <TextAreaField
-                  label="Hipótese diagnóstica"
-                  value={form.hipotese_diagnostica}
-                  onChange={(value) =>
-                    updateForm("hipotese_diagnostica", value)
-                  }
-                  placeholder="Hipótese principal e diferenciais..."
-                />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => appendExamTemplate("masculino")}
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Acrescentar homem
+                  </button>
 
-                <TextAreaField
-                  label="Conduta médica"
-                  value={form.conduta_medica}
-                  onChange={(value) => updateForm("conduta_medica", value)}
-                  placeholder="Exames solicitados, prescrição, orientações, retorno, encaminhamentos..."
-                  rows={6}
-                />
+                  <button
+                    type="button"
+                    onClick={() => appendExamTemplate("feminino")}
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Acrescentar mulher
+                  </button>
 
-                <TextAreaField
-                  label="Observações"
-                  value={form.observacoes}
-                  onChange={(value) => updateForm("observacoes", value)}
-                  placeholder="Informações adicionais, contexto familiar/social, pendências..."
-                  rows={4}
-                />
+                  <button
+                    type="button"
+                    onClick={() => appendExamTemplate("todos")}
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Acrescentar genérico
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <TextAreaField
+                    label="Conteúdo do exame físico"
+                    value={form.exame_fisico}
+                    onChange={(value) => updateForm("exame_fisico", value)}
+                    placeholder="Estado geral, sinais vitais, exame segmentar ou exame psíquico..."
+                    rows={8}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                    <ClipboardList className="h-4 w-4" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Avaliação e plano
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Hipótese diagnóstica, conduta e observações finais.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <TextAreaField
+                    label="Hipótese diagnóstica"
+                    value={form.hipotese_diagnostica}
+                    onChange={(value) =>
+                      updateForm("hipotese_diagnostica", value)
+                    }
+                    placeholder="Hipótese principal e diferenciais..."
+                  />
+
+                  <TextAreaField
+                    label="Conduta médica"
+                    value={form.conduta_medica}
+                    onChange={(value) => updateForm("conduta_medica", value)}
+                    placeholder="Exames solicitados, prescrição, orientações, retorno, encaminhamentos..."
+                    rows={6}
+                  />
+
+                  <TextAreaField
+                    label="Observações"
+                    value={form.observacoes}
+                    onChange={(value) => updateForm("observacoes", value)}
+                    placeholder="Informações adicionais, contexto familiar/social, pendências..."
+                    rows={4}
+                  />
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
@@ -1423,19 +1777,19 @@ export default function PacientesPage() {
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving
                     ? "Salvando..."
                     : editingPatient
-                      ? "Salvar edição"
-                      : "Criar paciente"}
+                    ? "Salvar edição"
+                    : "Criar paciente"}
                 </button>
 
                 <button
                   type="button"
                   onClick={closeDrawer}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Cancelar
                 </button>
