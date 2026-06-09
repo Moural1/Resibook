@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import CopyButton from "./copy-button";
 import { showToast } from "../lib/toast";
+import { Edit3, Plus, Trash2, X } from "lucide-react";
 
 type PrescriptionTemplate = {
   id: number;
@@ -29,10 +31,41 @@ type PrescriptionDraft = {
   orientacoes: string;
 };
 
+type TemplateForm = {
+  categoria: string;
+  titulo: string;
+  conteudo: string;
+  observacoes: string;
+  source_file: string;
+  review_status: "rascunho" | "pendente" | "revisado";
+  model_version: string;
+  risk_level: "baixo" | "moderado" | "alto";
+  reviewed_by: string;
+  last_reviewed_at: string;
+  publicos_especiais: string;
+};
+
 type Props = {
   templates: PrescriptionTemplate[];
   onUseTemplate: (draft: PrescriptionDraft) => void;
   initialQuery?: string;
+};
+
+const ADMIN_EMAIL = "igormoura@resibook.com";
+const FAVORITES_KEY = "resibook-prescription-template-favorites";
+
+const emptyForm: TemplateForm = {
+  categoria: "",
+  titulo: "",
+  conteudo: "",
+  observacoes: "",
+  source_file: "",
+  review_status: "rascunho",
+  model_version: "",
+  risk_level: "baixo",
+  reviewed_by: "",
+  last_reviewed_at: "",
+  publicos_especiais: "",
 };
 
 function normalize(value?: string | null) {
@@ -66,9 +99,11 @@ function reviewStatusClasses(value?: PrescriptionTemplate["review_status"]) {
   if (value === "revisado") {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
   }
+
   if (value === "pendente") {
     return "border-amber-200 bg-amber-50 text-amber-700";
   }
+
   return "border-slate-200 bg-slate-100 text-slate-600";
 }
 
@@ -82,9 +117,11 @@ function riskLevelClasses(value?: PrescriptionTemplate["risk_level"]) {
   if (value === "alto") {
     return "border-rose-200 bg-rose-50 text-rose-700";
   }
+
   if (value === "moderado") {
     return "border-amber-200 bg-amber-50 text-amber-700";
   }
+
   return "border-blue-200 bg-blue-50 text-blue-700";
 }
 
@@ -140,7 +177,68 @@ function parseTemplateToDraft(item: PrescriptionTemplate): PrescriptionDraft {
   };
 }
 
-const FAVORITES_KEY = "resibook-prescription-template-favorites";
+function toForm(item: PrescriptionTemplate): TemplateForm {
+  return {
+    categoria: item.categoria || "",
+    titulo: item.titulo || "",
+    conteudo: item.conteudo || "",
+    observacoes: item.observacoes || "",
+    source_file: item.source_file || "",
+    review_status: item.review_status || "rascunho",
+    model_version: item.model_version || "",
+    risk_level: item.risk_level || "baixo",
+    reviewed_by: item.reviewed_by || "",
+    last_reviewed_at: item.last_reviewed_at
+      ? item.last_reviewed_at.slice(0, 10)
+      : "",
+    publicos_especiais: item.publicos_especiais || "",
+  };
+}
+
+function buildPayload(form: TemplateForm) {
+  return {
+    categoria: form.categoria.trim() || null,
+    titulo: form.titulo.trim(),
+    conteudo: form.conteudo.trim(),
+    observacoes: form.observacoes.trim() || null,
+    source_file: form.source_file.trim() || null,
+    review_status: form.review_status,
+    model_version: form.model_version.trim() || null,
+    risk_level: form.risk_level,
+    reviewed_by: form.reviewed_by.trim() || null,
+    last_reviewed_at: form.last_reviewed_at
+      ? new Date(`${form.last_reviewed_at}T12:00:00`).toISOString()
+      : null,
+    publicos_especiais: form.publicos_especiais.trim() || null,
+  };
+}
+
+function InputField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </label>
+
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+      />
+    </div>
+  );
+}
 
 export default function PrescriptionTemplatesLive({
   templates,
@@ -149,20 +247,54 @@ export default function PrescriptionTemplatesLive({
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient();
+
+  const [items, setItems] = useState<PrescriptionTemplate[]>(templates);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [reviewFilter, setReviewFilter] = useState<"" | "revisado" | "pendente" | "rascunho">("");
-  const [riskFilter, setRiskFilter] = useState<"" | "alto" | "moderado" | "baixo">("");
+  const [reviewFilter, setReviewFilter] = useState<
+    "" | "revisado" | "pendente" | "rascunho"
+  >("");
+  const [riskFilter, setRiskFilter] = useState<"" | "alto" | "moderado" | "baixo">(
+    ""
+  );
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [hydratedFromUrl, setHydratedFromUrl] = useState(false);
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<PrescriptionTemplate | null>(
+    null
+  );
+  const [form, setForm] = useState<TemplateForm>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setItems(templates);
+  }, [templates]);
+
+  useEffect(() => {
+    async function checkAdmin() {
+      const { data } = await supabase.auth.getSession();
+      const email = data.session?.user?.email?.trim().toLowerCase() || "";
+      setIsAdmin(email === ADMIN_EMAIL);
+    }
+
+    checkAdmin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlQuery = params.get("q") || initialQuery || "";
     const urlCategory = params.get("categoria") || "";
-    const urlReview = (params.get("revisao") as "" | "revisado" | "pendente" | "rascunho") || "";
-    const urlRisk = (params.get("risco") as "" | "alto" | "moderado" | "baixo") || "";
+    const urlReview =
+      (params.get("revisao") as "" | "revisado" | "pendente" | "rascunho") ||
+      "";
+    const urlRisk =
+      (params.get("risco") as "" | "alto" | "moderado" | "baixo") || "";
 
     setQuery(urlQuery);
     setSelectedCategory(urlCategory);
@@ -181,9 +313,20 @@ export default function PrescriptionTemplatesLive({
     if (reviewFilter) params.set("revisao", reviewFilter);
     if (riskFilter) params.set("risco", riskFilter);
 
-    const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    const next = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+
     router.replace(next, { scroll: false });
-  }, [query, selectedCategory, reviewFilter, riskFilter, pathname, router, hydratedFromUrl]);
+  }, [
+    query,
+    selectedCategory,
+    reviewFilter,
+    riskFilter,
+    pathname,
+    router,
+    hydratedFromUrl,
+  ]);
 
   useEffect(() => {
     try {
@@ -197,20 +340,30 @@ export default function PrescriptionTemplatesLive({
           new Set(
             parsed
               .filter((value): value is number => typeof value === "number")
-              .filter((id) => templates.some((item) => item.id === id))
+              .filter((id) => items.some((item) => item.id === id))
           )
         );
 
         setFavoriteIds(uniqueValidIds);
       }
     } catch {}
-  }, [templates]);
+  }, [items]);
 
   useEffect(() => {
     try {
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds));
     } catch {}
   }, [favoriteIds]);
+
+  function updateForm<K extends keyof TemplateForm>(
+    key: K,
+    value: TemplateForm[K]
+  ) {
+    setForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
 
   function toggleFavorite(id: number, title: string) {
     const isAlreadyFavorite = favoriteIds.includes(id);
@@ -228,14 +381,174 @@ export default function PrescriptionTemplatesLive({
     });
   }
 
+  function openCreateDrawer() {
+    if (!isAdmin) {
+      showToast({
+        title: "Acesso restrito",
+        description: "Apenas o administrador pode criar modelos.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setEditingItem(null);
+    setForm(emptyForm);
+    setDrawerOpen(true);
+  }
+
+  function openEditDrawer(item: PrescriptionTemplate) {
+    if (!isAdmin) {
+      showToast({
+        title: "Acesso restrito",
+        description: "Apenas o administrador pode editar modelos.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setEditingItem(item);
+    setForm(toForm(item));
+    setDrawerOpen(true);
+  }
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    setEditingItem(null);
+    setForm(emptyForm);
+  }
+
+  async function handleSave() {
+    if (!isAdmin) {
+      showToast({
+        title: "Acesso restrito",
+        description: "Apenas o administrador pode salvar modelos.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (!form.titulo.trim() || !form.conteudo.trim()) {
+      showToast({
+        title: "Campos obrigatórios",
+        description: "Preencha pelo menos título e conteúdo.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setSaving(true);
+
+    const payload = buildPayload(form);
+
+    const response = editingItem
+      ? await supabase
+          .from("prescription_templates")
+          .update(payload)
+          .eq("id", editingItem.id)
+          .select(
+            "id, categoria, titulo, conteudo, observacoes, source_file, review_status, model_version, risk_level, reviewed_by, last_reviewed_at, publicos_especiais, created_at"
+          )
+          .single()
+      : await supabase
+          .from("prescription_templates")
+          .insert(payload)
+          .select(
+            "id, categoria, titulo, conteudo, observacoes, source_file, review_status, model_version, risk_level, reviewed_by, last_reviewed_at, publicos_especiais, created_at"
+          )
+          .single();
+
+    if (response.error) {
+      showToast({
+        title: "Erro ao salvar modelo",
+        description: response.error.message,
+        variant: "error",
+      });
+      setSaving(false);
+      return;
+    }
+
+    const saved = response.data as PrescriptionTemplate;
+
+    setItems((current) => {
+      const next = editingItem
+        ? current.map((item) => (item.id === saved.id ? saved : item))
+        : [saved, ...current];
+
+      return next.sort((a, b) => {
+        const byCategoria = (a.categoria || "").localeCompare(
+          b.categoria || "",
+          "pt-BR"
+        );
+
+        if (byCategoria !== 0) return byCategoria;
+
+        return (a.titulo || "").localeCompare(b.titulo || "", "pt-BR");
+      });
+    });
+
+    showToast({
+      title: editingItem ? "Modelo atualizado" : "Modelo criado",
+      description: saved.titulo,
+      variant: "success",
+    });
+
+    setSaving(false);
+    closeDrawer();
+  }
+
+  async function handleDelete(item: PrescriptionTemplate) {
+    if (!isAdmin) {
+      showToast({
+        title: "Acesso restrito",
+        description: "Apenas o administrador pode apagar modelos.",
+        variant: "error",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Tem certeza que deseja apagar "${item.titulo}"?`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(item.id);
+
+    const { error } = await supabase
+      .from("prescription_templates")
+      .delete()
+      .eq("id", item.id);
+
+    if (error) {
+      showToast({
+        title: "Erro ao apagar modelo",
+        description: error.message,
+        variant: "error",
+      });
+      setDeletingId(null);
+      return;
+    }
+
+    setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+    setFavoriteIds((current) => current.filter((id) => id !== item.id));
+
+    showToast({
+      title: "Modelo apagado",
+      description: item.titulo,
+      variant: "success",
+    });
+
+    setDeletingId(null);
+  }
+
   const categories = useMemo(() => {
     return Array.from(
-      new Set(templates.map((item) => item.categoria || "Sem categoria"))
+      new Set(items.map((item) => item.categoria || "Sem categoria"))
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [templates]);
+  }, [items]);
 
   const filteredTemplates = useMemo(() => {
-    return templates.filter((item) => {
+    return items.filter((item) => {
       const itemCategory = item.categoria || "Sem categoria";
 
       const matchesQuery = includesSearch(
@@ -251,19 +564,22 @@ export default function PrescriptionTemplatesLive({
 
       const matchesCategory =
         !selectedCategory || itemCategory === selectedCategory;
-      const matchesReview = !reviewFilter || (item.review_status || "rascunho") === reviewFilter;
-      const matchesRisk = !riskFilter || (item.risk_level || "baixo") === riskFilter;
+      const matchesReview =
+        !reviewFilter || (item.review_status || "rascunho") === reviewFilter;
+      const matchesRisk =
+        !riskFilter || (item.risk_level || "baixo") === riskFilter;
 
       return matchesQuery && matchesCategory && matchesReview && matchesRisk;
     });
-  }, [templates, query, selectedCategory, reviewFilter, riskFilter]);
+  }, [items, query, selectedCategory, reviewFilter, riskFilter]);
 
   const favorites = useMemo(() => {
-    const map = new Map(templates.map((item) => [item.id, item]));
+    const map = new Map(items.map((item) => [item.id, item]));
+
     return favoriteIds
       .map((id) => map.get(id))
       .filter(Boolean) as PrescriptionTemplate[];
-  }, [templates, favoriteIds]);
+  }, [items, favoriteIds]);
 
   const filteredFavorites = useMemo(() => {
     return favorites.filter((item) => {
@@ -282,8 +598,10 @@ export default function PrescriptionTemplatesLive({
 
       const matchesCategory =
         !selectedCategory || itemCategory === selectedCategory;
-      const matchesReview = !reviewFilter || (item.review_status || "rascunho") === reviewFilter;
-      const matchesRisk = !riskFilter || (item.risk_level || "baixo") === riskFilter;
+      const matchesReview =
+        !reviewFilter || (item.review_status || "rascunho") === reviewFilter;
+      const matchesRisk =
+        !riskFilter || (item.risk_level || "baixo") === riskFilter;
 
       return matchesQuery && matchesCategory && matchesReview && matchesRisk;
     });
@@ -294,7 +612,7 @@ export default function PrescriptionTemplatesLive({
     [filteredTemplates]
   );
 
-  const hasFilters = Boolean(query || selectedCategory);
+  const hasFilters = Boolean(query || selectedCategory || reviewFilter || riskFilter);
 
   function handleUse(item: PrescriptionTemplate) {
     onUseTemplate(parseTemplateToDraft(item));
@@ -308,6 +626,7 @@ export default function PrescriptionTemplatesLive({
 
   function TemplateCard(item: PrescriptionTemplate, compact = false) {
     const isFavorite = favoriteIds.includes(item.id);
+    const isDeleting = deletingId === item.id;
 
     return (
       <article
@@ -360,7 +679,9 @@ export default function PrescriptionTemplatesLive({
               </p>
             ) : null}
 
-            {(item.reviewed_by || item.last_reviewed_at || item.publicos_especiais) ? (
+            {item.reviewed_by ||
+            item.last_reviewed_at ||
+            item.publicos_especiais ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {item.reviewed_by ? (
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
@@ -370,18 +691,23 @@ export default function PrescriptionTemplatesLive({
 
                 {item.last_reviewed_at ? (
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
-                    Revisão {new Intl.DateTimeFormat("pt-BR").format(new Date(item.last_reviewed_at))}
+                    Revisão{" "}
+                    {new Intl.DateTimeFormat("pt-BR").format(
+                      new Date(item.last_reviewed_at)
+                    )}
                   </span>
                 ) : null}
 
-                {parseSpecialAudiences(item.publicos_especiais).map((audience) => (
-                  <span
-                    key={`${item.id}-${audience}`}
-                    className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-[11px] font-semibold text-purple-700"
-                  >
-                    {audience}
-                  </span>
-                ))}
+                {parseSpecialAudiences(item.publicos_especiais).map(
+                  (audience) => (
+                    <span
+                      key={`${item.id}-${audience}`}
+                      className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-[11px] font-semibold text-purple-700"
+                    >
+                      {audience}
+                    </span>
+                  )
+                )}
               </div>
             ) : null}
           </div>
@@ -390,7 +716,8 @@ export default function PrescriptionTemplatesLive({
             <button
               type="button"
               onClick={() => toggleFavorite(item.id, item.titulo)}
-              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+              disabled={isDeleting}
+              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                 isFavorite
                   ? "border-amber-200 bg-amber-50 text-amber-700"
                   : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -402,12 +729,37 @@ export default function PrescriptionTemplatesLive({
             <button
               type="button"
               onClick={() => handleUse(item)}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+              disabled={isDeleting}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Usar no formulário
             </button>
 
             <CopyButton text={item.conteudo} />
+
+            {isAdmin ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => openEditDrawer(item)}
+                  disabled={isDeleting}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Editar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDelete(item)}
+                  disabled={isDeleting}
+                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isDeleting ? "Apagando..." : "Apagar"}
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -439,6 +791,17 @@ export default function PrescriptionTemplatesLive({
               Busca instantânea, favoritos e uso direto no formulário.
             </p>
           </div>
+
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={openCreateDrawer}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              <Plus className="h-4 w-4" />
+              Novo modelo
+            </button>
+          ) : null}
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px_220px_auto]">
@@ -503,13 +866,13 @@ export default function PrescriptionTemplatesLive({
             }}
             className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            {hasFilters || reviewFilter || riskFilter ? "Limpar" : "Filtros"}
+            {hasFilters ? "Limpar" : "Filtros"}
           </button>
         </div>
 
         <div className="mt-4 flex items-center justify-between">
           <span className="text-sm font-medium text-slate-400">
-            {filteredTemplates.length} de {templates.length} modelos
+            {filteredTemplates.length} de {items.length} modelos
           </span>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -518,7 +881,12 @@ export default function PrescriptionTemplatesLive({
             </span>
 
             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-              {templates.filter((item) => (item.review_status || "rascunho") === "revisado").length} revisados
+              {
+                items.filter(
+                  (item) => (item.review_status || "rascunho") === "revisado"
+                ).length
+              }{" "}
+              revisados
             </span>
 
             {selectedCategory ? (
@@ -559,7 +927,7 @@ export default function PrescriptionTemplatesLive({
           Nenhum modelo encontrado para esse filtro.
         </div>
       ) : (
-        Object.entries(groupedTemplates).map(([categoria, items]) => (
+        Object.entries(groupedTemplates).map(([categoria, categoryItems]) => (
           <div key={categoria} className="space-y-4">
             <div className="flex flex-col gap-2 px-1 md:flex-row md:items-end md:justify-between">
               <div>
@@ -570,22 +938,216 @@ export default function PrescriptionTemplatesLive({
                   {formatLabel(categoria)}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  {items.length} modelo{items.length > 1 ? "s" : ""} nesta
-                  categoria
+                  {categoryItems.length} modelo
+                  {categoryItems.length > 1 ? "s" : ""} nesta categoria
                 </p>
               </div>
 
               <div className="self-start rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
-                {items.length} {items.length === 1 ? "item" : "itens"}
+                {categoryItems.length}{" "}
+                {categoryItems.length === 1 ? "item" : "itens"}
               </div>
             </div>
 
             <div className="grid gap-4">
-              {items.map((item) => TemplateCard(item))}
+              {categoryItems.map((item) => TemplateCard(item))}
             </div>
           </div>
         ))
       )}
+
+      {drawerOpen ? (
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50 backdrop-blur-[2px]">
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="absolute inset-0"
+            aria-label="Fechar edição"
+          />
+
+          <div className="relative h-full w-full max-w-3xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Modelos de plantão
+                </p>
+
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+                  {editingItem ? "Editar modelo" : "Novo modelo"}
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Apenas o administrador pode alterar a biblioteca compartilhada.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <InputField
+                  label="Categoria"
+                  value={form.categoria}
+                  onChange={(value) => updateForm("categoria", value)}
+                  placeholder="Ex.: Analgesia"
+                />
+
+                <InputField
+                  label="Título"
+                  value={form.titulo}
+                  onChange={(value) => updateForm("titulo", value)}
+                  placeholder="Ex.: Dipirona EV"
+                />
+
+                <InputField
+                  label="Versão"
+                  value={form.model_version}
+                  onChange={(value) => updateForm("model_version", value)}
+                  placeholder="Ex.: v1.0"
+                />
+
+                <InputField
+                  label="Arquivo de origem"
+                  value={form.source_file}
+                  onChange={(value) => updateForm("source_file", value)}
+                  placeholder="Ex.: plantao.pdf"
+                />
+
+                <div>
+                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Status de revisão
+                  </label>
+
+                  <select
+                    value={form.review_status}
+                    onChange={(event) =>
+                      updateForm(
+                        "review_status",
+                        event.target.value as TemplateForm["review_status"]
+                      )
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  >
+                    <option value="rascunho">Rascunho</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="revisado">Revisado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Risco
+                  </label>
+
+                  <select
+                    value={form.risk_level}
+                    onChange={(event) =>
+                      updateForm(
+                        "risk_level",
+                        event.target.value as TemplateForm["risk_level"]
+                      )
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  >
+                    <option value="baixo">Baixo</option>
+                    <option value="moderado">Moderado</option>
+                    <option value="alto">Alto</option>
+                  </select>
+                </div>
+
+                <InputField
+                  label="Revisado por"
+                  value={form.reviewed_by}
+                  onChange={(value) => updateForm("reviewed_by", value)}
+                  placeholder="Ex.: Dr. Igor"
+                />
+
+                <div>
+                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Data da revisão
+                  </label>
+
+                  <input
+                    type="date"
+                    value={form.last_reviewed_at}
+                    onChange={(event) =>
+                      updateForm("last_reviewed_at", event.target.value)
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  />
+                </div>
+
+                <InputField
+                  label="Públicos especiais"
+                  value={form.publicos_especiais}
+                  onChange={(value) => updateForm("publicos_especiais", value)}
+                  placeholder="Ex.: gestante, idoso, DRC"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Observações
+                </label>
+
+                <textarea
+                  value={form.observacoes}
+                  onChange={(event) =>
+                    updateForm("observacoes", event.target.value)
+                  }
+                  rows={4}
+                  placeholder="Observações, alertas, contraindicações ou orientações rápidas..."
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Conteúdo da prescrição
+                </label>
+
+                <textarea
+                  value={form.conteudo}
+                  onChange={(event) => updateForm("conteudo", event.target.value)}
+                  rows={12}
+                  placeholder="Digite o modelo de prescrição..."
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving
+                    ? "Salvando..."
+                    : editingItem
+                    ? "Salvar edição"
+                    : "Criar modelo"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
