@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import {
   Menu,
   X,
@@ -55,9 +56,41 @@ const GUEST_ALLOWED_PATHS = [
   "/suporte",
 ];
 
+const LEGAL_PUBLIC_PATHS = [
+  "/login",
+  "/aceite-legal",
+  "/termos",
+  "/privacidade",
+];
+
 function isGuestAllowedPath(pathname: string) {
   return GUEST_ALLOWED_PATHS.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
+
+function isLegalPublicPath(pathname: string) {
+  return LEGAL_PUBLIC_PATHS.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
+
+async function hasAcceptedCurrentLegal(userId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("user_legal_acceptances")
+    .select("terms_version, privacy_version")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    return false;
+  }
+
+  return (
+    data?.terms_version === TERMS_VERSION &&
+    data?.privacy_version === PRIVACY_VERSION
   );
 }
 
@@ -237,25 +270,70 @@ function SidebarContent({
 }) {
   const fullPrimaryItems = [
     { href: "/dashboard", label: "Visão geral", icon: Home, badge: null },
-    { href: "/pacientes", label: "Pacientes", icon: Users, badge: counts.pacientes },
-    { href: "/prescricao", label: "Prescrição", icon: ClipboardList, badge: counts.prescricoes },
-    { href: "/exames-evolucao", label: "Exames / Evolução", icon: FlaskConical, badge: counts.exames },
-    { href: "/topicos", label: "Tópicos", icon: Stethoscope, badge: counts.topicos },
-    { href: "/flashcards", label: "Flashcards", icon: Brain, badge: counts.flashcards },
-    { href: "/flashcards-dificeis", label: "Difíceis", icon: Brain, badge: counts.flashcardsDificeis },
+    {
+      href: "/pacientes",
+      label: "Pacientes",
+      icon: Users,
+      badge: counts.pacientes,
+    },
+    {
+      href: "/prescricao",
+      label: "Prescrição",
+      icon: ClipboardList,
+      badge: counts.prescricoes,
+    },
+    {
+      href: "/exames-evolucao",
+      label: "Exames / Evolução",
+      icon: FlaskConical,
+      badge: counts.exames,
+    },
+    {
+      href: "/topicos",
+      label: "Tópicos",
+      icon: Stethoscope,
+      badge: counts.topicos,
+    },
+    {
+      href: "/flashcards",
+      label: "Flashcards",
+      icon: Brain,
+      badge: counts.flashcards,
+    },
+    {
+      href: "/flashcards-dificeis",
+      label: "Difíceis",
+      icon: Brain,
+      badge: counts.flashcardsDificeis,
+    },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
   ];
 
   const guestPrimaryItems = [
-    { href: "/prescricao", label: "Prescrição", icon: ClipboardList, badge: null },
-    { href: "/exames-evolucao", label: "Exames / Evolução", icon: FlaskConical, badge: null },
+    {
+      href: "/prescricao",
+      label: "Prescrição",
+      icon: ClipboardList,
+      badge: null,
+    },
+    {
+      href: "/exames-evolucao",
+      label: "Exames / Evolução",
+      icon: FlaskConical,
+      badge: null,
+    },
     { href: "/topicos", label: "Tópicos", icon: Stethoscope, badge: null },
     { href: "/cids", label: "CIDs", icon: Tags, badge: null },
     { href: "/suporte", label: "Suporte", icon: LifeBuoy, badge: null },
   ];
 
   const secondaryItems = [
-    { href: "/dados-da-conta", label: "Dados da conta", icon: Settings, badge: null },
+    {
+      href: "/dados-da-conta",
+      label: "Dados da conta",
+      icon: Settings,
+      badge: null,
+    },
     { href: "/metricas", label: "Métricas", icon: BarChart3, badge: null },
     { href: "/suporte", label: "Suporte", icon: LifeBuoy, badge: null },
     ...(isAdmin
@@ -266,7 +344,12 @@ function SidebarContent({
             icon: ClipboardList,
             badge: null,
           },
-          { href: "/acessos", label: "Acessos", icon: ShieldCheck, badge: null },
+          {
+            href: "/acessos",
+            label: "Acessos",
+            icon: ShieldCheck,
+            badge: null,
+          },
         ]
       : []),
   ];
@@ -394,11 +477,11 @@ function SidebarContent({
                 {isGuest ? "Sessão" : "Conta"}
               </p>
               <p className="mt-1 text-[13px] text-slate-300">
-                {isGuest ? "Usuário convidado ativo." : "Saída segura do ambiente clínico."}
+                {isGuest
+                  ? "Usuário convidado ativo."
+                  : "Saída segura do ambiente clínico."}
               </p>
             </div>
-
-
           </div>
 
           <div className="mt-3">
@@ -443,7 +526,7 @@ export default function AppShell({ children }: Props) {
   useEffect(() => {
     let mounted = true;
 
-    async function checkGuestUser() {
+    async function checkUserSession() {
       if (hideShell) {
         setCheckingUser(false);
         return;
@@ -469,19 +552,38 @@ export default function AppShell({ children }: Props) {
       setSessionEmail(email);
       setIsGuest(guest);
       setCurrentUserId(userId);
-      setCheckingUser(false);
 
-      if (guest && !isGuestAllowedPath(pathname)) {
-        router.replace("/prescricao");
+      if (guest) {
+        setCheckingUser(false);
+
+        if (!isGuestAllowedPath(pathname)) {
+          router.replace("/prescricao");
+        }
+
+        return;
       }
+
+      if (userId && !isLegalPublicPath(pathname)) {
+        const accepted = await hasAcceptedCurrentLegal(userId);
+
+        if (!mounted) return;
+
+        if (!accepted) {
+          setCheckingUser(false);
+          router.replace("/aceite-legal");
+          return;
+        }
+      }
+
+      setCheckingUser(false);
     }
 
-    checkGuestUser();
+    checkUserSession();
 
     const supabase = createClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const email = session?.user?.email?.trim().toLowerCase() || "";
       const userId = session?.user?.id || null;
       const guest = email === GUEST_EMAIL;
@@ -489,11 +591,28 @@ export default function AppShell({ children }: Props) {
       setSessionEmail(email);
       setIsGuest(guest);
       setCurrentUserId(userId);
-      setCheckingUser(false);
 
-      if (guest && !isGuestAllowedPath(window.location.pathname)) {
-        router.replace("/prescricao");
+      if (guest) {
+        setCheckingUser(false);
+
+        if (!isGuestAllowedPath(window.location.pathname)) {
+          router.replace("/prescricao");
+        }
+
+        return;
       }
+
+      if (userId && !isLegalPublicPath(window.location.pathname)) {
+        const accepted = await hasAcceptedCurrentLegal(userId);
+
+        if (!accepted) {
+          setCheckingUser(false);
+          router.replace("/aceite-legal");
+          return;
+        }
+      }
+
+      setCheckingUser(false);
     });
 
     return () => {
@@ -547,8 +666,14 @@ export default function AppShell({ children }: Props) {
         flashcardsDificeisCount,
         cidsCount,
       ] = await Promise.all([
-        getTableCount(supabase, "patients", { column: "user_id", value: currentUserId }),
-        getTableCount(supabase, "prescriptions", { column: "user_id", value: currentUserId }),
+        getTableCount(supabase, "patients", {
+          column: "user_id",
+          value: currentUserId,
+        }),
+        getTableCount(supabase, "prescriptions", {
+          column: "user_id",
+          value: currentUserId,
+        }),
         getFirstAvailableCount(supabase, [
           "exam_templates",
           "exams",
@@ -621,8 +746,9 @@ export default function AppShell({ children }: Props) {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Este usuário convidado tem acesso apenas a Prescrição, Exames / Evolução,
-            Tópicos, CIDs, Termos de Uso, Política de Privacidade e Suporte.
+            Este usuário convidado tem acesso apenas a Prescrição, Exames /
+            Evolução, Tópicos, CIDs, Termos de Uso, Política de Privacidade e
+            Suporte.
           </p>
 
           <button
