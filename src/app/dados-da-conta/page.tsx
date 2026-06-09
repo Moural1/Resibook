@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "../../components/module-page-header";
 import {
@@ -16,9 +16,6 @@ import {
   Tags,
   Users,
   Mail,
-  BadgeCheck,
-  UserRound,
-  IdCard,
   Save,
 } from "lucide-react";
 
@@ -34,7 +31,7 @@ type ExportConfig = {
   table: string;
   label: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   select: string;
   orderBy?: string;
   isPrivate?: boolean;
@@ -82,7 +79,8 @@ const exportConfigs: ExportConfig[] = [
   {
     table: "patient_notes",
     label: "Evoluções",
-    description: "Evoluções, condutas, retornos, exames e observações por paciente.",
+    description:
+      "Evoluções, condutas, retornos, exames e observações por paciente.",
     icon: FileText,
     select: "id, user_id, patient_id, tipo, titulo, conteudo, created_at",
     orderBy: "created_at",
@@ -152,6 +150,7 @@ function getDateStamp() {
   const day = String(now.getDate()).padStart(2, "0");
   const hour = String(now.getHours()).padStart(2, "0");
   const minute = String(now.getMinutes()).padStart(2, "0");
+
   return `${year}-${month}-${day}_${hour}-${minute}`;
 }
 
@@ -159,16 +158,20 @@ function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json;charset=utf-8",
   });
+
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
+
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
+
   URL.revokeObjectURL(url);
 }
 
-async function getSessionInfo(): Promise<SessionInfo> {
-  const supabase = createClient();
+async function getSessionInfo(
+  supabase: ReturnType<typeof createClient>
+): Promise<SessionInfo> {
   const { data, error } = await supabase.auth.getSession();
 
   if (error) {
@@ -185,19 +188,26 @@ async function getSessionInfo(): Promise<SessionInfo> {
 function isConfigAllowedForSession(config: ExportConfig, session: SessionInfo) {
   if (!session.userId) return false;
   if (session.isGuest && config.guestAllowed === false) return false;
+
   return true;
 }
 
-async function fetchTableData(config: ExportConfig, session: SessionInfo) {
+async function fetchTableData(
+  supabase: ReturnType<typeof createClient>,
+  config: ExportConfig,
+  session: SessionInfo
+) {
   if (!session.userId) {
     return { data: [], error: "Sessão inválida. Faça login novamente." };
   }
 
   if (!isConfigAllowedForSession(config, session)) {
-    return { data: [], error: "Este módulo não está disponível para o perfil atual." };
+    return {
+      data: [],
+      error: "Este módulo não está disponível para o perfil atual.",
+    };
   }
 
-  const supabase = createClient();
   let query = supabase.from(config.table).select(config.select);
 
   if (config.isPrivate) {
@@ -212,12 +222,16 @@ async function fetchTableData(config: ExportConfig, session: SessionInfo) {
   }
 
   const { data, error } = await query;
-  if (error) return { data: [], error: error.message };
+
+  if (error) {
+    return { data: [], error: error.message };
+  }
+
   return { data: data || [], error: null };
 }
 
 export default function DadosDaContaPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [session, setSession] = useState<SessionInfo>({
     userId: null,
@@ -226,6 +240,7 @@ export default function DadosDaContaPage() {
   });
 
   const [checkingSession, setCheckingSession] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingAll, setLoadingAll] = useState(false);
   const [loadingTable, setLoadingTable] = useState<string | null>(null);
   const [results, setResults] = useState<ExportResult[]>([]);
@@ -237,21 +252,30 @@ export default function DadosDaContaPage() {
     specialty: "",
     crm: "",
   });
+
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadSessionAndProfile() {
-      const info = await getSessionInfo();
+      setCheckingSession(true);
+      setLoadingProfile(true);
+      setError("");
+
+      const info = await getSessionInfo(supabase);
+
       if (!mounted) return;
 
       setSession(info);
       setCheckingSession(false);
 
-      if (!info.userId) return;
+      if (!info.userId) {
+        setLoadingProfile(false);
+        return;
+      }
 
-      const { data } = await supabase
+      const { data, error: profileError } = await supabase
         .from("user_profiles")
         .select("full_name, specialty, crm")
         .eq("user_id", info.userId)
@@ -259,14 +283,24 @@ export default function DadosDaContaPage() {
 
       if (!mounted) return;
 
+      if (profileError) {
+        console.warn("Não foi possível carregar perfil:", profileError.message);
+        setError(
+          "Não foi possível carregar o perfil profissional. Verifique a tabela user_profiles."
+        );
+      }
+
       setProfileForm({
         full_name: data?.full_name || "",
         specialty: data?.specialty || "",
         crm: data?.crm || "",
       });
+
+      setLoadingProfile(false);
     }
 
     loadSessionAndProfile();
+
     return () => {
       mounted = false;
     };
@@ -282,10 +316,12 @@ export default function DadosDaContaPage() {
     () => results.reduce((acc, item) => acc + item.count, 0),
     [results]
   );
+
   const successCount = useMemo(
     () => results.filter((item) => item.ok).length,
     [results]
   );
+
   const errorCount = useMemo(
     () => results.filter((item) => !item.ok).length,
     [results]
@@ -301,6 +337,8 @@ export default function DadosDaContaPage() {
     setError("");
     setSuccess("");
 
+    const now = new Date().toISOString();
+
     const { error: saveError } = await supabase.from("user_profiles").upsert(
       {
         user_id: session.userId,
@@ -308,13 +346,15 @@ export default function DadosDaContaPage() {
         full_name: profileForm.full_name.trim() || null,
         specialty: profileForm.specialty.trim() || null,
         crm: profileForm.crm.trim() || null,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       },
       { onConflict: "user_id" }
     );
 
     if (saveError) {
-      setError(saveError.message);
+      setError(
+        `Não foi possível salvar o perfil profissional: ${saveError.message}`
+      );
       setSavingProfile(false);
       return;
     }
@@ -330,10 +370,10 @@ export default function DadosDaContaPage() {
     setSuccess("");
     setLoadingTable(config.table);
 
-    const freshSession = await getSessionInfo();
+    const freshSession = await getSessionInfo(supabase);
     setSession(freshSession);
 
-    const response = await fetchTableData(config, freshSession);
+    const response = await fetchTableData(supabase, config, freshSession);
 
     if (response.error) {
       setError(`Erro ao exportar ${config.label}: ${response.error}`);
@@ -369,7 +409,12 @@ export default function DadosDaContaPage() {
     );
 
     setResults((current) => [
-      { table: config.table, label: config.label, count: response.data.length, ok: true },
+      {
+        table: config.table,
+        label: config.label,
+        count: response.data.length,
+        ok: true,
+      },
       ...current.filter((item) => item.table !== config.table),
     ]);
 
@@ -384,7 +429,7 @@ export default function DadosDaContaPage() {
     setSuccess("");
     setLoadingAll(true);
 
-    const freshSession = await getSessionInfo();
+    const freshSession = await getSessionInfo(supabase);
     setSession(freshSession);
 
     if (!freshSession.userId) {
@@ -393,11 +438,15 @@ export default function DadosDaContaPage() {
       return;
     }
 
+    const configsForFreshSession = exportConfigs.filter((config) =>
+      isConfigAllowedForSession(config, freshSession)
+    );
+
     const backup: Record<string, unknown[]> = {};
     const nextResults: ExportResult[] = [];
 
-    for (const config of allowedConfigs) {
-      const response = await fetchTableData(config, freshSession);
+    for (const config of configsForFreshSession) {
+      const response = await fetchTableData(supabase, config, freshSession);
 
       if (response.error) {
         backup[config.table] = [];
@@ -448,7 +497,9 @@ export default function DadosDaContaPage() {
           { label: "Dados da conta", tone: "blue" },
           { label: "Backup e exportação", tone: "slate" },
           { label: "RLS ativo", tone: "emerald" },
-          ...(session.isGuest ? [{ label: "Modo convidado", tone: "amber" as const }] : []),
+          ...(session.isGuest
+            ? [{ label: "Modo convidado", tone: "amber" as const }]
+            : []),
         ]}
         metrics={[
           { label: "Registros", value: totalExported },
@@ -466,15 +517,21 @@ export default function DadosDaContaPage() {
               Perfil profissional
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Edite os dados profissionais exibidos na sua conta.
+              Edite os dados profissionais usados para identificar sua conta no
+              ResiBook.
             </p>
           </div>
 
           <button
             type="button"
             onClick={saveProfile}
-            disabled={savingProfile || !session.userId}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={
+              checkingSession ||
+              loadingProfile ||
+              savingProfile ||
+              !session.userId
+            }
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save className="h-4 w-4" />
             {savingProfile ? "Salvando..." : "Salvar perfil"}
@@ -488,11 +545,15 @@ export default function DadosDaContaPage() {
             </label>
             <input
               value={profileForm.full_name}
-              onChange={(e) =>
-                setProfileForm((current) => ({ ...current, full_name: e.target.value }))
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  full_name: event.target.value,
+                }))
               }
               placeholder="Digite o nome completo"
-              className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+              disabled={loadingProfile || !session.userId}
+              className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
 
@@ -502,11 +563,15 @@ export default function DadosDaContaPage() {
             </label>
             <input
               value={profileForm.specialty}
-              onChange={(e) =>
-                setProfileForm((current) => ({ ...current, specialty: e.target.value }))
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  specialty: event.target.value,
+                }))
               }
               placeholder="Ex.: Clínica médica"
-              className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+              disabled={loadingProfile || !session.userId}
+              className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
 
@@ -516,11 +581,15 @@ export default function DadosDaContaPage() {
             </label>
             <input
               value={profileForm.crm}
-              onChange={(e) =>
-                setProfileForm((current) => ({ ...current, crm: e.target.value }))
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  crm: event.target.value,
+                }))
               }
-              placeholder="Ex.: CRM 123456"
-              className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+              placeholder="Ex.: CRM-MG 123456"
+              disabled={loadingProfile || !session.userId}
+              className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
 
@@ -529,9 +598,10 @@ export default function DadosDaContaPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <Mail className="h-4.5 w-4.5" />
               </div>
+
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  E-mail do site
+                  E-mail da conta
                 </p>
                 <p className="mt-2 break-all text-sm font-semibold text-slate-900">
                   {session.email || "Não identificado"}
@@ -545,6 +615,7 @@ export default function DadosDaContaPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <ShieldCheck className="h-4.5 w-4.5" />
               </div>
+
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Perfil de acesso
@@ -561,6 +632,7 @@ export default function DadosDaContaPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <Database className="h-4.5 w-4.5" />
               </div>
+
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   ID da conta
@@ -581,15 +653,21 @@ export default function DadosDaContaPage() {
               Backup completo
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Baixa um único arquivo contendo as principais tabelas do sistema que o usuário logado tem autorização para acessar.
+              Baixa um único arquivo contendo as principais tabelas do sistema
+              que o usuário logado tem autorização para acessar.
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleExportAll}
-            disabled={checkingSession || !session.userId || loadingAll || loadingTable !== null}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={
+              checkingSession ||
+              !session.userId ||
+              loadingAll ||
+              loadingTable !== null
+            }
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" />
             {loadingAll ? "Exportando..." : "Baixar backup completo"}
@@ -602,12 +680,14 @@ export default function DadosDaContaPage() {
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
                 <Database className="h-5 w-5" />
               </div>
+
               <div>
                 <h3 className="text-base font-semibold text-slate-900">
                   Arquivo JSON único
                 </h3>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Inclui apenas os módulos permitidos ao perfil atual, respeitando RLS e filtros explícitos em dados privados.
+                  Inclui apenas os módulos permitidos ao perfil atual,
+                  respeitando RLS e filtros explícitos em dados privados.
                 </p>
               </div>
             </div>
@@ -632,7 +712,9 @@ export default function DadosDaContaPage() {
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {allowedConfigs.map((config) => {
             const Icon = config.icon;
-            const currentResult = results.find((item) => item.table === config.table);
+            const currentResult = results.find(
+              (item) => item.table === config.table
+            );
 
             return (
               <article
@@ -652,7 +734,9 @@ export default function DadosDaContaPage() {
 
                       {currentResult ? (
                         <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                          {currentResult.ok ? `${currentResult.count} registros` : "Erro"}
+                          {currentResult.ok
+                            ? `${currentResult.count} registros`
+                            : "Erro"}
                         </span>
                       ) : null}
                     </div>
@@ -662,7 +746,9 @@ export default function DadosDaContaPage() {
                     </p>
 
                     <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      {config.isPrivate ? "Dados privados do usuário" : "Biblioteca compartilhada"}
+                      {config.isPrivate
+                        ? "Dados privados do usuário"
+                        : "Biblioteca compartilhada"}
                     </p>
 
                     {currentResult?.error ? (
@@ -676,11 +762,18 @@ export default function DadosDaContaPage() {
                 <button
                   type="button"
                   onClick={() => handleExportOne(config)}
-                  disabled={checkingSession || !session.userId || loadingAll || loadingTable !== null}
-                  className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={
+                    checkingSession ||
+                    !session.userId ||
+                    loadingAll ||
+                    loadingTable !== null
+                  }
+                  className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Download className="h-4 w-4" />
-                  {loadingTable === config.table ? "Exportando..." : "Exportar módulo"}
+                  {loadingTable === config.table
+                    ? "Exportando..."
+                    : "Exportar módulo"}
                 </button>
               </article>
             );
@@ -693,9 +786,11 @@ export default function DadosDaContaPage() {
           <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
             Documentos legais
           </span>
+
           <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
             Termos e privacidade
           </h2>
+
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
             Consulte os documentos que regulam o uso do ResiBook.
           </p>
@@ -708,11 +803,16 @@ export default function DadosDaContaPage() {
             rel="noopener noreferrer"
             className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-slate-300 hover:bg-white"
           >
-            <p className="text-sm font-semibold text-slate-900">Termos de Uso</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Regras de uso, responsabilidade profissional e limites da ferramenta.
+            <p className="text-sm font-semibold text-slate-900">
+              Termos de Uso
             </p>
-            <p className="mt-4 text-sm font-semibold text-slate-700">Abrir termos →</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Regras de uso, responsabilidade profissional e limites da
+              ferramenta.
+            </p>
+            <p className="mt-4 text-sm font-semibold text-slate-700">
+              Abrir termos →
+            </p>
           </a>
 
           <a
@@ -721,11 +821,16 @@ export default function DadosDaContaPage() {
             rel="noopener noreferrer"
             className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-slate-300 hover:bg-white"
           >
-            <p className="text-sm font-semibold text-slate-900">Política de Privacidade</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Tratamento de dados pessoais e sensíveis, segurança e direitos dos titulares.
+            <p className="text-sm font-semibold text-slate-900">
+              Política de Privacidade
             </p>
-            <p className="mt-4 text-sm font-semibold text-slate-700">Abrir política →</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Tratamento de dados pessoais e sensíveis, segurança e direitos dos
+              titulares.
+            </p>
+            <p className="mt-4 text-sm font-semibold text-slate-700">
+              Abrir política →
+            </p>
           </a>
         </div>
       </section>
@@ -741,7 +846,8 @@ export default function DadosDaContaPage() {
               Cuidado com os arquivos exportados
             </h2>
             <p className="mt-2 text-sm leading-7 text-amber-950">
-              Os arquivos exportados podem conter dados clínicos e informações identificáveis de pacientes.
+              Os arquivos exportados podem conter dados clínicos e informações
+              identificáveis de pacientes.
             </p>
           </div>
         </div>

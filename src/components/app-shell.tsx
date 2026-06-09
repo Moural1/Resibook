@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import {
@@ -56,28 +56,34 @@ const GUEST_ALLOWED_PATHS = [
   "/suporte",
 ];
 
-const LEGAL_PUBLIC_PATHS = [
-  "/login",
-  "/aceite-legal",
-  "/termos",
-  "/privacidade",
-];
+const AUTH_PUBLIC_PATHS = ["/login", "/signup", "/register"];
 
-function isGuestAllowedPath(pathname: string) {
-  return GUEST_ALLOWED_PATHS.some(
+const LEGAL_PUBLIC_PATHS = ["/aceite-legal", "/termos", "/privacidade"];
+
+const SHELL_HIDDEN_PATHS = [...AUTH_PUBLIC_PATHS, ...LEGAL_PUBLIC_PATHS];
+
+function isPathInside(pathname: string, routes: string[]) {
+  return routes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
+}
+
+function isGuestAllowedPath(pathname: string) {
+  return isPathInside(pathname, GUEST_ALLOWED_PATHS);
 }
 
 function isLegalPublicPath(pathname: string) {
-  return LEGAL_PUBLIC_PATHS.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  );
+  return isPathInside(pathname, LEGAL_PUBLIC_PATHS);
 }
 
-async function hasAcceptedCurrentLegal(userId: string) {
-  const supabase = createClient();
+function isShellHiddenPath(pathname: string) {
+  return isPathInside(pathname, SHELL_HIDDEN_PATHS);
+}
 
+async function hasAcceptedCurrentLegal(
+  supabase: SupabaseClient,
+  userId: string
+) {
   const { data, error } = await supabase
     .from("user_legal_acceptances")
     .select("terms_version, privacy_version")
@@ -85,6 +91,7 @@ async function hasAcceptedCurrentLegal(userId: string) {
     .maybeSingle();
 
   if (error) {
+    console.warn("Não foi possível validar aceite legal:", error.message);
     return false;
   }
 
@@ -515,116 +522,117 @@ export default function AppShell({ children }: Props) {
   });
 
   const hideShell = useMemo(() => {
-    return (
-      pathname === "/login" ||
-      pathname === "/signup" ||
-      pathname === "/register" ||
-      pathname === "/aceite-legal"
-    );
+    return isShellHiddenPath(pathname);
   }, [pathname]);
 
   useEffect(() => {
     let mounted = true;
 
-    async function checkUserSession() {
-      if (hideShell) {
-        setCheckingUser(false);
-        return;
-      }
+    if (hideShell) {
+      setCheckingUser(false);
+      return () => {
+        mounted = false;
+      };
+    }
 
-      try {
-        const supabase = createClient();
-        const { data: sessionData, error } = await supabase.auth.getSession();
+    const supabase = createClient();
 
-        if (!mounted) return;
+    function resetSessionState() {
+      setSessionEmail("");
+      setIsGuest(false);
+      setCurrentUserId(null);
+    }
 
-        if (error) {
-          setSessionEmail("");
-          setIsGuest(false);
-          setCurrentUserId(null);
-          setCheckingUser(false);
-          return;
-        }
+    function redirectTo(target: string) {
+      if (typeof window === "undefined") return;
 
-        const email =
-          sessionData.session?.user?.email?.trim().toLowerCase() || "";
-        const userId = sessionData.session?.user?.id || null;
-        const guest = email === GUEST_EMAIL;
-
-        setSessionEmail(email);
-        setIsGuest(guest);
-        setCurrentUserId(userId);
-
-        if (guest) {
-          setCheckingUser(false);
-
-          if (!isGuestAllowedPath(pathname)) {
-            window.location.replace("/prescricao");
-          }
-
-          return;
-        }
-
-        if (userId && !isLegalPublicPath(pathname)) {
-          const accepted = await hasAcceptedCurrentLegal(userId);
-
-          if (!mounted) return;
-
-          if (!accepted) {
-            setCheckingUser(false);
-            window.location.replace("/aceite-legal");
-            return;
-          }
-        }
-
-        setCheckingUser(false);
-      } catch {
-        if (!mounted) return;
-        setCheckingUser(false);
-        window.location.replace("/login");
+      if (window.location.pathname !== target) {
+        router.replace(target);
       }
     }
 
-    checkUserSession();
+    async function applyAccessRules(session: Session | null) {
+      if (!mounted) return;
 
-    const supabase = createClient();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setCheckingUser(true);
+
       try {
         const email = session?.user?.email?.trim().toLowerCase() || "";
         const userId = session?.user?.id || null;
         const guest = email === GUEST_EMAIL;
 
-        setSessionEmail(email);
-        setIsGuest(guest);
-        setCurrentUserId(userId);
+        if (!session?.user || !userId) {
+          resetSessionState();
 
-        if (guest) {
-          setCheckingUser(false);
-
-          if (!isGuestAllowedPath(window.location.pathname)) {
-            window.location.replace("/prescricao");
+          if (!isLegalPublicPath(pathname)) {
+            redirectTo("/login");
           }
 
           return;
         }
 
-        if (userId && !isLegalPublicPath(window.location.pathname)) {
-          const accepted = await hasAcceptedCurrentLegal(userId);
+        setSessionEmail(email);
+        setIsGuest(guest);
+        setCurrentUserId(userId);
+
+        if (guest) {
+          if (!isGuestAllowedPath(pathname)) {
+            redirectTo("/prescricao");
+          }
+
+          return;
+        }
+
+        if (!isLegalPublicPath(pathname)) {
+          const accepted = await hasAcceptedCurrentLegal(supabase, userId);
+
+          if (!mounted) return;
 
           if (!accepted) {
-            setCheckingUser(false);
-            window.location.replace("/aceite-legal");
+            redirectTo("/aceite-legal");
             return;
           }
         }
-
-        setCheckingUser(false);
-      } catch {
-        setCheckingUser(false);
-        window.location.replace("/login");
+      } catch (error) {
+        console.warn("Erro ao validar acesso:", error);
+        resetSessionState();
+        redirectTo("/login");
+      } finally {
+        if (mounted) {
+          setCheckingUser(false);
+        }
       }
+    }
+
+    async function checkInitialSession() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.warn("Erro ao obter sessão:", error.message);
+          resetSessionState();
+          redirectTo("/login");
+          return;
+        }
+
+        await applyAccessRules(data.session);
+      } catch (error) {
+        console.warn("Erro inesperado ao obter sessão:", error);
+        resetSessionState();
+        redirectTo("/login");
+      } finally {
+        if (mounted) {
+          setCheckingUser(false);
+        }
+      }
+    }
+
+    checkInitialSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      void applyAccessRules(session);
     });
 
     return () => {

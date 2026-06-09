@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
@@ -10,7 +10,7 @@ const GUEST_EMAIL = "convidado@resibook.com";
 
 export default function AceiteLegalPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
@@ -27,44 +27,51 @@ export default function AceiteLegalPage() {
 
     setLoading(true);
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      setError("Sessão inválida. Faça login novamente.");
+      if (userError || !user) {
+        setError("Sessão inválida. Faça login novamente.");
+        setLoading(false);
+        return;
+      }
+
+      const normalizedEmail = user.email?.trim().toLowerCase() || "";
+      const nextPath =
+        normalizedEmail === GUEST_EMAIL ? "/prescricao" : "/dashboard";
+
+      const now = new Date().toISOString();
+
+      const { error: upsertError } = await supabase
+        .from("user_legal_acceptances")
+        .upsert(
+          {
+            user_id: user.id,
+            email: user.email || "",
+            terms_version: TERMS_VERSION,
+            privacy_version: PRIVACY_VERSION,
+            accepted_at: now,
+            updated_at: now,
+          },
+          {
+            onConflict: "user_id",
+          }
+        );
+
+      if (upsertError) {
+        setError(upsertError.message);
+        setLoading(false);
+        return;
+      }
+
+      router.replace(nextPath);
+    } catch {
+      setError("Não foi possível salvar o aceite. Tente novamente.");
       setLoading(false);
-      return;
     }
-
-    const normalizedEmail = user.email?.trim().toLowerCase() || "";
-    const nextPath =
-      normalizedEmail === GUEST_EMAIL ? "/prescricao" : "/dashboard";
-
-    const { error: upsertError } = await supabase
-      .from("user_legal_acceptances")
-      .upsert(
-        {
-          user_id: user.id,
-          email: user.email || "",
-          terms_version: TERMS_VERSION,
-          privacy_version: PRIVACY_VERSION,
-          accepted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "user_id",
-        }
-      );
-
-    if (upsertError) {
-      setError(upsertError.message);
-      setLoading(false);
-      return;
-    }
-
-    router.replace(nextPath);
   }
 
   return (
@@ -99,7 +106,8 @@ export default function AceiteLegalPage() {
             <Link
               href="/termos"
               target="_blank"
-              className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               Abrir Termos de Uso
             </Link>
@@ -107,7 +115,8 @@ export default function AceiteLegalPage() {
             <Link
               href="/privacidade"
               target="_blank"
-              className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               Abrir Política de Privacidade
             </Link>
@@ -121,6 +130,7 @@ export default function AceiteLegalPage() {
                 onChange={(e) => setAcceptTerms(e.target.checked)}
                 className="mt-1"
               />
+
               <span className="text-sm leading-6 text-slate-700">
                 Li e aceito os Termos de Uso do ResiBook.
               </span>
@@ -133,6 +143,7 @@ export default function AceiteLegalPage() {
                 onChange={(e) => setAcceptPrivacy(e.target.checked)}
                 className="mt-1"
               />
+
               <span className="text-sm leading-6 text-slate-700">
                 Li e aceito a Política de Privacidade e o tratamento dos meus
                 dados conforme descrito.
@@ -150,7 +161,7 @@ export default function AceiteLegalPage() {
             type="button"
             onClick={handleAccept}
             disabled={loading}
-            className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Salvando aceite..." : "Aceitar e continuar"}
           </button>

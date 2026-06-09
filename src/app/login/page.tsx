@@ -12,12 +12,13 @@ function sanitizeRedirect(value: string | null) {
   if (!value) return "/dashboard";
   if (!value.startsWith("/")) return "/dashboard";
   if (value.startsWith("//")) return "/dashboard";
+
   return value;
 }
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const redirectTo = sanitizeRedirect(searchParams.get("redirect"));
   const blocked = searchParams.get("blocked") === "1";
@@ -70,10 +71,17 @@ function LoginContent() {
       const user = sessionData.session.user;
       const userId = user?.id || "";
       const sessionEmail = user?.email?.trim().toLowerCase() || "";
+      const isGuest = sessionEmail === GUEST_EMAIL;
 
       if (!userId) {
         setErro("Usuário não identificado.");
         setLoading(false);
+        return;
+      }
+
+      if (isGuest) {
+        const nextPath = redirectTo === "/dashboard" ? "/prescricao" : redirectTo;
+        window.location.replace(nextPath);
         return;
       }
 
@@ -98,12 +106,7 @@ function LoginContent() {
         return;
       }
 
-      const nextPath =
-        sessionEmail === GUEST_EMAIL && redirectTo === "/dashboard"
-          ? "/prescricao"
-          : redirectTo;
-
-      window.location.replace(nextPath);
+      window.location.replace(redirectTo);
     } catch {
       setErro("Não foi possível entrar. Tente novamente.");
       setLoading(false);
