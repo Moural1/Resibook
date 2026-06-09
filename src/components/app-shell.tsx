@@ -57,9 +57,7 @@ const GUEST_ALLOWED_PATHS = [
 ];
 
 const AUTH_PUBLIC_PATHS = ["/login", "/signup", "/register"];
-
 const LEGAL_PUBLIC_PATHS = ["/aceite-legal", "/termos", "/privacidade"];
-
 const SHELL_HIDDEN_PATHS = [...AUTH_PUBLIC_PATHS, ...LEGAL_PUBLIC_PATHS];
 
 function isPathInside(pathname: string, routes: string[]) {
@@ -554,8 +552,6 @@ export default function AppShell({ children }: Props) {
     async function applyAccessRules(session: Session | null) {
       if (!mounted) return;
 
-      setCheckingUser(true);
-
       try {
         const email = session?.user?.email?.trim().toLowerCase() || "";
         const userId = session?.user?.id || null;
@@ -605,6 +601,10 @@ export default function AppShell({ children }: Props) {
     }
 
     async function checkInitialSession() {
+      if (mounted) {
+        setCheckingUser(true);
+      }
+
       try {
         const { data, error } = await supabase.auth.getSession();
 
