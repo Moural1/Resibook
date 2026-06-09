@@ -545,17 +545,23 @@ export default function AppShell({ children }: Props) {
       setCurrentUserId(null);
     }
 
-    function redirectTo(target: string) {
-      if (typeof window === "undefined") return;
+   function redirectTo(target: string) {
+  if (typeof window === "undefined") return;
 
-      if (target === "/login") {
-        setRedirectingToLogin(true);
-      }
+  if (target === "/login") {
+    setRedirectingToLogin(true);
 
-      if (window.location.pathname !== target) {
-        router.replace(target);
-      }
+    if (window.location.pathname !== "/login") {
+      window.location.replace("/login");
     }
+
+    return;
+  }
+
+  if (window.location.pathname !== target) {
+    router.replace(target);
+  }
+}
 
     async function applyAccessRules(session: Session | null) {
       if (!mounted) return;
