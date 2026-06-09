@@ -509,6 +509,7 @@ export default function AppShell({ children }: Props) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [sessionEmail, setSessionEmail] = useState("");
   const [checkingUser, setCheckingUser] = useState(true);
+  const [redirectingToLogin, setRedirectingToLogin] = useState(false);
 
   const [counts, setCounts] = useState<CountMap>({
     pacientes: null,
@@ -529,6 +530,8 @@ export default function AppShell({ children }: Props) {
 
     if (hideShell) {
       setCheckingUser(false);
+      setRedirectingToLogin(false);
+
       return () => {
         mounted = false;
       };
@@ -544,6 +547,10 @@ export default function AppShell({ children }: Props) {
 
     function redirectTo(target: string) {
       if (typeof window === "undefined") return;
+
+      if (target === "/login") {
+        setRedirectingToLogin(true);
+      }
 
       if (window.location.pathname !== target) {
         router.replace(target);
@@ -568,6 +575,7 @@ export default function AppShell({ children }: Props) {
           return;
         }
 
+        setRedirectingToLogin(false);
         setSessionEmail(email);
         setIsGuest(guest);
         setCurrentUserId(userId);
@@ -748,11 +756,11 @@ export default function AppShell({ children }: Props) {
     return <>{children}</>;
   }
 
-  if (checkingUser) {
+  if (checkingUser || redirectingToLogin || !currentUserId) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-medium text-slate-600 shadow-sm">
-          Carregando acesso.
+          {redirectingToLogin ? "Encerrando sessão..." : "Carregando acesso."}
         </div>
       </div>
     );

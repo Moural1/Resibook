@@ -1,11 +1,18 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
-import { BookOpen, Edit3, Plus, Sparkles, Stethoscope, X } from "lucide-react";
+import {
+  BookOpen,
+  Edit3,
+  Plus,
+  Search,
+  Sparkles,
+  Stethoscope,
+  X,
+} from "lucide-react";
 
 type TopicoMedico = {
   id: number;
@@ -86,8 +93,11 @@ function formatLabel(value?: string | null) {
 
 function formatDate(value?: string | null) {
   if (!value) return "Sem data";
+
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) return value;
+
   return date.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -186,16 +196,24 @@ function RichText({ value }: { value?: string | null }) {
 
           if (ordered) {
             return (
-              <ol key={index} className="ml-5 list-decimal space-y-2 text-sm leading-7 text-slate-700">
+              <ol
+                key={index}
+                className="ml-5 list-decimal space-y-2 text-sm leading-7 text-slate-700"
+              >
                 {lines.map((line, lineIndex) => (
-                  <li key={lineIndex}>{line.replace(/^\d+[\.\)]\s*/, "")}</li>
+                  <li key={lineIndex}>
+                    {line.replace(/^\d+[\.\)]\s*/, "")}
+                  </li>
                 ))}
               </ol>
             );
           }
 
           return (
-            <ul key={index} className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700">
+            <ul
+              key={index}
+              className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700"
+            >
               {lines.map((line, lineIndex) => (
                 <li key={lineIndex}>{line.replace(/^[-•]\s*/, "")}</li>
               ))}
@@ -204,13 +222,48 @@ function RichText({ value }: { value?: string | null }) {
         }
 
         return (
-          <p key={index} className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+          <p
+            key={index}
+            className="whitespace-pre-wrap text-sm leading-7 text-slate-700"
+          >
             {block}
           </p>
         );
       })}
     </div>
   );
+}
+
+function sectionToneClass(tone: "slate" | "rose" | "blue" | "emerald" | "amber") {
+  const classes = {
+    slate: {
+      card: "border-slate-200 bg-slate-50/80",
+      accent: "bg-slate-400",
+      title: "text-slate-600",
+    },
+    blue: {
+      card: "border-slate-200 bg-white",
+      accent: "bg-blue-500",
+      title: "text-slate-700",
+    },
+    emerald: {
+      card: "border-slate-200 bg-white",
+      accent: "bg-emerald-500",
+      title: "text-slate-700",
+    },
+    amber: {
+      card: "border-slate-200 bg-white",
+      accent: "bg-amber-500",
+      title: "text-slate-700",
+    },
+    rose: {
+      card: "border-slate-200 bg-white",
+      accent: "bg-rose-500",
+      title: "text-slate-700",
+    },
+  };
+
+  return classes[tone];
 }
 
 function Section({
@@ -224,31 +277,35 @@ function Section({
 }) {
   if (!value) return null;
 
-  const toneClass = {
-    slate: "border-slate-200 bg-slate-50",
-    rose: "border-slate-200 bg-slate-50",
-    blue: "border-slate-200 bg-slate-50",
-    emerald: "border-slate-200 bg-slate-50",
-    amber: "border-slate-200 bg-slate-50",
-  }[tone];
+  const toneClass = sectionToneClass(tone);
 
   return (
-    <div className={`rounded-[24px] border p-5 ${toneClass}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-        {title}
-      </p>
-      <div className="mt-3">
-        <RichText value={value} />
+    <div
+      className={`relative overflow-hidden rounded-[24px] border p-5 shadow-sm shadow-slate-950/[0.015] ${toneClass.card}`}
+    >
+      <div
+        className={`absolute left-0 top-0 h-full w-1 ${toneClass.accent}`}
+      />
+
+      <div className="pl-2">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${toneClass.accent}`} />
+          <p
+            className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${toneClass.title}`}
+          >
+            {title}
+          </p>
+        </div>
+
+        <div className="mt-3">
+          <RichText value={value} />
+        </div>
       </div>
     </div>
   );
 }
 
-function RelatedCardsPanel({
-  cards,
-}: {
-  cards: RelatedFlashcard[];
-}) {
+function RelatedCardsPanel({ cards }: { cards: RelatedFlashcard[] }) {
   const [openIds, setOpenIds] = useState<string[]>([]);
 
   function toggle(id: string) {
@@ -262,11 +319,12 @@ function RelatedCardsPanel({
   if (cards.length === 0) return null;
 
   return (
-    <section className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-5">
+    <section className="rounded-[26px] border border-slate-200 bg-slate-50/80 p-5">
       <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
           Revisão rápida
         </span>
+
         <p className="text-sm text-slate-600">
           Flashcards relacionados a este tópico para revisão objetiva.
         </p>
@@ -279,17 +337,17 @@ function RelatedCardsPanel({
           return (
             <article
               key={card.id}
-              className="rounded-[22px] border border-white/70 bg-white p-4 shadow-sm"
+              className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm"
             >
               <div className="flex flex-wrap items-center gap-2">
                 {card.materia ? (
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700">
                     {card.materia}
                   </span>
                 ) : null}
 
                 {card.tipo ? (
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-medium text-slate-600">
                     {card.tipo}
                   </span>
                 ) : null}
@@ -309,14 +367,18 @@ function RelatedCardsPanel({
                 <button
                   type="button"
                   onClick={() => toggle(card.id)}
-                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white"
+                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   {open ? "Ocultar resposta" : "Revelar resposta"}
                 </button>
 
-                {card.verso ? <CopyButton text={`${card.frente}
+                {card.verso ? (
+                  <CopyButton
+                    text={`${card.frente}
 
-${card.verso}`} /> : null}
+${card.verso}`}
+                  />
+                ) : null}
               </div>
             </article>
           );
@@ -378,7 +440,9 @@ export default function TopicosPage() {
 
       supabase
         .from("flashcards")
-        .select("id, area, materia, tipo, frente, verso, source_group, source_file")
+        .select(
+          "id, area, materia, tipo, frente, verso, source_group, source_file"
+        )
         .order("materia", { ascending: true, nullsFirst: false })
         .order("card_number", { ascending: true, nullsFirst: false }),
     ]);
@@ -510,7 +574,11 @@ export default function TopicosPage() {
           .eq("id", editingItem.id)
           .select("*")
           .single()
-      : await supabase.from("topicos_medicos").insert(payload).select("*").single();
+      : await supabase
+          .from("topicos_medicos")
+          .insert(payload)
+          .select("*")
+          .single();
 
     if (response.error) {
       setError(response.error.message);
@@ -521,11 +589,19 @@ export default function TopicosPage() {
         if (editingItem) {
           return current
             .map((item) => (item.id === editingItem.id ? saved : item))
-            .sort((a, b) => `${a.area}-${a.titulo}`.localeCompare(`${b.area}-${b.titulo}`, "pt-BR"));
+            .sort((a, b) =>
+              `${a.area}-${a.titulo}`.localeCompare(
+                `${b.area}-${b.titulo}`,
+                "pt-BR"
+              )
+            );
         }
 
         return [...current, saved].sort((a, b) =>
-          `${a.area}-${a.titulo}`.localeCompare(`${b.area}-${b.titulo}`, "pt-BR")
+          `${a.area}-${a.titulo}`.localeCompare(
+            `${b.area}-${b.titulo}`,
+            "pt-BR"
+          )
         );
       });
 
@@ -556,13 +632,17 @@ export default function TopicosPage() {
     setSuccess("");
     setSavingIds((current) => [...current, id]);
 
-    const { error } = await supabase.from("topicos_medicos").delete().eq("id", id);
+    const { error } = await supabase
+      .from("topicos_medicos")
+      .delete()
+      .eq("id", id);
 
     if (error) {
       setError(error.message);
     } else {
       setTopicos((current) => current.filter((item) => item.id !== id));
       setSuccess("Tópico apagado com sucesso.");
+
       if (editingItem?.id === id) {
         closeDrawer();
       }
@@ -579,9 +659,7 @@ export default function TopicosPage() {
       .map((value) => value.trim())
       .filter(Boolean);
 
-    const titleTokens = title
-      .split(/\s+/)
-      .filter((token) => token.length >= 4);
+    const titleTokens = title.split(/\s+/).filter((token) => token.length >= 4);
 
     const scored = flashcards
       .map((card) => {
@@ -625,20 +703,20 @@ export default function TopicosPage() {
     <div className="space-y-6">
       <ModulePageHeader
         eyebrow="Biblioteca clínica"
-        title="Tópicos clínicos com revisão integrada"
-        description="Biblioteca médica estruturada por área, com diagnóstico, critérios, exames, tratamento, urgência, internação/referência e flashcards relacionados para revisão rápida dentro de cada tema."
+        title="Tópicos clínicos"
+        description="Biblioteca médica estruturada por área, com diagnóstico, critérios, exames, tratamento, urgência, internação/referência e flashcards relacionados."
         badges={[
-          { label: "Tópicos médicos", tone: "cyan" },
+          { label: "Tópicos médicos", tone: "blue" },
           { label: "Biblioteca clínica", tone: "slate" },
           {
-            label: isAdmin ? "Admin pode gerenciar" : "Somente leitura",
-            tone: isAdmin ? "emerald" : "amber",
+            label: isAdmin ? "Gerenciamento liberado" : "Somente leitura",
+            tone: isAdmin ? "emerald" : "slate",
           },
         ]}
         metrics={[
-          { label: "Total carregado do banco", value: topicos.length },
+          { label: "Tópicos", value: topicos.length },
           { label: "Exibindo", value: filtered.length },
-          { label: "Flashcards disponíveis", value: flashcards.length },
+          { label: "Flashcards", value: flashcards.length },
         ]}
         error={error}
         success={success}
@@ -647,7 +725,7 @@ export default function TopicosPage() {
             <button
               type="button"
               onClick={openCreateDrawer}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
               <Plus className="h-4 w-4" />
               Novo tópico
@@ -655,16 +733,18 @@ export default function TopicosPage() {
           ) : null
         }
       >
-        <div className="grid gap-4 bg-slate-50 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50 text-cyan-700">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <Stethoscope className="h-5 w-5" />
               </div>
-              <span className="text-2xl font-bold tracking-tight text-slate-900">
+
+              <span className="text-2xl font-semibold tracking-tight text-slate-900">
                 {areas.length}
               </span>
             </div>
+
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Áreas clínicas
             </p>
@@ -675,10 +755,12 @@ export default function TopicosPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <BookOpen className="h-5 w-5" />
               </div>
-              <span className="text-2xl font-bold tracking-tight text-slate-900">
+
+              <span className="text-2xl font-semibold tracking-tight text-slate-900">
                 {filtered.length}
               </span>
             </div>
+
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Tópicos filtrados
             </p>
@@ -686,13 +768,15 @@ export default function TopicosPage() {
 
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <span className="text-2xl font-bold tracking-tight text-slate-900">
+
+              <span className="text-2xl font-semibold tracking-tight text-slate-900">
                 {flashcards.length}
               </span>
             </div>
+
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Flashcards ligados
             </p>
@@ -700,30 +784,45 @@ export default function TopicosPage() {
         </div>
       </ModulePageHeader>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">
-              Busca e filtros
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Filtros
+            </p>
+
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+              Busca e organização
             </h2>
+
             <p className="mt-1 text-sm text-slate-500">
               Procure pelo tema, área, resumo, tratamento, urgência ou tags.
             </p>
           </div>
+
+          {hasFilters ? (
+            <span className="inline-flex self-start rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 lg:self-auto">
+              Filtro ativo
+            </span>
+          ) : null}
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_260px_auto]">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar tópico..."
-            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-          />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar tópico..."
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+            />
+          </div>
 
           <select
             value={selectedArea}
             onChange={(e) => setSelectedArea(e.target.value)}
-            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+            className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
           >
             <option value="">Todas as áreas</option>
             {areas.map((area) => (
@@ -739,7 +838,7 @@ export default function TopicosPage() {
               setQuery("");
               setSelectedArea("");
             }}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
+            className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             {hasFilters ? "Limpar filtros" : "Filtros"}
           </button>
@@ -747,31 +846,46 @@ export default function TopicosPage() {
       </section>
 
       {checkingUser || loading ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-14 text-center text-sm text-slate-500 shadow-sm">
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-14 text-center text-sm font-medium text-slate-500 shadow-sm">
           Carregando tópicos...
         </section>
       ) : filtered.length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-14 text-center text-sm text-slate-500 shadow-sm">
-          Nenhum tópico encontrado para esse filtro.
+        <section className="rounded-[28px] border border-dashed border-slate-300 bg-white px-4 py-14 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500">
+            <Search className="h-5 w-5" />
+          </div>
+
+          <h2 className="mt-4 text-lg font-semibold text-slate-900">
+            Nenhum tópico encontrado
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Ajuste a busca ou limpe os filtros para visualizar a biblioteca.
+          </p>
         </section>
       ) : (
         Object.entries(grouped).map(([area, items]) => (
           <section key={area} className="space-y-4">
-            <div className="flex flex-col gap-2 px-1 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-600">
-                  {formatLabel(area)}
-                </p>
-                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-                  {formatLabel(area)}
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {items.length} tópico{items.length > 1 ? "s" : ""} nesta área
-                </p>
-              </div>
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Área clínica
+                  </p>
 
-              <div className="self-start rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700">
-                {items.length} {items.length === 1 ? "item" : "itens"}
+                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+                    {formatLabel(area)}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {items.length} tópico{items.length > 1 ? "s" : ""} nesta
+                    área.
+                  </p>
+                </div>
+
+                <div className="self-start rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
+                  {items.length} {items.length === 1 ? "item" : "itens"}
+                </div>
               </div>
             </div>
 
@@ -783,35 +897,35 @@ export default function TopicosPage() {
                 return (
                   <article
                     key={item.id}
-                    className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm"
+                    className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm md:p-6"
                   >
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
                             {formatLabel(item.area)}
                           </span>
 
                           {item.prioridade ? (
-                            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                               Prioridade {item.prioridade}
                             </span>
                           ) : null}
 
                           {item.fonte ? (
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                               {item.fonte}
                             </span>
                           ) : null}
 
                           {item.atualizado_em ? (
-                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                               Atualizado em {formatDate(item.atualizado_em)}
                             </span>
                           ) : null}
                         </div>
 
-                        <h3 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+                        <h3 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">
                           {item.titulo}
                         </h3>
 
@@ -830,7 +944,7 @@ export default function TopicosPage() {
                             <button
                               type="button"
                               onClick={() => openEditDrawer(item)}
-                              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                             >
                               <Edit3 className="h-4 w-4" />
                               Editar
@@ -840,7 +954,7 @@ export default function TopicosPage() {
                               type="button"
                               onClick={() => handleDelete(item.id, item.titulo)}
                               disabled={savingItem}
-                              className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {savingItem ? "Apagando..." : "Apagar"}
                             </button>
@@ -851,13 +965,37 @@ export default function TopicosPage() {
 
                     <div className="mt-6 grid gap-4 xl:grid-cols-2">
                       <Section title="Resumo" value={item.resumo} tone="blue" />
-                      <Section title="Diagnóstico" value={item.diagnostico} tone="emerald" />
-                      <Section title="Critérios / classificação" value={item.criterios} tone="amber" />
+                      <Section
+                        title="Diagnóstico"
+                        value={item.diagnostico}
+                        tone="emerald"
+                      />
+                      <Section
+                        title="Critérios / classificação"
+                        value={item.criterios}
+                        tone="amber"
+                      />
                       <Section title="Exames" value={item.exames} tone="slate" />
-                      <Section title="Tratamento / conduta" value={item.tratamento} tone="blue" />
-                      <Section title="Conduta na urgência" value={item.conduta_urgencia} tone="rose" />
-                      <Section title="Internação / referência" value={item.internacao_referencia} tone="emerald" />
-                      <Section title="Pegadinhas de prova" value={item.pegadinhas} tone="amber" />
+                      <Section
+                        title="Tratamento / conduta"
+                        value={item.tratamento}
+                        tone="blue"
+                      />
+                      <Section
+                        title="Conduta na urgência"
+                        value={item.conduta_urgencia}
+                        tone="rose"
+                      />
+                      <Section
+                        title="Internação / referência"
+                        value={item.internacao_referencia}
+                        tone="emerald"
+                      />
+                      <Section
+                        title="Pegadinhas de prova"
+                        value={item.pegadinhas}
+                        tone="amber"
+                      />
                     </div>
 
                     <div className="mt-6">
@@ -872,7 +1010,7 @@ export default function TopicosPage() {
       )}
 
       {drawerOpen ? (
-        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50">
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50 backdrop-blur-[2px]">
           <button
             type="button"
             onClick={closeDrawer}
@@ -883,9 +1021,14 @@ export default function TopicosPage() {
           <div className="relative h-full w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-900">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Biblioteca de tópicos
+                </p>
+
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
                   {editingItem ? "Editar tópico" : "Novo tópico"}
                 </h2>
+
                 <p className="mt-1 text-sm text-slate-500">
                   Apenas o administrador pode alterar a biblioteca de tópicos.
                 </p>
@@ -894,7 +1037,7 @@ export default function TopicosPage() {
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -906,35 +1049,35 @@ export default function TopicosPage() {
                   value={form.area}
                   onChange={(e) => updateForm("area", e.target.value)}
                   placeholder="Área"
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
                 />
 
                 <input
                   value={form.titulo}
                   onChange={(e) => updateForm("titulo", e.target.value)}
                   placeholder="Título"
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
                 />
 
                 <input
                   value={form.tags}
                   onChange={(e) => updateForm("tags", e.target.value)}
                   placeholder="Tags"
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
                 />
 
                 <input
                   value={form.prioridade}
                   onChange={(e) => updateForm("prioridade", e.target.value)}
                   placeholder="Prioridade"
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
                 />
 
                 <input
                   value={form.fonte}
                   onChange={(e) => updateForm("fonte", e.target.value)}
                   placeholder="Fonte"
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none md:col-span-2"
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 md:col-span-2"
                 />
               </div>
 
@@ -942,56 +1085,58 @@ export default function TopicosPage() {
                 value={form.resumo}
                 onChange={(e) => updateForm("resumo", e.target.value)}
                 placeholder="Resumo"
-                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
               />
 
               <textarea
                 value={form.diagnostico}
                 onChange={(e) => updateForm("diagnostico", e.target.value)}
                 placeholder="Diagnóstico"
-                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
               />
 
               <textarea
                 value={form.criterios}
                 onChange={(e) => updateForm("criterios", e.target.value)}
                 placeholder="Critérios / classificação"
-                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
               />
 
               <textarea
                 value={form.exames}
                 onChange={(e) => updateForm("exames", e.target.value)}
                 placeholder="Exames"
-                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
               />
 
               <textarea
                 value={form.tratamento}
                 onChange={(e) => updateForm("tratamento", e.target.value)}
                 placeholder="Tratamento / conduta"
-                className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
               />
 
               <textarea
                 value={form.conduta_urgencia}
                 onChange={(e) => updateForm("conduta_urgencia", e.target.value)}
                 placeholder="Conduta na urgência"
-                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
               />
 
               <textarea
                 value={form.internacao_referencia}
-                onChange={(e) => updateForm("internacao_referencia", e.target.value)}
+                onChange={(e) =>
+                  updateForm("internacao_referencia", e.target.value)
+                }
                 placeholder="Internação / referência"
-                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
               />
 
               <textarea
                 value={form.pegadinhas}
                 onChange={(e) => updateForm("pegadinhas", e.target.value)}
                 placeholder="Pegadinhas de prova"
-                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
               />
 
               <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
@@ -999,19 +1144,19 @@ export default function TopicosPage() {
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving
                     ? "Salvando..."
                     : editingItem
-                      ? "Salvar edição"
-                      : "Criar tópico"}
+                    ? "Salvar edição"
+                    : "Criar tópico"}
                 </button>
 
                 <button
                   type="button"
                   onClick={closeDrawer}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Cancelar
                 </button>
