@@ -4,7 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "../../components/module-page-header";
 import CopyButton from "../../components/copy-button";
-import { Edit3, Lock, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  Edit3,
+  FileText,
+  FlaskConical,
+  Layers3,
+  Lock,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 
 type ExamTemplate = {
   id: number;
@@ -42,6 +52,13 @@ function normalize(value?: string | null) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function formatDisplay(value?: string | null, fallback = "Não informado") {
+  const clean = value?.trim();
+  if (!clean) return fallback;
+
+  return clean.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function formatTemplateText(item: ExamTemplate) {
@@ -84,7 +101,7 @@ function TextAreaField({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </label>
 
@@ -93,7 +110,7 @@ function TextAreaField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-50"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
       />
     </div>
   );
@@ -112,7 +129,7 @@ function InputField({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </label>
 
@@ -120,7 +137,7 @@ function InputField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-50"
+        className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
       />
     </div>
   );
@@ -318,11 +335,14 @@ export default function ExamesEvolucaoPage() {
       } else {
         setItems((current) => {
           const next = [saved, ...current];
+
           return next.sort((a, b) => {
             const categoriaA = a.categoria || "";
             const categoriaB = b.categoria || "";
             const byCategoria = categoriaA.localeCompare(categoriaB, "pt-BR");
+
             if (byCategoria !== 0) return byCategoria;
+
             return (a.titulo || "").localeCompare(b.titulo || "", "pt-BR");
           });
         });
@@ -374,36 +394,40 @@ export default function ExamesEvolucaoPage() {
     <div className="space-y-6">
       <ModulePageHeader
         eyebrow="Módulo assistencial"
-        title="Exames e evolução"
-        description="Biblioteca de blocos clínicos para consulta, cópia rápida e uso como apoio em evolução ou solicitação de exames."
+        title="Exames / Evolução"
+        description="Modelos clínicos para solicitação de exames, registro de evolução e apoio rápido à rotina assistencial."
         badges={[
-          { label: "Exames / Evolução", tone: "blue" },
-          { label: "Biblioteca compartilhada", tone: "slate" },
+          { label: "Exames e evolução", tone: "blue" },
+          { label: "Biblioteca clínica", tone: "slate" },
           {
-            label: isAdmin ? "Admin pode gerenciar" : "Consulta e cópia liberadas",
+            label: isAdmin ? "Gerenciamento liberado" : "Leitura e cópia",
             tone: isAdmin ? "emerald" : "cyan",
           },
         ]}
         metrics={[
           {
-            label: "Total carregado",
-            value: loading ? "Carregando..." : items.length,
+            label: "Modelos",
+            value: loading ? "..." : items.length,
           },
           {
             label: "Exibindo",
             value: filtered.length,
+          },
+          {
+            label: "Categorias",
+            value: categorias.length,
           },
         ]}
         error={error}
         success={success}
         notice={
           !isAdmin ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600">
               <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
+                <Lock className="h-4 w-4 text-slate-500" />
                 {isGuest
-                  ? "Convidado: leitura e cópia liberadas."
-                  : "Somente o administrador gerencia a biblioteca."}
+                  ? "Convidado: leitura e cópia liberadas nos módulos permitidos."
+                  : "Somente o administrador pode criar, editar ou apagar modelos."}
               </div>
             </div>
           ) : null
@@ -413,7 +437,7 @@ export default function ExamesEvolucaoPage() {
             <button
               type="button"
               onClick={openCreateDrawer}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
               <Plus className="h-4 w-4" />
               Novo modelo
@@ -421,106 +445,184 @@ export default function ExamesEvolucaoPage() {
           ) : null
         }
       >
-        <div className="space-y-4 rounded-[22px] border border-slate-200 bg-slate-50/80 p-4 md:p-5">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por título, categoria, conteúdo, origem..."
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none"
-            />
-          </div>
+        <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+            <div className="min-w-0 flex-1">
+              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Busca clínica
+              </label>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <select
-              value={categoria}
-              onChange={(event) => setCategoria(event.target.value)}
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="">— todas as categorias —</option>
-              {categorias.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Buscar por título, categoria, conteúdo ou origem..."
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                />
+              </div>
+            </div>
 
-            <select
-              value={sexo}
-              onChange={(event) => setSexo(event.target.value)}
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-            >
-              <option value="">— todos os sexos —</option>
-              {sexos.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+            <div className="grid gap-3 md:grid-cols-3 xl:w-[720px]">
+              <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Categoria
+                </label>
 
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setCategoria("");
-                setSexo("");
-              }}
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
-            >
-              {hasFilters ? "Limpar filtros" : "Filtros"}
-            </button>
+                <select
+                  value={categoria}
+                  onChange={(event) => setCategoria(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                >
+                  <option value="">Todas</option>
+                  {categorias.map((item) => (
+                    <option key={item} value={item}>
+                      {formatDisplay(item)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Sexo
+                </label>
+
+                <select
+                  value={sexo}
+                  onChange={(event) => setSexo(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                >
+                  <option value="">Todos</option>
+                  {sexos.map((item) => (
+                    <option key={item} value={item}>
+                      {formatDisplay(item)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-transparent">
+                  Ações
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setCategoria("");
+                    setSexo("");
+                  }}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  {hasFilters ? "Limpar filtros" : "Filtros"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </ModulePageHeader>
 
       {loading || checkingUser ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm font-medium text-slate-600 shadow-sm">
           Carregando exames e evoluções...
         </section>
       ) : filtered.length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-600">
-          Nenhum modelo encontrado.
+        <section className="rounded-[28px] border border-dashed border-slate-300 bg-white px-4 py-12 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500">
+            <Search className="h-5 w-5" />
+          </div>
+
+          <h2 className="mt-4 text-lg font-semibold text-slate-900">
+            Nenhum modelo encontrado
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Ajuste a busca ou limpe os filtros para visualizar a biblioteca.
+          </p>
         </section>
       ) : (
-        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+          <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Biblioteca
+              </p>
+
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+                Modelos disponíveis
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                {filtered.length} modelo{filtered.length > 1 ? "s" : ""} em
+                exibição.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {hasFilters ? (
+                <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                  Filtro ativo
+                </span>
+              ) : null}
+
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                Cópia rápida
+              </span>
+            </div>
+          </div>
+
           <div className="grid gap-4 xl:grid-cols-2">
             {filtered.map((item) => (
               <article
                 key={item.id}
-                className="rounded-[22px] border border-slate-200 bg-slate-50/75 p-5"
+                className="group rounded-[24px] border border-slate-200 bg-slate-50/80 p-4 transition hover:border-slate-300 hover:bg-white md:p-5"
               >
-                <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
-                        {item.categoria || "Sem categoria"}
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                        <Layers3 className="h-3.5 w-3.5 text-slate-500" />
+                        {formatDisplay(item.categoria, "Sem categoria")}
                       </span>
 
                       {item.sexo ? (
                         <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                          {item.sexo}
+                          {formatDisplay(item.sexo)}
                         </span>
                       ) : null}
 
                       {item.arquivo_origem || item.source_file ? (
-                        <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                          {item.arquivo_origem || item.source_file}
+                        <span className="inline-flex max-w-full rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+                          <span className="truncate">
+                            {formatDisplay(
+                              item.arquivo_origem || item.source_file,
+                              "Origem não informada"
+                            )}
+                          </span>
                         </span>
                       ) : null}
                     </div>
 
-                    <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                      {item.titulo || "Sem título"}
+                    <h3 className="mt-4 text-lg font-semibold leading-snug text-slate-950">
+                      {formatDisplay(item.titulo, "Sem título")}
                     </h3>
                   </div>
 
-                  <CopyButton text={formatTemplateText(item)} />
+                  <div className="shrink-0">
+                    <CopyButton text={formatTemplateText(item)} />
+                  </div>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                  <pre className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                <div className="mt-4 rounded-[20px] border border-slate-200 bg-white p-4">
+                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <FileText className="h-3.5 w-3.5" />
+                    Conteúdo do modelo
+                  </div>
+
+                  <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap pr-2 text-sm leading-7 text-slate-700">
                     {item.conteudo || "Sem conteúdo"}
                   </pre>
                 </div>
@@ -530,7 +632,7 @@ export default function ExamesEvolucaoPage() {
                     <button
                       type="button"
                       onClick={() => openEditDrawer(item)}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
                       <Edit3 className="h-4 w-4" />
                       Editar
@@ -540,15 +642,16 @@ export default function ExamesEvolucaoPage() {
                       type="button"
                       onClick={() => handleDelete(item)}
                       disabled={deletingId === item.id}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Trash2 className="h-4 w-4" />
                       {deletingId === item.id ? "Apagando..." : "Apagar"}
                     </button>
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-                    Somente leitura: use o botão de copiar para reutilizar este modelo.
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600">
+                    Somente leitura: use o botão de copiar para reutilizar este
+                    modelo.
                   </div>
                 )}
               </article>
@@ -558,7 +661,7 @@ export default function ExamesEvolucaoPage() {
       )}
 
       {drawerOpen && isAdmin ? (
-        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40 backdrop-blur-[2px]">
           <button
             type="button"
             onClick={closeDrawer}
@@ -569,68 +672,93 @@ export default function ExamesEvolucaoPage() {
           <div className="relative h-full w-full max-w-3xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-900">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Biblioteca compartilhada
+                </p>
+
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
                   {editingItem ? "Editar modelo" : "Novo modelo"}
                 </h2>
+
                 <p className="mt-1 text-sm text-slate-500">
-                  Apenas o administrador pode alterar a biblioteca compartilhada.
+                  Apenas o administrador pode alterar os modelos de exames e
+                  evolução.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-6 px-6 py-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <InputField
-                  label="Categoria"
-                  value={form.categoria}
-                  onChange={(value) => updateForm("categoria", value)}
-                  placeholder="Ex.: Exames laboratoriais"
-                />
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
+                    <FlaskConical className="h-4.5 w-4.5" />
+                  </div>
 
-                <InputField
-                  label="Título"
-                  value={form.titulo}
-                  onChange={(value) => updateForm("titulo", value)}
-                  placeholder="Ex.: Check-up inicial"
-                />
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Dados do modelo
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Preencha categoria, título, origem e conteúdo.
+                    </p>
+                  </div>
+                </div>
 
-                <InputField
-                  label="Sexo"
-                  value={form.sexo}
-                  onChange={(value) => updateForm("sexo", value)}
-                  placeholder="Ex.: Todos, Feminino, Masculino"
-                />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <InputField
+                    label="Categoria"
+                    value={form.categoria}
+                    onChange={(value) => updateForm("categoria", value)}
+                    placeholder="Ex.: Exames laboratoriais"
+                  />
 
-                <InputField
-                  label="Arquivo de origem"
-                  value={form.arquivo_origem}
-                  onChange={(value) => updateForm("arquivo_origem", value)}
-                  placeholder="Ex.: protocolo.pdf"
-                />
+                  <InputField
+                    label="Título"
+                    value={form.titulo}
+                    onChange={(value) => updateForm("titulo", value)}
+                    placeholder="Ex.: Check-up inicial"
+                  />
+
+                  <InputField
+                    label="Sexo"
+                    value={form.sexo}
+                    onChange={(value) => updateForm("sexo", value)}
+                    placeholder="Ex.: Todos, Feminino, Masculino"
+                  />
+
+                  <InputField
+                    label="Arquivo de origem"
+                    value={form.arquivo_origem}
+                    onChange={(value) => updateForm("arquivo_origem", value)}
+                    placeholder="Ex.: protocolo.pdf"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <TextAreaField
+                    label="Conteúdo"
+                    value={form.conteudo}
+                    onChange={(value) => updateForm("conteudo", value)}
+                    placeholder="Digite o conteúdo do modelo..."
+                    rows={10}
+                  />
+                </div>
               </div>
-
-              <TextAreaField
-                label="Conteúdo"
-                value={form.conteudo}
-                onChange={(value) => updateForm("conteudo", value)}
-                placeholder="Digite o conteúdo do modelo..."
-                rows={10}
-              />
 
               <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4">
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving
                     ? "Salvando..."
@@ -642,7 +770,7 @@ export default function ExamesEvolucaoPage() {
                 <button
                   type="button"
                   onClick={closeDrawer}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Cancelar
                 </button>
