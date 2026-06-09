@@ -532,50 +532,57 @@ export default function AppShell({ children }: Props) {
         return;
       }
 
-      const supabase = createClient();
-      const { data: sessionData, error } = await supabase.auth.getSession();
-
-      if (!mounted) return;
-
-      if (error) {
-        setSessionEmail("");
-        setIsGuest(false);
-        setCurrentUserId(null);
-        setCheckingUser(false);
-        return;
-      }
-
-      const email = sessionData.session?.user?.email?.trim().toLowerCase() || "";
-      const userId = sessionData.session?.user?.id || null;
-      const guest = email === GUEST_EMAIL;
-
-      setSessionEmail(email);
-      setIsGuest(guest);
-      setCurrentUserId(userId);
-
-      if (guest) {
-        setCheckingUser(false);
-
-        if (!isGuestAllowedPath(pathname)) {
-          router.replace("/prescricao");
-        }
-
-        return;
-      }
-
-      if (userId && !isLegalPublicPath(pathname)) {
-        const accepted = await hasAcceptedCurrentLegal(userId);
+      try {
+        const supabase = createClient();
+        const { data: sessionData, error } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
-        if (!accepted) {
+        if (error) {
+          setSessionEmail("");
+          setIsGuest(false);
+          setCurrentUserId(null);
           setCheckingUser(false);
-          router.replace("/aceite-legal");
           return;
         }
-      }
 
-      setCheckingUser(false);
+        const email =
+          sessionData.session?.user?.email?.trim().toLowerCase() || "";
+        const userId = sessionData.session?.user?.id || null;
+        const guest = email === GUEST_EMAIL;
+
+        setSessionEmail(email);
+        setIsGuest(guest);
+        setCurrentUserId(userId);
+
+        if (guest) {
+          setCheckingUser(false);
+
+          if (!isGuestAllowedPath(pathname)) {
+            window.location.replace("/prescricao");
+          }
+
+          return;
+        }
+
+        if (userId && !isLegalPublicPath(pathname)) {
+          const accepted = await hasAcceptedCurrentLegal(userId);
+
+          if (!mounted) return;
+
+          if (!accepted) {
+            setCheckingUser(false);
+            window.location.replace("/aceite-legal");
+            return;
+          }
+        }
+
+        setCheckingUser(false);
+      } catch {
+        if (!mounted) return;
+        setCheckingUser(false);
+        window.location.replace("/login");
+      }
     }
 
     checkUserSession();
@@ -584,35 +591,40 @@ export default function AppShell({ children }: Props) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const email = session?.user?.email?.trim().toLowerCase() || "";
-      const userId = session?.user?.id || null;
-      const guest = email === GUEST_EMAIL;
+      try {
+        const email = session?.user?.email?.trim().toLowerCase() || "";
+        const userId = session?.user?.id || null;
+        const guest = email === GUEST_EMAIL;
 
-      setSessionEmail(email);
-      setIsGuest(guest);
-      setCurrentUserId(userId);
+        setSessionEmail(email);
+        setIsGuest(guest);
+        setCurrentUserId(userId);
 
-      if (guest) {
-        setCheckingUser(false);
-
-        if (!isGuestAllowedPath(window.location.pathname)) {
-          router.replace("/prescricao");
-        }
-
-        return;
-      }
-
-      if (userId && !isLegalPublicPath(window.location.pathname)) {
-        const accepted = await hasAcceptedCurrentLegal(userId);
-
-        if (!accepted) {
+        if (guest) {
           setCheckingUser(false);
-          router.replace("/aceite-legal");
+
+          if (!isGuestAllowedPath(window.location.pathname)) {
+            window.location.replace("/prescricao");
+          }
+
           return;
         }
-      }
 
-      setCheckingUser(false);
+        if (userId && !isLegalPublicPath(window.location.pathname)) {
+          const accepted = await hasAcceptedCurrentLegal(userId);
+
+          if (!accepted) {
+            setCheckingUser(false);
+            window.location.replace("/aceite-legal");
+            return;
+          }
+        }
+
+        setCheckingUser(false);
+      } catch {
+        setCheckingUser(false);
+        window.location.replace("/login");
+      }
     });
 
     return () => {
