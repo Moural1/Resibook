@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
@@ -66,8 +67,36 @@ function LoginContent() {
         return;
       }
 
-      const sessionEmail =
-        sessionData.session.user?.email?.trim().toLowerCase() || "";
+      const user = sessionData.session.user;
+      const userId = user?.id || "";
+      const sessionEmail = user?.email?.trim().toLowerCase() || "";
+
+      if (!userId) {
+        setErro("Usuário não identificado.");
+        setLoading(false);
+        return;
+      }
+
+      const { data: legalRow, error: legalError } = await supabase
+        .from("user_legal_acceptances")
+        .select("terms_version, privacy_version")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (legalError) {
+        setErro("Não foi possível validar o aceite legal.");
+        setLoading(false);
+        return;
+      }
+
+      const acceptedCurrentTerms = legalRow?.terms_version === TERMS_VERSION;
+      const acceptedCurrentPrivacy =
+        legalRow?.privacy_version === PRIVACY_VERSION;
+
+      if (!acceptedCurrentTerms || !acceptedCurrentPrivacy) {
+        window.location.replace("/aceite-legal");
+        return;
+      }
 
       const nextPath =
         sessionEmail === GUEST_EMAIL && redirectTo === "/dashboard"
