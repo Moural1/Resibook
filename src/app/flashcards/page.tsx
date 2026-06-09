@@ -1,11 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "../../components/module-page-header";
-import { BookOpen, Brain, Lock, Plus, Sparkles, Target, X } from "lucide-react";
+import {
+  BookOpen,
+  Brain,
+  Edit3,
+  Layers3,
+  Lock,
+  Plus,
+  Search,
+  Sparkles,
+  Target,
+  Trash2,
+  X,
+} from "lucide-react";
 
 type Flashcard = {
   id: string;
@@ -51,6 +64,14 @@ function normalize(value?: string | null) {
     .trim();
 }
 
+function formatLabel(value?: string | null, fallback = "Não informado") {
+  const clean = value?.trim();
+
+  if (!clean) return fallback;
+
+  return clean.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function buildParagraphs(value?: string | null) {
   return (value || "")
     .replace(/\r\n/g, "\n")
@@ -59,10 +80,7 @@ function buildParagraphs(value?: string | null) {
     .filter(Boolean);
 }
 
-function renderRichText(
-  value?: string | null,
-  emptyText = "Sem conteúdo"
-) {
+function renderRichText(value?: string | null, emptyText = "Sem conteúdo") {
   const blocks = buildParagraphs(value);
 
   if (blocks.length === 0) {
@@ -105,9 +123,7 @@ function renderRichText(
               className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700"
             >
               {lines.map((line, lineIndex) => (
-                <li key={lineIndex}>
-                  {line.replace(/^[-•]\s*/, "")}
-                </li>
+                <li key={lineIndex}>{line.replace(/^[-•]\s*/, "")}</li>
               ))}
             </ul>
           );
@@ -123,9 +139,10 @@ function renderRichText(
                 key={index}
                 className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
               >
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {labelMatch[1]}
                 </p>
+
                 <p className="mt-2 text-sm leading-7 text-slate-700">
                   {labelMatch[2]}
                 </p>
@@ -135,7 +152,10 @@ function renderRichText(
         }
 
         return (
-          <p key={index} className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+          <p
+            key={index}
+            className="whitespace-pre-wrap text-sm leading-7 text-slate-700"
+          >
             {block}
           </p>
         );
@@ -149,22 +169,69 @@ function StatCard({
   label,
   value,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string | number;
 }) {
   return (
-    <div className="rounded-[22px] border border-slate-200 bg-white p-4">
+    <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
           {icon}
         </div>
-        <span className="text-2xl font-semibold tracking-tight text-slate-900">{value}</span>
+
+        <span className="text-2xl font-semibold tracking-tight text-slate-900">
+          {value}
+        </span>
       </div>
+
       <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </p>
     </div>
+  );
+}
+
+function DrawerInput({
+  value,
+  onChange,
+  placeholder,
+  className = "",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className?: string;
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      className={`h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100 ${className}`}
+    />
+  );
+}
+
+function DrawerTextarea({
+  value,
+  onChange,
+  placeholder,
+  rows,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  rows: number;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-7 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+    />
   );
 }
 
@@ -189,7 +256,9 @@ export default function FlashcardsPage() {
   const [query, setQuery] = useState("");
   const [area, setArea] = useState("");
   const [materia, setMateria] = useState("");
-  const [mode, setMode] = useState<"todos" | "dificeis" | "revelados">("todos");
+  const [mode, setMode] = useState<"todos" | "dificeis" | "revelados">(
+    "todos"
+  );
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
@@ -276,6 +345,20 @@ export default function FlashcardsPage() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    setQuery(params.get("q") || "");
+    setArea(params.get("area") || "");
+    setMateria(params.get("materia") || "");
+
+    const nextMode = params.get("mode");
+
+    if (nextMode === "dificeis" || nextMode === "revelados") {
+      setMode(nextMode);
+    }
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams();
 
     if (query.trim()) params.set("q", query.trim());
@@ -283,20 +366,12 @@ export default function FlashcardsPage() {
     if (materia) params.set("materia", materia);
     if (mode !== "todos") params.set("mode", mode);
 
-    const next = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    const next = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+
     router.replace(next, { scroll: false });
   }, [area, materia, mode, pathname, query, router]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setQuery(params.get("q") || "");
-    setArea(params.get("area") || "");
-    setMateria(params.get("materia") || "");
-    const nextMode = params.get("mode");
-    if (nextMode === "dificeis" || nextMode === "revelados") {
-      setMode(nextMode);
-    }
-  }, []);
 
   const areas = useMemo(
     () =>
@@ -332,8 +407,8 @@ export default function FlashcardsPage() {
         mode === "todos"
           ? true
           : mode === "dificeis"
-            ? item.dificil
-            : revealedIds.includes(item.id);
+          ? item.dificil
+          : revealedIds.includes(item.id);
 
       return matchesQuery && matchesArea && matchesMateria && matchesMode;
     });
@@ -341,7 +416,9 @@ export default function FlashcardsPage() {
 
   const revealedCount = revealedIds.length;
   const difficultCount = cards.filter((item) => item.dificil).length;
-  const visibleAreas = new Set(filtered.map((item) => item.area).filter(Boolean)).size;
+  const visibleAreas = new Set(filtered.map((item) => item.area).filter(Boolean))
+    .size;
+  const hasFilters = Boolean(query || area || materia || mode !== "todos");
 
   function updateForm<K extends keyof FlashcardForm>(
     key: K,
@@ -432,6 +509,7 @@ export default function FlashcardsPage() {
           item.id === card.id ? { ...item, dificil: nextValue } : item
         )
       );
+
       setSuccess(
         nextValue
           ? "Flashcard marcado como difícil."
@@ -500,11 +578,13 @@ export default function FlashcardsPage() {
     }
 
     await loadCards();
+
     setSuccess(
       editingCard
         ? "Flashcard atualizado com sucesso."
         : "Flashcard criado com sucesso."
     );
+
     closeDrawer();
     setSaving(false);
   }
@@ -571,12 +651,12 @@ export default function FlashcardsPage() {
       <ModulePageHeader
         eyebrow="Biblioteca de estudo"
         title="Flashcards"
-        description="Busca rápida, filtros por área e matéria, respostas com melhor leitura e uma experiência de estudo mais limpa e clínica."
+        description="Busca rápida, filtros por área e matéria, marcação individual de dificuldade e respostas com leitura organizada."
         badges={[
           { label: "Flashcards", tone: "blue" },
-          { label: "Biblioteca compartilhada", tone: "slate" },
+          { label: "Revisão ativa", tone: "slate" },
           {
-            label: isAdmin ? "Admin pode gerenciar" : "Revisão individual",
+            label: isAdmin ? "Gerenciamento liberado" : "Revisão individual",
             tone: isAdmin ? "emerald" : "cyan",
           },
         ]}
@@ -593,7 +673,7 @@ export default function FlashcardsPage() {
             <button
               type="button"
               onClick={openCreateDrawer}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
               <Plus className="h-4 w-4" />
               Novo flashcard
@@ -602,21 +682,46 @@ export default function FlashcardsPage() {
         }
       >
         <div className="grid gap-4 lg:grid-cols-4">
-          <StatCard icon={<BookOpen className="h-5 w-5" />} label="Total" value={cards.length} />
-          <StatCard icon={<Brain className="h-5 w-5" />} label="Difíceis" value={difficultCount} />
-          <StatCard icon={<Sparkles className="h-5 w-5" />} label="Revelados" value={revealedCount} />
-          <StatCard icon={<Target className="h-5 w-5" />} label="Áreas visíveis" value={visibleAreas} />
+          <StatCard
+            icon={<BookOpen className="h-5 w-5" />}
+            label="Total"
+            value={cards.length}
+          />
+
+          <StatCard
+            icon={<Brain className="h-5 w-5" />}
+            label="Difíceis"
+            value={difficultCount}
+          />
+
+          <StatCard
+            icon={<Sparkles className="h-5 w-5" />}
+            label="Revelados"
+            value={revealedCount}
+          />
+
+          <StatCard
+            icon={<Target className="h-5 w-5" />}
+            label="Áreas visíveis"
+            value={visibleAreas}
+          />
         </div>
       </ModulePageHeader>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">
-              Filtros e modos de revisão
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Revisão
+            </p>
+
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+              Filtros e modos
             </h2>
+
             <p className="mt-1 text-sm text-slate-500">
-              Filtre por conteúdo, foque no que está difícil ou acompanhe o que você já abriu.
+              Filtre por conteúdo, foque nos difíceis ou revise apenas os
+              cartões já abertos.
             </p>
           </div>
 
@@ -629,11 +734,13 @@ export default function FlashcardsPage() {
               <button
                 key={value}
                 type="button"
-                onClick={() => setMode(value as "todos" | "dificeis" | "revelados")}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                onClick={() =>
+                  setMode(value as "todos" | "dificeis" | "revelados")
+                }
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                   mode === value
-                    ? "bg-slate-900 text-white"
-                    : "border border-slate-200 bg-white text-slate-700"
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                 }`}
               >
                 {label}
@@ -643,35 +750,39 @@ export default function FlashcardsPage() {
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr_auto]">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por frente, verso, área, matéria ou tipo..."
-            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-          />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por frente, verso, área, matéria ou tipo..."
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+            />
+          </div>
 
           <select
             value={area}
-            onChange={(e) => setArea(e.target.value)}
-            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+            onChange={(event) => setArea(event.target.value)}
+            className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
           >
-            <option value="">— todas as áreas —</option>
+            <option value="">Todas as áreas</option>
             {areas.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {formatLabel(item)}
               </option>
             ))}
           </select>
 
           <select
             value={materia}
-            onChange={(e) => setMateria(e.target.value)}
-            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+            onChange={(event) => setMateria(event.target.value)}
+            className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
           >
-            <option value="">— todas as matérias —</option>
+            <option value="">Todas as matérias</option>
             {materias.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {formatLabel(item)}
               </option>
             ))}
           </select>
@@ -684,9 +795,9 @@ export default function FlashcardsPage() {
               setMateria("");
               setMode("todos");
             }}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white"
+            className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
-            Limpar filtros
+            {hasFilters ? "Limpar filtros" : "Filtros"}
           </button>
         </div>
 
@@ -698,12 +809,19 @@ export default function FlashcardsPage() {
           <div className="flex flex-wrap gap-2">
             {area ? (
               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                Área: {area}
+                Área: {formatLabel(area)}
               </span>
             ) : null}
+
             {materia ? (
               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                Matéria: {materia}
+                Matéria: {formatLabel(materia)}
+              </span>
+            ) : null}
+
+            {mode !== "todos" ? (
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                Modo: {mode === "dificeis" ? "difíceis" : "revelados"}
               </span>
             ) : null}
           </div>
@@ -711,12 +829,22 @@ export default function FlashcardsPage() {
       </section>
 
       {loading ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-14 text-center text-sm text-slate-500 shadow-sm">
+        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-14 text-center text-sm font-medium text-slate-500 shadow-sm">
           Carregando flashcards...
         </section>
       ) : filtered.length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-200 bg-white px-4 py-14 text-center text-sm text-slate-500 shadow-sm">
-          Nenhum flashcard encontrado.
+        <section className="rounded-[28px] border border-dashed border-slate-300 bg-white px-4 py-14 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500">
+            <Search className="h-5 w-5" />
+          </div>
+
+          <h2 className="mt-4 text-lg font-semibold text-slate-900">
+            Nenhum flashcard encontrado
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Ajuste a busca ou limpe os filtros para visualizar a biblioteca.
+          </p>
         </section>
       ) : (
         <section className="grid gap-5 xl:grid-cols-2">
@@ -727,44 +855,52 @@ export default function FlashcardsPage() {
             return (
               <article
                 key={item.id}
-                className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 md:p-6"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex flex-wrap gap-2">
                     {item.area ? (
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                        {item.area}
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                        <Layers3 className="h-3.5 w-3.5 text-slate-500" />
+                        {formatLabel(item.area)}
                       </span>
                     ) : null}
 
                     {item.materia ? (
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                        {item.materia}
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                        {formatLabel(item.materia)}
                       </span>
                     ) : null}
 
                     {item.tipo ? (
-                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
-                        {item.tipo}
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                        {formatLabel(item.tipo)}
                       </span>
                     ) : null}
 
                     {item.dificil ? (
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                        Difícil para você
+                        Difícil
                       </span>
                     ) : null}
                   </div>
 
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    {revealed ? "Resposta aberta" : "Resposta fechada"}
+                  <span
+                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                      revealed
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-slate-200 bg-slate-50 text-slate-500"
+                    }`}
+                  >
+                    {revealed ? "Aberto" : "Fechado"}
                   </span>
                 </div>
 
-                <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
                     Frente
                   </p>
+
                   <div className="mt-3">
                     {renderRichText(item.frente, "Sem frente")}
                   </div>
@@ -772,13 +908,13 @@ export default function FlashcardsPage() {
 
                 <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
                       Verso
                     </p>
 
                     {revealed ? (
-                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
-                        Leitura organizada
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                        Resposta
                       </span>
                     ) : null}
                   </div>
@@ -790,8 +926,8 @@ export default function FlashcardsPage() {
                   ) : (
                     <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
                       <p className="text-sm leading-7 text-slate-400">
-                        Resposta oculta. Clique abaixo para revelar com espaçamento,
-                        blocos e leitura melhor organizada.
+                        Resposta oculta. Revele para revisar o conteúdo com
+                        leitura organizada.
                       </p>
                     </div>
                   )}
@@ -801,7 +937,7 @@ export default function FlashcardsPage() {
                   <button
                     type="button"
                     onClick={() => toggleReveal(item.id)}
-                    className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+                    className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
                   >
                     {revealed ? "Ocultar resposta" : "Revelar resposta"}
                   </button>
@@ -812,15 +948,15 @@ export default function FlashcardsPage() {
                     disabled={savingItem}
                     className={`inline-flex h-11 items-center justify-center rounded-2xl px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                       item.dificil
-                        ? "border border-rose-200 bg-rose-50 text-rose-700"
-                        : "border border-slate-200 bg-white text-slate-700"
+                        ? "border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                     }`}
                   >
                     {savingItem
                       ? "Salvando..."
                       : item.dificil
-                        ? "Remover difícil"
-                        : "Marcar difícil"}
+                      ? "Remover difícil"
+                      : "Marcar difícil"}
                   </button>
 
                   {isAdmin ? (
@@ -828,8 +964,9 @@ export default function FlashcardsPage() {
                       <button
                         type="button"
                         onClick={() => openEditDrawer(item)}
-                        className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
+                        <Edit3 className="h-4 w-4" />
                         Editar
                       </button>
 
@@ -837,8 +974,9 @@ export default function FlashcardsPage() {
                         type="button"
                         onClick={() => handleDelete(item.id)}
                         disabled={savingItem}
-                        className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                       >
+                        <Trash2 className="h-4 w-4" />
                         {savingItem ? "Apagando..." : "Apagar"}
                       </button>
                     </>
@@ -851,7 +989,7 @@ export default function FlashcardsPage() {
       )}
 
       {drawerOpen ? (
-        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50">
+        <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50 backdrop-blur-[2px]">
           <button
             type="button"
             onClick={closeDrawer}
@@ -862,68 +1000,87 @@ export default function FlashcardsPage() {
           <div className="relative h-full w-full max-w-2xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-900">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Biblioteca de estudo
+                </p>
+
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
                   {editingCard ? "Editar flashcard" : "Novo flashcard"}
                 </h2>
+
                 <p className="mt-1 text-sm text-slate-500">
-                  Apenas o administrador pode alterar a biblioteca compartilhada.
+                  Apenas o administrador pode alterar a biblioteca
+                  compartilhada.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-6 px-6 py-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <input
-                  value={form.area}
-                  onChange={(e) => updateForm("area", e.target.value)}
-                  placeholder="Área"
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-                />
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="mb-5 border-b border-slate-200 pb-4">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Dados do flashcard
+                  </h3>
 
-                <input
-                  value={form.materia}
-                  onChange={(e) => updateForm("materia", e.target.value)}
-                  placeholder="Matéria"
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-                />
+                  <p className="mt-1 text-sm text-slate-500">
+                    Organize área, matéria, tipo, frente e verso.
+                  </p>
+                </div>
 
-                <input
-                  value={form.tipo}
-                  onChange={(e) => updateForm("tipo", e.target.value)}
-                  placeholder="Tipo"
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none md:col-span-2"
-                />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <DrawerInput
+                    value={form.area}
+                    onChange={(value) => updateForm("area", value)}
+                    placeholder="Área"
+                  />
+
+                  <DrawerInput
+                    value={form.materia}
+                    onChange={(value) => updateForm("materia", value)}
+                    placeholder="Matéria"
+                  />
+
+                  <DrawerInput
+                    value={form.tipo}
+                    onChange={(value) => updateForm("tipo", value)}
+                    placeholder="Tipo"
+                    className="md:col-span-2"
+                  />
+                </div>
+
+                <div className="mt-4 space-y-4">
+                  <DrawerTextarea
+                    value={form.frente}
+                    onChange={(value) => updateForm("frente", value)}
+                    placeholder="Frente"
+                    rows={6}
+                  />
+
+                  <DrawerTextarea
+                    value={form.verso}
+                    onChange={(value) => updateForm("verso", value)}
+                    placeholder="Verso"
+                    rows={10}
+                  />
+                </div>
               </div>
 
-              <textarea
-                value={form.frente}
-                onChange={(e) => updateForm("frente", e.target.value)}
-                placeholder="Frente"
-                className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
-              />
-
-              <textarea
-                value={form.verso}
-                onChange={(e) => updateForm("verso", e.target.value)}
-                placeholder="Verso"
-                className="min-h-[220px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
-              />
-
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
-                <p className="text-sm font-semibold text-cyan-900">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-semibold text-slate-900">
                   Dica de formatação
                 </p>
-                <p className="mt-2 text-sm leading-6 text-cyan-800">
-                  Use uma linha em branco entre blocos. Se quiser listas, escreva cada item
-                  em uma linha começando com “-” ou “1.” que a leitura ficará melhor na tela.
+
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Use uma linha em branco entre blocos. Para listas, escreva
+                  cada item começando com “-” ou “1.”.
                 </p>
               </div>
 
@@ -931,7 +1088,9 @@ export default function FlashcardsPage() {
                 <input
                   type="checkbox"
                   checked={form.dificil}
-                  onChange={(e) => updateForm("dificil", e.target.checked)}
+                  onChange={(event) =>
+                    updateForm("dificil", event.target.checked)
+                  }
                 />
                 Marcar como difícil para meu usuário
               </label>
@@ -941,19 +1100,19 @@ export default function FlashcardsPage() {
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving
                     ? "Salvando..."
                     : editingCard
-                      ? "Salvar edição"
-                      : "Criar flashcard"}
+                    ? "Salvar edição"
+                    : "Criar flashcard"}
                 </button>
 
                 <button
                   type="button"
                   onClick={closeDrawer}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Cancelar
                 </button>
