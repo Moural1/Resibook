@@ -35,6 +35,20 @@ type Patient = {
   hma?: string | null;
   hpp?: string | null;
   alergias?: string | null;
+  comorbidades?: string | null;
+  gestante?: boolean | null;
+  funcao_renal_alterada?: boolean | null;
+  hepatopatia?: boolean | null;
+  idoso_fragil?: boolean | null;
+  diabetes?: boolean | null;
+  epilepsia?: boolean | null;
+  asma?: boolean | null;
+  gastrite_ulcera?: boolean | null;
+  insuficiencia_cardiaca?: boolean | null;
+  arritmia_qt_longo?: boolean | null;
+  uso_anticoagulante?: boolean | null;
+  uso_isrs?: boolean | null;
+  uso_sedativos?: boolean | null;
   medicamentos_em_uso?: string | null;
   exame_fisico?: string | null;
   hipotese_diagnostica?: string | null;
@@ -339,8 +353,26 @@ function getCarteirinha(patient: Patient) {
 function buildAlergiaResumo(value?: string | null) {
   const clean = (value || "").trim();
   if (!clean) return "";
-  if (clean.length <= 36) return clean;
-  return `${clean.slice(0, 36)}...`;
+  if (clean.length <= 52) return clean;
+  return `${clean.slice(0, 52)}...`;
+}
+
+function getRiskFlags(patient: Patient) {
+  return [
+    patient.gestante ? "Gestante" : "",
+    patient.funcao_renal_alterada ? "Função renal alterada" : "",
+    patient.hepatopatia ? "Hepatopatia" : "",
+    patient.idoso_fragil ? "Idoso frágil" : "",
+    patient.diabetes ? "Diabetes" : "",
+    patient.epilepsia ? "Epilepsia / convulsão" : "",
+    patient.asma ? "Asma / broncoespasmo" : "",
+    patient.gastrite_ulcera ? "Gastrite / úlcera / sangramento GI" : "",
+    patient.insuficiencia_cardiaca ? "Insuficiência cardíaca" : "",
+    patient.arritmia_qt_longo ? "Arritmia / QT longo" : "",
+    patient.uso_anticoagulante ? "Uso de anticoagulante" : "",
+    patient.uso_isrs ? "Uso de ISRS" : "",
+    patient.uso_sedativos ? "Uso de sedativos / opioides / benzos" : "",
+  ].filter(Boolean);
 }
 
 function buildPrescriptionText(item: Prescription) {
@@ -1038,9 +1070,31 @@ function InfoBlock({
 }) {
   if (!children) return null;
 
+  const isRiskBlock =
+    title.toLowerCase().includes("alerg") ||
+    title.toLowerCase().includes("comorb");
+
+  const isPlanBlock = title.toLowerCase().includes("conduta");
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+    <div
+      className={`rounded-2xl border p-4 ${
+        isRiskBlock
+          ? "border-rose-200 bg-rose-50/60"
+          : isPlanBlock
+            ? "border-emerald-200 bg-emerald-50/50"
+            : "border-slate-200 bg-white"
+      }`}
+    >
+      <p
+        className={`text-[11px] font-bold uppercase tracking-[0.22em] ${
+          isRiskBlock
+            ? "text-rose-700"
+            : isPlanBlock
+              ? "text-emerald-700"
+              : "text-slate-400"
+        }`}
+      >
         {title}
       </p>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
@@ -1083,7 +1137,7 @@ function TimelineCard({ item }: { item: TimelineItem }) {
       label: "Prescrição",
     },
     consultation: {
-      badge: "border-violet-200 bg-violet-50 text-violet-700",
+      badge: "border-violet-200 bg-violet-50 text-slate-700",
       card: "border-violet-100 bg-violet-50/40",
       icon: Stethoscope,
       label: "Consulta",
@@ -2462,6 +2516,8 @@ function openPrintHtml(html: string) {
   }
 
   const { birthDate, returnDate } = resolveBirthAndReturnDates(patient);
+  const riskFlags = getRiskFlags(patient);
+  const hasAnyClinicalAlert = Boolean(patient.alergias || riskFlags.length > 0);
 
   return (
     <div className="space-y-6">
@@ -2471,7 +2527,7 @@ function openPrintHtml(html: string) {
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                  Prontuário
+                  Prontuário clínico
                 </span>
 
                 {patient.especialidade ? (
@@ -2483,7 +2539,7 @@ function openPrintHtml(html: string) {
                 {patient.alergias ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
                     <AlertTriangle className="h-3.5 w-3.5" />
-                    {buildAlergiaResumo(patient.alergias)}
+                    Alergia: {buildAlergiaResumo(patient.alergias)}
                   </span>
                 ) : null}
 
@@ -2580,57 +2636,93 @@ function openPrintHtml(html: string) {
               {success}
             </div>
           ) : null}
+
+          {hasAnyClinicalAlert ? (
+            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50/70 px-4 py-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-rose-700">
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-rose-900">
+                    Alertas clínicos ativos
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-rose-800">
+                    Revisar antes de prescrever, solicitar exames ou orientar alta.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {patient.alergias ? (
+                      <span className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
+                        Alergia registrada
+                      </span>
+                    ) : null}
+
+                    {riskFlags.map((risk) => (
+                      <span
+                        key={risk}
+                        className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600"
+                      >
+                        {risk}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
-            <div className="flex items-center gap-2 text-violet-700">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-slate-700">
               <Stethoscope className="h-4 w-4" />
               <p className="text-sm font-semibold">Consultas</p>
             </div>
-            <p className="mt-3 text-3xl font-bold text-violet-900">
+            <p className="mt-3 text-3xl font-bold text-slate-900">
               {consultations.length}
             </p>
-            <p className="mt-1 text-sm text-violet-800">
+            <p className="mt-1 text-sm text-slate-600">
               Atendimentos registrados para esse paciente.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 text-emerald-700">
               <ClipboardList className="h-4 w-4" />
               <p className="text-sm font-semibold">Problemas ativos</p>
             </div>
-            <p className="mt-3 text-3xl font-bold text-emerald-900">
+            <p className="mt-3 text-3xl font-bold text-slate-900">
               {activeProblemsCount}
             </p>
-            <p className="mt-1 text-sm text-emerald-800">
+            <p className="mt-1 text-sm text-slate-600">
               Diagnósticos, hipóteses e comorbidades em acompanhamento.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 text-amber-700">
               <CalendarClock className="h-4 w-4" />
               <p className="text-sm font-semibold">Retornos atrasados</p>
             </div>
-            <p className="mt-3 text-3xl font-bold text-amber-900">
+            <p className="mt-3 text-3xl font-bold text-slate-900">
               {overdueFollowupsCount}
             </p>
-            <p className="mt-1 text-sm text-amber-800">
+            <p className="mt-1 text-sm text-slate-600">
               Pendências de seguimento que merecem revisão.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 text-blue-700">
               <FlaskConical className="h-4 w-4" />
               <p className="text-sm font-semibold">Exames pendentes</p>
             </div>
-            <p className="mt-3 text-3xl font-bold text-blue-900">
+            <p className="mt-3 text-3xl font-bold text-slate-900">
               {pendingExamCount}
             </p>
-            <p className="mt-1 text-sm text-blue-800">
+            <p className="mt-1 text-sm text-slate-600">
               Solicitações aguardando resultado ou revisão.
             </p>
           </div>
@@ -2641,6 +2733,7 @@ function openPrintHtml(html: string) {
           <InfoBlock title="Queixa base">{patient.queixa}</InfoBlock>
           <InfoBlock title="HMA base">{patient.hma}</InfoBlock>
           <InfoBlock title="HPP">{patient.hpp}</InfoBlock>
+          <InfoBlock title="Comorbidades">{patient.comorbidades}</InfoBlock>
           <InfoBlock title="Medicamentos em uso">{patient.medicamentos_em_uso}</InfoBlock>
           <InfoBlock title="Exame físico base">{patient.exame_fisico}</InfoBlock>
           <InfoBlock title="Hipótese diagnóstica base">{patient.hipotese_diagnostica}</InfoBlock>
@@ -2684,7 +2777,7 @@ function openPrintHtml(html: string) {
       <section className="rounded-[28px] border border-violet-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-violet-100 pb-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-700">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-700">
               Atendimento
             </p>
             <h2 className="mt-1 text-xl font-semibold text-slate-900">
@@ -2811,7 +2904,7 @@ function openPrintHtml(html: string) {
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                            <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-slate-700">
                               Consulta
                             </span>
 

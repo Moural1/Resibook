@@ -1219,9 +1219,8 @@ export default function PacientesPage() {
 
                       <Link
                         href={`/pacientes/${item.id}`}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        className="inline-flex h-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
                       >
-                        <ClipboardList className="h-4 w-4" />
                         Abrir prontuário
                       </Link>
 
