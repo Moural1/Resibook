@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
-import { rankSearchResults } from "@/lib/search";
+import { getSearchScore } from "@/lib/search";
+import { getClinicalSearchTerms, QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import {
   ArrowLeft,
   ChevronDown,
@@ -92,6 +94,33 @@ function buildPreview(value?: string | null) {
   if (!firstLine) return "Clique para abrir a conduta completa.";
 
   return firstLine.length > 170 ? `${firstLine.slice(0, 170).trim()}...` : firstLine;
+}
+
+
+function rankConductsByClinicalSearch(items: Flashcard[], query: string) {
+  const terms = getClinicalSearchTerms(query);
+
+  if (!query.trim() || terms.length === 0) return items;
+
+  return items
+    .map((item, index) => {
+      const fields = [
+        { value: item.frente, weight: 10 },
+        { value: item.materia, weight: 6 },
+        { value: item.area, weight: 5 },
+        { value: item.tipo, weight: 3 },
+        { value: item.verso, weight: 2 },
+      ];
+
+      const score = Math.max(
+        ...terms.map((term) => getSearchScore(fields, term))
+      );
+
+      return { item, index, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((entry) => entry.item);
 }
 
 function looksLikeHeading(line: string) {
@@ -236,6 +265,7 @@ function ConductItem({
 
 export default function CondutasPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -248,6 +278,15 @@ export default function CondutasPage() {
   const [selectedArea, setSelectedArea] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    const urlQuery = searchParams.get("busca") || searchParams.get("q") || "";
+
+    if (urlQuery) {
+      setQuery(urlQuery);
+      setExpandedId(null);
+    }
+  }, [searchParams]);
 
   async function loadCards() {
     setLoading(true);
@@ -340,13 +379,7 @@ export default function CondutasPage() {
       return !normalizedArea || normalize(item.area) === normalizedArea;
     });
 
-    return rankSearchResults(filteredByArea, query, (item) => [
-      { value: item.frente, weight: 10 },
-      { value: item.materia, weight: 6 },
-      { value: item.area, weight: 5 },
-      { value: item.tipo, weight: 3 },
-      { value: item.verso, weight: 2 },
-    ]);
+    return rankConductsByClinicalSearch(filteredByArea, query);
   }, [cards, query, selectedArea]);
 
   async function removeDificil(id: string) {
@@ -481,6 +514,36 @@ export default function CondutasPage() {
           >
             Limpar
           </button>
+        </div>
+      </section>
+
+      <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+        <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Queixas rápidas
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Atalhos que já preenchem a busca por síndromes comuns do PA.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          {QUICK_COMPLAINTS.map((complaint) => (
+            <button
+              key={complaint.title}
+              type="button"
+              onClick={() => {
+                setQuery(complaint.title);
+                setSelectedArea("");
+                setExpandedId(null);
+              }}
+              className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+            >
+              {complaint.title}
+            </button>
+          ))}
         </div>
       </section>
 
