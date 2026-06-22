@@ -13,7 +13,7 @@ import {
   Home,
   Users,
   ClipboardList,
-  ClipboardCheck,
+  Siren,
   FlaskConical,
   Brain,
   Tags,
@@ -309,7 +309,7 @@ function SidebarContent({
     {
       href: "/condutas",
       label: "Condutas",
-      icon: ClipboardCheck,
+      icon: Siren,
       badge: counts.flashcardsDificeis,
     },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
