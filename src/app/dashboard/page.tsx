@@ -8,7 +8,7 @@ import {
   BarChart3,
   BookOpen,
   Brain,
-  ClipboardCheck,
+  Siren,
   ClipboardList,
   FlaskConical,
   Lock,
@@ -450,7 +450,7 @@ export default function DashboardPage() {
               value={counts.flashcardsDificeis}
               description="Marcadas por você"
               href="/condutas"
-              icon={ClipboardCheck}
+              icon={Siren}
             />
 
             <MetricCard
@@ -519,7 +519,7 @@ export default function DashboardPage() {
               href="/condutas"
               title="Abrir condutas"
               description="Protocolos marcados por você."
-              icon={ClipboardCheck}
+              icon={Siren}
             />
 
             <ShortcutCard
