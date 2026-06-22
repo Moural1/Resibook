@@ -5,14 +5,41 @@ import { showToast } from "../lib/toast";
 
 type Props = {
   text: string;
+  cleanMetadata?: boolean;
 };
 
-export default function CopyButton({ text }: Props) {
+function cleanCopiedText(value: string) {
+  return value
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => {
+      const clean = line.trim();
+
+      if (!clean) return true;
+
+      return !(
+        /^origem\s*:/i.test(clean) ||
+        /^fonte\s*:/i.test(clean) ||
+        /^arquivo\s*:/i.test(clean) ||
+        /^arquivo de origem\s*:/i.test(clean) ||
+        /^importad[oa]\s+de\b/i.test(clean) ||
+        /^exportad[oa]\s+de\b/i.test(clean) ||
+        /^resibook\s*[—-]\s*/i.test(clean)
+      );
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export default function CopyButton({ text, cleanMetadata = true }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(text);
+      const textToCopy = cleanMetadata ? cleanCopiedText(text) : text.trim();
+
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
 
       showToast({

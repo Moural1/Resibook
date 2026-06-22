@@ -62,18 +62,7 @@ function formatDisplay(value?: string | null, fallback = "Não informado") {
 }
 
 function formatTemplateText(item: ExamTemplate) {
-  return [
-    item.titulo || "Exame / evolução",
-    item.categoria ? `Categoria: ${item.categoria}` : "",
-    item.sexo ? `Sexo: ${item.sexo}` : "",
-    item.arquivo_origem || item.source_file
-      ? `Origem: ${item.arquivo_origem || item.source_file}`
-      : "",
-    "",
-    item.conteudo || "",
-  ]
-    .filter((line) => line !== null && line !== undefined)
-    .join("\n");
+  return (item.conteudo || "").trim();
 }
 
 function buildPayload(form: FormState) {

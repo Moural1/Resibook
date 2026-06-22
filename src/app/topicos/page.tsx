@@ -126,7 +126,6 @@ function buildFullText(item: TopicoMedico) {
     ["INTERNAÇÃO / REFERÊNCIA", item.internacao_referencia],
     ["PEGADINHAS DE PROVA", item.pegadinhas],
     ["TAGS", item.tags],
-    ["FONTE", item.fonte],
   ];
 
   return sections
