@@ -327,7 +327,7 @@ function SidebarContent({
     },
     {
       href: "/condutas",
-      label: "Condutas",
+      label: "CONDUTAS TESTE",
       icon: MedicalBagIcon,
       badge: counts.flashcardsDificeis,
     },
