@@ -174,23 +174,25 @@ async function getFlashcardDificeisCount(
   }
 }
 
-function MedicalBagIcon({ className }: { className?: string }) {
+
+
+
+function CondutasIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+    <span
       className={className}
       aria-hidden="true"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "17px",
+        lineHeight: 1,
+        fontWeight: 800,
+      }}
     >
-      <path d="M8.5 7V5.8A2.3 2.3 0 0 1 10.8 3.5h2.4a2.3 2.3 0 0 1 2.3 2.3V7" />
-      <path d="M5.2 7h13.6A2.2 2.2 0 0 1 21 9.2v8.1a3.2 3.2 0 0 1-3.2 3.2H6.2A3.2 3.2 0 0 1 3 17.3V9.2A2.2 2.2 0 0 1 5.2 7Z" />
-      <path d="M12 10.3v6" />
-      <path d="M9 13.3h6" />
-    </svg>
+      ⚕
+    </span>
   );
 }
 
