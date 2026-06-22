@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowUpRight,
+  BarChart3,
   BookOpen,
+  Brain,
   ClipboardCheck,
   ClipboardList,
   FlaskConical,
@@ -13,8 +15,6 @@ import {
   Stethoscope,
   Tags,
   Users,
-  Brain,
-  BarChart3,
 } from "lucide-react";
 
 type Patient = {
