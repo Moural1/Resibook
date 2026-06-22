@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import {
   ArrowUpRight,
   BarChart3,
   BookOpen,
   Brain,
   ClipboardList,
+  FileText,
   FlaskConical,
   Lock,
+  Search,
   Siren,
   Stethoscope,
   Tags,
@@ -377,9 +380,9 @@ export default function DashboardPage() {
               </h1>
 
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-                Visão geral do seu login. Pacientes, prescrições e atividades
-                clínicas são filtrados por usuário; bibliotecas médicas seguem
-                compartilhadas.
+                Painel para entrar rápido no fluxo de plantão: buscar conduta,
+                abrir prescrição, consultar CID ou revisar conteúdo sem perder
+                tempo navegando por várias telas.
               </p>
             </div>
 
@@ -403,7 +406,84 @@ export default function DashboardPage() {
           ) : null}
         </div>
 
-        <div className="p-4 md:p-6">
+        <div className="space-y-5 p-4 md:p-6">
+          <section className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-4 md:p-5">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Fluxo de plantão
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                  O que você quer fazer agora?
+                </h2>
+              </div>
+
+              <p className="max-w-xl text-sm leading-6 text-slate-500">
+                Atalhos diretos para as ações que mais economizam tempo no PA e no estudo.
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <ActionCard
+                href="/condutas"
+                title="Buscar conduta"
+                description="Abrir protocolos marcados por você."
+                icon={Siren}
+              />
+              <ActionCard
+                href="/prescricao"
+                title="Gerar prescrição"
+                description="Acessar modelos e copiar rápido."
+                icon={ClipboardList}
+              />
+              <ActionCard
+                href="/exames-evolucao"
+                title="Copiar evolução"
+                description="Usar blocos de exame e evolução."
+                icon={FileText}
+              />
+              <ActionCard
+                href="/cids"
+                title="Consultar CID"
+                description="Buscar código e descrição."
+                icon={Tags}
+              />
+              <ActionCard
+                href="/flashcards"
+                title="Revisar"
+                description="Voltar para os flashcards."
+                icon={Brain}
+              />
+            </div>
+          </section>
+
+          <section className="rounded-[26px] border border-slate-200 bg-white p-4 md:p-5">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Queixas rápidas
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                  Entradas por síndrome, não só por doença
+                </h2>
+              </div>
+
+              <Link
+                href="/condutas"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <Search className="h-4 w-4" />
+                Ver condutas
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {QUICK_COMPLAINTS.slice(0, 12).map((complaint) => (
+                <QuickComplaintCard key={complaint.title} {...complaint} />
+              ))}
+            </div>
+          </section>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Pacientes"
@@ -699,6 +779,62 @@ function SectionHeader({
       </h2>
       <p className="mt-1 text-sm text-slate-500">{description}</p>
     </div>
+  );
+}
+
+
+function ActionCard({
+  href,
+  title,
+  description,
+  icon: Icon,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-[22px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition group-hover:bg-white">
+        <Icon className="h-4.5 w-4.5" />
+      </div>
+
+      <p className="mt-3 text-sm font-semibold text-slate-950">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+    </Link>
+  );
+}
+
+function QuickComplaintCard({
+  title,
+  description,
+  href,
+  group,
+}: {
+  title: string;
+  description: string;
+  href: string;
+  group: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 transition hover:border-slate-300 hover:bg-white"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-slate-950">{title}</p>
+        <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          {group}
+        </span>
+      </div>
+      <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500">
+        {description}
+      </p>
+    </Link>
   );
 }
 
