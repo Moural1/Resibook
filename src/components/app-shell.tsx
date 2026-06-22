@@ -174,7 +174,6 @@ async function getFlashcardDificeisCount(
   }
 }
 
-
 function MedicalBagIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -202,26 +201,6 @@ function Badge({ value }: { value?: number | null }) {
     <span className="inline-flex min-w-[24px] items-center justify-center rounded-full border border-white/8 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-400">
       {value}
     </span>
-  );
-}
-
-function CondutasIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1" />
-      <rect x="4" y="6" width="16" height="14" rx="2" />
-      <path d="M12 10v6" />
-      <path d="M9 13h6" />
-    </svg>
   );
 }
 
@@ -586,23 +565,23 @@ export default function AppShell({ children }: Props) {
       setCurrentUserId(null);
     }
 
-   function redirectTo(target: string) {
-  if (typeof window === "undefined") return;
+    function redirectTo(target: string) {
+      if (typeof window === "undefined") return;
 
-  if (target === "/login") {
-    setRedirectingToLogin(true);
+      if (target === "/login") {
+        setRedirectingToLogin(true);
 
-    if (window.location.pathname !== "/login") {
-      window.location.replace("/login");
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login");
+        }
+
+        return;
+      }
+
+      if (window.location.pathname !== target) {
+        router.replace(target);
+      }
     }
-
-    return;
-  }
-
-  if (window.location.pathname !== target) {
-    router.replace(target);
-  }
-}
 
     async function applyAccessRules(session: Session | null) {
       if (!mounted) return;
