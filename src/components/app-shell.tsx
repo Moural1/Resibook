@@ -174,6 +174,27 @@ async function getFlashcardDificeisCount(
   }
 }
 
+
+function MedicalBagIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M8.5 7V5.8A2.3 2.3 0 0 1 10.8 3.5h2.4a2.3 2.3 0 0 1 2.3 2.3V7" />
+      <path d="M5.2 7h13.6A2.2 2.2 0 0 1 21 9.2v8.1a3.2 3.2 0 0 1-3.2 3.2H6.2A3.2 3.2 0 0 1 3 17.3V9.2A2.2 2.2 0 0 1 5.2 7Z" />
+      <path d="M12 10.3v6" />
+      <path d="M9 13.3h6" />
+    </svg>
+  );
+}
+
 function Badge({ value }: { value?: number | null }) {
   if (value === null || value === undefined) return null;
 
@@ -328,7 +349,7 @@ function SidebarContent({
     {
       href: "/condutas",
       label: "Condutas",
-      icon: CondutasIcon,
+      icon: MedicalBagIcon,
       badge: counts.flashcardsDificeis,
     },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
