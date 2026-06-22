@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
@@ -83,6 +84,7 @@ function buildPayload(form: CidForm) {
 
 export default function CidsPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   const [isGuest, setIsGuest] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -102,6 +104,14 @@ export default function CidsPage() {
   const [form, setForm] = useState<CidForm>(initialForm);
   const [editingItem, setEditingItem] = useState<CidItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const urlQuery = searchParams.get("q") || searchParams.get("busca") || "";
+
+    if (urlQuery) {
+      setQuery(urlQuery);
+    }
+  }, [searchParams]);
 
   async function checkUser() {
     const { data, error } = await supabase.auth.getSession();
