@@ -14,6 +14,7 @@ const GUEST_EMAIL = "convidado@resibook.com";
 
 const GUEST_ALLOWED_PATHS = [
   "/prescricao",
+  "/caso-rapido",
   "/topicos",
   "/cids",
   "/exames-evolucao",
