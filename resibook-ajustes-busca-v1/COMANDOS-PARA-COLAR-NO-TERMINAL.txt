@@ -1,0 +1,4 @@
+unzip resibook-ajustes-busca-v1.zip
+cp -r resibook-ajustes-busca-v1/SUBSTITUIR-NO-PROJETO/* .
+npx tsc --noEmit
+npm run dev

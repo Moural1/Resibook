@@ -9,6 +9,7 @@ import ClinicalAlerts, {
   type ClinicalAlert,
 } from "../../components/clinical-alerts";
 import ModulePageHeader from "../../components/module-page-header";
+import { rankSearchResults } from "@/lib/search";
 import { ClipboardPlus, Edit3, Lock, Printer, X } from "lucide-react";
 
 type Prescription = {
@@ -803,20 +804,14 @@ export default function PrescricaoPage() {
   const ultima = prescriptions[0] || null;
 
   const filteredPrescriptions = useMemo(() => {
-    const normalizedQuery = normalize(query);
-
-    if (!normalizedQuery) return prescriptions;
-
-    return prescriptions.filter((item) => {
-      return (
-        normalize(item.paciente_nome).includes(normalizedQuery) ||
-        normalize(item.medicamento).includes(normalizedQuery) ||
-        normalize(item.posologia).includes(normalizedQuery) ||
-        normalize(item.via).includes(normalizedQuery) ||
-        normalize(item.duracao).includes(normalizedQuery) ||
-        normalize(item.orientacoes).includes(normalizedQuery)
-      );
-    });
+    return rankSearchResults(prescriptions, query, (item) => [
+      { value: item.medicamento, weight: 10 },
+      { value: item.paciente_nome, weight: 7 },
+      { value: item.posologia, weight: 5 },
+      { value: item.via, weight: 3 },
+      { value: item.duracao, weight: 3 },
+      { value: item.orientacoes, weight: 2 },
+    ]);
   }, [prescriptions, query]);
 
   const draftText = useMemo(() => {
