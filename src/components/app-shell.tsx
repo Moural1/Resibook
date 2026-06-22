@@ -330,7 +330,7 @@ function SidebarContent({
     },
     {
       href: "/condutas",
-      label: "Condutas",
+      label: "Condutas +",
       icon: CondutasIcon,
       badge: counts.flashcardsDificeis,
     },
