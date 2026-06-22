@@ -6,12 +6,22 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import { getSearchScore } from "@/lib/search";
-import { getClinicalSearchTerms, QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
+import {
+  getClinicalSearchTerms,
+  QUICK_COMPLAINTS,
+  type QuickComplaint,
+} from "@/lib/clinical-quick-complaints";
 import {
   ArrowLeft,
+  ArrowUpRight,
   ChevronDown,
+  ClipboardList,
+  FileText,
   Lock,
   Search,
+  ShieldAlert,
+  Stethoscope,
+  Tags,
   Trash2,
 } from "lucide-react";
 
@@ -38,6 +48,10 @@ function normalize(value?: string | null) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function normalizeForMatch(value?: string | null) {
+  return normalize(value).replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function formatLabel(value?: string | null, fallback = "Não informado") {
@@ -96,6 +110,34 @@ function buildPreview(value?: string | null) {
   return firstLine.length > 170 ? `${firstLine.slice(0, 170).trim()}...` : firstLine;
 }
 
+function findComplaintForQuery(query: string) {
+  const normalizedQuery = normalizeForMatch(query);
+
+  if (!normalizedQuery) return null;
+
+  return (
+    QUICK_COMPLAINTS.find((complaint) => {
+      const normalizedTitle = normalizeForMatch(complaint.title);
+      const normalizedTerms = complaint.terms.map(normalizeForMatch);
+
+      return [normalizedTitle, ...normalizedTerms].some((term) => {
+        return (
+          term.includes(normalizedQuery) ||
+          normalizedQuery.includes(term) ||
+          normalizedQuery
+            .split(" ")
+            .some((token) => token.length > 2 && term.includes(token))
+        );
+      });
+    }) || null
+  );
+}
+
+function buildModuleHref(path: string, query: string) {
+  const clean = query.trim();
+
+  return clean ? `${path}?q=${encodeURIComponent(clean)}` : path;
+}
 
 function rankConductsByClinicalSearch(items: Flashcard[], query: string) {
   const terms = getClinicalSearchTerms(query);
@@ -177,6 +219,208 @@ function renderConductBody(value?: string | null) {
       </p>
     );
   });
+}
+
+function PlantaoCommandCenter({
+  query,
+  selectedArea,
+  total,
+  showing,
+  activeComplaint,
+  onPickComplaint,
+  onClear,
+}: {
+  query: string;
+  selectedArea: string;
+  total: number;
+  showing: number;
+  activeComplaint: QuickComplaint | null;
+  onPickComplaint: (complaint: QuickComplaint) => void;
+  onClear: () => void;
+}) {
+  const workingQuery = activeComplaint?.title || query.trim();
+  const relatedTerms = activeComplaint?.terms.slice(0, 8) || [];
+  const hasContext = Boolean(workingQuery);
+  const moduleLinks = [
+    {
+      href: buildModuleHref("/prescricao", workingQuery),
+      label: "Prescrição",
+      description: "Abrir modelos e histórico.",
+      icon: ClipboardList,
+    },
+    {
+      href: buildModuleHref("/exames-evolucao", workingQuery),
+      label: "Exames / evolução",
+      description: "Buscar blocos reutilizáveis.",
+      icon: FileText,
+    },
+    {
+      href: buildModuleHref("/cids", workingQuery),
+      label: "CID",
+      description: "Consultar código relacionado.",
+      icon: Tags,
+    },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fafc_100%)] p-5 md:p-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              Plantão mode
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+              Da queixa ao próximo passo
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Selecione uma queixa, revise as condutas marcadas e salte para
+              prescrição, exames ou CID mantendo o contexto da busca.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
+            <PlantaoStat label="Total" value={total} />
+            <PlantaoStat label="Exibindo" value={showing} />
+            <PlantaoStat label="Área" value={selectedArea ? "1" : "Todas"} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 p-4 md:p-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Queixa em foco
+              </p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
+                {activeComplaint?.title || (query ? query : "Escolha uma entrada rápida")}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {activeComplaint?.description ||
+                  "Use os atalhos abaixo ou digite no campo de busca para iniciar o fluxo."}
+              </p>
+            </div>
+
+            {hasContext ? (
+              <button
+                type="button"
+                onClick={onClear}
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Limpar fluxo
+              </button>
+            ) : null}
+          </div>
+
+          {relatedTerms.length > 0 ? (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Termos relacionados
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {relatedTerms.map((term) => (
+                  <span
+                    key={term}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600"
+                  >
+                    {term}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {moduleLinks.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="group rounded-2xl border border-slate-200 bg-white p-3 transition hover:border-slate-300 hover:shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-slate-500" />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-slate-950">
+                    {item.label}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {item.description}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
+              <ShieldAlert className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-950">
+                Checklist mental antes de copiar
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Sinais vitais, gravidade, alergias, gestação, função renal/hepática,
+                medicações em uso e critérios de encaminhamento.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2">
+            {QUICK_COMPLAINTS.slice(0, 6).map((complaint) => (
+              <button
+                key={complaint.title}
+                type="button"
+                onClick={() => onPickComplaint(complaint)}
+                className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
+                  activeComplaint?.title === complaint.title
+                    ? "border-slate-300 bg-slate-100"
+                    : "border-slate-200 bg-slate-50/70 hover:bg-white"
+                }`}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-slate-900">
+                    {complaint.title}
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs text-slate-500">
+                    {complaint.description}
+                  </span>
+                </span>
+                <Stethoscope className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PlantaoStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-base font-semibold text-slate-950">{value}</p>
+    </div>
+  );
 }
 
 function ConductItem({
@@ -382,6 +626,16 @@ export default function CondutasPage() {
     return rankConductsByClinicalSearch(filteredByArea, query);
   }, [cards, query, selectedArea]);
 
+  const activeComplaint = useMemo(() => {
+    return findComplaintForQuery(query);
+  }, [query]);
+
+  function pickComplaint(complaint: QuickComplaint) {
+    setQuery(complaint.title);
+    setSelectedArea("");
+    setExpandedId(null);
+  }
+
   async function removeDificil(id: string) {
     if (!currentUserId) {
       setError("Usuário autenticado não identificado.");
@@ -478,6 +732,20 @@ export default function CondutasPage() {
         </div>
       </section>
 
+      <PlantaoCommandCenter
+        query={query}
+        selectedArea={selectedArea}
+        total={cards.length}
+        showing={filtered.length}
+        activeComplaint={activeComplaint}
+        onPickComplaint={pickComplaint}
+        onClear={() => {
+          setQuery("");
+          setSelectedArea("");
+          setExpandedId(null);
+        }}
+      />
+
       <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="grid gap-3 md:grid-cols-[1fr_240px_auto]">
           <div className="relative">
@@ -534,12 +802,12 @@ export default function CondutasPage() {
             <button
               key={complaint.title}
               type="button"
-              onClick={() => {
-                setQuery(complaint.title);
-                setSelectedArea("");
-                setExpandedId(null);
-              }}
-              className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+              onClick={() => pickComplaint(complaint)}
+              className={`shrink-0 rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
+                activeComplaint?.title === complaint.title
+                  ? "border-slate-300 bg-slate-900 text-white"
+                  : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
+              }`}
             >
               {complaint.title}
             </button>
