@@ -386,7 +386,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
               <HeaderPill label="Pacientes" value={counts.patients} />
               <HeaderPill label="Prescrições" value={counts.prescriptions} />
-              <HeaderPill label="Difíceis" value={counts.flashcardsDificeis} />
+              <HeaderPill label="Condutas" value={counts.flashcardsDificeis} />
             </div>
           </div>
 
@@ -446,9 +446,9 @@ export default function DashboardPage() {
             />
 
             <MetricCard
-              title="Difíceis"
+              title="Condutas"
               value={counts.flashcardsDificeis}
-              description="Marcados por você"
+              description="Marcadas por você"
               href="/flashcards-dificeis"
               icon={FileStack}
             />
@@ -517,8 +517,8 @@ export default function DashboardPage() {
 
             <ShortcutCard
               href="/flashcards-dificeis"
-              title="Revisar difíceis"
-              description="Foco no que você marcou."
+              title="Abrir condutas"
+              description="Protocolos marcados por você."
               icon={FileStack}
             />
 

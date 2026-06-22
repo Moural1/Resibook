@@ -8,9 +8,8 @@ import ModulePageHeader from "../../components/module-page-header";
 import CopyButton from "../../components/copy-button";
 import {
   ArrowLeft,
-  BookOpenCheck,
+  ChevronDown,
   ClipboardList,
-  FileText,
   Layers3,
   Lock,
   Search,
@@ -33,6 +32,12 @@ type MarkRow = {
   dificil: boolean | null;
 };
 
+type ConductSection = {
+  number?: string;
+  title: string;
+  lines: string[];
+};
+
 const GUEST_EMAIL = "convidado@resibook.com";
 
 function normalize(value?: string | null) {
@@ -51,102 +56,185 @@ function formatLabel(value?: string | null, fallback = "Não informado") {
   return clean.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function buildParagraphs(value?: string | null) {
+function cleanLine(value: string) {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/;(?=\S)/g, "; ")
+    .replace(/,(?=\S)/g, ", ")
+    .replace(/\s+([,.;:])/g, "$1")
+    .trim();
+}
+
+function getContentLines(value?: string | null) {
   return (value || "")
     .replace(/\r\n/g, "\n")
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
+    .split("\n")
+    .map((line) => cleanLine(line))
     .filter(Boolean);
 }
 
+function formatConductTitle(value?: string | null) {
+  const clean = cleanLine(value || "").replace(/[?]+$/g, "").trim();
+
+  if (!clean) return "Conduta médica";
+
+  const withoutQuestionIntro = clean
+    .replace(/^como\s+(conduzir|manejar|tratar|abordar)\s+/i, "")
+    .replace(/^qual\s+(é|e)\s+a\s+conduta\s+(em|para|no|na)\s+/i, "")
+    .trim();
+
+  const title = withoutQuestionIntro || clean;
+
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
 function buildConductText(item: Flashcard) {
-  return [item.frente || "Conduta médica", item.verso || ""]
+  return [formatConductTitle(item.frente), item.verso || ""]
     .filter(Boolean)
     .join("\n\n")
     .trim();
 }
 
-function renderRichText(value?: string | null, emptyText = "Sem conteúdo") {
-  const blocks = buildParagraphs(value);
+function headingFromLine(line: string) {
+  const numbered = line.match(/^(\d+)[\.)]\s+(.{3,})$/);
 
-  if (blocks.length === 0) {
-    return <p className="text-sm leading-7 text-slate-400">{emptyText}</p>;
+  if (numbered) {
+    return {
+      number: numbered[1],
+      title: numbered[2].replace(/[:.]+$/g, "").trim(),
+    };
+  }
+
+  const cleaned = line.replace(/[:.]+$/g, "").trim();
+  const hasInlineContentAfterColon = /^.{2,42}:\s+\S+/.test(line);
+  const isShort = cleaned.length >= 4 && cleaned.length <= 90;
+  const isAllCaps =
+    isShort &&
+    cleaned === cleaned.toUpperCase() &&
+    /[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]/.test(cleaned) &&
+    !/[.!?]$/.test(cleaned);
+
+  const looksLikeProtocolHeading =
+    isShort &&
+    !hasInlineContentAfterColon &&
+    /^(diagn[oó]stico|suspeita|quando suspeitar|exames?|exame de escolha|conduta|manejo|tratamento|antibi[oó]tico|crit[eé]rios|internar|alta|sinais de alarme|seguimento|prova|pegadinha|não esquecer|nunca esquecer)\b/i.test(
+      cleaned
+    );
+
+  if (isAllCaps || looksLikeProtocolHeading) {
+    return { title: cleaned };
+  }
+
+  return null;
+}
+
+function buildConductSections(value?: string | null): ConductSection[] {
+  const lines = getContentLines(value);
+
+  if (lines.length === 0) return [];
+
+  const sections: ConductSection[] = [];
+  let current: ConductSection | null = null;
+
+  lines.forEach((line) => {
+    const heading = headingFromLine(line);
+
+    if (heading) {
+      if (current) sections.push(current);
+      current = { ...heading, lines: [] };
+      return;
+    }
+
+    if (!current) {
+      current = { title: "Manejo essencial", lines: [] };
+    }
+
+    current.lines.push(line);
+  });
+
+  if (current) sections.push(current);
+
+  return sections.filter((section) => section.title || section.lines.length > 0);
+}
+
+function buildPreview(value?: string | null) {
+  const lines = getContentLines(value).filter((line) => !headingFromLine(line));
+  const preview = lines[0] || "Clique para abrir a conduta completa.";
+
+  return preview.length > 170 ? `${preview.slice(0, 170).trim()}...` : preview;
+}
+
+function renderClinicalLine(line: string, key: string) {
+  const clean = cleanLine(line);
+  const labelMatch = clean.match(/^([^:]{2,54}):\s*(.+)$/);
+
+  if (labelMatch) {
+    const label = labelMatch[1].trim();
+    const content = labelMatch[2].trim();
+    const items = content
+      .split(";")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (items.length >= 2) {
+      return (
+        <div key={key} className="rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            {label}
+          </p>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+            {items.map((item, index) => (
+              <li key={`${key}-item-${index}`} className="flex gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    return (
+      <div key={key} className="rounded-2xl border border-slate-200 bg-white p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          {label}
+        </p>
+        <p className="mt-2 text-sm leading-7 text-slate-700">{content}</p>
+      </div>
+    );
+  }
+
+  const semicolonItems = clean
+    .split(";")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (semicolonItems.length >= 3) {
+    return (
+      <ul key={key} className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
+        {semicolonItems.map((item, index) => (
+          <li key={`${key}-semi-${index}`} className="flex gap-2">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (/^[-•]/.test(clean)) {
+    return (
+      <div key={key} className="flex gap-2 text-sm leading-7 text-slate-700">
+        <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
+        <span>{clean.replace(/^[-•]\s*/, "")}</span>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      {blocks.map((block, index) => {
-        const lines = block
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean);
-
-        const isBulletList =
-          lines.length > 1 &&
-          lines.every((line) => /^[-•]/.test(line) || /^\d+[\.\)]/.test(line));
-
-        if (isBulletList) {
-          const ordered = lines.every((line) => /^\d+[\.\)]/.test(line));
-
-          if (ordered) {
-            return (
-              <ol
-                key={index}
-                className="ml-5 list-decimal space-y-2 text-sm leading-7 text-slate-700"
-              >
-                {lines.map((line, lineIndex) => (
-                  <li key={lineIndex}>
-                    {line.replace(/^\d+[\.\)]\s*/, "")}
-                  </li>
-                ))}
-              </ol>
-            );
-          }
-
-          return (
-            <ul
-              key={index}
-              className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700"
-            >
-              {lines.map((line, lineIndex) => (
-                <li key={lineIndex}>{line.replace(/^[-•]\s*/, "")}</li>
-              ))}
-            </ul>
-          );
-        }
-
-        if (lines.length === 1) {
-          const line = lines[0];
-          const labelMatch = line.match(/^([^:]{2,42}):\s*(.+)$/);
-
-          if (labelMatch) {
-            return (
-              <div
-                key={index}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {labelMatch[1]}
-                </p>
-
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                  {labelMatch[2]}
-                </p>
-              </div>
-            );
-          }
-        }
-
-        return (
-          <p
-            key={index}
-            className="whitespace-pre-wrap text-sm leading-7 text-slate-700"
-          >
-            {block}
-          </p>
-        );
-      })}
-    </div>
+    <p key={key} className="text-sm leading-7 text-slate-700">
+      {clean}
+    </p>
   );
 }
 
@@ -160,7 +248,7 @@ function StatCard({
   value: string | number;
 }) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
           {icon}
@@ -171,10 +259,158 @@ function StatCard({
         </span>
       </div>
 
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
     </div>
+  );
+}
+
+function ConductItem({
+  item,
+  expanded,
+  saving,
+  onToggle,
+  onRemove,
+}: {
+  item: Flashcard;
+  expanded: boolean;
+  saving: boolean;
+  onToggle: () => void;
+  onRemove: () => void;
+}) {
+  const title = formatConductTitle(item.frente);
+  const preview = buildPreview(item.verso);
+  const sections = buildConductSections(item.verso);
+
+  return (
+    <article
+      className={`overflow-hidden rounded-[24px] border bg-white shadow-sm transition ${
+        expanded
+          ? "border-cyan-200 shadow-slate-950/[0.04]"
+          : "border-slate-200 hover:border-slate-300"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full flex-col gap-4 p-4 text-left transition hover:bg-slate-50/80 md:p-5"
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {item.area ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700">
+                  <Layers3 className="h-3.5 w-3.5 text-slate-500" />
+                  {formatLabel(item.area)}
+                </span>
+              ) : null}
+
+              {item.materia ? (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+                  {formatLabel(item.materia)}
+                </span>
+              ) : null}
+
+              {item.tipo ? (
+                <span className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700">
+                  {formatLabel(item.tipo)}
+                </span>
+              ) : null}
+            </div>
+
+            <h3 className="text-base font-semibold tracking-tight text-slate-950 md:text-lg">
+              {title}
+            </h3>
+
+            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+              {preview}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 self-start rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
+            <span>{expanded ? "Fechar" : "Abrir conduta"}</span>
+            <ChevronDown
+              className={`h-4 w-4 transition ${expanded ? "rotate-180" : ""}`}
+            />
+          </div>
+        </div>
+      </button>
+
+      {expanded ? (
+        <div className="border-t border-slate-200 bg-slate-50/70 p-4 md:p-5">
+          <div className="flex flex-col gap-3 rounded-[22px] border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+                Conduta aberta
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Conteúdo organizado em blocos para consulta rápida.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <CopyButton text={buildConductText(item)} />
+
+              <button
+                type="button"
+                onClick={onRemove}
+                disabled={saving}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" />
+                {saving ? "Removendo..." : "Remover"}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {sections.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+                Sem conduta preenchida.
+              </p>
+            ) : (
+              sections.map((section, sectionIndex) => (
+                <section
+                  key={`${item.id}-section-${sectionIndex}`}
+                  className="rounded-[22px] border border-slate-200 bg-white p-4 md:p-5"
+                >
+                  <div className="mb-4 flex items-start gap-3 border-b border-slate-100 pb-4">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-sm font-bold text-slate-700">
+                      {section.number || sectionIndex + 1}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950">
+                        {section.title}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-slate-400">
+                        Bloco da conduta
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {section.lines.length === 0 ? (
+                      <p className="text-sm leading-7 text-slate-500">
+                        Sem detalhes adicionais neste bloco.
+                      </p>
+                    ) : (
+                      section.lines.map((line, lineIndex) =>
+                        renderClinicalLine(
+                          line,
+                          `${item.id}-section-${sectionIndex}-line-${lineIndex}`
+                        )
+                      )
+                    )}
+                  </div>
+                </section>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -187,6 +423,7 @@ export default function FlashcardsDificeisPage() {
   const [sessionReady, setSessionReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingIds, setSavingIds] = useState<string[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
   const [error, setError] = useState("");
@@ -282,7 +519,8 @@ export default function FlashcardsDificeisPage() {
     const normalizedArea = normalize(selectedArea);
 
     return cards.filter((item) => {
-      const matchesArea = !normalizedArea || normalize(item.area) === normalizedArea;
+      const matchesArea =
+        !normalizedArea || normalize(item.area) === normalizedArea;
 
       if (!matchesArea) return false;
       if (!normalizedQuery) return true;
@@ -328,6 +566,7 @@ export default function FlashcardsDificeisPage() {
       setError(error.message);
     } else {
       setCards((current) => current.filter((item) => item.id !== id));
+      setExpandedId((current) => (current === id ? null : current));
       setSuccess("Conduta removida da lista.");
     }
 
@@ -363,19 +602,19 @@ export default function FlashcardsDificeisPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ModulePageHeader
-        eyebrow="Condutas rápidas"
+        eyebrow="Consulta rápida"
         title="Condutas médicas"
-        description="Área para consultar rapidamente as condutas que você marcou como importantes na biblioteca de flashcards. A base continua vindo dos seus flashcards difíceis, mas a visualização agora é de protocolo clínico."
+        description="Lista fechada por padrão, feita para você bater o olho na doença e abrir só a conduta que quiser revisar. A base continua vindo dos itens marcados como difíceis nos flashcards."
         badges={[
-          { label: "Conduta médica", tone: "slate" },
-          { label: "Importado dos difíceis", tone: "amber" },
+          { label: "Modo protocolo", tone: "cyan" },
+          { label: "Marcados por você", tone: "slate" },
         ]}
         metrics={[
           { label: "Total", value: cards.length },
           { label: "Exibindo", value: filtered.length },
-          { label: "Áreas visíveis", value: visibleAreas },
+          { label: "Áreas", value: visibleAreas },
         ]}
         error={error}
         success={success}
@@ -385,11 +624,11 @@ export default function FlashcardsDificeisPage() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Biblioteca de flashcards
+            Flashcards
           </Link>
         }
       >
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-3">
           <StatCard
             icon={<Stethoscope className="h-5 w-5" />}
             label="Condutas salvas"
@@ -410,21 +649,15 @@ export default function FlashcardsDificeisPage() {
         </div>
       </ModulePageHeader>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+      <section className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Consulta rápida
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Buscar conduta
             </p>
-
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
-              Buscar conduta médica
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">
+              Doença, exame, medicação ou manejo
             </h2>
-
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-              Use essa tela como seu caderno de manejo: doença na parte de cima,
-              conduta aberta direto abaixo, pronta para revisar ou copiar.
-            </p>
           </div>
 
           <span className="inline-flex self-start rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 lg:self-auto">
@@ -432,14 +665,14 @@ export default function FlashcardsDificeisPage() {
           </span>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_260px_auto]">
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_260px_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por doença, conduta, exame, medicação..."
+              placeholder="Ex.: trauma vascular, AVC, sepse, antibiótico..."
               className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
             />
           </div>
@@ -462,50 +695,12 @@ export default function FlashcardsDificeisPage() {
             onClick={() => {
               setQuery("");
               setSelectedArea("");
+              setExpandedId(null);
             }}
             className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             Limpar
           </button>
-        </div>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
-              <BookOpenCheck className="h-5 w-5" />
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight text-slate-900">
-                Como essa tela funciona
-              </h2>
-
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Para adicionar uma nova conduta aqui, continue marcando o item
-                como difícil na página de flashcards. Ele aparece nesta página
-                com visual de conduta, sem precisar abrir frente e verso como
-                cartão de estudo.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-[28px] border border-slate-200 bg-slate-950 p-5 text-white shadow-sm md:p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300">
-            Dica de organização
-          </p>
-
-          <h2 className="mt-2 text-lg font-semibold tracking-tight">
-            Deixe o verso em formato de protocolo
-          </h2>
-
-          <p className="mt-2 text-sm leading-7 text-slate-300">
-            Exemplo: diagnóstico, exames, tratamento inicial, critérios de
-            internação, retorno e sinais de alarme. Assim a tela vira consulta
-            rápida de plantão.
-          </p>
         </div>
       </section>
 
@@ -524,8 +719,8 @@ export default function FlashcardsDificeisPage() {
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            Marque flashcards importantes como difíceis para transformar essa
-            página em uma lista de condutas rápidas.
+            Marque flashcards importantes como difíceis para eles aparecerem
+            aqui em formato de conduta.
           </p>
 
           <Link
@@ -536,85 +731,22 @@ export default function FlashcardsDificeisPage() {
           </Link>
         </section>
       ) : (
-        <section className="space-y-5">
+        <section className="space-y-3">
           {filtered.map((item) => {
             const savingItem = savingIds.includes(item.id);
+            const expanded = expandedId === item.id;
 
             return (
-              <article
+              <ConductItem
                 key={item.id}
-                className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm transition hover:border-slate-300"
-              >
-                <div className="border-b border-slate-200 bg-slate-50/80 p-5 md:p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap gap-2">
-                        {item.area ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                            <Layers3 className="h-3.5 w-3.5 text-slate-500" />
-                            {formatLabel(item.area)}
-                          </span>
-                        ) : null}
-
-                        {item.materia ? (
-                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                            {formatLabel(item.materia)}
-                          </span>
-                        ) : null}
-
-                        {item.tipo ? (
-                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                            {formatLabel(item.tipo)}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                        Conduta
-                      </p>
-
-                      <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                        {item.frente || "Conduta médica"}
-                      </h3>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3">
-                      <CopyButton text={buildConductText(item)} />
-
-                      <button
-                        type="button"
-                        onClick={() => removeDificil(item.id)}
-                        disabled={savingItem}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        {savingItem ? "Removendo..." : "Remover"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-5 md:p-6">
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-4">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                        <FileText className="h-4 w-4" />
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          Manejo / passo a passo
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Conteúdo aberto direto, sem modo flashcard.
-                        </p>
-                      </div>
-                    </div>
-
-                    {renderRichText(item.verso, "Sem conduta preenchida")}
-                  </div>
-                </div>
-              </article>
+                item={item}
+                expanded={expanded}
+                saving={savingItem}
+                onToggle={() =>
+                  setExpandedId((current) => (current === item.id ? null : item.id))
+                }
+                onRemove={() => removeDificil(item.id)}
+              />
             );
           })}
         </section>

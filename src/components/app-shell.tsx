@@ -307,8 +307,8 @@ function SidebarContent({
     },
     {
       href: "/flashcards-dificeis",
-      label: "Difíceis",
-      icon: Brain,
+      label: "Condutas",
+      icon: Stethoscope,
       badge: counts.flashcardsDificeis,
     },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
