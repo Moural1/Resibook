@@ -8,7 +8,6 @@ import type { SupabaseClient, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import {
-  Ambulance,
   BarChart3,
   Brain,
   ClipboardList,
@@ -21,7 +20,6 @@ import {
   PanelLeftOpen,
   Settings,
   ShieldCheck,
-  Siren,
   Stethoscope,
   Tags,
   Users,
@@ -186,6 +184,26 @@ function Badge({ value }: { value?: number | null }) {
   );
 }
 
+function CondutasIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1" />
+      <rect x="4" y="6" width="16" height="14" rx="2" />
+      <path d="M12 10v6" />
+      <path d="M9 13h6" />
+    </svg>
+  );
+}
+
 function NavSection({
   title,
   items,
@@ -310,7 +328,7 @@ function SidebarContent({
     {
       href: "/condutas",
       label: "Condutas",
-      icon: Ambulance,
+      icon: CondutasIcon,
       badge: counts.flashcardsDificeis,
     },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
