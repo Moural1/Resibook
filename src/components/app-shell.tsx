@@ -12,6 +12,7 @@ import {
   Brain,
   ClipboardList,
   FlaskConical,
+  Gauge,
   Home,
   LifeBuoy,
   Lock,
@@ -48,6 +49,7 @@ const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const GUEST_ALLOWED_PATHS = [
   "/prescricao",
+  "/caso-rapido",
   "/topicos",
   "/cids",
   "/exames-evolucao",
@@ -276,6 +278,7 @@ function SidebarContent({
 }) {
   const fullPrimaryItems = [
     { href: "/dashboard", label: "Visão geral", icon: Home, badge: null },
+    { href: "/caso-rapido", label: "Caso rápido", icon: Gauge, badge: null },
     {
       href: "/pacientes",
       label: "Pacientes",
@@ -316,6 +319,12 @@ function SidebarContent({
   ];
 
   const guestPrimaryItems = [
+    {
+      href: "/caso-rapido",
+      label: "Caso rápido",
+      icon: Gauge,
+      badge: null,
+    },
     {
       href: "/prescricao",
       label: "Prescrição",
