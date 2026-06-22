@@ -7,16 +7,16 @@ import { createClient } from "@/lib/supabase/client";
 import { getSearchScore, rankSearchResults } from "@/lib/search";
 import {
   BookOpen,
-  ClipboardCheck,
+  Brain,
   ClipboardList,
   FlaskConical,
   Search,
+  Siren,
   Sparkles,
   Stethoscope,
   Tags,
   Users,
   X,
-  Brain,
 } from "lucide-react";
 
 type SearchResult = {
@@ -181,7 +181,7 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
   if (type === "exame") return <FlaskConical className={className} />;
   if (type === "topico") return <BookOpen className={className} />;
   if (type === "flashcard") return <Brain className={className} />;
-  if (type === "conduta") return <ClipboardCheck className={className} />;
+  if (type === "conduta") return <Siren className={className} />;
 
   return <Tags className={className} />;
 }
@@ -193,7 +193,7 @@ const fullQuickLinks = [
   { href: "/topicos", label: "Tópicos", icon: Stethoscope },
   { href: "/revisao-topicos", label: "Revisão", icon: BookOpen },
   { href: "/flashcards", label: "Flashcards", icon: Brain },
-  { href: "/condutas", label: "Condutas", icon: ClipboardCheck },
+  { href: "/condutas", label: "Condutas", icon: Siren },
   { href: "/cids", label: "CIDs", icon: Tags },
 ];
 

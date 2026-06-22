@@ -20,6 +20,7 @@ import {
   PanelLeftOpen,
   Settings,
   ShieldCheck,
+  Siren,
   Stethoscope,
   Tags,
   Users,
@@ -174,29 +175,6 @@ async function getFlashcardDificeisCount(
   }
 }
 
-
-
-
-function CondutasIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M8.5 7V5.8A2.3 2.3 0 0 1 10.8 3.5h2.4a2.3 2.3 0 0 1 2.3 2.3V7" />
-      <path d="M4.8 7h14.4A2.8 2.8 0 0 1 22 9.8v7.4a3.3 3.3 0 0 1-3.3 3.3H5.3A3.3 3.3 0 0 1 2 17.2V9.8A2.8 2.8 0 0 1 4.8 7Z" />
-      <path d="M12 10.5v6" />
-      <path d="M9 13.5h6" />
-    </svg>
-  );
-}
-
 function Badge({ value }: { value?: number | null }) {
   if (value === null || value === undefined) return null;
 
@@ -330,8 +308,8 @@ function SidebarContent({
     },
     {
       href: "/condutas",
-      label: "Condutas +",
-      icon: CondutasIcon,
+      label: "Condutas",
+      icon: Siren,
       badge: counts.flashcardsDificeis,
     },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
