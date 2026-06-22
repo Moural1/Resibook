@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "../../components/module-page-header";
 import CopyButton from "../../components/copy-button";
@@ -135,6 +136,7 @@ function InputField({
 
 export default function ExamesEvolucaoPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   const [isGuest, setIsGuest] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -155,6 +157,14 @@ export default function ExamesEvolucaoPage() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    const urlQuery = searchParams.get("q") || searchParams.get("busca") || "";
+
+    if (urlQuery) {
+      setQuery(urlQuery);
+    }
+  }, [searchParams]);
 
   async function checkUser() {
     const { data, error } = await supabase.auth.getSession();
