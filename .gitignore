@@ -43,3 +43,7 @@ next-env.d.ts
 # Pacotes temporários de ajustes
 resibook-*.zip
 resibook-*/
+
+# Pacotes temporários de ajustes
+resibook-*.zip
+resibook-*/
