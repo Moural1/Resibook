@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowUpRight,
   BookOpen,
+  ClipboardCheck,
   ClipboardList,
-  FileStack,
   FlaskConical,
   Lock,
   Stethoscope,
@@ -449,8 +449,8 @@ export default function DashboardPage() {
               title="Condutas"
               value={counts.flashcardsDificeis}
               description="Marcadas por você"
-              href="/flashcards-dificeis"
-              icon={FileStack}
+              href="/condutas"
+              icon={ClipboardCheck}
             />
 
             <MetricCard
@@ -516,10 +516,10 @@ export default function DashboardPage() {
             />
 
             <ShortcutCard
-              href="/flashcards-dificeis"
+              href="/condutas"
               title="Abrir condutas"
               description="Protocolos marcados por você."
-              icon={FileStack}
+              icon={ClipboardCheck}
             />
 
             <ShortcutCard

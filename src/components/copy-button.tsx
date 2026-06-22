@@ -6,6 +6,8 @@ import { showToast } from "../lib/toast";
 type Props = {
   text: string;
   cleanMetadata?: boolean;
+  label?: string;
+  copiedLabel?: string;
 };
 
 function cleanCopiedText(value: string) {
@@ -32,7 +34,12 @@ function cleanCopiedText(value: string) {
     .trim();
 }
 
-export default function CopyButton({ text, cleanMetadata = true }: Props) {
+export default function CopyButton({
+  text,
+  cleanMetadata = true,
+  label = "Copiar",
+  copiedLabel = "Copiado!",
+}: Props) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -68,7 +75,7 @@ export default function CopyButton({ text, cleanMetadata = true }: Props) {
           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
       }`}
     >
-      {copied ? "Copiado!" : "Copiar"}
+      {copied ? copiedLabel : label}
     </button>
   );
 }

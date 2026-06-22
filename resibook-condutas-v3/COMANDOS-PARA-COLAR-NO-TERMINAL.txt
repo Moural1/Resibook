@@ -1,0 +1,4 @@
+unzip -o resibook-condutas-v3.zip
+cp -r resibook-condutas-v3/SUBSTITUIR-NO-PROJETO/* .
+npx tsc --noEmit
+npm run dev

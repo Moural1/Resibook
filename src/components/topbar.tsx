@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getSearchScore, rankSearchResults } from "@/lib/search";
 import {
   BookOpen,
+  ClipboardCheck,
   ClipboardList,
   FlaskConical,
   Search,
@@ -30,7 +31,8 @@ type SearchResult = {
     | "exame"
     | "topico"
     | "cid"
-    | "flashcard";
+    | "flashcard"
+    | "conduta";
 };
 
 type PatientRow = {
@@ -89,6 +91,11 @@ type FlashcardRow = {
   verso?: string | null;
 };
 
+type MarkRow = {
+  flashcard_id: string;
+  dificil: boolean | null;
+};
+
 type SessionInfo = {
   userId: string | null;
   email: string;
@@ -127,6 +134,7 @@ function badgeLabel(type: SearchResult["type"]) {
   if (type === "exame") return "Exame";
   if (type === "topico") return "Tópico";
   if (type === "flashcard") return "Flashcard";
+  if (type === "conduta") return "Conduta";
   return "CID";
 }
 
@@ -155,6 +163,10 @@ function badgeClass(type: SearchResult["type"]) {
     return "border-pink-200/80 bg-pink-50 text-pink-700";
   }
 
+  if (type === "conduta") {
+    return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
+  }
+
   return "border-amber-200/80 bg-amber-50 text-amber-700";
 }
 
@@ -169,6 +181,7 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
   if (type === "exame") return <FlaskConical className={className} />;
   if (type === "topico") return <BookOpen className={className} />;
   if (type === "flashcard") return <Brain className={className} />;
+  if (type === "conduta") return <ClipboardCheck className={className} />;
 
   return <Tags className={className} />;
 }
@@ -180,6 +193,7 @@ const fullQuickLinks = [
   { href: "/topicos", label: "Tópicos", icon: Stethoscope },
   { href: "/revisao-topicos", label: "Revisão", icon: BookOpen },
   { href: "/flashcards", label: "Flashcards", icon: Brain },
+  { href: "/condutas", label: "Condutas", icon: ClipboardCheck },
   { href: "/cids", label: "CIDs", icon: Tags },
 ];
 
@@ -316,6 +330,15 @@ export function Topbar() {
             .select("id, area, materia, frente, verso")
             .limit(60);
 
+      const condutasMarksPromise = guest
+        ? Promise.resolve({ data: [], error: null })
+        : supabase
+            .from("flashcard_user_marks")
+            .select("flashcard_id, dificil")
+            .eq("user_id", userId)
+            .eq("dificil", true)
+            .limit(200);
+
       const [
         patientsRes,
         prescriptionsRes,
@@ -324,6 +347,7 @@ export function Topbar() {
         topicosRes,
         cidsRes,
         flashcardsRes,
+        condutasMarksRes,
       ] = await Promise.all([
         patientsPromise,
         prescriptionsPromise,
@@ -332,6 +356,7 @@ export function Topbar() {
         topicosPromise,
         cidsPromise,
         flashcardsPromise,
+        condutasMarksPromise,
       ]);
 
       if (requestId !== searchRequestRef.current) return;
@@ -444,8 +469,35 @@ export function Topbar() {
         type: "cid",
       }));
 
+      const difficultIds = new Set(
+        ((condutasMarksRes.data || []) as MarkRow[])
+          .filter((item) => item.dificil === true)
+          .map((item) => String(item.flashcard_id))
+      );
+
+      const flashcardRows = ((flashcardsRes.data || []) as FlashcardRow[]).map(
+        (item) => ({ ...item, id: String(item.id) })
+      );
+
+      const condutaResults: SearchResult[] = rankSearchResults(
+        flashcardRows.filter((item) => difficultIds.has(String(item.id))),
+        q,
+        (item) => [
+          { value: item.frente, weight: 10 },
+          { value: item.materia, weight: 6 },
+          { value: item.area, weight: 5 },
+          { value: item.verso, weight: 2 },
+        ]
+      ).map((item) => ({
+        id: `conduta-${item.id}`,
+        title: item.frente || "Conduta médica",
+        subtitle: item.materia || item.area || "Protocolo marcado por você",
+        href: `/condutas?q=${encodeURIComponent(item.frente || q)}`,
+        type: "conduta",
+      }));
+
       const flashcardResults: SearchResult[] = rankSearchResults(
-        ((flashcardsRes.data || []) as FlashcardRow[]),
+        flashcardRows.filter((item) => !difficultIds.has(String(item.id))),
         q,
         (item) => [
           { value: item.frente, weight: 10 },
@@ -468,6 +520,7 @@ export function Topbar() {
         topico: 6,
         exame: 5,
         cid: 4,
+        conduta: 4.5,
         flashcard: 3,
       };
 
@@ -478,6 +531,7 @@ export function Topbar() {
         ...prescriptionResults,
         ...examResults,
         ...cidResults,
+        ...condutaResults,
         ...flashcardResults,
       ]
         .sort((a, b) => {
@@ -569,7 +623,7 @@ export function Topbar() {
               placeholder={
                 isGuest
                   ? "Buscar prescrições, tópicos, exames e CIDs..."
-                  : "Buscar pacientes, tópicos, prescrições, exames, CIDs e flashcards..."
+                  : "Buscar pacientes, condutas, tópicos, prescrições, exames, CIDs e flashcards..."
               }
               className="h-full w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
             />
