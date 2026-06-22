@@ -8,23 +8,24 @@ import type { SupabaseClient, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import {
-  Menu,
-  X,
-  Home,
-  Users,
-  ClipboardList,
-  Siren,
-  FlaskConical,
-  Brain,
-  Tags,
-  Stethoscope,
-  Settings,
+  Ambulance,
   BarChart3,
+  Brain,
+  ClipboardList,
+  FlaskConical,
+  Home,
+  LifeBuoy,
+  Lock,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  Lock,
+  Settings,
   ShieldCheck,
-  LifeBuoy,
+  Siren,
+  Stethoscope,
+  Tags,
+  Users,
+  X,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
 import { Topbar } from "./topbar";
@@ -309,7 +310,7 @@ function SidebarContent({
     {
       href: "/condutas",
       label: "Condutas",
-      icon: Siren,
+      icon: Ambulance,
       badge: counts.flashcardsDificeis,
     },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
