@@ -9,6 +9,7 @@ import {
   BarChart3,
   BookOpen,
   Brain,
+  Gauge,
   ClipboardList,
   FileText,
   FlaskConical,
@@ -423,7 +424,13 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <ActionCard
+                href="/caso-rapido"
+                title="Caso rápido"
+                description="Montar plano inicial de plantão."
+                icon={Gauge}
+              />
               <ActionCard
                 href="/condutas"
                 title="Buscar conduta"
