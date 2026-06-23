@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ClipboardList,
   FileText,
+  Gauge,
   Lock,
   Search,
   ShieldAlert,
@@ -243,6 +244,12 @@ function PlantaoCommandCenter({
   const hasContext = Boolean(workingQuery);
   const moduleLinks = [
     {
+      href: buildModuleHref("/caso-rapido", workingQuery),
+      label: "Caso rápido",
+      description: "Montar abordagem inicial.",
+      icon: Gauge,
+    },
+    {
       href: buildModuleHref("/prescricao", workingQuery),
       label: "Prescrição",
       description: "Abrir modelos e histórico.",
@@ -332,7 +339,7 @@ function PlantaoCommandCenter({
             </div>
           ) : null}
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {moduleLinks.map((item) => {
               const Icon = item.icon;
 
