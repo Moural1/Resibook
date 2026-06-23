@@ -26,6 +26,12 @@ type CaseProfile = {
   examFocus: string[];
 };
 
+type CaseAlert = {
+  label: string;
+  detail: string;
+  tone: "critical" | "warning" | "info";
+};
+
 const DEFAULT_PROFILE: CaseProfile = {
   title: "Avaliação clínica inicial",
   differentials: [
@@ -174,6 +180,64 @@ function buildHref(path: string, query: string) {
   return clean ? `${path}?q=${encodeURIComponent(clean)}` : path;
 }
 
+function parseNumber(value: string) {
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseBloodPressure(value: string) {
+  const match = value.match(/(\d{2,3})\D+(\d{2,3})/);
+
+  if (!match) return null;
+
+  return {
+    systolic: Number(match[1]),
+    diastolic: Number(match[2]),
+  };
+}
+
+function getAcuitySummary(alerts: CaseAlert[], severity: string) {
+  const criticalCount = alerts.filter((item) => item.tone === "critical").length;
+  const warningCount = alerts.filter((item) => item.tone === "warning").length;
+
+  if (severity === "Emergência" || criticalCount > 0) {
+    return {
+      label: "Prioridade alta",
+      description: "Reavaliar ABCDE, monitorização, acesso e necessidade de sala crítica.",
+      tone: "critical" as const,
+    };
+  }
+
+  if (severity === "Urgência" || warningCount >= 2) {
+    return {
+      label: "Observação próxima",
+      description: "Manter reavaliação seriada, fechar hipóteses de risco e documentar resposta.",
+      tone: "warning" as const,
+    };
+  }
+
+  return {
+    label: "Fluxo direcionado",
+    description: "Sem alerta automático forte pelos campos preenchidos; seguir avaliação clínica.",
+    tone: "info" as const,
+  };
+}
+
+function getFirstHourTasks(profile: CaseProfile, alerts: CaseAlert[]) {
+  const tasks = [
+    "Rever sinais vitais e estabilidade antes da alta ou transferência",
+    profile.initialActions[0],
+    profile.examFocus[0],
+    "Registrar hipótese principal, diferenciais perigosos e plano de reavaliação",
+  ].filter(Boolean);
+
+  if (alerts.some((item) => item.tone === "critical")) {
+    tasks.unshift("Acionar ajuda/retaguarda e priorizar monitorização");
+  }
+
+  return Array.from(new Set(tasks)).slice(0, 5);
+}
+
 function buildCaseText(params: {
   complaint: string;
   age: string;
@@ -183,7 +247,9 @@ function buildCaseText(params: {
   redFlags: string;
   notes: string;
   profile: CaseProfile;
-  alerts: string[];
+  alerts: CaseAlert[];
+  acuity: ReturnType<typeof getAcuitySummary>;
+  firstHourTasks: string[];
 }) {
   const vitalsText = Object.entries(params.vitals)
     .filter(([, value]) => value.trim())
@@ -195,8 +261,9 @@ function buildCaseText(params: {
     `Queixa: ${params.complaint || "não definida"}`,
     `Paciente: ${params.age || "idade não informada"} | ${params.sex || "sexo não informado"}`,
     `Gravidade inicial: ${params.severity}`,
+    `Prioridade operacional: ${params.acuity.label} - ${params.acuity.description}`,
     vitalsText ? `Sinais vitais: ${vitalsText}` : "Sinais vitais: não preenchidos",
-    params.alerts.length ? `Alertas: ${params.alerts.join("; ")}` : "Alertas: sem alerta automático pelos campos preenchidos",
+    params.alerts.length ? `Alertas: ${params.alerts.map((item) => item.label).join("; ")}` : "Alertas: sem alerta automático pelos campos preenchidos",
     params.redFlags ? `Sinais de alarme descritos: ${params.redFlags}` : "",
     params.notes ? `Anotações: ${params.notes}` : "",
     "",
@@ -205,6 +272,9 @@ function buildCaseText(params: {
     "",
     "Ações iniciais:",
     ...params.profile.initialActions.map((item) => `- ${item}`),
+    "",
+    "Primeira hora / pendências:",
+    ...params.firstHourTasks.map((item) => `- ${item}`),
     "",
     "Exames/avaliação:",
     ...params.profile.examFocus.map((item) => `- ${item}`),
@@ -247,22 +317,56 @@ export default function CasoRapidoPage() {
   const profile = getProfile(activeComplaint?.title || "");
 
   const alerts = useMemo(() => {
-    const next: string[] = [];
-    const spo2 = Number(vitals.spo2.replace(",", "."));
-    const fc = Number(vitals.fc.replace(",", "."));
-    const fr = Number(vitals.fr.replace(",", "."));
-    const temp = Number(vitals.temp.replace(",", "."));
-    const glicemia = Number(vitals.glicemia.replace(",", "."));
+    const next: CaseAlert[] = [];
+    const spo2 = parseNumber(vitals.spo2);
+    const fc = parseNumber(vitals.fc);
+    const fr = parseNumber(vitals.fr);
+    const temp = parseNumber(vitals.temp);
+    const glicemia = parseNumber(vitals.glicemia);
+    const pa = parseBloodPressure(vitals.pa);
 
-    if (spo2 && spo2 < 92) next.push("SpO2 baixa");
-    if (fc && (fc < 50 || fc > 120)) next.push("Frequência cardíaca fora da faixa esperada");
-    if (fr && (fr < 8 || fr > 30)) next.push("Frequência respiratória preocupante");
-    if (temp && temp >= 38.5) next.push("Febre alta");
-    if (glicemia && glicemia < 70) next.push("Hipoglicemia possível");
-    if (redFlags.trim()) next.push("Sinais de alarme descritos manualmente");
+    if (spo2 && spo2 < 90) {
+      next.push({ label: "SpO2 crítica", detail: "Saturação abaixo de 90%", tone: "critical" });
+    } else if (spo2 && spo2 < 92) {
+      next.push({ label: "SpO2 baixa", detail: "Saturação abaixo de 92%", tone: "warning" });
+    }
+
+    if (fc && (fc < 45 || fc > 130)) {
+      next.push({ label: "FC crítica", detail: "Frequência cardíaca muito fora da faixa esperada", tone: "critical" });
+    } else if (fc && (fc < 50 || fc > 120)) {
+      next.push({ label: "FC alterada", detail: "Frequência cardíaca fora da faixa esperada", tone: "warning" });
+    }
+
+    if (fr && (fr < 8 || fr > 30)) {
+      next.push({ label: "FR preocupante", detail: "Frequência respiratória muito alterada", tone: "critical" });
+    }
+
+    if (temp && temp >= 38.5) {
+      next.push({ label: "Febre alta", detail: "Temperatura elevada no preenchimento", tone: "warning" });
+    }
+
+    if (glicemia && glicemia < 70) {
+      next.push({ label: "Hipoglicemia possível", detail: "Glicemia abaixo de 70 mg/dL", tone: "critical" });
+    }
+
+    if (pa && (pa.systolic >= 180 || pa.diastolic >= 120)) {
+      next.push({ label: "PA muito elevada", detail: "Pesquisar lesão de órgão-alvo e repetir medida", tone: "warning" });
+    }
+
+    if (redFlags.trim()) {
+      next.push({ label: "Sinais de alarme descritos", detail: redFlags.trim(), tone: "warning" });
+    }
 
     return next;
   }, [vitals, redFlags]);
+
+  const acuity = useMemo(() => {
+    return getAcuitySummary(alerts, severity);
+  }, [alerts, severity]);
+
+  const firstHourTasks = useMemo(() => {
+    return getFirstHourTasks(profile, alerts);
+  }, [profile, alerts]);
 
   const caseText = buildCaseText({
     complaint: workingComplaint,
@@ -274,6 +378,8 @@ export default function CasoRapidoPage() {
     notes,
     profile,
     alerts,
+    acuity,
+    firstHourTasks,
   });
 
   function updateVital(key: keyof typeof vitals, value: string) {
@@ -304,7 +410,7 @@ export default function CasoRapidoPage() {
             <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
               <Stat label="Queixa" value={workingComplaint ? "Ativa" : "Livre"} />
               <Stat label="Alertas" value={alerts.length} />
-              <Stat label="Plano" value="Pronto" />
+              <Stat label="Prioridade" value={acuity.label} />
             </div>
           </div>
         </div>
@@ -426,6 +532,44 @@ export default function CasoRapidoPage() {
                 <CopyButton text={caseText} label="Copiar caso" copiedLabel="Copiado" />
               </div>
 
+              <div className={`mt-4 rounded-2xl border p-4 ${
+                acuity.tone === "critical"
+                  ? "border-rose-200 bg-rose-50"
+                  : acuity.tone === "warning"
+                    ? "border-amber-200 bg-amber-50"
+                    : "border-slate-200 bg-slate-50"
+              }`}>
+                <div className="flex gap-3">
+                  <ShieldAlert className={`mt-0.5 h-5 w-5 shrink-0 ${
+                    acuity.tone === "critical"
+                      ? "text-rose-700"
+                      : acuity.tone === "warning"
+                        ? "text-amber-700"
+                        : "text-slate-500"
+                  }`} />
+                  <div>
+                    <p className={`text-sm font-semibold ${
+                      acuity.tone === "critical"
+                        ? "text-rose-950"
+                        : acuity.tone === "warning"
+                          ? "text-amber-950"
+                          : "text-slate-950"
+                    }`}>
+                      {acuity.label}
+                    </p>
+                    <p className={`mt-1 text-sm leading-6 ${
+                      acuity.tone === "critical"
+                        ? "text-rose-800"
+                        : acuity.tone === "warning"
+                          ? "text-amber-800"
+                          : "text-slate-600"
+                    }`}>
+                      {acuity.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {alerts.length > 0 ? (
                 <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
                   <div className="flex gap-3">
@@ -436,8 +580,12 @@ export default function CasoRapidoPage() {
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {alerts.map((item) => (
-                          <span key={item} className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
-                            {item}
+                          <span key={item.label} className={`rounded-full border bg-white px-3 py-1 text-xs font-semibold ${
+                            item.tone === "critical"
+                              ? "border-rose-200 text-rose-700"
+                              : "border-amber-200 text-amber-700"
+                          }`}>
+                            {item.label}
                           </span>
                         ))}
                       </div>
@@ -456,6 +604,18 @@ export default function CasoRapidoPage() {
                 <p className="text-sm font-semibold text-slate-950">Ações iniciais</p>
                 <ul className="mt-3 space-y-2">
                   {profile.initialActions.map((item) => (
+                    <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
+                      <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-semibold text-slate-950">Primeira hora</p>
+                <ul className="mt-3 space-y-2">
+                  {firstHourTasks.map((item) => (
                     <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
                       <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
                       <span>{item}</span>
