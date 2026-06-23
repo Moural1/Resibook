@@ -8,6 +8,7 @@ import type { SupabaseClient, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import {
+  Activity,
   BarChart3,
   Brain,
   ClipboardList,
@@ -278,7 +279,7 @@ function SidebarContent({
   isAdmin?: boolean;
 }) {
   const fullPrimaryItems = [
-    { href: "/plantao", label: "Plantão", icon: Gauge, badge: null },
+    { href: "/plantao", label: "Plantão", icon: Activity, badge: null },
     { href: "/dashboard", label: "Visão geral", icon: Home, badge: null },
     { href: "/caso-rapido", label: "Caso rápido", icon: Gauge, badge: null },
     {
@@ -324,7 +325,7 @@ function SidebarContent({
     {
       href: "/plantao",
       label: "Plantão",
-      icon: Gauge,
+      icon: Activity,
       badge: null,
     },
     {
