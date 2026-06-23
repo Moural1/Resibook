@@ -20,6 +20,12 @@ const SHIFT_ACTIONS = [
     icon: Gauge,
   },
   {
+    title: "Passagem SBAR",
+    description: "Monte uma passagem objetiva para troca de plantão.",
+    href: "/plantao/sbar",
+    icon: FileText,
+  },
+  {
     title: "Buscar conduta",
     description: "Abra protocolos e condutas por síndrome.",
     href: "/condutas",
