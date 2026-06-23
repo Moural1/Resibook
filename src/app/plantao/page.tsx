@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileText,
   Gauge,
+  ListChecks,
   LogOut,
   Search,
   ShieldAlert,
@@ -25,6 +26,12 @@ const SHIFT_ACTIONS = [
     description: "Monte uma passagem objetiva para troca de plantão.",
     href: "/plantao/sbar",
     icon: FileText,
+  },
+  {
+    title: "Pendências",
+    description: "Organize exames, reavaliações e decisões antes da troca.",
+    href: "/plantao/pendencias",
+    icon: ListChecks,
   },
   {
     title: "Buscar conduta",
@@ -114,6 +121,13 @@ export default function PlantaoPage() {
               >
                 <FileText className="h-4 w-4" />
                 Passagem
+              </Link>
+              <Link
+                href="/plantao/pendencias"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <ListChecks className="h-4 w-4" />
+                Pendências
               </Link>
               <Link
                 href="/plantao/prescricao-guiada"
