@@ -283,6 +283,41 @@ function buildCaseText(params: {
     .join("\n");
 }
 
+function buildHandoffText(params: {
+  complaint: string;
+  age: string;
+  sex: string;
+  severity: string;
+  vitals: Record<string, string>;
+  redFlags: string;
+  notes: string;
+  profile: CaseProfile;
+  alerts: CaseAlert[];
+  acuity: ReturnType<typeof getAcuitySummary>;
+  firstHourTasks: string[];
+}) {
+  const vitalsText = Object.entries(params.vitals)
+    .filter(([, value]) => value.trim())
+    .map(([key, value]) => `${key.toUpperCase()} ${value}`)
+    .join(", ");
+
+  return [
+    "PASSAGEM DE CASO - RESIBOOK",
+    `Identificação: ${params.age || "idade não informada"}, ${params.sex || "sexo não informado"}.`,
+    `Situação: ${params.complaint || "queixa não definida"} | ${params.severity}.`,
+    `Prioridade: ${params.acuity.label}. ${params.acuity.description}`,
+    vitalsText ? `Sinais vitais: ${vitalsText}.` : "Sinais vitais: não preenchidos.",
+    params.alerts.length ? `Alertas: ${params.alerts.map((item) => item.label).join("; ")}.` : "Alertas: sem alerta automático pelos campos preenchidos.",
+    params.redFlags ? `Sinais de alarme descritos: ${params.redFlags}` : "",
+    params.notes ? `Contexto/anotações: ${params.notes}` : "",
+    `Hipóteses para lembrar: ${params.profile.differentials.slice(0, 3).join("; ")}.`,
+    "Pendências da primeira hora:",
+    ...params.firstHourTasks.map((item) => `- ${item}`),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export default function CasoRapidoPage() {
   const searchParams = useSearchParams();
 
@@ -369,6 +404,20 @@ export default function CasoRapidoPage() {
   }, [profile, alerts]);
 
   const caseText = buildCaseText({
+    complaint: workingComplaint,
+    age,
+    sex,
+    severity,
+    vitals,
+    redFlags,
+    notes,
+    profile,
+    alerts,
+    acuity,
+    firstHourTasks,
+  });
+
+  const handoffText = buildHandoffText({
     complaint: workingComplaint,
     age,
     sex,
@@ -529,7 +578,10 @@ export default function CasoRapidoPage() {
                   </p>
                 </div>
 
-                <CopyButton text={caseText} label="Copiar caso" copiedLabel="Copiado" />
+                <div className="flex flex-wrap gap-2">
+                  <CopyButton text={handoffText} label="Copiar passagem" copiedLabel="Copiada" />
+                  <CopyButton text={caseText} label="Copiar caso" copiedLabel="Copiado" />
+                </div>
               </div>
 
               <div className={`mt-4 rounded-2xl border p-4 ${
