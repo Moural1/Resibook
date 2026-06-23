@@ -827,13 +827,24 @@ function QuickComplaintCard({
   href: string;
   group: string;
 }) {
+  const query = encodeURIComponent(title);
+  const actions = [
+    { label: "Caso", href: `/caso-rapido?q=${query}` },
+    { label: "Conduta", href },
+    { label: "Rx", href: `/prescricao?q=${query}` },
+    { label: "Exames", href: `/exames-evolucao?q=${query}` },
+    { label: "CID", href: `/cids?q=${query}` },
+  ];
+
   return (
-    <Link
-      href={href}
-      className="group rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 transition hover:border-slate-300 hover:bg-white"
-    >
+    <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 transition hover:border-slate-300 hover:bg-white">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-950">{title}</p>
+        <Link
+          href={href}
+          className="min-w-0 text-sm font-semibold text-slate-950 transition hover:text-cyan-700"
+        >
+          {title}
+        </Link>
         <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
           {group}
         </span>
@@ -841,7 +852,19 @@ function QuickComplaintCard({
       <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500">
         {description}
       </p>
-    </Link>
+
+      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+        {actions.map((action) => (
+          <Link
+            key={action.label}
+            href={action.href}
+            className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-950 hover:text-white"
+          >
+            {action.label}
+          </Link>
+        ))}
+      </div>
+    </article>
   );
 }
 
