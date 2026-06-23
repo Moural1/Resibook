@@ -238,6 +238,25 @@ function getFirstHourTasks(profile: CaseProfile, alerts: CaseAlert[]) {
   return Array.from(new Set(tasks)).slice(0, 5);
 }
 
+function getSafetyChecks(alerts: CaseAlert[], severity: string) {
+  const checks = [
+    "Confirmar alergias, medicações em uso e comorbidades relevantes",
+    "Checar gestação quando aplicável antes de exame, medicação ou conduta",
+    "Considerar função renal/hepática antes de prescrever ou contrastar",
+    "Registrar sinais de alarme negativos e orientar retorno se alta",
+  ];
+
+  if (severity === "Emergência" || alerts.some((item) => item.tone === "critical")) {
+    checks.unshift("Reavaliar ABCDE, monitorização e necessidade de sala crítica");
+  }
+
+  if (alerts.length > 0) {
+    checks.push("Repetir sinais vitais e documentar resposta às primeiras medidas");
+  }
+
+  return Array.from(new Set(checks)).slice(0, 6);
+}
+
 function buildCaseText(params: {
   complaint: string;
   age: string;
@@ -250,6 +269,7 @@ function buildCaseText(params: {
   alerts: CaseAlert[];
   acuity: ReturnType<typeof getAcuitySummary>;
   firstHourTasks: string[];
+  safetyChecks: string[];
 }) {
   const vitalsText = Object.entries(params.vitals)
     .filter(([, value]) => value.trim())
@@ -276,6 +296,9 @@ function buildCaseText(params: {
     "Primeira hora / pendências:",
     ...params.firstHourTasks.map((item) => `- ${item}`),
     "",
+    "Checklist de segurança:",
+    ...params.safetyChecks.map((item) => `- ${item}`),
+    "",
     "Exames/avaliação:",
     ...params.profile.examFocus.map((item) => `- ${item}`),
   ]
@@ -295,6 +318,7 @@ function buildHandoffText(params: {
   alerts: CaseAlert[];
   acuity: ReturnType<typeof getAcuitySummary>;
   firstHourTasks: string[];
+  safetyChecks: string[];
 }) {
   const vitalsText = Object.entries(params.vitals)
     .filter(([, value]) => value.trim())
@@ -313,6 +337,8 @@ function buildHandoffText(params: {
     `Hipóteses para lembrar: ${params.profile.differentials.slice(0, 3).join("; ")}.`,
     "Pendências da primeira hora:",
     ...params.firstHourTasks.map((item) => `- ${item}`),
+    "Checklist de segurança:",
+    ...params.safetyChecks.map((item) => `- ${item}`),
   ]
     .filter(Boolean)
     .join("\n");
@@ -403,6 +429,10 @@ export default function CasoRapidoPage() {
     return getFirstHourTasks(profile, alerts);
   }, [profile, alerts]);
 
+  const safetyChecks = useMemo(() => {
+    return getSafetyChecks(alerts, severity);
+  }, [alerts, severity]);
+
   const caseText = buildCaseText({
     complaint: workingComplaint,
     age,
@@ -415,6 +445,7 @@ export default function CasoRapidoPage() {
     alerts,
     acuity,
     firstHourTasks,
+    safetyChecks,
   });
 
   const handoffText = buildHandoffText({
@@ -429,6 +460,7 @@ export default function CasoRapidoPage() {
     alerts,
     acuity,
     firstHourTasks,
+    safetyChecks,
   });
 
   function updateVital(key: keyof typeof vitals, value: string) {
@@ -668,6 +700,18 @@ export default function CasoRapidoPage() {
                 <p className="text-sm font-semibold text-slate-950">Primeira hora</p>
                 <ul className="mt-3 space-y-2">
                   {firstHourTasks.map((item) => (
+                    <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
+                      <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-950">Checklist de segurança</p>
+                <ul className="mt-3 space-y-2">
+                  {safetyChecks.map((item) => (
                     <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
                       <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
                       <span>{item}</span>
