@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import CopyButton from "../../../components/copy-button";
 import {
   ArrowLeft,
@@ -189,8 +190,23 @@ function buildPrescriptionText(guide: PrescriptionGuide, notes: string) {
 }
 
 export default function GuidedPrescriptionPage() {
+  const searchParams = useSearchParams();
   const [selectedTitle, setSelectedTitle] = useState(DEFAULT_GUIDE.title);
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    const query = searchParams.get("q")?.trim().toLowerCase();
+    if (!query) return;
+
+    const matched = GUIDES.find((item) => {
+      const title = item.title.toLowerCase();
+      return title === query || title.includes(query) || query.includes(title);
+    });
+
+    if (matched) {
+      setSelectedTitle(matched.title);
+    }
+  }, [searchParams]);
 
   const guide =
     GUIDES.find((item) => item.title === selectedTitle) || DEFAULT_GUIDE;

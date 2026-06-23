@@ -93,13 +93,29 @@ export default function PlantaoPage() {
               </p>
             </div>
 
-            <Link
-              href="/caso-rapido"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              <Gauge className="h-4 w-4" />
-              Novo caso rápido
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/caso-rapido"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <Gauge className="h-4 w-4" />
+                Novo caso rápido
+              </Link>
+              <Link
+                href="/plantao/sbar"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <FileText className="h-4 w-4" />
+                Passagem
+              </Link>
+              <Link
+                href="/plantao/prescricao-guiada"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Plano
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -116,7 +132,7 @@ export default function PlantaoPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {SHIFT_ACTIONS.map((item) => (
                 <ActionCard key={item.title} {...item} />
               ))}
@@ -222,6 +238,7 @@ function ComplaintHub({
   const actions = [
     { label: "Caso", href: queryHref("/caso-rapido", title) },
     { label: "Conduta", href },
+    { label: "Plano", href: queryHref("/plantao/prescricao-guiada", title) },
     { label: "Rx", href: queryHref("/prescricao", title) },
     { label: "Exames", href: queryHref("/exames-evolucao", title) },
     { label: "CID", href: queryHref("/cids", title) },
@@ -239,7 +256,7 @@ function ComplaintHub({
       </div>
       <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500">{description}</p>
 
-      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
         {actions.map((action) => (
           <Link
             key={action.label}
