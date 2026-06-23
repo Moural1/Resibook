@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileText,
   Gauge,
+  LogOut,
   Search,
   ShieldAlert,
   Stethoscope,
@@ -42,6 +43,12 @@ const SHIFT_ACTIONS = [
     description: "Organize sintomas, segurança e reavaliação por síndrome.",
     href: "/plantao/prescricao-guiada",
     icon: ClipboardList,
+  },
+  {
+    title: "Alta segura",
+    description: "Gere orientações e sinais de retorno para o paciente.",
+    href: "/plantao/alta-segura",
+    icon: LogOut,
   },
   {
     title: "Exames / evolução",
@@ -114,6 +121,13 @@ export default function PlantaoPage() {
               >
                 <ClipboardList className="h-4 w-4" />
                 Plano
+              </Link>
+              <Link
+                href="/plantao/alta-segura"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <LogOut className="h-4 w-4" />
+                Alta
               </Link>
             </div>
           </div>
@@ -241,6 +255,7 @@ function ComplaintHub({
     { label: "Plano", href: queryHref("/plantao/prescricao-guiada", title) },
     { label: "Rx", href: queryHref("/prescricao", title) },
     { label: "Exames", href: queryHref("/exames-evolucao", title) },
+    { label: "Alta", href: queryHref("/plantao/alta-segura", title) },
     { label: "CID", href: queryHref("/cids", title) },
   ];
 
@@ -256,7 +271,7 @@ function ComplaintHub({
       </div>
       <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500">{description}</p>
 
-      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-7">
         {actions.map((action) => (
           <Link
             key={action.label}
