@@ -93,7 +93,7 @@ async function hasAcceptedCurrentLegal(
     .maybeSingle();
 
   if (error) {
-    console.warn("NÃ£o foi possÃ­vel validar aceite legal:", error.message);
+    console.warn("Não foi possível validar aceite legal:", error.message);
     return false;
   }
 
@@ -124,7 +124,7 @@ async function getTableCount(
 
     if (error) {
       console.warn(
-        `NÃ£o foi possÃ­vel contar a tabela "${tableName}":`,
+        `Não foi possível contar a tabela "${tableName}":`,
         error.message
       );
       return null;
@@ -165,7 +165,7 @@ async function getFlashcardDificeisCount(
 
     if (error) {
       console.warn(
-        "NÃ£o foi possÃ­vel contar flashcards difÃ­ceis:",
+        "Não foi possível contar flashcards difíceis:",
         error.message
       );
       return null;
@@ -173,7 +173,7 @@ async function getFlashcardDificeisCount(
 
     return count ?? 0;
   } catch (error) {
-    console.warn("Erro inesperado ao contar flashcards difÃ­ceis:", error);
+    console.warn("Erro inesperado ao contar flashcards difíceis:", error);
     return null;
   }
 }
@@ -278,9 +278,9 @@ function SidebarContent({
   isAdmin?: boolean;
 }) {
   const fullPrimaryItems = [
-    { href: "/plantao", label: "PlantÃ£o", icon: Gauge, badge: null },
-    { href: "/dashboard", label: "VisÃ£o geral", icon: Home, badge: null },
-    { href: "/caso-rapido", label: "Caso rÃ¡pido", icon: Gauge, badge: null },
+    { href: "/plantao", label: "Plantão", icon: Gauge, badge: null },
+    { href: "/dashboard", label: "Visão geral", icon: Home, badge: null },
+    { href: "/caso-rapido", label: "Caso rápido", icon: Gauge, badge: null },
     {
       href: "/pacientes",
       label: "Pacientes",
@@ -289,19 +289,19 @@ function SidebarContent({
     },
     {
       href: "/prescricao",
-      label: "PrescriÃ§Ã£o",
+      label: "Prescrição",
       icon: ClipboardList,
       badge: counts.prescricoes,
     },
     {
       href: "/exames-evolucao",
-      label: "Exames / EvoluÃ§Ã£o",
+      label: "Exames / Evolução",
       icon: FlaskConical,
       badge: counts.exames,
     },
     {
       href: "/topicos",
-      label: "TÃ³picos",
+      label: "Tópicos",
       icon: Stethoscope,
       badge: counts.topicos,
     },
@@ -323,29 +323,29 @@ function SidebarContent({
   const guestPrimaryItems = [
     {
       href: "/plantao",
-      label: "PlantÃ£o",
+      label: "Plantão",
       icon: Gauge,
       badge: null,
     },
     {
       href: "/caso-rapido",
-      label: "Caso rÃ¡pido",
+      label: "Caso rápido",
       icon: Gauge,
       badge: null,
     },
     {
       href: "/prescricao",
-      label: "PrescriÃ§Ã£o",
+      label: "Prescrição",
       icon: ClipboardList,
       badge: null,
     },
     {
       href: "/exames-evolucao",
-      label: "Exames / EvoluÃ§Ã£o",
+      label: "Exames / Evolução",
       icon: FlaskConical,
       badge: null,
     },
-    { href: "/topicos", label: "TÃ³picos", icon: Stethoscope, badge: null },
+    { href: "/topicos", label: "Tópicos", icon: Stethoscope, badge: null },
     { href: "/cids", label: "CIDs", icon: Tags, badge: null },
     { href: "/suporte", label: "Suporte", icon: LifeBuoy, badge: null },
   ];
@@ -357,13 +357,13 @@ function SidebarContent({
       icon: Settings,
       badge: null,
     },
-    { href: "/metricas", label: "MÃ©tricas", icon: BarChart3, badge: null },
+    { href: "/metricas", label: "Métricas", icon: BarChart3, badge: null },
     { href: "/suporte", label: "Suporte", icon: LifeBuoy, badge: null },
     ...(isAdmin
       ? [
           {
             href: "/modelos-prescricao",
-            label: "Modelos prescriÃ§Ã£o",
+            label: "Modelos prescrição",
             icon: ClipboardList,
             badge: null,
           },
@@ -400,7 +400,7 @@ function SidebarContent({
               ResiBook
             </p>
             <h1 className="mt-0.5 truncate text-[17px] font-semibold tracking-tight text-white">
-              Sistema clÃ­nico
+              Sistema clínico
             </h1>
           </div>
         </div>
@@ -421,15 +421,15 @@ function SidebarContent({
           </p>
 
           <p className="mt-1 text-[13px] font-semibold text-white">
-            {isGuest ? "Acesso convidado" : "OperaÃ§Ã£o clÃ­nica"}
+            {isGuest ? "Acesso convidado" : "Operação clínica"}
           </p>
         </div>
 
         {isMobile ? (
           <p className="mt-3 text-xs leading-5 text-slate-400">
             {isGuest
-              ? "Acesso restrito aos mÃ³dulos liberados."
-              : "NavegaÃ§Ã£o compacta para rotina clÃ­nica."}
+              ? "Acesso restrito aos módulos liberados."
+              : "Navegação compacta para rotina clínica."}
           </p>
         ) : null}
       </div>
@@ -460,7 +460,7 @@ function SidebarContent({
                   Perfil convidado
                 </p>
                 <p className="mt-1 text-sm leading-6 text-amber-100/80">
-                  As demais Ã¡reas do sistema estÃ£o bloqueadas para este usuÃ¡rio.
+                  As demais áreas do sistema estão bloqueadas para este usuário.
                 </p>
 
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -497,12 +497,12 @@ function SidebarContent({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {isGuest ? "SessÃ£o" : "Conta"}
+                {isGuest ? "Sessão" : "Conta"}
               </p>
               <p className="mt-1 text-[13px] text-slate-300">
                 {isGuest
-                  ? "UsuÃ¡rio convidado ativo."
-                  : "SaÃ­da segura do ambiente clÃ­nico."}
+                  ? "Usuário convidado ativo."
+                  : "Saída segura do ambiente clínico."}
               </p>
             </div>
           </div>
@@ -644,7 +644,7 @@ export default function AppShell({ children }: Props) {
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.warn("Erro ao obter sessÃ£o:", error.message);
+          console.warn("Erro ao obter sessão:", error.message);
           resetSessionState();
           redirectTo("/login");
           return;
@@ -652,7 +652,7 @@ export default function AppShell({ children }: Props) {
 
         await applyAccessRules(data.session);
       } catch (error) {
-        console.warn("Erro inesperado ao obter sessÃ£o:", error);
+        console.warn("Erro inesperado ao obter sessão:", error);
         resetSessionState();
         redirectTo("/login");
       } finally {
@@ -784,7 +784,7 @@ export default function AppShell({ children }: Props) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-medium text-slate-600 shadow-sm">
-          {redirectingToLogin ? "Encerrando sessÃ£o..." : "Carregando acesso."}
+          {redirectingToLogin ? "Encerrando sessão..." : "Carregando acesso."}
         </div>
       </div>
     );
@@ -803,8 +803,8 @@ export default function AppShell({ children }: Props) {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Este usuÃ¡rio convidado tem acesso apenas a PrescriÃ§Ã£o, Exames /
-            EvoluÃ§Ã£o, TÃ³picos, CIDs, Termos de Uso, PolÃ­tica de Privacidade e
+            Este usuário convidado tem acesso apenas a Prescrição, Exames /
+            Evolução, Tópicos, CIDs, Termos de Uso, Política de Privacidade e
             Suporte.
           </p>
 
@@ -813,7 +813,7 @@ export default function AppShell({ children }: Props) {
             onClick={() => router.replace("/prescricao")}
             className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
           >
-            Ir para prescriÃ§Ã£o
+            Ir para prescrição
           </button>
         </div>
       </div>
