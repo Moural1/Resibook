@@ -10,6 +10,7 @@ import {
   LogOut,
   Search,
   ShieldAlert,
+  ShieldCheck,
   Stethoscope,
   Tags,
 } from "lucide-react";
@@ -32,6 +33,12 @@ const SHIFT_ACTIONS = [
     description: "Organize exames, reavaliações e decisões antes da troca.",
     href: "/plantao/pendencias",
     icon: ListChecks,
+  },
+  {
+    title: "Checklist de risco",
+    description: "Revise red flags, bloqueios de alta e documentação.",
+    href: "/plantao/checklist-risco",
+    icon: ShieldCheck,
   },
   {
     title: "Buscar conduta",
@@ -128,6 +135,13 @@ export default function PlantaoPage() {
               >
                 <ListChecks className="h-4 w-4" />
                 Pendências
+              </Link>
+              <Link
+                href="/plantao/checklist-risco"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Risco
               </Link>
               <Link
                 href="/plantao/prescricao-guiada"
