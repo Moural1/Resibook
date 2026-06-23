@@ -38,6 +38,12 @@ const SHIFT_ACTIONS = [
     icon: ClipboardList,
   },
   {
+    title: "Prescrição guiada",
+    description: "Organize sintomas, segurança e reavaliação por síndrome.",
+    href: "/plantao/prescricao-guiada",
+    icon: ClipboardList,
+  },
+  {
     title: "Exames / evolução",
     description: "Monte blocos de evolução, exame e plano.",
     href: "/exames-evolucao",
