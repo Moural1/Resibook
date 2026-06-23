@@ -257,6 +257,45 @@ function getSafetyChecks(alerts: CaseAlert[], severity: string) {
   return Array.from(new Set(checks)).slice(0, 6);
 }
 
+function getReassessmentPlan(alerts: CaseAlert[], severity: string) {
+  const hasCriticalAlert = alerts.some((item) => item.tone === "critical");
+  const hasWarningAlert = alerts.some((item) => item.tone === "warning");
+
+  if (severity === "Emergência" || hasCriticalAlert) {
+    return {
+      label: "Reavaliação imediata",
+      detail: "Não deixar sem rechecagem até estabilizar sinais vitais e prioridade.",
+      items: [
+        "Reavaliar ABCDE e sinais vitais após cada intervenção inicial",
+        "Manter monitorização e acesso/retaguarda conforme gravidade",
+        "Registrar resposta clínica e definir necessidade de transferência/sala crítica",
+      ],
+    };
+  }
+
+  if (severity === "Urgência" || hasWarningAlert) {
+    return {
+      label: "Reavaliação seriada",
+      detail: "Programar rechecagem curta e documentar evolução antes de decidir destino.",
+      items: [
+        "Repetir sinais vitais após medidas iniciais ou mudança clínica",
+        "Rever dor, dispneia, nível de consciência e sinais de alarme",
+        "Definir critério objetivo para observação, alta, internação ou transferência",
+      ],
+    };
+  }
+
+  return {
+    label: "Reavaliar antes da alta",
+    detail: "Confirmar estabilidade, entendimento das orientações e sinais de retorno.",
+    items: [
+      "Rever sinais vitais e exame direcionado antes da alta",
+      "Checar se dor/sintoma principal melhorou ou tem plano de seguimento",
+      "Orientar retorno imediato se surgirem sinais de alarme",
+    ],
+  };
+}
+
 function buildCaseText(params: {
   complaint: string;
   age: string;
@@ -270,6 +309,7 @@ function buildCaseText(params: {
   acuity: ReturnType<typeof getAcuitySummary>;
   firstHourTasks: string[];
   safetyChecks: string[];
+  reassessment: ReturnType<typeof getReassessmentPlan>;
 }) {
   const vitalsText = Object.entries(params.vitals)
     .filter(([, value]) => value.trim())
@@ -296,6 +336,9 @@ function buildCaseText(params: {
     "Primeira hora / pendências:",
     ...params.firstHourTasks.map((item) => `- ${item}`),
     "",
+    `Reavaliação: ${params.reassessment.label} - ${params.reassessment.detail}`,
+    ...params.reassessment.items.map((item) => `- ${item}`),
+    "",
     "Checklist de segurança:",
     ...params.safetyChecks.map((item) => `- ${item}`),
     "",
@@ -319,6 +362,7 @@ function buildHandoffText(params: {
   acuity: ReturnType<typeof getAcuitySummary>;
   firstHourTasks: string[];
   safetyChecks: string[];
+  reassessment: ReturnType<typeof getReassessmentPlan>;
 }) {
   const vitalsText = Object.entries(params.vitals)
     .filter(([, value]) => value.trim())
@@ -337,6 +381,8 @@ function buildHandoffText(params: {
     `Hipóteses para lembrar: ${params.profile.differentials.slice(0, 3).join("; ")}.`,
     "Pendências da primeira hora:",
     ...params.firstHourTasks.map((item) => `- ${item}`),
+    `Reavaliação: ${params.reassessment.label} - ${params.reassessment.detail}`,
+    ...params.reassessment.items.map((item) => `- ${item}`),
     "Checklist de segurança:",
     ...params.safetyChecks.map((item) => `- ${item}`),
   ]
@@ -433,6 +479,10 @@ export default function CasoRapidoPage() {
     return getSafetyChecks(alerts, severity);
   }, [alerts, severity]);
 
+  const reassessment = useMemo(() => {
+    return getReassessmentPlan(alerts, severity);
+  }, [alerts, severity]);
+
   const caseText = buildCaseText({
     complaint: workingComplaint,
     age,
@@ -446,6 +496,7 @@ export default function CasoRapidoPage() {
     acuity,
     firstHourTasks,
     safetyChecks,
+    reassessment,
   });
 
   const handoffText = buildHandoffText({
@@ -461,6 +512,7 @@ export default function CasoRapidoPage() {
     acuity,
     firstHourTasks,
     safetyChecks,
+    reassessment,
   });
 
   function updateVital(key: keyof typeof vitals, value: string) {
@@ -677,6 +729,28 @@ export default function CasoRapidoPage() {
                   </div>
                 </div>
               ) : null}
+
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex gap-3">
+                  <ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">
+                      {reassessment.label}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      {reassessment.detail}
+                    </p>
+                    <ul className="mt-3 space-y-2">
+                      {reassessment.items.map((item) => (
+                        <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
+                          <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
 
               <div className="mt-4 grid gap-3 lg:grid-cols-3">
                 <PlanBlock title="Hipóteses" items={profile.differentials} icon={Stethoscope} />
