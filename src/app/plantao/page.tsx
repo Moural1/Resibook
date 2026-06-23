@@ -13,9 +13,16 @@ import {
   ShieldCheck,
   Stethoscope,
   Tags,
+  Workflow,
 } from "lucide-react";
 
 const SHIFT_ACTIONS = [
+  {
+    title: "Roteiro de caso",
+    description: "Digite uma queixa e abra o fluxo completo já contextualizado.",
+    href: "/plantao/roteiro-caso",
+    icon: Workflow,
+  },
   {
     title: "Começar caso",
     description: "Estruture queixa, sinais vitais, prioridade e passagem.",
@@ -115,6 +122,13 @@ export default function PlantaoPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              <Link
+                href="/plantao/roteiro-caso"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                <Workflow className="h-4 w-4" />
+                Roteiro
+              </Link>
               <Link
                 href="/caso-rapido"
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50"
@@ -278,6 +292,7 @@ function ComplaintHub({
   group: string;
 }) {
   const actions = [
+    { label: "Roteiro", href: queryHref("/plantao/roteiro-caso", title) },
     { label: "Caso", href: queryHref("/caso-rapido", title) },
     { label: "Conduta", href },
     { label: "Plano", href: queryHref("/plantao/prescricao-guiada", title) },
