@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -37,6 +37,7 @@ function isActive(pathname: string, href: string) {
 export default function ShiftToolNavigator() {
   const pathname = usePathname();
   const [mountNode, setMountNode] = useState<HTMLDivElement | null>(null);
+  const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
   const isShiftTool =
     pathname === "/caso-rapido" ||
     (pathname.startsWith("/plantao/") && pathname !== "/plantao");
@@ -58,6 +59,16 @@ export default function ShiftToolNavigator() {
     };
   }, [isShiftTool, pathname]);
 
+  useEffect(() => {
+    if (!mountNode) return;
+
+    activeLinkRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [mountNode, pathname]);
+
   if (!mountNode || !isShiftTool) return null;
 
   return createPortal(
@@ -74,14 +85,20 @@ export default function ShiftToolNavigator() {
             <Link
               key={tool.href}
               href={tool.href}
+              ref={active ? activeLinkRef : undefined}
               aria-current={active ? "page" : undefined}
+              style={
+                active
+                  ? { backgroundColor: "#020617", color: "#ffffff" }
+                  : undefined
+              }
               className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-semibold transition ${
                 active
-                  ? "bg-slate-950 text-white"
+                  ? "bg-slate-950 !text-white"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
               }`}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="h-3.5 w-3.5 text-current" />
               {tool.label}
             </Link>
           );
