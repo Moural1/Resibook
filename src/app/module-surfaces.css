@@ -1,7 +1,8 @@
 body[data-resibook-surface="library"] main,
 body[data-resibook-surface="workflow"] main,
 body[data-resibook-surface="operations"] main,
-body[data-resibook-surface="shift"] main {
+body[data-resibook-surface="shift"] main,
+body[data-resibook-surface="public"] main {
   --module-control-radius: 12px;
   --module-panel-radius: 18px;
 }
@@ -9,7 +10,8 @@ body[data-resibook-surface="shift"] main {
 body[data-resibook-surface="library"] main :is(input, select, textarea),
 body[data-resibook-surface="workflow"] main :is(input, select, textarea),
 body[data-resibook-surface="operations"] main :is(input, select, textarea),
-body[data-resibook-surface="shift"] main :is(input, select, textarea) {
+body[data-resibook-surface="shift"] main :is(input, select, textarea),
+body[data-resibook-surface="public"] :is(input, select, textarea) {
   border-radius: var(--module-control-radius) !important;
   border-color: rgba(203, 213, 225, 0.92);
   box-shadow: none;
@@ -18,7 +20,8 @@ body[data-resibook-surface="shift"] main :is(input, select, textarea) {
 body[data-resibook-surface="library"] main :is(input, select, textarea):focus,
 body[data-resibook-surface="workflow"] main :is(input, select, textarea):focus,
 body[data-resibook-surface="operations"] main :is(input, select, textarea):focus,
-body[data-resibook-surface="shift"] main :is(input, select, textarea):focus {
+body[data-resibook-surface="shift"] main :is(input, select, textarea):focus,
+body[data-resibook-surface="public"] :is(input, select, textarea):focus {
   border-color: rgba(8, 145, 178, 0.58);
   box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.09);
 }
@@ -26,7 +29,8 @@ body[data-resibook-surface="shift"] main :is(input, select, textarea):focus {
 body[data-resibook-surface="library"] main section[class*="rounded-[28px]"],
 body[data-resibook-surface="workflow"] main section[class*="rounded-[28px]"],
 body[data-resibook-surface="operations"] main section[class*="rounded-[28px]"],
-body[data-resibook-surface="shift"] main section[class*="rounded-[28px]"] {
+body[data-resibook-surface="shift"] main section[class*="rounded-[28px]"],
+body[data-resibook-surface="public"] main section[class*="rounded-[28px]"] {
   border-radius: var(--module-panel-radius) !important;
   box-shadow: 0 8px 28px rgba(15, 23, 42, 0.035);
 }
@@ -34,21 +38,24 @@ body[data-resibook-surface="shift"] main section[class*="rounded-[28px]"] {
 body[data-resibook-surface="library"] main article[class*="rounded-[28px]"],
 body[data-resibook-surface="workflow"] main article[class*="rounded-[28px]"],
 body[data-resibook-surface="operations"] main article[class*="rounded-[28px]"],
-body[data-resibook-surface="shift"] main article[class*="rounded-[28px]"] {
+body[data-resibook-surface="shift"] main article[class*="rounded-[28px]"],
+body[data-resibook-surface="public"] main article[class*="rounded-[28px]"] {
   border-radius: var(--module-panel-radius) !important;
 }
 
 body[data-resibook-surface="library"] main [class*="rounded-[24px]"],
 body[data-resibook-surface="workflow"] main [class*="rounded-[24px]"],
 body[data-resibook-surface="operations"] main [class*="rounded-[24px]"],
-body[data-resibook-surface="shift"] main [class*="rounded-[24px]"] {
+body[data-resibook-surface="shift"] main [class*="rounded-[24px]"],
+body[data-resibook-surface="public"] main [class*="rounded-[24px]"] {
   border-radius: 16px !important;
 }
 
 body[data-resibook-surface="library"] main button,
 body[data-resibook-surface="workflow"] main button,
 body[data-resibook-surface="operations"] main button,
-body[data-resibook-surface="shift"] main button {
+body[data-resibook-surface="shift"] main button,
+body[data-resibook-surface="public"] button {
   letter-spacing: 0;
 }
 
@@ -90,14 +97,83 @@ body[data-resibook-surface="shift"] main section[class*="overflow-hidden"] > div
   border-bottom: 1px solid rgba(226, 232, 240, 0.9);
 }
 
+body[data-resibook-surface="public"] {
+  background: #f8fafc;
+}
+
+body[data-resibook-surface="public"] div[class*="bg-gradient-to-br"] {
+  background: #f1f5f9 !important;
+}
+
+body[data-resibook-surface="public"] div[class*="backdrop-blur-xl"] {
+  border-color: #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: none !important;
+}
+
+body[data-resibook-surface="public"] div[class*="max-w-2xl"][class*="rounded-[28px]"] {
+  border-radius: 16px !important;
+  box-shadow: 0 18px 55px rgba(15, 23, 42, 0.07) !important;
+}
+
+body[data-resibook-surface="public"] div[class*="max-w-md"] h1 {
+  font-weight: 600;
+  letter-spacing: 0 !important;
+}
+
+body[data-resibook-surface="public"] div[class*="max-w-md"] input {
+  border-radius: 12px !important;
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
+body[data-resibook-surface="public"] button[class*="bg-gradient-to-r"] {
+  border-radius: 12px !important;
+  background: #020617 !important;
+  box-shadow: none !important;
+}
+
+body[data-resibook-surface="public"] div[class*="max-w-2xl"] a,
+body[data-resibook-surface="public"] div[class*="max-w-2xl"] button {
+  border-radius: 12px !important;
+}
+
+body[data-resibook-surface="public"] main h1 {
+  font-size: clamp(1.75rem, 3vw, 2.125rem) !important;
+  letter-spacing: 0 !important;
+}
+
+body[data-resibook-surface="public"] main article[class*="rounded-[28px]"],
+body[data-resibook-surface="public"] main section[class*="rounded-[28px]"] {
+  border-radius: var(--module-panel-radius) !important;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.035);
+}
+
+body[data-resibook-surface="public"] main section section {
+  scroll-margin-top: 24px;
+}
+
+body[data-resibook-surface="public"] main section section h2 {
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+body[data-resibook-surface="public"] main a,
+body[data-resibook-surface="public"] button {
+  letter-spacing: 0;
+}
+
 @media (max-width: 767px) {
   body[data-resibook-surface="operations"] main,
-  body[data-resibook-surface="shift"] main {
+  body[data-resibook-surface="shift"] main,
+  body[data-resibook-surface="public"] main {
     --module-panel-radius: 16px;
   }
 
   body[data-resibook-surface="operations"] main h1,
-  body[data-resibook-surface="shift"] main h1 {
+  body[data-resibook-surface="shift"] main h1,
+  body[data-resibook-surface="public"] main h1 {
     line-height: 1.15 !important;
   }
 }

@@ -17,6 +17,13 @@ const OPERATIONS_ROUTES = [
   "/acessos",
 ];
 const SHIFT_ROUTES = ["/plantao", "/caso-rapido", "/consulta-audio"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/aceite-legal",
+  "/suporte",
+  "/termos",
+  "/privacidade",
+];
 
 function matches(pathname: string, routes: string[]) {
   return routes.some(
@@ -36,7 +43,9 @@ export default function VisualSystemController() {
           ? "operations"
           : matches(pathname, SHIFT_ROUTES)
             ? "shift"
-            : "clinical";
+            : matches(pathname, PUBLIC_ROUTES)
+              ? "public"
+              : "clinical";
 
     document.body.dataset.resibookSurface = surface;
     return () => {
