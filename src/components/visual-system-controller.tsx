@@ -16,6 +16,7 @@ const OPERATIONS_ROUTES = [
   "/dados-da-conta",
   "/acessos",
 ];
+const SHIFT_ROUTES = ["/plantao", "/caso-rapido", "/consulta-audio"];
 
 function matches(pathname: string, routes: string[]) {
   return routes.some(
@@ -33,7 +34,9 @@ export default function VisualSystemController() {
         ? "workflow"
         : matches(pathname, OPERATIONS_ROUTES)
           ? "operations"
-          : "clinical";
+          : matches(pathname, SHIFT_ROUTES)
+            ? "shift"
+            : "clinical";
 
     document.body.dataset.resibookSurface = surface;
     return () => {
