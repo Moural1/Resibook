@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import Toaster from "../components/toaster";
 import AppShell from "../components/app-shell";
 import AccessLogger from "../components/access-logger";
+import ClinicalCaseSessionBridge from "../components/clinical-case-session-bridge";
 
 export const metadata: Metadata = {
   title: "ResiBook",
@@ -42,6 +43,7 @@ export default function RootLayout({
         </Suspense>
 
         <AppShell>{children}</AppShell>
+        <ClinicalCaseSessionBridge />
         <Toaster />
       </body>
     </html>
