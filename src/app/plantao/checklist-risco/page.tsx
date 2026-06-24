@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import CopyButton from "../../../components/copy-button";
+import { buildCaseRouting, findBestComplaint } from "@/lib/clinical-case-routing";
+import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import {
   ArrowLeft,
   ClipboardCheck,
@@ -11,7 +14,6 @@ import {
   ListChecks,
   ShieldAlert,
   ShieldCheck,
-  Stethoscope,
 } from "lucide-react";
 
 type RiskGuide = {
@@ -23,7 +25,7 @@ type RiskGuide = {
   documentation: string[];
 };
 
-const GUIDES: RiskGuide[] = [
+const DETAILED_GUIDES: RiskGuide[] = [
   {
     title: "Dor torácica",
     summary: "Priorize excluir instabilidade, SCA e diagnósticos tempo-dependentes antes de alta.",
@@ -170,7 +172,32 @@ const GUIDES: RiskGuide[] = [
   },
 ];
 
-const DEFAULT_GUIDE = GUIDES[0];
+function buildGeneratedGuide(title: string): RiskGuide {
+  const routing = buildCaseRouting(title);
+
+  return {
+    title,
+    summary: routing.summary,
+    redFlags: routing.riskPrompts,
+    dischargeBlockers: [
+      "Qualquer red flag presente sem investigação, estabilização ou destino definido",
+      "Sinais vitais alterados, piora clínica ou resposta insuficiente às medidas iniciais",
+      "Ausência de reavaliação documentada ou de plano claro para retorno e seguimento",
+    ],
+    reassessment: routing.priorities,
+    documentation: [
+      "Cronologia da queixa, sinais vitais e achados positivos/negativos relevantes",
+      "Red flags pesquisadas, hipóteses consideradas e resposta às medidas iniciais",
+      "Motivo do destino escolhido, pendências e critérios objetivos de retorno",
+    ],
+  };
+}
+
+const ALL_GUIDES = QUICK_COMPLAINTS.map((complaint) => {
+  return DETAILED_GUIDES.find((guide) => guide.title === complaint.title) || buildGeneratedGuide(complaint.title);
+});
+
+const DEFAULT_GUIDE = ALL_GUIDES[0];
 
 function buildChecklistText(guide: RiskGuide, notes: string) {
   return [
@@ -191,15 +218,17 @@ function buildChecklistText(guide: RiskGuide, notes: string) {
     ...guide.documentation.map((item) => `- ${item}`),
     notes.trim() ? "" : null,
     notes.trim() ? `Observações do caso: ${notes.trim()}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 export default function RiskChecklistPage() {
-  const [selectedTitle, setSelectedTitle] = useState(DEFAULT_GUIDE.title);
+  const searchParams = useSearchParams();
+  const incomingQuery = searchParams.get("q") || searchParams.get("busca") || "";
+  const incomingComplaint = findBestComplaint(incomingQuery);
+  const [selectedTitle, setSelectedTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const guide = GUIDES.find((item) => item.title === selectedTitle) || DEFAULT_GUIDE;
+  const effectiveTitle = selectedTitle || incomingComplaint?.title || DEFAULT_GUIDE.title;
+  const guide = ALL_GUIDES.find((item) => item.title === effectiveTitle) || DEFAULT_GUIDE;
   const text = useMemo(() => buildChecklistText(guide, notes), [guide, notes]);
 
   return (
@@ -208,25 +237,14 @@ export default function RiskChecklistPage() {
         <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fafc_100%)] p-5 md:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <Link
-                href="/plantao"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
-              >
+              <Link href="/plantao" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-slate-950">
                 <ArrowLeft className="h-4 w-4" />
                 Central de plantão
               </Link>
-
-              <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Segurança clínica
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-                Checklist de risco
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-                Revise red flags, bloqueios de alta e pontos mínimos de reavaliação antes de fechar a conduta.
-              </p>
+              <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Segurança clínica</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">Checklist de risco</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">Revise red flags, bloqueios de alta e pontos mínimos de reavaliação antes de fechar a conduta.</p>
             </div>
-
             <CopyButton text={text} label="Copiar checklist" copiedLabel="Checklist copiado" />
           </div>
         </div>
@@ -235,30 +253,27 @@ export default function RiskChecklistPage() {
           <aside className="space-y-4">
             <section className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600">
-                  <ShieldCheck className="h-4.5 w-4.5" />
-                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600"><ShieldCheck className="h-4.5 w-4.5" /></div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Síndrome
-                  </p>
-                  <h2 className="text-xl font-semibold tracking-tight text-slate-950">
-                    Escolha o cenário
-                  </h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Síndrome</p>
+                  <h2 className="text-xl font-semibold tracking-tight text-slate-950">Escolha o cenário</h2>
                 </div>
               </div>
 
               <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                {GUIDES.map((item) => (
+                {incomingComplaint ? (
+                  <div className="mb-1 rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-700">Contexto recebido</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-950">{incomingComplaint.title}</p>
+                  </div>
+                ) : null}
+
+                {ALL_GUIDES.map((item) => (
                   <button
                     key={item.title}
                     type="button"
                     onClick={() => setSelectedTitle(item.title)}
-                    className={`rounded-2xl border px-3 py-2.5 text-left text-sm font-semibold transition ${
-                      item.title === guide.title
-                        ? "border-slate-400 bg-slate-950 text-white"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                    }`}
+                    className={`rounded-2xl border px-3 py-2.5 text-left text-sm font-semibold transition ${item.title === guide.title ? "border-slate-400 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}
                   >
                     {item.title}
                   </button>
@@ -267,9 +282,7 @@ export default function RiskChecklistPage() {
             </section>
 
             <label className="block rounded-[24px] border border-slate-200 bg-white p-4">
-              <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Observações do caso
-              </span>
+              <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Observações do caso</span>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
@@ -282,14 +295,9 @@ export default function RiskChecklistPage() {
 
           <section className="space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Revisão
-              </p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                {guide.title}
-              </h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Revisão</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{guide.title}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">{guide.summary}</p>
-
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 <InfoBlock title="Red flags" items={guide.redFlags} icon={ShieldAlert} />
                 <InfoBlock title="Bloqueios de alta" items={guide.dischargeBlockers} icon={ListChecks} />
@@ -301,19 +309,12 @@ export default function RiskChecklistPage() {
             <div className="rounded-[24px] border border-slate-200 bg-white p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Texto copiável
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
-                    Checklist para prontuário/passagem
-                  </h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Texto copiável</p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Checklist para prontuário/passagem</h2>
                 </div>
                 <CopyButton text={text} label="Copiar" copiedLabel="Copiado" />
               </div>
-
-              <pre className="mt-4 max-h-[360px] overflow-auto whitespace-pre-wrap rounded-[22px] border border-slate-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
-                {text}
-              </pre>
+              <pre className="mt-4 max-h-[360px] overflow-auto whitespace-pre-wrap rounded-[22px] border border-slate-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">{text}</pre>
             </div>
           </section>
         </div>
@@ -322,15 +323,7 @@ export default function RiskChecklistPage() {
   );
 }
 
-function InfoBlock({
-  title,
-  items,
-  icon: Icon,
-}: {
-  title: string;
-  items: string[];
-  icon: React.ComponentType<{ className?: string }>;
-}) {
+function InfoBlock({ title, items, icon: Icon }: { title: string; items: string[]; icon: React.ComponentType<{ className?: string }> }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
       <div className="flex items-center gap-2">
