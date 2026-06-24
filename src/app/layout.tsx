@@ -8,6 +8,7 @@ import AccessLogger from "../components/access-logger";
 import ClinicalCaseSessionBridge from "../components/clinical-case-session-bridge";
 import MobileClinicalNav from "../components/mobile-clinical-nav";
 import PatientRecordNavigator from "../components/patient-record-navigator";
+import ShiftToolNavigator from "../components/shift-tool-navigator";
 import VisualSystemController from "../components/visual-system-controller";
 
 export const metadata: Metadata = {
@@ -49,6 +50,7 @@ export default function RootLayout({
         <AppShell>{children}</AppShell>
         <VisualSystemController />
         <PatientRecordNavigator />
+        <ShiftToolNavigator />
         <MobileClinicalNav />
         <ClinicalCaseSessionBridge />
         <Toaster />
