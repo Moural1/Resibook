@@ -291,7 +291,7 @@ export default function ClinicalCaseSessionBridge() {
   ];
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] w-[min(390px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.16)] print:hidden">
+    <div className="fixed bottom-[86px] right-3 z-[60] w-[min(390px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.16)] sm:right-4 lg:bottom-4 print:hidden">
       {expanded ? (
         <div className="border-b border-slate-200 p-3">
           <div className="flex items-start gap-3">
