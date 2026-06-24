@@ -6,6 +6,7 @@ import AppShell from "../components/app-shell";
 import AccessLogger from "../components/access-logger";
 import ClinicalCaseSessionBridge from "../components/clinical-case-session-bridge";
 import MobileClinicalNav from "../components/mobile-clinical-nav";
+import PatientRecordNavigator from "../components/patient-record-navigator";
 
 export const metadata: Metadata = {
   title: "ResiBook",
@@ -44,6 +45,7 @@ export default function RootLayout({
         </Suspense>
 
         <AppShell>{children}</AppShell>
+        <PatientRecordNavigator />
         <MobileClinicalNav />
         <ClinicalCaseSessionBridge />
         <Toaster />
