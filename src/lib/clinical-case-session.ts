@@ -32,6 +32,18 @@ export function formatClinicalCaseAge(value: ClinicalCaseSession, now = Date.now
     : `atualizado há ${hours}h`;
 }
 
+function getCaseContentFingerprint(value: ClinicalCaseSession) {
+  return JSON.stringify({
+    complaint: value.complaint,
+    age: value.age,
+    sex: value.sex,
+    severity: value.severity,
+    vitals: value.vitals,
+    redFlags: value.redFlags,
+    notes: value.notes,
+  });
+}
+
 export function loadClinicalCaseSession(): ClinicalCaseSession | null {
   if (typeof window === "undefined") return null;
   try {
@@ -53,11 +65,30 @@ export function loadClinicalCaseSession(): ClinicalCaseSession | null {
 export function saveClinicalCaseSession(value: ClinicalCaseSession) {
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    const previous = raw ? (JSON.parse(raw) as ClinicalCaseSession) : null;
+    const next =
+      previous &&
+      getCaseContentFingerprint(previous) === getCaseContentFingerprint(value)
+        ? { ...value, updatedAt: previous.updatedAt }
+        : value;
+
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     window.dispatchEvent(new CustomEvent(CLINICAL_CASE_SESSION_EVENT));
   } catch {
     // The workflow remains usable if browser storage is unavailable.
   }
+}
+
+export function confirmClinicalCaseReassessment() {
+  const current = loadClinicalCaseSession();
+  if (!current) return;
+
+  window.sessionStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ ...current, updatedAt: new Date().toISOString() })
+  );
+  window.dispatchEvent(new CustomEvent(CLINICAL_CASE_SESSION_EVENT));
 }
 
 export function clearClinicalCaseSession() {
