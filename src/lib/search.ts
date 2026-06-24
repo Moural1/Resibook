@@ -1,3 +1,5 @@
+import { getClinicalSearchTerms } from "./clinical-quick-complaints";
+
 export type SearchField =
   | string
   | null
@@ -67,7 +69,7 @@ function hasWordStartingWith(value: string, token: string) {
   return value.split(" ").some((word) => word.startsWith(token));
 }
 
-export function getSearchScore(fields: SearchField[], query: string) {
+function getLiteralSearchScore(fields: SearchField[], query: string) {
   const normalizedQuery = normalizeSearch(query);
   if (!normalizedQuery) return 1;
 
@@ -117,6 +119,30 @@ export function getSearchScore(fields: SearchField[], query: string) {
   }
 
   return score;
+}
+
+export function getSearchScore(fields: SearchField[], query: string) {
+  const uniqueQueries = getClinicalSearchTerms(query)
+    .map((query) => normalizeSearch(query))
+    .filter(
+      (query, index, items) =>
+        Boolean(query) && items.indexOf(query) === index
+    );
+
+  if (uniqueQueries.length === 0) return 1;
+
+  const primaryScore = getLiteralSearchScore(fields, uniqueQueries[0]);
+  const aliasScore = uniqueQueries
+    .slice(1)
+    .reduce(
+      (bestScore, query) =>
+        Math.max(bestScore, getLiteralSearchScore(fields, query)),
+      0
+    );
+
+  // Correspondências diretas sempre lideram. Sinônimos entram como ponte
+  // clínica, com peso menor para evitar resultados frouxos no topo.
+  return primaryScore * 1.25 + aliasScore * 0.35;
 }
 
 export function includesSearch(
