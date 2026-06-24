@@ -17,12 +17,8 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/icon.png",
-        type: "image/png",
-      },
-      {
-        url: "/favicon.png",
-        type: "image/png",
+        url: "/resibook-icon.svg",
+        type: "image/svg+xml",
       },
     ],
     apple: [
@@ -31,7 +27,7 @@ export const metadata: Metadata = {
         type: "image/png",
       },
     ],
-    shortcut: ["/icon.png"],
+    shortcut: ["/resibook-icon.svg"],
   },
 };
 
