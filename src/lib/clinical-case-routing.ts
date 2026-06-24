@@ -125,6 +125,104 @@ const FLOW_HINTS: Record<string, FlowHint> = {
       "Vômitos incoercíveis, gestação, idoso frágil ou comorbidade relevante",
     ],
   },
+  Vertigem: {
+    summary: "Diferencie síndrome vestibular periférica de causa central antes de assumir quadro benigno.",
+    priorities: [
+      "Definir início, duração, gatilhos, sintomas auditivos e capacidade de marcha",
+      "Realizar exame neurológico, oculomotor e HINTS apenas quando tecnicamente aplicável",
+      "Checar glicemia, PA, medicações e causas metabólicas conforme contexto",
+      "Reavaliar marcha, náusea e sinais neurológicos depois das medidas iniciais",
+    ],
+    riskPrompts: [
+      "Déficit focal, diplopia, disartria, disfagia, cefaleia nova ou dor cervical",
+      "Incapacidade de sentar ou caminhar sem apoio, ataxia truncal importante",
+      "Nistagmo vertical, multidirecional ou exame incompatível com causa periférica",
+    ],
+  },
+  Síncope: {
+    summary: "Procure causa cardíaca, hemorrágica, neurológica ou metabólica antes de classificar como vasovagal.",
+    priorities: [
+      "Confirmar perda transitória de consciência e reconstruir pródromos, duração e recuperação",
+      "Obter ECG, sinais vitais e glicemia; avaliar ortostase quando apropriado",
+      "Pesquisar cardiopatia, sangramento, gestação e história familiar de morte súbita",
+      "Definir necessidade de monitorização, observação ou seguimento prioritário",
+    ],
+    riskPrompts: [
+      "Síncope durante esforço, em decúbito, sem pródromos ou com palpitação",
+      "ECG alterado, cardiopatia estrutural, dor torácica, dispneia ou hipotensão",
+      "Anemia/sangramento, trauma relevante, déficit focal ou recuperação incompleta",
+    ],
+  },
+  "Crise convulsiva": {
+    summary: "Priorize estabilização, causas reversíveis e reconhecimento precoce de estado de mal.",
+    priorities: [
+      "Proteger via aérea, cronometrar crise e checar glicemia imediatamente",
+      "Tratar crise prolongada conforme protocolo local e reavaliar ventilação",
+      "Pesquisar primeira crise, adesão, febre, trauma, tóxicos, gestação e distúrbios metabólicos",
+      "Documentar recuperação pós-ictal e necessidade de imagem, observação ou transferência",
+    ],
+    riskPrompts: [
+      "Crise com cinco minutos ou mais, crises repetidas ou ausência de recuperação",
+      "Déficit focal persistente, trauma, febre/meningismo ou anticoagulação",
+      "Gestação/puerpério, hipoglicemia, intoxicação ou primeira crise sem causa definida",
+    ],
+  },
+  Lombalgia: {
+    summary: "Separe lombalgia mecânica de cauda equina, infecção, fratura, neoplasia e causa vascular.",
+    priorities: [
+      "Pesquisar trauma, febre, câncer, imunossupressão, uso de drogas e déficit neurológico",
+      "Avaliar força, sensibilidade, reflexos, marcha e função esfincteriana quando indicado",
+      "Usar analgesia multimodal e estimular mobilidade segura conforme tolerância",
+      "Evitar imagem de rotina sem red flags; definir retorno e seguimento",
+    ],
+    riskPrompts: [
+      "Retenção/incontinência, anestesia em sela ou déficit motor progressivo",
+      "Febre, dor noturna, imunossupressão, câncer ou infecção recente",
+      "Trauma relevante, osteoporose, anticoagulação ou dor abdominal/pulsátil associada",
+    ],
+  },
+  Tosse: {
+    summary: "Estratifique gravidade respiratória e procure pneumonia, broncoespasmo e causas sistêmicas.",
+    priorities: [
+      "Checar duração, febre, dispneia, dor torácica, hemoptise e fatores epidemiológicos",
+      "Avaliar FR, SatO2, ausculta e sinais de esforço respiratório",
+      "Definir necessidade de imagem/testes conforme gravidade e hipótese",
+      "Orientar tratamento sintomático, isolamento quando aplicável e sinais de retorno",
+    ],
+    riskPrompts: [
+      "Hipoxemia, taquipneia, esforço respiratório, confusão ou hipotensão",
+      "Hemoptise, dor torácica, síncope ou suspeita de TEP/tuberculose",
+      "Idoso frágil, imunossupressão, gestação ou piora apesar de tratamento",
+    ],
+  },
+  Icterícia: {
+    summary: "Diferencie padrão colestático, hepatocelular e hemolítico, procurando obstrução e falência hepática.",
+    priorities: [
+      "Definir início, dor, febre, colúria, acolia, prurido, álcool, drogas e exposições",
+      "Avaliar estado mental, sangramento, hidratação e sinais de hepatopatia crônica",
+      "Solicitar perfil hepático, bilirrubinas, hemograma e imagem conforme hipótese",
+      "Definir urgência de avaliação especializada se colangite, obstrução ou disfunção hepática",
+    ],
+    riskPrompts: [
+      "Febre com dor em hipocôndrio direito, hipotensão ou confusão",
+      "Encefalopatia, sangramento, hipoglicemia ou coagulopatia",
+      "Dor intensa, vômitos persistentes, gestação ou início após fármaco/toxina",
+    ],
+  },
+  "Agitação / ansiedade": {
+    summary: "Antes de atribuir a causa psiquiátrica, exclua hipóxia, hipoglicemia, delirium, intoxicação e doença neurológica.",
+    priorities: [
+      "Garantir segurança da equipe e abordagem verbal com ambiente de baixo estímulo",
+      "Checar glicemia, SatO2, temperatura, sinais vitais e estado mental",
+      "Pesquisar intoxicação/abstinência, trauma, infecção, dor e risco de auto/heteroagressão",
+      "Usar contenção física ou farmacológica apenas quando necessária e com monitorização",
+    ],
+    riskPrompts: [
+      "Delirium, febre, rigidez, trauma, déficit focal, hipoxemia ou hipoglicemia",
+      "Ideação suicida, violência, acesso a meios letais ou incapacidade de autocuidado",
+      "Intoxicação, abstinência grave, gestação ou sedação com depressão respiratória",
+    ],
+  },
   "Hipertensão no PA": {
     summary: "Diferencie PA alta isolada de emergência hipertensiva com lesão de órgão-alvo.",
     priorities: [
@@ -137,6 +235,20 @@ const FLOW_HINTS: Record<string, FlowHint> = {
       "Dor torácica, dispneia, edema agudo ou ECG alterado",
       "Déficit focal, confusão, crise convulsiva ou alteração visual",
       "Oligúria, creatinina alterada ou suspeita de lesão de órgão-alvo",
+    ],
+  },
+  "Picada de escorpião": {
+    summary: "Classifique gravidade pelo quadro sistêmico e acione precocemente o protocolo toxicológico local.",
+    priorities: [
+      "Confirmar horário, local da picada, idade/peso e evolução dos sintomas",
+      "Tratar dor, higienizar o local e monitorar sinais vitais",
+      "Pesquisar vômitos, sudorese, sialorreia, agitação, alterações cardíacas e respiratórias",
+      "Contatar referência toxicológica e avaliar soro conforme gravidade e protocolo local",
+    ],
+    riskPrompts: [
+      "Vômitos repetidos, sudorese intensa, sialorreia ou agitação importante",
+      "Taquicardia/bradicardia, hipertensão/hipotensão, arritmia ou dor torácica",
+      "Dispneia, edema pulmonar, choque, criança pequena ou progressão rápida",
     ],
   },
 };
@@ -206,11 +318,11 @@ export function buildCaseRouting(query: string): CaseRoutingResult {
     routes: [
       { label: "Caso", intent: "Estruturar primeira abordagem", href: queryHref("/caso-rapido", searchTerm) },
       { label: "Conduta", intent: "Abrir protocolos e condutas", href: queryHref("/condutas", searchTerm, "busca") },
-      { label: "Risco", intent: "Checar red flags e bloqueios de alta", href: "/plantao/checklist-risco" },
+      { label: "Risco", intent: "Checar red flags e bloqueios de alta", href: queryHref("/plantao/checklist-risco", searchTerm) },
       { label: "Plano", intent: "Montar prescrição guiada", href: queryHref("/plantao/prescricao-guiada", searchTerm) },
       { label: "Exames", intent: "Gerar evolução e plano de exames", href: queryHref("/exames-evolucao", searchTerm) },
       { label: "Alta", intent: "Criar orientações de retorno", href: queryHref("/plantao/alta-segura", searchTerm) },
-      { label: "Passagem", intent: "Organizar SBAR", href: "/plantao/sbar" },
+      { label: "Passagem", intent: "Organizar SBAR", href: queryHref("/plantao/sbar", searchTerm) },
       { label: "CID", intent: "Pesquisar CID relacionado", href: queryHref("/cids", searchTerm) },
     ],
   };
