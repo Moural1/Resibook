@@ -1,0 +1,51 @@
+body[data-resibook-surface="library"] main,
+body[data-resibook-surface="workflow"] main,
+body[data-resibook-surface="operations"] main {
+  --module-control-radius: 12px;
+  --module-panel-radius: 18px;
+}
+
+body[data-resibook-surface="library"] main :is(input, select, textarea),
+body[data-resibook-surface="workflow"] main :is(input, select, textarea),
+body[data-resibook-surface="operations"] main :is(input, select, textarea) {
+  border-radius: var(--module-control-radius) !important;
+  border-color: rgba(203, 213, 225, 0.92);
+  box-shadow: none;
+}
+
+body[data-resibook-surface="library"] main :is(input, select, textarea):focus,
+body[data-resibook-surface="workflow"] main :is(input, select, textarea):focus,
+body[data-resibook-surface="operations"] main :is(input, select, textarea):focus {
+  border-color: rgba(8, 145, 178, 0.58);
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.09);
+}
+
+body[data-resibook-surface="library"] main section[class*="rounded-[28px]"],
+body[data-resibook-surface="workflow"] main section[class*="rounded-[28px]"],
+body[data-resibook-surface="operations"] main section[class*="rounded-[28px]"] {
+  border-radius: var(--module-panel-radius) !important;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.035);
+}
+
+body[data-resibook-surface="library"] main article[class*="rounded-[28px]"],
+body[data-resibook-surface="workflow"] main article[class*="rounded-[28px]"] {
+  border-radius: var(--module-panel-radius) !important;
+}
+
+body[data-resibook-surface="library"] main [class*="rounded-[24px]"],
+body[data-resibook-surface="workflow"] main [class*="rounded-[24px]"],
+body[data-resibook-surface="operations"] main [class*="rounded-[24px]"] {
+  border-radius: 16px !important;
+}
+
+body[data-resibook-surface="library"] main button,
+body[data-resibook-surface="workflow"] main button,
+body[data-resibook-surface="operations"] main button {
+  letter-spacing: 0;
+}
+
+body[data-resibook-surface="library"] .module-page-header-content > *,
+body[data-resibook-surface="workflow"] .module-page-header-content > *,
+body[data-resibook-surface="operations"] .module-page-header-content > * {
+  box-shadow: none;
+}

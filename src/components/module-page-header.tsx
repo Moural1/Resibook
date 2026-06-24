@@ -26,26 +26,11 @@ type Props = {
 };
 
 function badgeToneClass(tone: HeaderBadge["tone"] = "slate") {
-  if (tone === "blue") {
-    return "border-blue-200/80 bg-blue-50 text-blue-700";
-  }
-
-  if (tone === "cyan") {
-    return "border-cyan-200/80 bg-cyan-50 text-cyan-700";
-  }
-
-  if (tone === "emerald") {
-    return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
-  }
-
-  if (tone === "amber") {
-    return "border-amber-200/80 bg-amber-50 text-amber-700";
-  }
-
-  if (tone === "rose") {
-    return "border-rose-200/80 bg-rose-50 text-rose-700";
-  }
-
+  if (tone === "blue") return "border-blue-200/80 bg-blue-50 text-blue-700";
+  if (tone === "cyan") return "border-cyan-200/80 bg-cyan-50 text-cyan-700";
+  if (tone === "emerald") return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
+  if (tone === "amber") return "border-amber-200/80 bg-amber-50 text-amber-700";
+  if (tone === "rose") return "border-rose-200/80 bg-rose-50 text-rose-700";
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
@@ -62,50 +47,54 @@ export default function ModulePageHeader({
   children,
 }: Props) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.025]">
-      <div className="border-b border-slate-200/80 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fbff_72%,#f7fafc_100%)] p-5 md:p-6">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+    <section className="module-page-header overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.045)]">
+      <div className="relative border-b border-slate-200/80 bg-white p-5 md:p-6">
+        <div className="absolute inset-y-0 left-0 w-1 bg-cyan-600" />
+
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 max-w-4xl">
-            {eyebrow ? (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-700">
-                {eyebrow}
-              </p>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {eyebrow ? (
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-700">
+                  {eyebrow}
+                </p>
+              ) : null}
 
-            {badges.length > 0 ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {badges.map((badge) => (
-                  <span
-                    key={`${badge.label}-${badge.tone || "slate"}`}
-                    className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${badgeToneClass(
-                      badge.tone
-                    )}`}
-                  >
-                    {badge.label}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+              {badges.map((badge) => (
+                <span
+                  key={`${badge.label}-${badge.tone || "slate"}`}
+                  className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${badgeToneClass(
+                    badge.tone
+                  )}`}
+                >
+                  {badge.label}
+                </span>
+              ))}
+            </div>
 
-            <h1 className="mt-4 text-[28px] font-semibold tracking-tight text-slate-950 md:text-[38px]">
+            <h1 className="mt-2 text-[27px] font-semibold text-slate-950 md:text-[34px]">
               {title}
             </h1>
 
             {description ? (
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-[15px]">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 md:text-[15px]">
                 {description}
               </p>
             ) : null}
 
             {metrics.length > 0 ? (
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-slate-700">
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
                 {metrics.map((metric, index) => (
-                  <div key={`${metric.label}-${index}`} className="flex items-center gap-2">
-                    <span className="text-slate-500">{metric.label}:</span>
-                    <span className="font-semibold text-slate-900">{metric.value}</span>
-                    {index < metrics.length - 1 ? (
-                      <span className="ml-2 text-slate-300">•</span>
-                    ) : null}
+                  <div
+                    key={`${metric.label}-${index}`}
+                    className="border-l-2 border-slate-200 pl-3"
+                  >
+                    <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      {metric.label}
+                    </span>
+                    <span className="mt-0.5 block text-sm font-semibold text-slate-900">
+                      {metric.value}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -113,7 +102,7 @@ export default function ModulePageHeader({
           </div>
 
           {actions ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-3">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               {actions}
             </div>
           ) : null}
@@ -134,7 +123,11 @@ export default function ModulePageHeader({
         {notice ? <div className="mt-5">{notice}</div> : null}
       </div>
 
-      {children ? <div className="p-4 md:p-5">{children}</div> : null}
+      {children ? (
+        <div className="module-page-header-content bg-slate-50/45 p-4 md:p-5">
+          {children}
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./module-surfaces.css";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Toaster from "../components/toaster";
@@ -7,6 +8,7 @@ import AccessLogger from "../components/access-logger";
 import ClinicalCaseSessionBridge from "../components/clinical-case-session-bridge";
 import MobileClinicalNav from "../components/mobile-clinical-nav";
 import PatientRecordNavigator from "../components/patient-record-navigator";
+import VisualSystemController from "../components/visual-system-controller";
 
 export const metadata: Metadata = {
   title: "ResiBook",
@@ -45,6 +47,7 @@ export default function RootLayout({
         </Suspense>
 
         <AppShell>{children}</AppShell>
+        <VisualSystemController />
         <PatientRecordNavigator />
         <MobileClinicalNav />
         <ClinicalCaseSessionBridge />
