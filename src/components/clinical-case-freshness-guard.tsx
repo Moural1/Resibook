@@ -6,6 +6,7 @@ import { Clock3, RefreshCw, X } from "lucide-react";
 import {
   CLINICAL_CASE_SESSION_EVENT,
   clearClinicalCaseSession,
+  confirmClinicalCaseReassessment,
   formatClinicalCaseAge,
   getClinicalCaseAgeMs,
   loadClinicalCaseSession,
@@ -57,14 +58,21 @@ export default function ClinicalCaseFreshnessGuard() {
           <p className="mt-1 truncate text-xs text-amber-800">
             {activeCase.complaint} · {formatClinicalCaseAge(activeCase, now)}
           </p>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/caso-rapido"
               className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-amber-900 px-3 text-xs font-semibold text-white transition hover:bg-amber-800"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              Reavaliar agora
+              Abrir caso
             </Link>
+            <button
+              type="button"
+              onClick={confirmClinicalCaseReassessment}
+              className="inline-flex h-8 items-center rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
+            >
+              Confirmar revisão
+            </button>
             <button
               type="button"
               onClick={clearClinicalCaseSession}
