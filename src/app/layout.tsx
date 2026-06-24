@@ -6,6 +6,7 @@ import Toaster from "../components/toaster";
 import AppShell from "../components/app-shell";
 import AccessLogger from "../components/access-logger";
 import ClinicalCaseSessionBridge from "../components/clinical-case-session-bridge";
+import ClinicalCaseFreshnessGuard from "../components/clinical-case-freshness-guard";
 import GlobalSearchShortcut from "../components/global-search-shortcut";
 import MobileClinicalNav from "../components/mobile-clinical-nav";
 import PatientRecordNavigator from "../components/patient-record-navigator";
@@ -51,6 +52,7 @@ export default function RootLayout({
         <GlobalSearchShortcut />
         <MobileClinicalNav />
         <ClinicalCaseSessionBridge />
+        <ClinicalCaseFreshnessGuard />
         <Toaster />
       </body>
     </html>

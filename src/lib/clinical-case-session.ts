@@ -12,13 +12,39 @@ export type ClinicalCaseSession = {
 };
 
 const STORAGE_KEY = "resibook-clinical-case-session-v1";
+const MAX_SESSION_AGE_MS = 12 * 60 * 60 * 1000;
 export const CLINICAL_CASE_SESSION_EVENT = "resibook:clinical-case-session";
+
+export function getClinicalCaseAgeMs(value: ClinicalCaseSession, now = Date.now()) {
+  const updatedAt = Date.parse(value.updatedAt);
+  return Number.isFinite(updatedAt) ? Math.max(0, now - updatedAt) : 0;
+}
+
+export function formatClinicalCaseAge(value: ClinicalCaseSession, now = Date.now()) {
+  const minutes = Math.floor(getClinicalCaseAgeMs(value, now) / 60_000);
+  if (minutes < 1) return "atualizado agora";
+  if (minutes < 60) return `atualizado há ${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes
+    ? `atualizado há ${hours}h ${remainingMinutes}min`
+    : `atualizado há ${hours}h`;
+}
 
 export function loadClinicalCaseSession(): ClinicalCaseSession | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ClinicalCaseSession) : null;
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as ClinicalCaseSession;
+    if (!parsed?.complaint || getClinicalCaseAgeMs(parsed) > MAX_SESSION_AGE_MS) {
+      window.sessionStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
+    return parsed;
   } catch {
     return null;
   }
