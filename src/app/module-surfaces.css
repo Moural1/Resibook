@@ -1,3 +1,8 @@
+/* Keep legacy brand image references aligned with the current app icon. */
+img[src="/logo-resibook.png"] {
+  content: url("/resibook-icon.svg");
+}
+
 body[data-resibook-surface="library"] main,
 body[data-resibook-surface="workflow"] main,
 body[data-resibook-surface="operations"] main,
