@@ -87,7 +87,8 @@ export default function MobileClinicalNav() {
 
   return (
     <nav
-      className="fixed inset-x-3 bottom-3 z-50 grid h-[66px] grid-cols-6 rounded-2xl border border-slate-200/90 bg-white/95 p-1.5 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl lg:hidden print:hidden"
+      className="fixed inset-x-3 z-50 grid h-[66px] grid-cols-6 rounded-2xl border border-slate-200/90 bg-white/95 p-1.5 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl lg:hidden print:hidden"
+      style={{ bottom: "max(12px, env(safe-area-inset-bottom))" }}
       aria-label="Navegação clínica rápida"
     >
       {items.map((item) => {
@@ -101,7 +102,7 @@ export default function MobileClinicalNav() {
             href={item.href}
             className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl transition ${
               active
-                ? "bg-slate-950 text-white"
+                ? "mobile-clinical-nav-active bg-cyan-800 text-white shadow-sm"
                 : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
