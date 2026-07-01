@@ -4,9 +4,16 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  CLINICAL_CASE_SESSION_EVENT,
+  loadClinicalCaseSession,
+  type ClinicalCaseSession,
+} from "@/lib/clinical-case-session";
 import CopyButton from "../../../components/copy-button";
 import {
   AlertTriangle,
+  ArrowDownToLine,
+  CheckCircle2,
   Plus,
   ClipboardList,
   CalendarClock,
@@ -244,6 +251,77 @@ const emptyConsultationForm: ConsultationForm = {
   observacoes: "",
   retorno_previsto_em: "",
 };
+
+function formatSessionVitals(vitals: ClinicalCaseSession["vitals"]) {
+  return Object.entries(vitals)
+    .filter(([, value]) => value.trim())
+    .map(([key, value]) => `${key.toUpperCase()} ${value.trim()}`)
+    .join(" | ");
+}
+
+function consultationFromActiveCase(
+  activeCase: ClinicalCaseSession
+): ConsultationForm {
+  const reassessment = activeCase.reassessment;
+  const initialVitals = formatSessionVitals(activeCase.vitals);
+  const currentVitals = reassessment
+    ? formatSessionVitals(reassessment.vitals)
+    : "";
+
+  return {
+    queixa_principal: activeCase.complaint.trim(),
+    hma: [
+      activeCase.notes.trim(),
+      activeCase.redFlags.trim()
+        ? `Sinais de alarme pesquisados: ${activeCase.redFlags.trim()}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    exame_fisico: [
+      initialVitals ? `Sinais vitais iniciais: ${initialVitals}` : "",
+      currentVitals ? `Sinais vitais na reavaliação: ${currentVitals}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    hipotese_diagnostica: "",
+    conduta_medica: [
+      ...activeCase.priorities.map((item) => `- ${item}`),
+      reassessment?.decision
+        ? `Decisão/destino: ${reassessment.decision.trim()}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    observacoes: [
+      activeCase.alerts.length
+        ? `Alertas do caso: ${activeCase.alerts.join("; ")}`
+        : "",
+      reassessment?.symptomStatus
+        ? `Evolução do sintoma: ${reassessment.symptomStatus.trim()}`
+        : "",
+      reassessment?.treatmentResponse
+        ? `Resposta às medidas: ${reassessment.treatmentResponse.trim()}`
+        : "",
+      reassessment?.notes
+        ? `Observações da reavaliação: ${reassessment.notes.trim()}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    retorno_previsto_em: "",
+  };
+}
+
+function getConsultationCompleteness(form: ConsultationForm) {
+  return [
+    { label: "Queixa", complete: Boolean(form.queixa_principal.trim()) },
+    { label: "HMA", complete: Boolean(form.hma.trim()) },
+    { label: "Exame", complete: Boolean(form.exame_fisico.trim()) },
+    { label: "Hipótese", complete: Boolean(form.hipotese_diagnostica.trim()) },
+    { label: "Conduta", complete: Boolean(form.conduta_medica.trim()) },
+  ];
+}
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -1342,6 +1420,47 @@ function SectionToggle({
   );
 }
 
+function ConsultationTextarea({
+  label,
+  hint,
+  value,
+  onChange,
+  placeholder,
+  rows,
+  className = "",
+  required = false,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  rows: number;
+  className?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+        {label}
+        {required ? (
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-700">
+            obrigatório
+          </span>
+        ) : null}
+      </span>
+      <span className="mt-1 block text-xs leading-5 text-slate-500">{hint}</span>
+      <textarea
+        rows={rows}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
+      />
+    </label>
+  );
+}
+
 
 export default function PatientDetailPage() {
   const supabase = createClient();
@@ -1385,6 +1504,7 @@ export default function PatientDetailPage() {
   const [followupForm, setFollowupForm] = useState<FollowupForm>(emptyFollowupForm);
   const [examRequestForm, setExamRequestForm] = useState<ExamRequestForm>(emptyExamRequestForm);
   const [consultationForm, setConsultationForm] = useState<ConsultationForm>(emptyConsultationForm);
+  const [activeCase, setActiveCase] = useState<ClinicalCaseSession | null>(null);
 
   const [editNoteForms, setEditNoteForms] = useState<Record<number, NoteForm>>({});
   const [editProblemForms, setEditProblemForms] = useState<Record<number, ProblemForm>>({});
@@ -1439,6 +1559,25 @@ export default function PatientDetailPage() {
       ),
     [problems, followups, examRequests, notes, prescriptions, consultations]
   );
+
+  const consultationCompleteness = useMemo(
+    () => getConsultationCompleteness(consultationForm),
+    [consultationForm]
+  );
+  const completedConsultationFields = consultationCompleteness.filter(
+    (item) => item.complete
+  ).length;
+
+  useEffect(() => {
+    function refreshActiveCase() {
+      setActiveCase(loadClinicalCaseSession());
+    }
+
+    refreshActiveCase();
+    window.addEventListener(CLINICAL_CASE_SESSION_EVENT, refreshActiveCase);
+    return () =>
+      window.removeEventListener(CLINICAL_CASE_SESSION_EVENT, refreshActiveCase);
+  }, []);
 
   async function loadPatient() {
     if (!patientId) {
@@ -1843,6 +1982,30 @@ export default function PatientDetailPage() {
     }
 
     setSavingConsultation(false);
+  }
+
+  function handleImportActiveCase() {
+    if (!activeCase) return;
+    const imported = consultationFromActiveCase(activeCase);
+
+    setConsultationForm((current) => ({
+      queixa_principal:
+        current.queixa_principal.trim() || imported.queixa_principal,
+      hma: current.hma.trim() || imported.hma,
+      exame_fisico: current.exame_fisico.trim() || imported.exame_fisico,
+      hipotese_diagnostica:
+        current.hipotese_diagnostica.trim() || imported.hipotese_diagnostica,
+      conduta_medica:
+        current.conduta_medica.trim() || imported.conduta_medica,
+      observacoes: current.observacoes.trim() || imported.observacoes,
+      retorno_previsto_em:
+        current.retorno_previsto_em || imported.retorno_previsto_em,
+    }));
+    setShowConsultations(true);
+    setError("");
+    setSuccess(
+      "Caso ativo importado para a consulta. Confirme a identidade e revise antes de salvar."
+    );
   }
 
   function startEditNote(note: PatientNote) {
@@ -2982,71 +3145,122 @@ function openPrintHtml(html: string) {
             </p>
           </div>
 
-          <SectionToggle
-            open={showConsultations}
-            onToggle={() => setShowConsultations((v) => !v)}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              {completedConsultationFields}/{consultationCompleteness.length} campos clínicos
+            </span>
+
+            {activeCase ? (
+              <button
+                type="button"
+                onClick={handleImportActiveCase}
+                className="inline-flex h-9 items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-100"
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5" />
+                Importar Caso Rápido
+              </button>
+            ) : null}
+
+            <SectionToggle
+              open={showConsultations}
+              onToggle={() => setShowConsultations((v) => !v)}
+            />
+          </div>
         </div>
 
         {showConsultations ? (
           <>
-        <div className="mt-5 grid gap-4">
-          <textarea
+        {activeCase ? (
+          <div className="mt-5 flex items-start gap-3 rounded-2xl border border-cyan-200 bg-cyan-50/60 px-4 py-3">
+            <Stethoscope className="mt-0.5 h-4 w-4 shrink-0 text-cyan-700" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-cyan-950">
+                Caso ativo disponível: {activeCase.complaint}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-cyan-800">
+                Confirme que o caso pertence a {patient.nome} antes de importar. Campos já preenchidos não serão substituídos.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <ConsultationTextarea
+            label="Queixa principal"
+            hint="Motivo central deste atendimento. Campo obrigatório."
             rows={3}
             value={consultationForm.queixa_principal}
-            onChange={(e) => updateConsultationForm("queixa_principal", e.target.value)}
-            placeholder="Queixa principal da consulta"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+            onChange={(value) => updateConsultationForm("queixa_principal", value)}
+            placeholder="Ex.: dor torácica há duas horas"
+            className="xl:col-span-2"
+            required
           />
 
-          <textarea
-            rows={5}
+          <ConsultationTextarea
+            label="História da moléstia atual"
+            hint="Cronologia, características, sintomas associados e medidas já realizadas."
+            rows={6}
             value={consultationForm.hma}
-            onChange={(e) => updateConsultationForm("hma", e.target.value)}
-            placeholder="HMA da consulta"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+            onChange={(value) => updateConsultationForm("hma", value)}
+            placeholder="Descreva início, evolução, fatores de melhora/piora e contexto clínico."
           />
 
-          <textarea
-            rows={5}
+          <ConsultationTextarea
+            label="Exame físico e sinais vitais"
+            hint="Achados objetivos relevantes para este atendimento."
+            rows={6}
             value={consultationForm.exame_fisico}
-            onChange={(e) => updateConsultationForm("exame_fisico", e.target.value)}
-            placeholder="Exame físico da consulta"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+            onChange={(value) => updateConsultationForm("exame_fisico", value)}
+            placeholder="Estado geral, sinais vitais e exame direcionado."
           />
 
-          <textarea
-            rows={4}
+          <ConsultationTextarea
+            label="Hipótese diagnóstica"
+            hint="Impressão clínica e diagnósticos diferenciais relevantes."
+            rows={5}
             value={consultationForm.hipotese_diagnostica}
-            onChange={(e) =>
-              updateConsultationForm("hipotese_diagnostica", e.target.value)
+            onChange={(value) =>
+              updateConsultationForm("hipotese_diagnostica", value)
             }
-            placeholder="Hipótese diagnóstica da consulta"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+            placeholder="Hipótese principal e diferenciais."
           />
 
-          <textarea
+          <ConsultationTextarea
+            label="Conduta médica"
+            hint="Tratamento, exames, orientações, destino e plano de reavaliação."
             rows={5}
             value={consultationForm.conduta_medica}
-            onChange={(e) => updateConsultationForm("conduta_medica", e.target.value)}
-            placeholder="Conduta médica da consulta"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+            onChange={(value) => updateConsultationForm("conduta_medica", value)}
+            placeholder="Registre a conduta e o plano acordado."
           />
 
-          <textarea
+          <ConsultationTextarea
+            label="Observações"
+            hint="Resposta terapêutica, comunicação, pendências ou justificativas."
             rows={4}
             value={consultationForm.observacoes}
-            onChange={(e) => updateConsultationForm("observacoes", e.target.value)}
-            placeholder="Observações da consulta"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none"
+            onChange={(value) => updateConsultationForm("observacoes", value)}
+            placeholder="Informações adicionais do atendimento."
+            className="xl:col-span-2"
           />
 
-          <input
-            type="date"
-            value={consultationForm.retorno_previsto_em}
-            onChange={(e) => updateConsultationForm("retorno_previsto_em", e.target.value)}
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none"
-          />
+          <label className="block xl:max-w-sm">
+            <span className="block text-sm font-semibold text-slate-900">
+              Retorno previsto
+            </span>
+            <span className="mt-1 block text-xs leading-5 text-slate-500">
+              Defina quando houver necessidade de seguimento programado.
+            </span>
+            <input
+              type="date"
+              value={consultationForm.retorno_previsto_em}
+              onChange={(e) =>
+                updateConsultationForm("retorno_previsto_em", e.target.value)
+              }
+              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
+            />
+          </label>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
@@ -4218,3 +4432,4 @@ function openPrintHtml(html: string) {
     </div>
   );
 }
+
