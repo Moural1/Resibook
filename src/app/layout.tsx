@@ -8,6 +8,7 @@ import AccessLogger from "../components/access-logger";
 import AccessibilityBridge from "../components/accessibility-bridge";
 import ClinicalCaseSessionBridge from "../components/clinical-case-session-bridge";
 import ClinicalCaseFreshnessGuard from "../components/clinical-case-freshness-guard";
+import ClinicalEvolutionComposer from "../components/clinical-evolution-composer";
 import ClinicalReassessmentPanel from "../components/clinical-reassessment-panel";
 import GlobalSearchShortcut from "../components/global-search-shortcut";
 import MobileClinicalNav from "../components/mobile-clinical-nav";
@@ -19,7 +20,7 @@ import VisualSystemController from "../components/visual-system-controller";
 
 export const metadata: Metadata = {
   title: "ResiBook",
-  description: "Sistema médico premium",
+  description: "Sistema mÃ©dico premium",
   icons: {
     icon: [
       {
@@ -54,7 +55,7 @@ export default function RootLayout({
           href="#conteudo-principal"
           className="skip-link"
         >
-          Ir para o conteúdo principal
+          Ir para o conteÃºdo principal
         </a>
         <Suspense fallback={null}>
           <AccessLogger />
@@ -72,6 +73,7 @@ export default function RootLayout({
         <ClinicalCaseSessionBridge />
         <ClinicalCaseFreshnessGuard />
         <ClinicalReassessmentPanel />
+        <ClinicalEvolutionComposer />
         <Toaster />
       </body>
     </html>
