@@ -8,6 +8,7 @@ import AccessLogger from "../components/access-logger";
 import AccessibilityBridge from "../components/accessibility-bridge";
 import ClinicalCaseSessionBridge from "../components/clinical-case-session-bridge";
 import ClinicalCaseFreshnessGuard from "../components/clinical-case-freshness-guard";
+import ClinicalEvolutionComposer from "../components/clinical-evolution-composer";
 import ClinicalReassessmentPanel from "../components/clinical-reassessment-panel";
 import GlobalSearchShortcut from "../components/global-search-shortcut";
 import MobileClinicalNav from "../components/mobile-clinical-nav";
@@ -72,6 +73,7 @@ export default function RootLayout({
         <ClinicalCaseSessionBridge />
         <ClinicalCaseFreshnessGuard />
         <ClinicalReassessmentPanel />
+        <ClinicalEvolutionComposer />
         <Toaster />
       </body>
     </html>
