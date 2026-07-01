@@ -1,14 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
+import {
+  CLINICAL_CASE_SESSION_EVENT,
+  formatClinicalCaseAge,
+  loadClinicalCaseSession,
+  type ClinicalCaseSession,
+} from "@/lib/clinical-case-session";
 import {
   ArrowUpRight,
   BarChart3,
   BookOpen,
   Brain,
+  CheckCircle2,
+  CircleAlert,
   Gauge,
   ClipboardList,
   FileText,
@@ -27,6 +35,20 @@ type Patient = {
   especialidade: string | null;
   queixa: string | null;
   created_at: string;
+};
+
+type PatientFollowup = {
+  id: string;
+  nome: string;
+  retorno_previsto_em: string | null;
+};
+
+type PendingExam = {
+  id: number;
+  patient_id: string;
+  nome_exame: string;
+  status: string;
+  requested_at: string | null;
 };
 
 type Prescription = {
@@ -107,6 +129,26 @@ function formatDate(value?: string | null) {
   }
 }
 
+function formatDateOnly(value?: string | null) {
+  if (!value) return "-";
+  const parsed = new Date(`${value.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(parsed);
+}
+
+function getFollowupDays(value?: string | null, now = new Date()) {
+  if (!value) return null;
+  const target = new Date(`${value.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    12
+  );
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
 export default function DashboardPage() {
   const supabase = createClient();
 
@@ -128,6 +170,9 @@ export default function DashboardPage() {
     []
   );
   const [recentTopicos, setRecentTopicos] = useState<TopicoMedico[]>([]);
+  const [patientFollowups, setPatientFollowups] = useState<PatientFollowup[]>([]);
+  const [pendingExams, setPendingExams] = useState<PendingExam[]>([]);
+  const [activeCase, setActiveCase] = useState<ClinicalCaseSession | null>(null);
 
   const [favoritePrescriptionCount, setFavoritePrescriptionCount] = useState(0);
   const [favoriteExamCount, setFavoriteExamCount] = useState(0);
@@ -135,6 +180,17 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [isGuest, setIsGuest] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    function refreshActiveCase() {
+      setActiveCase(loadClinicalCaseSession());
+    }
+
+    refreshActiveCase();
+    window.addEventListener(CLINICAL_CASE_SESSION_EVENT, refreshActiveCase);
+    return () =>
+      window.removeEventListener(CLINICAL_CASE_SESSION_EVENT, refreshActiveCase);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -182,6 +238,8 @@ export default function DashboardPage() {
         setRecentPrescriptions([]);
         setRecentExamTemplates([]);
         setRecentTopicos([]);
+        setPatientFollowups([]);
+        setPendingExams([]);
         setFavoritePrescriptionCount(0);
         setFavoriteExamCount(0);
         setLoading(false);
@@ -200,6 +258,8 @@ export default function DashboardPage() {
         prescriptionsRes,
         examTemplatesRes,
         topicosRes,
+        patientFollowupsRes,
+        pendingExamsRes,
       ] = await Promise.all([
         getTableCount("patients", { column: "user_id", value: userId }),
         getTableCount("prescriptions", { column: "user_id", value: userId }),
@@ -250,6 +310,22 @@ export default function DashboardPage() {
           .select("id, area, titulo, atualizado_em")
           .order("atualizado_em", { ascending: false, nullsFirst: false })
           .limit(5),
+
+        supabase
+          .from("patients")
+          .select("id, nome, retorno_previsto_em")
+          .eq("user_id", userId)
+          .not("retorno_previsto_em", "is", null)
+          .order("retorno_previsto_em", { ascending: true })
+          .limit(12),
+
+        supabase
+          .from("patient_exam_requests")
+          .select("id, patient_id, nome_exame, status, requested_at")
+          .eq("user_id", userId)
+          .in("status", ["solicitado", "recebido"])
+          .order("requested_at", { ascending: true, nullsFirst: false })
+          .limit(12),
       ]);
 
       if (!mounted) return;
@@ -292,10 +368,34 @@ export default function DashboardPage() {
         );
       }
 
+      if (patientFollowupsRes.error) {
+        console.warn(
+          "Erro ao carregar retornos dos pacientes:",
+          patientFollowupsRes.error.message
+        );
+      }
+
+      if (pendingExamsRes.error) {
+        console.warn(
+          "Erro ao carregar exames pendentes:",
+          pendingExamsRes.error.message
+        );
+      }
+
       setRecentPatients((patientsRes.data as Patient[]) || []);
       setRecentPrescriptions((prescriptionsRes.data as Prescription[]) || []);
       setRecentExamTemplates((examTemplatesRes.data as ExamTemplate[]) || []);
       setRecentTopicos((topicosRes.data as TopicoMedico[]) || []);
+      setPatientFollowups(
+        patientFollowupsRes.error
+          ? []
+          : ((patientFollowupsRes.data as PatientFollowup[]) || [])
+      );
+      setPendingExams(
+        pendingExamsRes.error
+          ? []
+          : ((pendingExamsRes.data as PendingExam[]) || [])
+      );
 
       try {
         const prescriptionFavorites = JSON.parse(
@@ -323,6 +423,22 @@ export default function DashboardPage() {
       mounted = false;
     };
   }, [supabase]);
+
+  const followupQueue = useMemo(
+    () =>
+      patientFollowups
+        .map((patient) => ({
+          patient,
+          days: getFollowupDays(patient.retorno_previsto_em),
+        }))
+        .filter((item) => item.days !== null && item.days <= 7)
+        .sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999)),
+    [patientFollowups]
+  );
+  const overdueFollowups = followupQueue.filter(
+    (item) => (item.days ?? 0) < 0
+  ).length;
+  const upcomingFollowups = followupQueue.length - overdueFollowups;
 
   if (!loading && sessionReady && isGuest) {
     return (
@@ -408,6 +524,194 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-5 p-4 md:p-6">
+          <section className="overflow-hidden rounded-[26px] border border-cyan-200 bg-white">
+            <div className="border-b border-cyan-100 bg-cyan-50/60 px-4 py-4 md:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-800">
+                    Continuidade clínica
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                    O que precisa de atenção agora
+                  </h2>
+                </div>
+                <Link
+                  href="/pacientes"
+                  className="inline-flex h-9 items-center rounded-xl border border-cyan-200 bg-white px-3 text-xs font-semibold text-cyan-900 transition hover:bg-cyan-50"
+                >
+                  Abrir carteira de pacientes
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="p-4 md:p-5 lg:border-r lg:border-slate-200">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-950">Caso ativo</p>
+                  {activeCase ? (
+                    <span className="text-xs font-medium text-slate-500">
+                      {formatClinicalCaseAge(activeCase)}
+                    </span>
+                  ) : null}
+                </div>
+
+                {activeCase ? (
+                  <div className="mt-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-900">
+                        {activeCase.severity || "Prioridade a definir"}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold ${
+                          activeCase.reassessment?.recordedAt
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-amber-200 bg-amber-50 text-amber-800"
+                        }`}
+                      >
+                        {activeCase.reassessment?.recordedAt ? (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        ) : (
+                          <CircleAlert className="h-3.5 w-3.5" />
+                        )}
+                        {activeCase.reassessment?.recordedAt
+                          ? "Reavaliado"
+                          : "Reavaliação pendente"}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-lg font-semibold text-slate-950">
+                      {activeCase.complaint}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {[activeCase.age, activeCase.sex].filter(Boolean).join(" • ") ||
+                        "Identificação ainda não preenchida"}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Link
+                        href={`/caso-rapido?q=${encodeURIComponent(activeCase.complaint)}`}
+                        className="inline-flex h-9 items-center rounded-xl bg-cyan-800 px-3 text-xs font-semibold text-white transition hover:bg-cyan-900"
+                      >
+                        Continuar atendimento
+                      </Link>
+                      <Link
+                        href={`/exames-evolucao?q=${encodeURIComponent(activeCase.complaint)}`}
+                        className="inline-flex h-9 items-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        Evolução / exames
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
+                    <p className="text-sm text-slate-600">
+                      Nenhum atendimento ativo neste navegador.
+                    </p>
+                    <Link
+                      href="/caso-rapido"
+                      className="mt-3 inline-flex h-9 items-center rounded-xl bg-slate-900 px-3 text-xs font-semibold text-white"
+                    >
+                      Iniciar Caso Rápido
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 md:p-5">
+                <div className="grid grid-cols-3 gap-2">
+                  <OperationalMetric
+                    label="Atrasados"
+                    value={overdueFollowups}
+                    tone={overdueFollowups ? "risk" : "default"}
+                  />
+                  <OperationalMetric label="Próximos" value={upcomingFollowups} />
+                  <OperationalMetric label="Exames" value={pendingExams.length} />
+                </div>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        Retornos
+                      </p>
+                      <Link
+                        href="/pacientes?seguimento=overdue"
+                        className="text-xs font-semibold text-cyan-800"
+                      >
+                        Ver fila
+                      </Link>
+                    </div>
+                    <div className="mt-2 space-y-2">
+                      {followupQueue.slice(0, 3).map(({ patient, days }) => (
+                        <Link
+                          key={patient.id}
+                          href={`/pacientes/${patient.id}?secao=consulta`}
+                          title={`Retorno: ${formatDateOnly(
+                            patient.retorno_previsto_em
+                          )}`}
+                          className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"
+                        >
+                          <span className="min-w-0 truncate text-xs font-semibold text-slate-800">
+                            {patient.nome}
+                          </span>
+                          <span
+                            className={`shrink-0 text-[11px] font-semibold ${
+                              (days ?? 0) < 0 ? "text-rose-700" : "text-slate-500"
+                            }`}
+                          >
+                            {(days ?? 0) < 0
+                              ? `${Math.abs(days || 0)}d atraso`
+                              : days === 0
+                              ? "hoje"
+                              : `${days}d`}
+                          </span>
+                        </Link>
+                      ))}
+                      {followupQueue.length === 0 ? (
+                        <p className="rounded-xl bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                          Nenhum retorno próximo.
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        Exames pendentes
+                      </p>
+                      <Link
+                        href="/pacientes"
+                        className="text-xs font-semibold text-cyan-800"
+                      >
+                        Pacientes
+                      </Link>
+                    </div>
+                    <div className="mt-2 space-y-2">
+                      {pendingExams.slice(0, 3).map((exam) => (
+                        <Link
+                          key={exam.id}
+                          href={`/pacientes/${exam.patient_id}?secao=exames`}
+                          className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"
+                        >
+                          <span className="min-w-0 truncate text-xs font-semibold text-slate-800">
+                            {exam.nome_exame}
+                          </span>
+                          <span className="shrink-0 text-[11px] font-medium text-slate-500">
+                            {exam.status === "recebido" ? "revisar" : "aguardando"}
+                          </span>
+                        </Link>
+                      ))}
+                      {pendingExams.length === 0 ? (
+                        <p className="rounded-xl bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                          Nenhum exame pendente.
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-4 md:p-5">
             <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
               <div>
@@ -753,6 +1057,37 @@ export default function DashboardPage() {
   );
 }
 
+function OperationalMetric({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "risk";
+}) {
+  return (
+    <div
+      className={`rounded-xl border px-3 py-3 ${
+        tone === "risk"
+          ? "border-rose-200 bg-rose-50"
+          : "border-slate-200 bg-slate-50"
+      }`}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-2xl font-semibold ${
+          tone === "risk" ? "text-rose-700" : "text-slate-950"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function HeaderPill({
   label,
   value,
@@ -1024,3 +1359,4 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
