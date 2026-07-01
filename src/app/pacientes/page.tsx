@@ -218,12 +218,35 @@ function formatDateOnly(value?: string | null) {
   if (!value) return "-";
 
   try {
+    const datePart = value.slice(0, 10);
+    const parsed = new Date(`${datePart}T12:00:00`);
     return new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
-    }).format(new Date(value));
+    }).format(parsed);
   } catch {
     return value;
   }
+}
+
+function getFollowupState(value?: string | null, now = new Date()) {
+  if (!value) return { status: "none", days: null } as const;
+  const target = new Date(`${value.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(target.getTime())) {
+    return { status: "none", days: null } as const;
+  }
+
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    12
+  );
+  const days = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+
+  if (days < 0) return { status: "overdue", days } as const;
+  if (days === 0) return { status: "today", days } as const;
+  if (days <= 7) return { status: "upcoming", days } as const;
+  return { status: "future", days } as const;
 }
 
 function getQueixa(patient: Patient) {
@@ -555,6 +578,7 @@ export default function PacientesPage() {
   const [sexo, setSexo] = useState("");
   const [especialidade, setEspecialidade] = useState("");
   const [cadastro, setCadastro] = useState("");
+  const [seguimento, setSeguimento] = useState("");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -567,6 +591,7 @@ export default function PacientesPage() {
     setSexo(params.get("sexo") || "");
     setEspecialidade(params.get("especialidade") || "");
     setCadastro(params.get("cadastro") || "");
+    setSeguimento(params.get("seguimento") || "");
   }, []);
 
   async function loadPatients() {
@@ -626,13 +651,14 @@ export default function PacientesPage() {
     if (sexo) params.set("sexo", sexo);
     if (especialidade) params.set("especialidade", especialidade);
     if (cadastro) params.set("cadastro", cadastro);
+    if (seguimento) params.set("seguimento", seguimento);
 
     const next = params.toString()
       ? `${pathname}?${params.toString()}`
       : pathname;
 
     router.replace(next, { scroll: false });
-  }, [query, sexo, especialidade, cadastro, pathname, router]);
+  }, [query, sexo, especialidade, cadastro, seguimento, pathname, router]);
 
   const sexos = useMemo(() => {
     return Array.from(
@@ -658,8 +684,17 @@ export default function PacientesPage() {
           registration.completed === registration.items.length) ||
         (cadastro === "incompleto" &&
           registration.completed < registration.items.length);
+      const followup = getFollowupState(item.retorno_previsto_em);
+      const matchesSeguimento =
+        !seguimento ||
+        (seguimento === "overdue" && followup.status === "overdue") ||
+        (seguimento === "upcoming" &&
+          (followup.status === "today" || followup.status === "upcoming")) ||
+        (seguimento === "none" && followup.status === "none");
 
-      return matchesSexo && matchesEspecialidade && matchesCadastro;
+      return (
+        matchesSexo && matchesEspecialidade && matchesCadastro && matchesSeguimento
+      );
     });
 
     return rankSearchResults(filteredBySelects, query, (item) => [
@@ -683,9 +718,11 @@ export default function PacientesPage() {
       { value: item.conduta_medica, weight: 1 },
       { value: item.observacoes, weight: 1 },
     ]);
-  }, [patients, query, sexo, especialidade, cadastro]);
+  }, [patients, query, sexo, especialidade, cadastro, seguimento]);
 
-  const hasFilters = Boolean(query || sexo || especialidade || cadastro);
+  const hasFilters = Boolean(
+    query || sexo || especialidade || cadastro || seguimento
+  );
 
   const recentCount = useMemo(() => {
     const now = Date.now();
@@ -701,10 +738,25 @@ export default function PacientesPage() {
     return patients.filter((patient) => hasRiskFlags(patient)).length;
   }, [patients]);
 
-  const retornoCount = useMemo(() => {
-    return patients.filter((patient) => Boolean(patient.retorno_previsto_em))
-      .length;
-  }, [patients]);
+  const followupQueue = useMemo(
+    () =>
+      patients
+        .map((patient) => ({
+          patient,
+          followup: getFollowupState(patient.retorno_previsto_em),
+        }))
+        .filter(({ followup }) =>
+          ["overdue", "today", "upcoming"].includes(followup.status)
+        )
+        .sort(
+          (a, b) => (a.followup.days ?? 9999) - (b.followup.days ?? 9999)
+        ),
+    [patients]
+  );
+
+  const overdueCount = followupQueue.filter(
+    ({ followup }) => followup.status === "overdue"
+  ).length;
 
   const incompleteCount = useMemo(
     () =>
@@ -1019,8 +1071,8 @@ export default function PacientesPage() {
 
           <StatCard
             icon={<CalendarDays className="h-5 w-5" />}
-            label="Retornos"
-            value={retornoCount}
+            label="Retornos atrasados"
+            value={overdueCount}
           />
 
           <StatCard
@@ -1116,6 +1168,7 @@ export default function PacientesPage() {
                     setSexo("");
                     setEspecialidade("");
                     setCadastro("");
+                    setSeguimento("");
                   }}
                   disabled={!hasFilters}
                   className={`inline-flex h-12 w-full items-center justify-center rounded-2xl px-6 text-sm font-semibold transition ${
@@ -1129,8 +1182,119 @@ export default function PacientesPage() {
               </div>
             </div>
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
+            <span className="mr-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Seguimento
+            </span>
+            {[
+              { value: "", label: "Todos" },
+              { value: "overdue", label: `Atrasados (${overdueCount})` },
+              {
+                value: "upcoming",
+                label: `Próximos 7 dias (${followupQueue.length - overdueCount})`,
+              },
+              { value: "none", label: "Sem retorno" },
+            ].map((option) => (
+              <button
+                key={option.value || "all"}
+                type="button"
+                onClick={() => setSeguimento(option.value)}
+                className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-semibold transition ${
+                  seguimento === option.value
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </ModulePageHeader>
+
+      {!loading && followupQueue.length > 0 ? (
+        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-800">
+                Agenda clínica
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                Retornos que pedem atenção
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Atrasados primeiro, seguidos pelos próximos sete dias.
+              </p>
+            </div>
+            <span className="inline-flex h-9 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700">
+              {followupQueue.length} na fila
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {followupQueue.slice(0, 6).map(({ patient, followup }) => {
+              const overdue = followup.status === "overdue";
+              const today = followup.status === "today";
+              const timing = overdue
+                ? `${Math.abs(followup.days || 0)} dia${Math.abs(followup.days || 0) === 1 ? "" : "s"} em atraso`
+                : today
+                ? "Retorno hoje"
+                : `Em ${followup.days} dias`;
+
+              return (
+                <div
+                  key={`followup-${patient.id}`}
+                  className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
+                    overdue
+                      ? "border-rose-200 bg-rose-50/50"
+                      : today
+                      ? "border-amber-200 bg-amber-50/50"
+                      : "border-slate-200 bg-slate-50/70"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-950">
+                      {patient.nome}
+                    </p>
+                    <p
+                      className={`mt-1 text-xs font-semibold ${
+                        overdue
+                          ? "text-rose-700"
+                          : today
+                          ? "text-amber-700"
+                          : "text-slate-600"
+                      }`}
+                    >
+                      {timing} • {formatDateOnly(patient.retorno_previsto_em)}
+                    </p>
+                    {getQueixa(patient) ? (
+                      <p className="mt-1 truncate text-xs text-slate-500">
+                        {getQueixa(patient)}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="flex shrink-0 gap-2">
+                    <Link
+                      href={`/pacientes/${patient.id}`}
+                      className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      Abrir
+                    </Link>
+                    <Link
+                      href={`/pacientes/${patient.id}?secao=consulta`}
+                      className="inline-flex h-9 items-center rounded-lg bg-cyan-800 px-3 text-xs font-semibold text-white transition hover:bg-cyan-900"
+                    >
+                      Nova consulta
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {loading ? (
         <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-12 text-center text-sm font-medium text-slate-600 shadow-sm">
@@ -1189,6 +1353,7 @@ export default function PacientesPage() {
               const registration = getRegistrationStatus(item);
               const registrationComplete =
                 registration.completed === registration.items.length;
+              const followup = getFollowupState(item.retorno_previsto_em);
 
               return (
                 <article
@@ -1238,6 +1403,24 @@ export default function PacientesPage() {
                             )}
                             Cadastro {registration.completed}/{registration.items.length}
                           </span>
+
+                          {followup.status !== "none" &&
+                          followup.status !== "future" ? (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs font-semibold ${
+                                followup.status === "overdue"
+                                  ? "border-rose-200 text-rose-700"
+                                  : "border-amber-200 text-amber-800"
+                              }`}
+                            >
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              {followup.status === "overdue"
+                                ? `Retorno atrasado ${Math.abs(followup.days || 0)}d`
+                                : followup.status === "today"
+                                ? "Retorno hoje"
+                                : `Retorno em ${followup.days}d`}
+                            </span>
+                          ) : null}
 
                           {hasAllergy ? (
                             <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
@@ -1378,6 +1561,13 @@ export default function PacientesPage() {
                         className="inline-flex h-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
                       >
                         Abrir prontuário
+                      </Link>
+
+                      <Link
+                        href={`/pacientes/${item.id}?secao=consulta`}
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900"
+                      >
+                        Nova consulta
                       </Link>
 
                       <button
