@@ -20,7 +20,7 @@ import VisualSystemController from "../components/visual-system-controller";
 
 export const metadata: Metadata = {
   title: "ResiBook",
-  description: "Sistema mÃ©dico premium",
+  description: "Sistema médico premium",
   icons: {
     icon: [
       {
@@ -55,7 +55,7 @@ export default function RootLayout({
           href="#conteudo-principal"
           className="skip-link"
         >
-          Ir para o conteÃºdo principal
+          Ir para o conteúdo principal
         </a>
         <Suspense fallback={null}>
           <AccessLogger />
