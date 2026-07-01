@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Gauge,
   Menu,
+  Search,
   Siren,
   Stethoscope,
 } from "lucide-react";
@@ -73,11 +74,20 @@ export default function MobileClinicalNav() {
     };
   }, [hidden, pathname]);
 
+  function openGlobalSearch() {
+    const search = document.querySelector<HTMLInputElement>(
+      'header input[type="text"][placeholder*="Buscar"]'
+    );
+    if (!search) return;
+    search.focus();
+    search.select();
+  }
+
   if (hidden) return null;
 
   return (
     <nav
-      className="fixed inset-x-3 bottom-3 z-50 grid h-[66px] grid-cols-5 rounded-2xl border border-slate-200/90 bg-white/95 p-1.5 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl lg:hidden print:hidden"
+      className="fixed inset-x-3 bottom-3 z-50 grid h-[66px] grid-cols-6 rounded-2xl border border-slate-200/90 bg-white/95 p-1.5 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl lg:hidden print:hidden"
       aria-label="Navegação clínica rápida"
     >
       {items.map((item) => {
@@ -105,6 +115,16 @@ export default function MobileClinicalNav() {
 
       <button
         type="button"
+        onClick={openGlobalSearch}
+        className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-cyan-700 transition hover:bg-cyan-50"
+        aria-label="Abrir busca clínica"
+      >
+        <Search className="h-[18px] w-[18px]" />
+        <span className="text-[10px] font-semibold">Busca</span>
+      </button>
+
+      <button
+        type="button"
         onClick={() => menuTriggerRef.current?.click()}
         className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
         aria-label="Abrir menu completo"
@@ -115,3 +135,4 @@ export default function MobileClinicalNav() {
     </nav>
   );
 }
+
