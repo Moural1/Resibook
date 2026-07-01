@@ -11,6 +11,8 @@ import { rankSearchResults } from "@/lib/search";
 import {
   AlertTriangle,
   CalendarDays,
+  CheckCircle2,
+  CircleAlert,
   ClipboardList,
   FileText,
   HeartPulse,
@@ -156,6 +158,47 @@ function normalize(value?: string | number | null) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function digitsOnly(value?: string | null) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function getRegistrationStatus(value: Patient | PatientForm) {
+  const age =
+    typeof value.idade === "number"
+      ? String(value.idade)
+      : String(value.idade || "").trim();
+  const complaint =
+    "queixa" in value
+      ? value.queixa_principal || value.queixa || ""
+      : value.queixa_principal;
+
+  const items = [
+    { label: "Nome", complete: Boolean(value.nome.trim()) },
+    {
+      label: "Idade ou nascimento",
+      complete: Boolean(age || value.data_nascimento),
+    },
+    { label: "Sexo", complete: Boolean(value.sexo?.trim()) },
+    { label: "Contato", complete: Boolean(value.telefone?.trim()) },
+    { label: "Queixa base", complete: Boolean(complaint.trim()) },
+    {
+      label: "Antecedentes",
+      complete: Boolean(value.hpp?.trim() || value.comorbidades?.trim()),
+    },
+    { label: "Alergias revisadas", complete: Boolean(value.alergias?.trim()) },
+    {
+      label: "Medicamentos revisados",
+      complete: Boolean(value.medicamentos_em_uso?.trim()),
+    },
+  ];
+
+  return {
+    items,
+    completed: items.filter((item) => item.complete).length,
+    missing: items.filter((item) => !item.complete).map((item) => item.label),
+  };
 }
 
 function formatDate(value?: string | null) {
@@ -511,16 +554,19 @@ export default function PacientesPage() {
   const [query, setQuery] = useState("");
   const [sexo, setSexo] = useState("");
   const [especialidade, setEspecialidade] = useState("");
+  const [cadastro, setCadastro] = useState("");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [form, setForm] = useState<PatientForm>(emptyForm);
+  const [allowPossibleDuplicate, setAllowPossibleDuplicate] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setQuery(params.get("q") || "");
     setSexo(params.get("sexo") || "");
     setEspecialidade(params.get("especialidade") || "");
+    setCadastro(params.get("cadastro") || "");
   }, []);
 
   async function loadPatients() {
@@ -579,13 +625,14 @@ export default function PacientesPage() {
     if (query.trim()) params.set("q", query.trim());
     if (sexo) params.set("sexo", sexo);
     if (especialidade) params.set("especialidade", especialidade);
+    if (cadastro) params.set("cadastro", cadastro);
 
     const next = params.toString()
       ? `${pathname}?${params.toString()}`
       : pathname;
 
     router.replace(next, { scroll: false });
-  }, [query, sexo, especialidade, pathname, router]);
+  }, [query, sexo, especialidade, cadastro, pathname, router]);
 
   const sexos = useMemo(() => {
     return Array.from(
@@ -604,8 +651,15 @@ export default function PacientesPage() {
       const matchesSexo = !sexo || item.sexo === sexo;
       const matchesEspecialidade =
         !especialidade || item.especialidade === especialidade;
+      const registration = getRegistrationStatus(item);
+      const matchesCadastro =
+        !cadastro ||
+        (cadastro === "completo" &&
+          registration.completed === registration.items.length) ||
+        (cadastro === "incompleto" &&
+          registration.completed < registration.items.length);
 
-      return matchesSexo && matchesEspecialidade;
+      return matchesSexo && matchesEspecialidade && matchesCadastro;
     });
 
     return rankSearchResults(filteredBySelects, query, (item) => [
@@ -629,9 +683,9 @@ export default function PacientesPage() {
       { value: item.conduta_medica, weight: 1 },
       { value: item.observacoes, weight: 1 },
     ]);
-  }, [patients, query, sexo, especialidade]);
+  }, [patients, query, sexo, especialidade, cadastro]);
 
-  const hasFilters = Boolean(query || sexo || especialidade);
+  const hasFilters = Boolean(query || sexo || especialidade || cadastro);
 
   const recentCount = useMemo(() => {
     const now = Date.now();
@@ -651,6 +705,43 @@ export default function PacientesPage() {
     return patients.filter((patient) => Boolean(patient.retorno_previsto_em))
       .length;
   }, [patients]);
+
+  const incompleteCount = useMemo(
+    () =>
+      patients.filter((patient) => {
+        const registration = getRegistrationStatus(patient);
+        return registration.completed < registration.items.length;
+      }).length,
+    [patients]
+  );
+
+  const formRegistration = useMemo(() => getRegistrationStatus(form), [form]);
+  const possibleDuplicates = useMemo(() => {
+    const name = normalize(form.nome).replace(/\s+/g, " ");
+    if (name.length < 4) return [];
+
+    return patients.filter((patient) => {
+      if (patient.id === editingPatient?.id) return false;
+      if (normalize(patient.nome).replace(/\s+/g, " ") !== name) return false;
+
+      const sameBirthDate = Boolean(
+        form.data_nascimento &&
+          patient.data_nascimento?.slice(0, 10) === form.data_nascimento
+      );
+      const formPhone = digitsOnly(form.telefone);
+      const patientPhone = digitsOnly(patient.telefone);
+      const samePhone = Boolean(
+        formPhone.length >= 8 && patientPhone === formPhone
+      );
+      const sameAge = Boolean(
+        form.idade &&
+          typeof patient.idade === "number" &&
+          patient.idade === Number(form.idade)
+      );
+
+      return sameBirthDate || samePhone || sameAge || (!form.data_nascimento && !formPhone && !form.idade);
+    });
+  }, [editingPatient?.id, form.data_nascimento, form.idade, form.nome, form.telefone, patients]);
 
   const exameFisicoTemplates = useMemo(() => {
     return examTemplates.filter((item) => {
@@ -750,11 +841,15 @@ export default function PacientesPage() {
     value: PatientForm[K]
   ) {
     setForm((current) => ({ ...current, [key]: value }));
+    if (["nome", "idade", "telefone", "data_nascimento"].includes(key)) {
+      setAllowPossibleDuplicate(false);
+    }
   }
 
   function openCreateDrawer() {
     setEditingPatient(null);
     setForm(emptyForm);
+    setAllowPossibleDuplicate(false);
     setDrawerOpen(true);
     setError("");
     setSuccess("");
@@ -763,6 +858,7 @@ export default function PacientesPage() {
   function openEditDrawer(patient: Patient) {
     setEditingPatient(patient);
     setForm(patientToForm(patient));
+    setAllowPossibleDuplicate(false);
     setDrawerOpen(true);
     setError("");
     setSuccess("");
@@ -772,6 +868,7 @@ export default function PacientesPage() {
     setDrawerOpen(false);
     setEditingPatient(null);
     setForm(emptyForm);
+    setAllowPossibleDuplicate(false);
   }
 
   async function handleSave() {
@@ -782,6 +879,17 @@ export default function PacientesPage() {
 
     if (!form.nome.trim()) {
       setError("Nome é obrigatório.");
+      return;
+    }
+
+    if (
+      !editingPatient &&
+      possibleDuplicates.length > 0 &&
+      !allowPossibleDuplicate
+    ) {
+      setError(
+        "Encontramos um possível cadastro duplicado. Revise a identificação antes de criar outro prontuário."
+      );
       return;
     }
 
@@ -875,8 +983,8 @@ export default function PacientesPage() {
             value: loading ? "Carregando..." : patients.length,
           },
           {
-            label: "Exibindo",
-            value: filtered.length,
+            label: "Incompletos",
+            value: incompleteCount,
           },
           {
             label: "Com alertas",
@@ -916,9 +1024,9 @@ export default function PacientesPage() {
           />
 
           <StatCard
-            icon={<FileText className="h-5 w-5" />}
-            label="Exibindo"
-            value={filtered.length}
+            icon={<CircleAlert className="h-5 w-5" />}
+            label="Cadastros incompletos"
+            value={incompleteCount}
           />
         </div>
 
@@ -941,7 +1049,7 @@ export default function PacientesPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3 xl:w-[720px]">
+            <div className="grid gap-3 sm:grid-cols-2 xl:w-[900px] xl:grid-cols-4">
               <div>
                 <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Sexo
@@ -981,6 +1089,22 @@ export default function PacientesPage() {
               </div>
 
               <div>
+                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Cadastro
+                </label>
+
+                <select
+                  value={cadastro}
+                  onChange={(event) => setCadastro(event.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                >
+                  <option value="">Todos</option>
+                  <option value="incompleto">Com pendências</option>
+                  <option value="completo">Completos</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-transparent">
                   Ações
                 </label>
@@ -991,6 +1115,7 @@ export default function PacientesPage() {
                     setQuery("");
                     setSexo("");
                     setEspecialidade("");
+                    setCadastro("");
                   }}
                   disabled={!hasFilters}
                   className={`inline-flex h-12 w-full items-center justify-center rounded-2xl px-6 text-sm font-semibold transition ${
@@ -1061,6 +1186,9 @@ export default function PacientesPage() {
               const risks = getRiskFlags(item);
               const hasAllergy = Boolean(item.alergias);
               const hasAnyRisk = hasAllergy || risks.length > 0;
+              const registration = getRegistrationStatus(item);
+              const registrationComplete =
+                registration.completed === registration.items.length;
 
               return (
                 <article
@@ -1095,6 +1223,21 @@ export default function PacientesPage() {
                               {item.plano_saude}
                             </span>
                           ) : null}
+
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs font-semibold ${
+                              registrationComplete
+                                ? "border-emerald-200 text-emerald-700"
+                                : "border-amber-200 text-amber-800"
+                            }`}
+                          >
+                            {registrationComplete ? (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            ) : (
+                              <CircleAlert className="h-3.5 w-3.5" />
+                            )}
+                            Cadastro {registration.completed}/{registration.items.length}
+                          </span>
 
                           {hasAllergy ? (
                             <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
@@ -1175,6 +1318,20 @@ export default function PacientesPage() {
                   </div>
 
                   <div className="p-5">
+                    {!registrationComplete ? (
+                      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3">
+                        <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                        <div>
+                          <p className="text-sm font-semibold text-amber-950">
+                            Completar cadastro clínico
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-amber-800">
+                            Pendentes: {registration.missing.join(", ")}.
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="grid gap-3">
                       <InfoBlock title="Alergias" tone="risk">
                         {item.alergias}
@@ -1274,13 +1431,24 @@ export default function PacientesPage() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={closeDrawer}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 sm:inline-flex">
+                  {formRegistration.completed === formRegistration.items.length ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  ) : (
+                    <CircleAlert className="h-4 w-4 text-amber-600" />
+                  )}
+                  Cadastro {formRegistration.completed}/{formRegistration.items.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+                  aria-label="Fechar cadastro"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-6 px-6 py-6">
@@ -1387,6 +1555,71 @@ export default function PacientesPage() {
                     placeholder="Médico / CRM para impressão"
                   />
                 </div>
+
+                {!editingPatient && possibleDuplicates.length > 0 ? (
+                  <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-amber-950">
+                          Possível prontuário duplicado
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-amber-900">
+                          Encontramos identificação semelhante. Abra o cadastro existente antes de criar outro.
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {possibleDuplicates.map((candidate) => (
+                            <div
+                              key={candidate.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2"
+                            >
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">
+                                  {candidate.nome}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {[
+                                    candidate.idade != null
+                                      ? `${candidate.idade} anos`
+                                      : "",
+                                    candidate.telefone || "",
+                                    candidate.data_nascimento
+                                      ? `Nasc. ${formatDateOnly(candidate.data_nascimento)}`
+                                      : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" • ")}
+                                </p>
+                              </div>
+                              <Link
+                                href={`/pacientes/${candidate.id}`}
+                                className="inline-flex h-9 items-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
+                              >
+                                Abrir prontuário
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAllowPossibleDuplicate(true);
+                            setError("");
+                          }}
+                          className={`mt-3 text-xs font-semibold underline underline-offset-4 ${
+                            allowPossibleDuplicate
+                              ? "text-emerald-700"
+                              : "text-amber-900"
+                          }`}
+                        >
+                          {allowPossibleDuplicate
+                            ? "Criação de novo prontuário confirmada"
+                            : "Confirmar que é outra pessoa"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-white p-5">
@@ -1799,3 +2032,4 @@ export default function PacientesPage() {
     </div>
   );
 }
+
