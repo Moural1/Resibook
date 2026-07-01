@@ -29,7 +29,7 @@ const MODES: Array<{
 }> = [
   { value: "soap", label: "SOAP", icon: ClipboardCheck },
   { value: "narrative", label: "Narrativa", icon: FileText },
-  { value: "reassessment", label: "ReavaliaÃ§Ã£o", icon: RefreshCw },
+  { value: "reassessment", label: "Reavaliação", icon: RefreshCw },
 ];
 
 function clean(value?: string) {
@@ -60,10 +60,10 @@ function buildSoap(activeCase: ClinicalCaseSession) {
     `${patientLabel(activeCase)}, em atendimento por ${clean(activeCase.complaint)}.`,
     clean(activeCase.notes) ? sentence(clean(activeCase.notes)) : "",
     reassessment?.symptomStatus
-      ? `Na reavaliaÃ§Ã£o, refere ${clean(reassessment.symptomStatus).toLowerCase()}.`
+      ? `Na reavaliação, refere ${clean(reassessment.symptomStatus).toLowerCase()}.`
       : "",
     reassessment?.treatmentResponse
-      ? `Resposta Ã s medidas: ${sentence(clean(reassessment.treatmentResponse))}`
+      ? `Resposta às medidas: ${sentence(clean(reassessment.treatmentResponse))}`
       : "",
   ].filter(Boolean);
 
@@ -81,29 +81,29 @@ function buildSoap(activeCase: ClinicalCaseSession) {
 
   const assessment = [
     clean(activeCase.severity)
-      ? `ClassificaÃ§Ã£o/prioridade: ${clean(activeCase.severity)}.`
+      ? `Classificação/prioridade: ${clean(activeCase.severity)}.`
       : "",
     activeCase.priorities.length
-      ? `Problemas prioritÃ¡rios: ${activeCase.priorities.join("; ")}.`
+      ? `Problemas prioritários: ${activeCase.priorities.join("; ")}.`
       : "",
     activeCase.alerts.length
-      ? `Alertas clÃ­nicos: ${activeCase.alerts.join("; ")}.`
+      ? `Alertas clínicos: ${activeCase.alerts.join("; ")}.`
       : "",
   ].filter(Boolean);
 
   const plan = [
     reassessment?.decision
-      ? `DecisÃ£o e destino: ${sentence(clean(reassessment.decision))}`
-      : "Conduta e destino a definir conforme evoluÃ§Ã£o clÃ­nica.",
+      ? `Decisão e destino: ${sentence(clean(reassessment.decision))}`
+      : "Conduta e destino a definir conforme evolução clínica.",
     reassessment?.notes
-      ? `PendÃªncias/orientaÃ§Ãµes: ${sentence(clean(reassessment.notes))}`
+      ? `Pendências/orientações: ${sentence(clean(reassessment.notes))}`
       : "",
   ].filter(Boolean);
 
   return [
-    `S - SUBJETIVO\n${subjective.join(" ") || "Queixa e evoluÃ§Ã£o subjetiva nÃ£o registradas."}`,
-    `O - OBJETIVO\n${objective.join(" ") || "Dados objetivos nÃ£o registrados."}`,
-    `A - AVALIAÃ‡ÃƒO\n${assessment.join(" ") || "ImpressÃ£o clÃ­nica a registrar."}`,
+    `S - SUBJETIVO\n${subjective.join(" ") || "Queixa e evolução subjetiva não registradas."}`,
+    `O - OBJETIVO\n${objective.join(" ") || "Dados objetivos não registrados."}`,
+    `A - AVALIAÇÃO\n${assessment.join(" ") || "Impressão clínica a registrar."}`,
     `P - PLANO\n${plan.join(" ")}`,
   ].join("\n\n");
 }
@@ -113,30 +113,30 @@ function buildNarrative(activeCase: ClinicalCaseSession) {
   return [
     `${patientLabel(activeCase)}, em atendimento por ${clean(activeCase.complaint)}.`,
     clean(activeCase.severity)
-      ? `ClassificaÃ§Ã£o inicial: ${clean(activeCase.severity)}.`
+      ? `Classificação inicial: ${clean(activeCase.severity)}.`
       : "",
     formatCaseVitals(activeCase)
-      ? `Ã€ admissÃ£o: ${formatCaseVitals(activeCase)}.`
+      ? `À admissão: ${formatCaseVitals(activeCase)}.`
       : "",
     clean(activeCase.notes) ? sentence(clean(activeCase.notes)) : "",
     clean(activeCase.redFlags)
       ? `Sinais de alarme considerados: ${sentence(clean(activeCase.redFlags))}`
       : "",
     activeCase.priorities.length
-      ? `Prioridades clÃ­nicas: ${activeCase.priorities.join("; ")}.`
+      ? `Prioridades clínicas: ${activeCase.priorities.join("; ")}.`
       : "",
     reassessment?.symptomStatus
-      ? `Em reavaliaÃ§Ã£o, apresenta ${clean(reassessment.symptomStatus).toLowerCase()}.`
+      ? `Em reavaliação, apresenta ${clean(reassessment.symptomStatus).toLowerCase()}.`
       : "",
     reassessment?.treatmentResponse
-      ? `Resposta Ã s medidas instituÃ­das: ${sentence(clean(reassessment.treatmentResponse))}`
+      ? `Resposta às medidas instituídas: ${sentence(clean(reassessment.treatmentResponse))}`
       : "",
     reassessment && formatVitals(reassessment.vitals)
       ? `Sinais vitais atuais: ${formatVitals(reassessment.vitals)}.`
       : "",
     reassessment?.decision
       ? `Definido: ${sentence(clean(reassessment.decision))}`
-      : "Mantido acompanhamento clÃ­nico, com conduta e destino conforme evoluÃ§Ã£o.",
+      : "Mantido acompanhamento clínico, com conduta e destino conforme evolução.",
     reassessment?.notes ? sentence(clean(reassessment.notes)) : "",
   ]
     .filter(Boolean)
@@ -147,18 +147,18 @@ function buildReassessment(activeCase: ClinicalCaseSession) {
   const reassessment = activeCase.reassessment;
   if (!reassessment) {
     return [
-      `Paciente em observaÃ§Ã£o por ${clean(activeCase.complaint)}.`,
+      `Paciente em observação por ${clean(activeCase.complaint)}.`,
       formatCaseVitals(activeCase)
-        ? `ParÃ¢metros iniciais: ${formatCaseVitals(activeCase)}.`
+        ? `Parâmetros iniciais: ${formatCaseVitals(activeCase)}.`
         : "",
-      "ReavaliaÃ§Ã£o clÃ­nica pendente, incluindo resposta terapÃªutica, novos sinais vitais e definiÃ§Ã£o de destino.",
+      "Reavaliação clínica pendente, incluindo resposta terapêutica, novos sinais vitais e definição de destino.",
     ]
       .filter(Boolean)
       .join(" ");
   }
 
   return [
-    `REAVALIAÃ‡ÃƒO CLÃNICA - ${clean(activeCase.complaint)}`,
+    `REAVALIAÇÃO CLÍNICA - ${clean(activeCase.complaint)}`,
     reassessment.recordedAt
       ? `Registro: ${new Intl.DateTimeFormat("pt-BR", {
           dateStyle: "short",
@@ -172,15 +172,15 @@ function buildReassessment(activeCase: ClinicalCaseSession) {
       ? `Sinais vitais atuais: ${formatVitals(reassessment.vitals)}`
       : "",
     reassessment.symptomStatus
-      ? `EvoluÃ§Ã£o do sintoma: ${clean(reassessment.symptomStatus)}`
+      ? `Evolução do sintoma: ${clean(reassessment.symptomStatus)}`
       : "",
     reassessment.treatmentResponse
-      ? `Resposta Ã s medidas: ${clean(reassessment.treatmentResponse)}`
+      ? `Resposta às medidas: ${clean(reassessment.treatmentResponse)}`
       : "",
     reassessment.decision
-      ? `DecisÃ£o/destino: ${clean(reassessment.decision)}`
+      ? `Decisão/destino: ${clean(reassessment.decision)}`
       : "",
-    reassessment.notes ? `ObservaÃ§Ãµes: ${clean(reassessment.notes)}` : "",
+    reassessment.notes ? `Observações: ${clean(reassessment.notes)}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -189,7 +189,7 @@ function buildReassessment(activeCase: ClinicalCaseSession) {
 function getChecklist(activeCase: ClinicalCaseSession) {
   return [
     {
-      label: "IdentificaÃ§Ã£o",
+      label: "Identificação",
       complete: Boolean(clean(activeCase.age) && clean(activeCase.sex)),
     },
     {
@@ -197,15 +197,15 @@ function getChecklist(activeCase: ClinicalCaseSession) {
       complete: Boolean(formatCaseVitals(activeCase)),
     },
     {
-      label: "HistÃ³ria/exame direcionado",
+      label: "História/exame direcionado",
       complete: Boolean(clean(activeCase.notes)),
     },
     {
-      label: "ReavaliaÃ§Ã£o",
+      label: "Reavaliação",
       complete: Boolean(activeCase.reassessment?.recordedAt),
     },
     {
-      label: "DecisÃ£o e destino",
+      label: "Decisão e destino",
       complete: Boolean(clean(activeCase.reassessment?.decision)),
     },
   ];
@@ -284,13 +284,13 @@ export default function ClinicalEvolutionComposer() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-800">
-              DocumentaÃ§Ã£o assistida
+              Documentação assistida
             </p>
             <h2 className="mt-1 text-xl font-semibold text-slate-950">
-              EvoluÃ§Ã£o clÃ­nica
+              Evolução clínica
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Estruture o registro com os dados jÃ¡ coletados neste atendimento.
+              Estruture o registro com os dados já coletados neste atendimento.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
@@ -302,7 +302,7 @@ export default function ClinicalEvolutionComposer() {
         <div
           className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1"
           role="tablist"
-          aria-label="Formato da evoluÃ§Ã£o"
+          aria-label="Formato da evolução"
         >
           {MODES.map((item) => {
             const Icon = item.icon;
@@ -336,21 +336,21 @@ export default function ClinicalEvolutionComposer() {
           <div className="mt-3 flex flex-wrap gap-2">
             <CopyButton
               text={output}
-              label="Copiar evoluÃ§Ã£o"
-              copiedLabel="EvoluÃ§Ã£o copiada"
+              label="Copiar evolução"
+              copiedLabel="Evolução copiada"
             />
             <Link
               href={`/exames-evolucao?q=${encodeURIComponent(activeCase.complaint)}`}
               className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              Abrir exames/evoluÃ§Ã£o
+              Abrir exames/evolução
             </Link>
           </div>
         </div>
 
         <aside className="border-t border-slate-200 bg-slate-50/60 p-4 lg:border-l lg:border-t-0 md:p-5">
           <h3 className="text-sm font-semibold text-slate-950">
-            ConferÃªncia do registro
+            Conferência do registro
           </h3>
           <ul className="mt-3 space-y-2.5">
             {checklist.map((item) => (
@@ -368,7 +368,7 @@ export default function ClinicalEvolutionComposer() {
             ))}
           </ul>
           <p className="mt-4 text-xs leading-5 text-slate-500">
-            Revise o texto e complemente achados relevantes antes de registrar no prontuÃ¡rio.
+            Revise o texto e complemente achados relevantes antes de registrar no prontuário.
           </p>
         </aside>
       </div>
