@@ -4,8 +4,18 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CopyButton from "../../../components/copy-button";
+import { findBestComplaint } from "@/lib/clinical-case-routing";
+import {
+  CLINICAL_CASE_SESSION_EVENT,
+  formatCaseIdentification,
+  formatCaseVitals,
+  loadClinicalCaseSession,
+  type ClinicalCaseSession,
+} from "@/lib/clinical-case-session";
 import {
   ArrowLeft,
+  CheckCircle2,
+  CircleAlert,
   ClipboardCheck,
   FileText,
   HeartPulse,
@@ -181,12 +191,105 @@ const GUIDES: DischargeGuide[] = [
 
 const DEFAULT_GUIDE = GUIDES[GUIDES.length - 1];
 
-function buildDischargeText(guide: DischargeGuide, patient: string, notes: string) {
+function findGuide(query: string) {
+  const canonicalTitle = findBestComplaint(query)?.title.toLowerCase();
+  const normalizedQuery = query.trim().toLowerCase();
+
+  return GUIDES.find((item) => {
+    const title = item.title.toLowerCase();
+    return (
+      title === canonicalTitle ||
+      title === normalizedQuery ||
+      title.includes(normalizedQuery) ||
+      normalizedQuery.includes(title)
+    );
+  });
+}
+
+function buildCaseSummary(activeCase: ClinicalCaseSession | null) {
+  if (!activeCase) return "";
+
+  const reassessment = activeCase.reassessment;
+  const currentVitals = reassessment
+    ? Object.entries(reassessment.vitals)
+        .filter(([, value]) => value.trim())
+        .map(([key, value]) => `${key.toUpperCase()} ${value.trim()}`)
+        .join(" | ")
+    : "";
+
+  return [
+    formatCaseVitals(activeCase)
+      ? `Sinais vitais iniciais: ${formatCaseVitals(activeCase)}`
+      : "",
+    currentVitals ? `Sinais vitais na reavaliação: ${currentVitals}` : "",
+    activeCase.redFlags.trim()
+      ? `Sinais de alarme avaliados: ${activeCase.redFlags.trim()}`
+      : "",
+    activeCase.notes.trim()
+      ? `História/exame direcionado: ${activeCase.notes.trim()}`
+      : "",
+    reassessment?.symptomStatus
+      ? `Evolução do sintoma: ${reassessment.symptomStatus.trim()}`
+      : "",
+    reassessment?.treatmentResponse
+      ? `Resposta às medidas: ${reassessment.treatmentResponse.trim()}`
+      : "",
+    reassessment?.decision
+      ? `Decisão/destino registrado: ${reassessment.decision.trim()}`
+      : "",
+    reassessment?.notes
+      ? `Observações da reavaliação: ${reassessment.notes.trim()}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function getDischargeReadiness(activeCase: ClinicalCaseSession | null) {
+  if (!activeCase) return [];
+
+  return [
+    {
+      label: "Identificação completa",
+      complete: Boolean(activeCase.age.trim() && activeCase.sex.trim()),
+    },
+    {
+      label: "Sinais vitais iniciais",
+      complete: Boolean(formatCaseVitals(activeCase)),
+    },
+    {
+      label: "Sinais de alarme registrados",
+      complete: Boolean(activeCase.redFlags.trim()),
+    },
+    {
+      label: "Reavaliação registrada",
+      complete: Boolean(activeCase.reassessment?.recordedAt),
+    },
+    {
+      label: "Resposta ao tratamento",
+      complete: Boolean(activeCase.reassessment?.treatmentResponse.trim()),
+    },
+    {
+      label: "Decisão e destino",
+      complete: Boolean(activeCase.reassessment?.decision.trim()),
+    },
+  ];
+}
+
+function buildDischargeText(
+  guide: DischargeGuide,
+  patient: string,
+  notes: string,
+  caseSummary: string
+) {
   return [
     "ALTA SEGURA - RESIBOOK",
     `Paciente: ${patient.trim() || "não identificado"}`,
     `Quadro: ${guide.title}`,
     `Resumo: ${guide.summary}`,
+    caseSummary ? "" : null,
+    caseSummary ? "Contexto do atendimento:" : null,
+    caseSummary || null,
     "",
     "Cuidados em casa:",
     ...guide.homeCare.map((item) => `- ${item}`),
@@ -211,23 +314,44 @@ export default function SafeDischargePage() {
   const [selectedTitle, setSelectedTitle] = useState(DEFAULT_GUIDE.title);
   const [patient, setPatient] = useState("");
   const [notes, setNotes] = useState("");
+  const [activeCase, setActiveCase] = useState<ClinicalCaseSession | null>(null);
 
   useEffect(() => {
     const query = searchParams.get("q")?.trim().toLowerCase();
     if (!query) return;
 
-    const matched = GUIDES.find((item) => {
-      const title = item.title.toLowerCase();
-      return title === query || title.includes(query) || query.includes(title);
-    });
+    const matched = findGuide(query);
 
     if (matched) {
       setSelectedTitle(matched.title);
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    function refreshCase() {
+      const saved = loadClinicalCaseSession();
+      setActiveCase(saved);
+
+      if (!saved) return;
+      setPatient((current) => current || formatCaseIdentification(saved));
+
+      const matched = findGuide(saved.complaint);
+      if (matched) setSelectedTitle(matched.title);
+    }
+
+    refreshCase();
+    window.addEventListener(CLINICAL_CASE_SESSION_EVENT, refreshCase);
+    return () => window.removeEventListener(CLINICAL_CASE_SESSION_EVENT, refreshCase);
+  }, []);
+
   const guide = GUIDES.find((item) => item.title === selectedTitle) || DEFAULT_GUIDE;
-  const text = useMemo(() => buildDischargeText(guide, patient, notes), [guide, patient, notes]);
+  const caseSummary = useMemo(() => buildCaseSummary(activeCase), [activeCase]);
+  const readiness = useMemo(() => getDischargeReadiness(activeCase), [activeCase]);
+  const completedItems = readiness.filter((item) => item.complete).length;
+  const text = useMemo(
+    () => buildDischargeText(guide, patient, notes, caseSummary),
+    [caseSummary, guide, notes, patient]
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -308,6 +432,50 @@ export default function SafeDischargePage() {
                 />
               </label>
             </div>
+
+            {activeCase ? (
+              <div className="rounded-[24px] border border-cyan-200 bg-cyan-50/50 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-800">
+                      Caso ativo integrado
+                    </p>
+                    <h2 className="mt-1 text-base font-semibold text-slate-950">
+                      Conferência antes da alta
+                    </h2>
+                  </div>
+                  <span className="rounded-lg border border-cyan-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-cyan-900">
+                    {completedItems}/{readiness.length} documentados
+                  </span>
+                </div>
+
+                <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {readiness.map((item) => (
+                    <li
+                      key={item.label}
+                      className="flex items-center gap-2 text-sm text-slate-700"
+                    >
+                      {item.complete ? (
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                      ) : (
+                        <CircleAlert className="h-4 w-4 shrink-0 text-amber-600" />
+                      )}
+                      <span>{item.label}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {completedItems < readiness.length ? (
+                  <p className="mt-4 text-xs leading-5 text-slate-600">
+                    Existem campos documentais pendentes. Isso não define sozinho a segurança clínica da alta; revise o caso e complete o registro.
+                  </p>
+                ) : (
+                  <p className="mt-4 text-xs leading-5 text-emerald-800">
+                    Registro básico preenchido. Confirme estabilidade, critérios locais e entendimento das orientações.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </section>
 
           <section className="space-y-4">
@@ -336,6 +504,23 @@ export default function SafeDischargePage() {
             <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap rounded-[24px] border border-slate-200 bg-slate-950 p-4 text-sm leading-6 text-slate-100">
               {text}
             </pre>
+
+            {activeCase ? (
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/plantao/prescricao-guiada?q=${encodeURIComponent(activeCase.complaint)}`}
+                  className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Revisar prescrição
+                </Link>
+                <Link
+                  href={`/plantao/sbar?q=${encodeURIComponent(activeCase.complaint)}`}
+                  className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Gerar SBAR
+                </Link>
+              </div>
+            ) : null}
           </section>
         </div>
       </section>
@@ -369,3 +554,4 @@ function InfoBlock({
     </section>
   );
 }
+
