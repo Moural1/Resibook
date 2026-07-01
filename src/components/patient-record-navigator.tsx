@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -25,14 +25,54 @@ type RecordSection = {
 };
 
 const RECORD_SECTIONS: RecordSection[] = [
-  { id: "resumo", label: "Resumo", heading: "Prontuário clínico", icon: Stethoscope },
-  { id: "linha-do-tempo", label: "Linha do tempo", heading: "Linha do tempo clínica", icon: Activity },
-  { id: "consulta", label: "Nova consulta", heading: "Nova consulta", icon: NotebookPen },
-  { id: "problemas", label: "Problemas", heading: "Problemas do paciente", icon: ListChecks },
-  { id: "retornos", label: "Retornos", heading: "Retornos", icon: CalendarClock },
-  { id: "exames", label: "Exames", heading: "Exames do paciente", icon: FlaskConical },
-  { id: "evolucao", label: "Evolução", heading: "Nova evolução / anotação", icon: FileText },
-  { id: "prescricoes", label: "Prescrições", heading: "Prescrições vinculadas", icon: Pill },
+  {
+    id: "resumo",
+    label: "Resumo",
+    heading: "Prontuário clínico",
+    icon: Stethoscope,
+  },
+  {
+    id: "linha-do-tempo",
+    label: "Linha do tempo",
+    heading: "Linha do tempo clínica",
+    icon: Activity,
+  },
+  {
+    id: "consulta",
+    label: "Nova consulta",
+    heading: "Nova consulta",
+    icon: NotebookPen,
+  },
+  {
+    id: "problemas",
+    label: "Problemas",
+    heading: "Problemas do paciente",
+    icon: ListChecks,
+  },
+  {
+    id: "retornos",
+    label: "Retornos",
+    heading: "Retornos",
+    icon: CalendarClock,
+  },
+  {
+    id: "exames",
+    label: "Exames",
+    heading: "Exames do paciente",
+    icon: FlaskConical,
+  },
+  {
+    id: "evolucao",
+    label: "Evolução",
+    heading: "Nova evolução / anotação",
+    icon: FileText,
+  },
+  {
+    id: "prescricoes",
+    label: "Prescrições",
+    heading: "Prescrições vinculadas",
+    icon: Pill,
+  },
 ];
 
 function normalize(value?: string | null) {
@@ -50,6 +90,7 @@ export default function PatientRecordNavigator() {
   const [patientName, setPatientName] = useState("Prontuário");
   const [availableSections, setAvailableSections] = useState<RecordSection[]>([]);
   const [activeSection, setActiveSection] = useState("resumo");
+  const initialSectionHandled = useRef(false);
   const patientId = useMemo(() => pathname.split("/")[2] || "", [pathname]);
   const isPatientRecord = /^\/pacientes\/[^/]+$/.test(pathname);
 
@@ -58,6 +99,7 @@ export default function PatientRecordNavigator() {
 
     const content = document.querySelector<HTMLElement>("main > div");
     if (!content) return;
+    initialSectionHandled.current = false;
 
     const node = document.createElement("div");
     node.dataset.patientRecordNavigator = "true";
@@ -103,6 +145,25 @@ export default function PatientRecordNavigator() {
       });
 
       setAvailableSections(mapped.map((item) => item.definition));
+
+      if (!initialSectionHandled.current) {
+        const requestedSection = new URLSearchParams(window.location.search).get(
+          "secao"
+        );
+        const requestedTarget = mapped.find(
+          (item) => item.definition.id === requestedSection
+        );
+        if (requestedTarget) {
+          initialSectionHandled.current = true;
+          window.requestAnimationFrame(() =>
+            requestedTarget.section.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            })
+          );
+        }
+      }
+
       intersectionObserver?.disconnect();
       intersectionObserver = new IntersectionObserver(
         (entries) => {
@@ -215,3 +276,4 @@ export default function PatientRecordNavigator() {
     mountNode
   );
 }
+
