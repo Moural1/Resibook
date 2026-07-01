@@ -1296,7 +1296,7 @@ function InfoBlock({
         isRiskBlock
           ? "border-rose-200 bg-rose-50/60"
           : isPlanBlock
-            ? "border-emerald-200 bg-emerald-50/50"
+            ? "border-slate-200 bg-slate-50/70"
             : "border-slate-200 bg-white"
       }`}
     >
@@ -1305,7 +1305,7 @@ function InfoBlock({
           isRiskBlock
             ? "text-rose-700"
             : isPlanBlock
-              ? "text-emerald-700"
+              ? "text-slate-600"
               : "text-slate-400"
         }`}
       >
@@ -1321,38 +1321,38 @@ function InfoBlock({
 function TimelineCard({ item }: { item: TimelineItem }) {
   const styles = {
     problem: {
-      badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      card: "border-emerald-100 bg-emerald-50/40",
+      badge: "border-slate-200 bg-slate-50 text-slate-700",
+      card: "border-slate-200 bg-white",
       icon: ClipboardList,
       label: "Problema",
     },
     followup: {
-      badge: "border-amber-200 bg-amber-50 text-amber-700",
-      card: "border-amber-100 bg-amber-50/40",
+      badge: "border-slate-200 bg-slate-50 text-slate-700",
+      card: "border-slate-200 bg-white",
       icon: CalendarClock,
       label: "Retorno",
     },
     exam: {
-      badge: "border-blue-200 bg-blue-50 text-blue-700",
-      card: "border-blue-100 bg-blue-50/40",
+      badge: "border-slate-200 bg-slate-50 text-slate-700",
+      card: "border-slate-200 bg-white",
       icon: FlaskConical,
       label: "Exame",
     },
     note: {
-      badge: "border-cyan-200 bg-cyan-50 text-cyan-700",
-      card: "border-cyan-100 bg-cyan-50/40",
+      badge: "border-slate-200 bg-slate-50 text-slate-700",
+      card: "border-slate-200 bg-white",
       icon: FileText,
       label: "Evolução",
     },
     prescription: {
-      badge: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
-      card: "border-fuchsia-100 bg-fuchsia-50/40",
+      badge: "border-slate-200 bg-slate-50 text-slate-700",
+      card: "border-slate-200 bg-white",
       icon: Pill,
       label: "Prescrição",
     },
     consultation: {
-      badge: "border-violet-200 bg-violet-50 text-slate-700",
-      card: "border-violet-100 bg-violet-50/40",
+      badge: "border-slate-200 bg-slate-50 text-slate-700",
+      card: "border-slate-200 bg-white",
       icon: Stethoscope,
       label: "Consulta",
     },
@@ -1444,7 +1444,7 @@ function ConsultationTextarea({
       <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
         {label}
         {required ? (
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-700">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-800">
             obrigatório
           </span>
         ) : null}
@@ -1455,7 +1455,7 @@ function ConsultationTextarea({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
+        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:bg-white focus:ring-4 focus:ring-cyan-100"
       />
     </label>
   );
@@ -3131,8 +3131,8 @@ function openPrintHtml(html: string) {
         )}
       </section>
 
-      <section className="rounded-[28px] border border-violet-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-violet-100 pb-4">
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-700">
               Atendimento
@@ -3258,7 +3258,7 @@ function openPrintHtml(html: string) {
               onChange={(e) =>
                 updateConsultationForm("retorno_previsto_em", e.target.value)
               }
-              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
+              className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-cyan-400 focus:bg-white focus:ring-4 focus:ring-cyan-100"
             />
           </label>
         </div>
@@ -3268,7 +3268,7 @@ function openPrintHtml(html: string) {
             type="button"
             onClick={handleCreateConsultation}
             disabled={savingConsultation}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 text-sm font-semibold text-white disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-cyan-800 px-5 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
             {savingConsultation ? "Salvando..." : "Salvar consulta"}
@@ -3305,14 +3305,14 @@ function openPrintHtml(html: string) {
               return (
                 <article
                   key={item.id}
-                  className="rounded-2xl border border-violet-100 bg-violet-50/40 p-4"
+                  className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
                 >
                   {!editing ? (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
                               Consulta
                             </span>
 

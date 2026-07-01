@@ -3,6 +3,12 @@ img[src="/logo-resibook.png"] {
   content: url("/resibook-icon.svg");
 }
 
+.mobile-clinical-nav-active,
+.mobile-clinical-nav-active > svg,
+.mobile-clinical-nav-active > span {
+  color: #ffffff !important;
+}
+
 body[data-resibook-surface="library"] main,
 body[data-resibook-surface="workflow"] main,
 body[data-resibook-surface="operations"] main,
@@ -182,3 +188,4 @@ body[data-resibook-surface="public"] button {
     line-height: 1.15 !important;
   }
 }
+

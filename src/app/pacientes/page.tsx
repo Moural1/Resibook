@@ -447,14 +447,14 @@ function InfoBlock({
     default: "border-slate-200 bg-white",
     risk: "border-rose-200 bg-rose-50/70",
     clinical: "border-slate-200 bg-slate-50/80",
-    plan: "border-emerald-200 bg-emerald-50/50",
+    plan: "border-slate-200 bg-slate-50/70",
   }[tone];
 
   const titleClass = {
     default: "text-slate-500",
     risk: "text-rose-700",
     clinical: "text-slate-600",
-    plan: "text-emerald-700",
+    plan: "text-slate-600",
   }[tone];
 
   return (
@@ -1365,7 +1365,7 @@ export default function PacientesPage() {
                   <div
                     className={`border-b px-5 py-4 ${
                       hasAnyRisk
-                        ? "border-rose-200 bg-rose-50/55"
+                        ? "border-rose-200 bg-slate-50/80"
                         : "border-slate-200 bg-slate-50/80"
                     }`}
                   >
@@ -1863,7 +1863,7 @@ export default function PacientesPage() {
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-rose-200 bg-rose-50/70 p-5">
+              <div className="rounded-[24px] border border-rose-200 bg-white p-5">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 rounded-xl bg-white p-2 text-rose-700">
                     <AlertTriangle className="h-4 w-4" />
@@ -1873,7 +1873,7 @@ export default function PacientesPage() {
                     <p className="text-sm font-semibold text-rose-900">
                       Alergias — alerta crítico
                     </p>
-                    <p className="mt-1 text-sm leading-6 text-rose-800">
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
                       Esse campo aparece com destaque no card do paciente e
                       também entra no resumo copiado.
                     </p>
@@ -1891,17 +1891,17 @@ export default function PacientesPage() {
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-amber-200 bg-amber-50/75 p-5">
-                <div className="mb-5 flex items-start gap-3 border-b border-amber-200 pb-4">
-                  <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-amber-800">
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-5">
+                <div className="mb-5 flex items-start gap-3 border-b border-slate-200 pb-4">
+                  <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-700">
                     <HeartPulse className="h-5 w-5" />
                   </div>
 
                   <div>
-                    <h3 className="text-base font-semibold text-amber-950">
+                    <h3 className="text-base font-semibold text-slate-950">
                       Perfil de risco clínico estruturado
                     </h3>
-                    <p className="mt-1 text-sm leading-6 text-amber-900">
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
                       Esses campos alimentam os alertas automáticos na página de
                       prescrição. Não remova nem deixe de revisar.
                     </p>
@@ -1917,7 +1917,7 @@ export default function PacientesPage() {
                     rows={4}
                   />
 
-                  <div className="grid gap-3 rounded-2xl border border-amber-200 bg-white p-4 md:grid-cols-2">
+                  <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2">
                     <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                       <input
                         type="checkbox"
