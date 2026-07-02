@@ -15,6 +15,10 @@ export type ClinicalCaseSession = {
   notes: string;
   alerts: string[];
   priorities: string[];
+  selectedCid?: {
+    codigo: string;
+    descricao: string;
+  } | null;
   reassessment?: {
     vitals: ClinicalCaseSession["vitals"];
     symptomStatus: string;
@@ -63,6 +67,7 @@ function getCaseContentFingerprint(value: ClinicalCaseSession) {
     vitals: value.vitals,
     redFlags: value.redFlags,
     notes: value.notes,
+    selectedCid: value.selectedCid || null,
     reassessment: value.reassessment || null,
   });
 }
@@ -151,7 +156,11 @@ export function formatCaseContext(value: ClinicalCaseSession) {
     vitals ? `Sinais vitais: ${vitals}` : "",
     value.redFlags.trim() ? `Sinais de alarme: ${value.redFlags.trim()}` : "",
     value.notes.trim() ? `Notas: ${value.notes.trim()}` : "",
+    value.selectedCid?.codigo
+      ? `CID selecionado: ${value.selectedCid.codigo} - ${value.selectedCid.descricao}`
+      : "",
   ]
     .filter(Boolean)
     .join("\n");
 }
+
