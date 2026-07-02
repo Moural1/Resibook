@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
+import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
@@ -27,6 +28,8 @@ function LoginContent() {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
 
   const formValido = useMemo(() => {
     return email.trim().length > 0 && senha.trim().length > 0;
@@ -114,18 +117,20 @@ function LoginContent() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
+      <div className="w-full max-w-md rounded-[20px] border border-slate-200 bg-white p-7 shadow-[0_20px_60px_rgba(15,23,42,0.09)] sm:p-8">
         <div className="mb-6 flex flex-col items-center">
-          <img
-            src="/logo-resibook.png"
-            alt="ResiBook"
-            className="mb-3 h-16 w-16 object-contain"
-          />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+            <img
+              src="/logo-resibook.png"
+              alt="ResiBook"
+              className="h-12 w-12 object-contain"
+            />
+          </div>
 
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-blue-900">RESI</span>
-            <span className="text-teal-500">BOOK</span>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            <span className="text-slate-950">RESI</span>
+            <span className="text-cyan-700">BOOK</span>
           </h1>
 
           <p className="mt-2 text-center text-sm text-slate-500">
@@ -151,15 +156,18 @@ function LoginContent() {
               E-mail
             </label>
 
-            <input
-              id="email"
-              type="email"
-              placeholder="seu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              className="mt-1 h-11 w-full rounded-lg border border-gray-300 bg-white/70 px-4 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="relative mt-1">
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm transition focus:border-cyan-500 focus:outline-none focus:ring-4 focus:ring-cyan-100"
+              />
+            </div>
           </div>
 
           <div>
@@ -167,20 +175,45 @@ function LoginContent() {
               Senha
             </label>
 
-            <input
-              id="senha"
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              autoComplete="current-password"
-              className="mt-1 h-11 w-full rounded-lg border border-gray-300 bg-white/70 px-4 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="relative mt-1">
+              <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="senha"
+                type={showPassword ? "text" : "password"}
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                onKeyUp={(event) =>
+                  setCapsLock(event.getModifierState("CapsLock"))
+                }
+                onBlur={() => setCapsLock(false)}
+                autoComplete="current-password"
+                className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-12 text-sm transition focus:border-cyan-500 focus:outline-none focus:ring-4 focus:ring-cyan-100"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                className="absolute right-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {capsLock ? (
+              <p className="mt-2 text-xs font-medium text-amber-700">
+                Caps Lock está ativado.
+              </p>
+            ) : null}
           </div>
 
           <button
             type="submit"
             disabled={!formValido || loading}
-            className="h-11 w-full rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 font-semibold text-white shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-12 w-full rounded-xl bg-cyan-800 font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
@@ -210,7 +243,8 @@ function LoginContent() {
           </p>
         </div>
 
-        <p className="mt-5 text-center text-xs text-gray-500">
+        <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-gray-500">
+          <ShieldCheck className="h-3.5 w-3.5" />
           Acesso restrito • Conteúdo profissional médico
         </p>
       </div>
@@ -233,3 +267,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
