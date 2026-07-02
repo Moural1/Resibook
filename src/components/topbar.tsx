@@ -15,6 +15,7 @@ import {
   ArrowRight,
   BookOpen,
   Brain,
+  Calculator,
   ClipboardList,
   Clock3,
   CornerDownLeft,
@@ -121,6 +122,7 @@ const fullQuickLinks = [
   { href: "/flashcards", label: "Flashcards", icon: Brain },
   { href: "/condutas", label: "Condutas", icon: Siren },
   { href: "/cids", label: "CIDs", icon: Tags },
+  { href: "/calculadoras", label: "Calculadoras", icon: Calculator },
 ];
 const guestQuickLinks = fullQuickLinks.filter((item) => ["/prescricao", "/exames-evolucao", "/topicos", "/cids"].includes(item.href));
 
