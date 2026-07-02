@@ -10,6 +10,8 @@ import {
   Clock3,
   Copy,
   Download,
+  KeyRound,
+  MailPlus,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -161,6 +163,7 @@ export default function AcessosPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [blockEmail, setBlockEmail] = useState("");
   const [blockReason, setBlockReason] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -524,6 +527,63 @@ export default function AcessosPage() {
     setSaving(false);
   }
 
+  async function inviteUser() {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) {
+      setError("Informe o e-mail que receberá o convite.");
+      return;
+    }
+    if (!adminApiAvailable) {
+      setError(
+        "Convites indisponíveis: configure SUPABASE_SERVICE_ROLE_KEY apenas no servidor da Vercel."
+      );
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    const response = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+
+    if (!response.ok) {
+      setError(payload?.error || "Não foi possível enviar o convite.");
+    } else {
+      setInviteEmail("");
+      await load();
+      setSuccess(`Convite enviado para ${email}.`);
+    }
+    setSaving(false);
+  }
+
+  async function sendPasswordRecovery(email: string) {
+    const confirmed = window.confirm(
+      `Enviar um link de redefinição de senha para ${email}?`
+    );
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email,
+      { redirectTo: `${window.location.origin}/redefinir-senha` }
+    );
+
+    if (resetError) {
+      setError("Não foi possível enviar a recuperação de senha.");
+    } else {
+      setSuccess(`Recuperação de senha enviada para ${email}.`);
+    }
+    setSaving(false);
+  }
+
   function exportLogs() {
     const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
     const rows = [
@@ -604,7 +664,7 @@ export default function AcessosPage() {
 
           {!adminApiAvailable ? (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Listagem e exclusão de contas estão desativadas até configurar
+              Listagem, convites e exclusão de contas estão desativados até configurar
               <code className="mx-1 rounded bg-white px-1.5 py-0.5 text-xs font-semibold">
                 SUPABASE_SERVICE_ROLE_KEY
               </code>
@@ -618,6 +678,47 @@ export default function AcessosPage() {
           <SummaryCard label="Usuários únicos" value={uniqueUsers} icon={Users} />
           <SummaryCard label="Logins hoje" value={todayCount} icon={Clock3} />
           <SummaryCard label="Bloqueados" value={blockedCount} icon={Ban} />
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="border-b border-slate-200 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+              <MailPlus className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">
+                Convidar novo usuário
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                O usuário receberá um link seguro para criar a própria senha.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={(event) => setInviteEmail(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void inviteUser();
+            }}
+            placeholder="novo.usuario@exemplo.com"
+            autoComplete="email"
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+          />
+          <button
+            type="button"
+            onClick={inviteUser}
+            disabled={saving || !adminApiAvailable}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-800 px-6 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <MailPlus className="h-4 w-4" />
+            Enviar convite
+          </button>
         </div>
       </section>
 
@@ -845,6 +946,19 @@ export default function AcessosPage() {
                           className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
                         >
                           Limpar logs
+                        </button>
+                      ) : null}
+
+                      {!isAdminUser && item.authManaged ? (
+                        <button
+                          type="button"
+                          onClick={() => sendPasswordRecovery(item.email)}
+                          disabled={saving}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                          title="Enviar recuperação de senha"
+                        >
+                          <KeyRound className="h-3.5 w-3.5" />
+                          Redefinir senha
                         </button>
                       ) : null}
 
