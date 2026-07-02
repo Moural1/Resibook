@@ -8,12 +8,16 @@ import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
 import {
+  ArrowRight,
   BookOpen,
   Brain,
+  CheckCircle2,
   Edit3,
   Layers3,
   Lock,
   Plus,
+  Play,
+  RotateCcw,
   Search,
   Sparkles,
   Target,
@@ -264,6 +268,10 @@ export default function FlashcardsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
   const [form, setForm] = useState<FlashcardForm>(emptyForm);
+  const [reviewQueue, setReviewQueue] = useState<string[]>([]);
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const [reviewRevealed, setReviewRevealed] = useState(false);
+  const [reviewFinished, setReviewFinished] = useState(false);
 
   async function loadCards() {
     setLoading(true);
@@ -418,6 +426,60 @@ export default function FlashcardsPage() {
   const visibleAreas = new Set(filtered.map((item) => item.area).filter(Boolean))
     .size;
   const hasFilters = Boolean(query || area || materia || mode !== "todos");
+  const reviewCard = reviewQueue.length
+    ? cards.find((item) => item.id === reviewQueue[reviewIndex]) || null
+    : null;
+
+  function startQuickReview(onlyDifficult = false) {
+    const candidates = filtered.filter(
+      (item) => !onlyDifficult || item.dificil
+    );
+
+    if (candidates.length === 0) {
+      setError(
+        onlyDifficult
+          ? "Nenhum flashcard difícil disponível com os filtros atuais."
+          : "Nenhum flashcard disponível com os filtros atuais."
+      );
+      return;
+    }
+
+    const queue = [...candidates]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 10)
+      .map((item) => item.id);
+
+    setReviewQueue(queue);
+    setReviewIndex(0);
+    setReviewRevealed(false);
+    setReviewFinished(false);
+    setError("");
+    setSuccess("");
+  }
+
+  function advanceReview() {
+    if (reviewIndex >= reviewQueue.length - 1) {
+      setReviewFinished(true);
+      setReviewRevealed(false);
+      return;
+    }
+
+    setReviewIndex((current) => current + 1);
+    setReviewRevealed(false);
+  }
+
+  async function keepAsDifficult() {
+    if (!reviewCard) return;
+    if (!reviewCard.dificil) await toggleDificil(reviewCard);
+    advanceReview();
+  }
+
+  function closeReview() {
+    setReviewQueue([]);
+    setReviewIndex(0);
+    setReviewRevealed(false);
+    setReviewFinished(false);
+  }
 
   function updateForm<K extends keyof FlashcardForm>(
     key: K,
@@ -706,6 +768,158 @@ export default function FlashcardsPage() {
           />
         </div>
       </ModulePageHeader>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Sessão rápida
+            </p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+              Revisão focada em 10 cartões
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+              Use os filtros abaixo para definir o conteúdo e revise um cartão
+              por vez, sem distrações.
+            </p>
+          </div>
+
+          {reviewQueue.length === 0 ? (
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => startQuickReview(false)}
+                disabled={loading || filtered.length === 0}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Play className="h-4 w-4" />
+                Revisar 10
+              </button>
+              <button
+                type="button"
+                onClick={() => startQuickReview(true)}
+                disabled={loading || difficultCount === 0}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Brain className="h-4 w-4" />
+                Só difíceis
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={closeReview}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+            >
+              Encerrar sessão
+            </button>
+          )}
+        </div>
+
+        {reviewQueue.length > 0 ? (
+          <div className="mt-6 border-t border-slate-200 pt-6">
+            {reviewFinished ? (
+              <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-6 text-center">
+                <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-700" />
+                <h3 className="mt-3 text-xl font-semibold text-slate-900">
+                  Sessão concluída
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  Você revisou {reviewQueue.length} flashcard
+                  {reviewQueue.length > 1 ? "s" : ""} nesta rodada.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => startQuickReview(false)}
+                  className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Nova sessão
+                </button>
+              </div>
+            ) : reviewCard ? (
+              <div>
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm font-semibold text-slate-700">
+                    Cartão {reviewIndex + 1} de {reviewQueue.length}
+                  </p>
+                  <p className="text-xs font-medium text-slate-500">
+                    {formatLabel(reviewCard.materia, formatLabel(reviewCard.area))}
+                  </p>
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-cyan-700 transition-all"
+                    style={{
+                      width: `${((reviewIndex + 1) / reviewQueue.length) * 100}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-5 md:p-6">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Pergunta
+                  </p>
+                  <div className="mt-3">
+                    {renderRichText(reviewCard.frente, "Sem frente")}
+                  </div>
+                </div>
+
+                {reviewRevealed ? (
+                  <div className="mt-4 rounded-[24px] border border-cyan-100 bg-white p-5 md:p-6">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-800">
+                      Resposta
+                    </p>
+                    <div className="mt-3">
+                      {renderRichText(reviewCard.verso, "Sem verso")}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  {!reviewRevealed ? (
+                    <button
+                      type="button"
+                      onClick={() => setReviewRevealed(true)}
+                      className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
+                    >
+                      Revelar resposta
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={advanceReview}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-5 text-sm font-semibold text-white"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Acertei
+                      </button>
+                      <button
+                        type="button"
+                        onClick={keepAsDifficult}
+                        disabled={savingIds.includes(reviewCard.id)}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-5 text-sm font-semibold text-amber-800 disabled:opacity-50"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Ainda difícil
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={advanceReview}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600"
+                  >
+                    Pular
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
@@ -1123,3 +1337,4 @@ export default function FlashcardsPage() {
     </div>
   );
 }
+

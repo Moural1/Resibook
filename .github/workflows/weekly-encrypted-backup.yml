@@ -1,0 +1,78 @@
+name: Backup semanal criptografado
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resibook-weekly-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Gerar backup protegido
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_ENCRYPTION_PASSWORD: ${{ secrets.BACKUP_ENCRYPTION_PASSWORD }}
+
+    steps:
+      - name: Validar configuração
+        shell: bash
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "SUPABASE_DB_URL não foi configurado nos Secrets do repositório."
+            exit 1
+          fi
+          if [ ${#BACKUP_ENCRYPTION_PASSWORD} -lt 24 ]; then
+            echo "BACKUP_ENCRYPTION_PASSWORD deve ter pelo menos 24 caracteres."
+            exit 1
+          fi
+
+      - name: Instalar Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Gerar backup lógico
+        shell: bash
+        run: |
+          mkdir -p backup
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --data-only --use-copy \
+            -x "storage.buckets_vectors" \
+            -x "storage.vector_indexes"
+
+          printf "generated_at_utc=%s\ncommit=%s\n" \
+            "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            "$GITHUB_SHA" > backup/manifest.txt
+          sha256sum backup/roles.sql backup/schema.sql backup/data.sql >> backup/manifest.txt
+          tar -czf resibook-backup.tar.gz -C backup .
+
+      - name: Criptografar backup
+        shell: bash
+        run: |
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -md sha256 \
+            -in resibook-backup.tar.gz \
+            -out resibook-backup.enc \
+            -pass env:BACKUP_ENCRYPTION_PASSWORD
+
+          test -s resibook-backup.enc
+          rm -rf backup resibook-backup.tar.gz
+
+      - name: Guardar backup por 30 dias
+        uses: actions/upload-artifact@v4
+        with:
+          name: resibook-backup-${{ github.run_id }}
+          path: resibook-backup.enc
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+
