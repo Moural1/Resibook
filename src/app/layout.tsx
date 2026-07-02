@@ -1,26 +1,16 @@
 import "./globals.css";
 import "./module-surfaces.css";
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
 import Toaster from "../components/toaster";
 import AppShell from "../components/app-shell";
-import AccessLogger from "../components/access-logger";
 import AccessibilityBridge from "../components/accessibility-bridge";
-import ClinicalCaseSessionBridge from "../components/clinical-case-session-bridge";
-import ClinicalCaseFreshnessGuard from "../components/clinical-case-freshness-guard";
-import ClinicalEvolutionComposer from "../components/clinical-evolution-composer";
-import ClinicalReassessmentPanel from "../components/clinical-reassessment-panel";
-import GlobalSearchShortcut from "../components/global-search-shortcut";
-import MobileClinicalNav from "../components/mobile-clinical-nav";
-import MobilePrescriptionSafety from "../components/mobile-prescription-safety";
-import PatientRecordNavigator from "../components/patient-record-navigator";
-import PatientTimelineControls from "../components/patient-timeline-controls";
-import ShiftToolNavigator from "../components/shift-tool-navigator";
+import ClinicalRuntime from "../components/clinical-runtime";
 import VisualSystemController from "../components/visual-system-controller";
 
 export const metadata: Metadata = {
-  title: "ResiBook",
-  description: "Sistema médico premium",
+  title: "Resibook | Apoio à rotina médica",
+  description:
+    "Ferramenta para médicos com prescrições, condutas, flashcards, CIDs, calculadoras e modelos de evolução.",
   icons: {
     icon: [
       {
@@ -57,26 +47,14 @@ export default function RootLayout({
         >
           Ir para o conteúdo principal
         </a>
-        <Suspense fallback={null}>
-          <AccessLogger />
-        </Suspense>
-
         <AppShell>{children}</AppShell>
         <VisualSystemController />
         <AccessibilityBridge />
-        <PatientRecordNavigator />
-        <PatientTimelineControls />
-        <ShiftToolNavigator />
-        <GlobalSearchShortcut />
-        <MobileClinicalNav />
-        <MobilePrescriptionSafety />
-        <ClinicalCaseSessionBridge />
-        <ClinicalCaseFreshnessGuard />
-        <ClinicalReassessmentPanel />
-        <ClinicalEvolutionComposer />
+        <ClinicalRuntime />
         <Toaster />
       </body>
     </html>
   );
 }
+
 

@@ -69,7 +69,7 @@ const AUTH_PUBLIC_PATHS = [
   "/redefinir-senha",
 ];
 const LEGAL_PUBLIC_PATHS = ["/aceite-legal", "/termos", "/privacidade"];
-const SHELL_HIDDEN_PATHS = [...AUTH_PUBLIC_PATHS, ...LEGAL_PUBLIC_PATHS];
+const SHELL_HIDDEN_PATHS = ["/", ...AUTH_PUBLIC_PATHS, ...LEGAL_PUBLIC_PATHS];
 
 function isPathInside(pathname: string, routes: string[]) {
   return routes.some(
@@ -925,3 +925,4 @@ export default function AppShell({ children }: Props) {
     </div>
   );
 }
+
