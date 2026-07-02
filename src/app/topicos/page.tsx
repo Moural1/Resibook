@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
@@ -7,7 +8,10 @@ import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
 import {
   BookOpen,
+  ChevronDown,
+  ChevronUp,
   Edit3,
+  Gauge,
   Plus,
   Search,
   Sparkles,
@@ -401,6 +405,7 @@ export default function TopicosPage() {
   const [query, setQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const [editingItem, setEditingItem] = useState<TopicoMedico | null>(null);
   const [form, setForm] = useState<TopicoForm>(emptyForm);
 
@@ -544,6 +549,14 @@ export default function TopicosPage() {
     setDrawerOpen(false);
     setEditingItem(null);
     setForm(emptyForm);
+  }
+
+  function toggleExpanded(id: number) {
+    setExpandedIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    );
   }
 
   async function handleSave() {
@@ -889,6 +902,7 @@ export default function TopicosPage() {
               {items.map((item) => {
                 const savingItem = savingIds.includes(item.id);
                 const related = getRelatedFlashcards(item);
+                const expanded = expandedIds.includes(item.id);
 
                 return (
                   <article
@@ -933,6 +947,30 @@ export default function TopicosPage() {
                       </div>
 
                       <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(item.id)}
+                          aria-expanded={expanded}
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          {expanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                          {expanded ? "Fechar tópico" : "Abrir tópico"}
+                        </button>
+
+                        <Link
+                          href={`/caso-rapido?busca=${encodeURIComponent(
+                            item.titulo
+                          )}`}
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                        >
+                          <Gauge className="h-4 w-4" />
+                          Caso rápido
+                        </Link>
+
                         <CopyButton text={buildFullText(item)} />
 
                         {isAdmin ? (
@@ -959,44 +997,56 @@ export default function TopicosPage() {
                       </div>
                     </div>
 
-                    <div className="mt-6 grid gap-4 xl:grid-cols-2">
-                      <Section title="Resumo" value={item.resumo} tone="blue" />
-                      <Section
-                        title="Diagnóstico"
-                        value={item.diagnostico}
-                        tone="emerald"
-                      />
-                      <Section
-                        title="Critérios / classificação"
-                        value={item.criterios}
-                        tone="amber"
-                      />
-                      <Section title="Exames" value={item.exames} tone="slate" />
-                      <Section
-                        title="Tratamento / conduta"
-                        value={item.tratamento}
-                        tone="blue"
-                      />
-                      <Section
-                        title="Conduta na urgência"
-                        value={item.conduta_urgencia}
-                        tone="rose"
-                      />
-                      <Section
-                        title="Internação / referência"
-                        value={item.internacao_referencia}
-                        tone="emerald"
-                      />
-                      <Section
-                        title="Pegadinhas de prova"
-                        value={item.pegadinhas}
-                        tone="amber"
-                      />
-                    </div>
+                    {!expanded && item.resumo ? (
+                      <div className="mt-5 border-t border-slate-200 pt-5">
+                        <p className="line-clamp-3 text-sm leading-7 text-slate-600">
+                          {item.resumo}
+                        </p>
+                      </div>
+                    ) : null}
 
-                    <div className="mt-6">
-                      <RelatedCardsPanel cards={related} />
-                    </div>
+                    {expanded ? (
+                      <>
+                        <div className="mt-6 grid gap-4 xl:grid-cols-2">
+                          <Section title="Resumo" value={item.resumo} tone="blue" />
+                          <Section
+                            title="Diagnóstico"
+                            value={item.diagnostico}
+                            tone="emerald"
+                          />
+                          <Section
+                            title="Critérios / classificação"
+                            value={item.criterios}
+                            tone="amber"
+                          />
+                          <Section title="Exames" value={item.exames} tone="slate" />
+                          <Section
+                            title="Tratamento / conduta"
+                            value={item.tratamento}
+                            tone="blue"
+                          />
+                          <Section
+                            title="Conduta na urgência"
+                            value={item.conduta_urgencia}
+                            tone="rose"
+                          />
+                          <Section
+                            title="Internação / referência"
+                            value={item.internacao_referencia}
+                            tone="emerald"
+                          />
+                          <Section
+                            title="Pegadinhas de prova"
+                            value={item.pegadinhas}
+                            tone="amber"
+                          />
+                        </div>
+
+                        <div className="mt-6">
+                          <RelatedCardsPanel cards={related} />
+                        </div>
+                      </>
+                    ) : null}
                   </article>
                 );
               })}
@@ -1164,3 +1214,4 @@ export default function TopicosPage() {
     </div>
   );
 }
+
