@@ -10,7 +10,7 @@ import ClinicalAlerts, {
 } from "../../components/clinical-alerts";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
-import { ClipboardPlus, Edit3, Lock, Printer, X } from "lucide-react";
+import { ClipboardPlus, Edit3, Printer, X } from "lucide-react";
 
 type Prescription = {
   id: number;
@@ -180,11 +180,6 @@ function escapeHtml(value?: string | null) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function textToHtml(value?: string | null) {
-  if (!value) return "<span class=\"empty\">Não informado</span>";
-  return escapeHtml(value).replace(/\n/g, "<br />");
 }
 
 function buildPrescriptionPrintHtml(
@@ -2055,3 +2050,4 @@ export default function PrescricaoPage() {
     </div>
   );
 }
+

@@ -48,6 +48,18 @@ type ProfileForm = {
   full_name: string;
   specialty: string;
   crm: string;
+  crm_state: string;
+  signature: string;
+  include_signature: boolean;
+};
+
+type ProfileRow = {
+  full_name: string | null;
+  specialty: string | null;
+  crm: string | null;
+  crm_state: string | null;
+  signature: string | null;
+  preferences: { include_signature?: boolean } | null;
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
@@ -251,6 +263,9 @@ export default function DadosDaContaPage() {
     full_name: "",
     specialty: "",
     crm: "",
+    crm_state: "",
+    signature: "",
+    include_signature: false,
   });
 
   const [savingProfile, setSavingProfile] = useState(false);
@@ -277,9 +292,9 @@ export default function DadosDaContaPage() {
 
       const { data, error: profileError } = await supabase
         .from("user_profiles")
-        .select("full_name, specialty, crm")
+        .select("full_name, specialty, crm, crm_state, signature, preferences")
         .eq("user_id", info.userId)
-        .maybeSingle();
+        .maybeSingle<ProfileRow>();
 
       if (!mounted) return;
 
@@ -294,6 +309,9 @@ export default function DadosDaContaPage() {
         full_name: data?.full_name || "",
         specialty: data?.specialty || "",
         crm: data?.crm || "",
+        crm_state: data?.crm_state || "",
+        signature: data?.signature || "",
+        include_signature: data?.preferences?.include_signature === true,
       });
 
       setLoadingProfile(false);
@@ -346,6 +364,11 @@ export default function DadosDaContaPage() {
         full_name: profileForm.full_name.trim() || null,
         specialty: profileForm.specialty.trim() || null,
         crm: profileForm.crm.trim() || null,
+        crm_state: profileForm.crm_state || null,
+        signature: profileForm.signature.trim() || null,
+        preferences: {
+          include_signature: profileForm.include_signature,
+        },
         updated_at: now,
       },
       { onConflict: "user_id" }
@@ -591,6 +614,93 @@ export default function DadosDaContaPage() {
               disabled={loadingProfile || !session.userId}
               className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
             />
+          </div>
+
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-5">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              UF do CRM
+            </label>
+            <select
+              value={profileForm.crm_state}
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  crm_state: event.target.value,
+                }))
+              }
+              disabled={loadingProfile || !session.userId}
+              className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+            >
+              <option value="">Não informar</option>
+              {[
+                "AC",
+                "AL",
+                "AP",
+                "AM",
+                "BA",
+                "CE",
+                "DF",
+                "ES",
+                "GO",
+                "MA",
+                "MT",
+                "MS",
+                "MG",
+                "PA",
+                "PB",
+                "PR",
+                "PE",
+                "PI",
+                "RJ",
+                "RN",
+                "RS",
+                "RO",
+                "RR",
+                "SC",
+                "SP",
+                "SE",
+                "TO",
+              ].map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-5 md:col-span-2">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Assinatura ou rodapé
+            </label>
+            <textarea
+              value={profileForm.signature}
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  signature: event.target.value,
+                }))
+              }
+              rows={3}
+              maxLength={500}
+              placeholder="Ex.: Dr. Nome Sobrenome | CRM 123456 - MG"
+              disabled={loadingProfile || !session.userId}
+              className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+            />
+            <label className="mt-3 flex cursor-pointer items-center gap-3 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={profileForm.include_signature}
+                onChange={(event) =>
+                  setProfileForm((current) => ({
+                    ...current,
+                    include_signature: event.target.checked,
+                  }))
+                }
+                disabled={loadingProfile || !session.userId}
+                className="h-4 w-4 rounded border-slate-300 accent-slate-900"
+              />
+              Usar esta assinatura em textos compatíveis
+            </label>
           </div>
 
           <div className="rounded-[22px] border border-slate-200 bg-white p-5">
@@ -855,3 +965,4 @@ export default function DadosDaContaPage() {
     </div>
   );
 }
+

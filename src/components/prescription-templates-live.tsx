@@ -55,6 +55,10 @@ type Props = {
 const ADMIN_EMAIL = "igormoura@resibook.com";
 const FAVORITES_KEY = "resibook-prescription-template-favorites";
 
+function favoritesKey(userId: string) {
+  return `${FAVORITES_KEY}:${userId}`;
+}
+
 const emptyForm: TemplateForm = {
   categoria: "",
   titulo: "",
@@ -68,14 +72,6 @@ const emptyForm: TemplateForm = {
   last_reviewed_at: "",
   publicos_especiais: "",
 };
-
-function normalize(value?: string | null) {
-  return (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
 function formatLabel(value?: string | null) {
   if (!value) return "Sem categoria";
@@ -244,6 +240,7 @@ export default function PrescriptionTemplatesLive({
 
   const [items, setItems] = useState<PrescriptionTemplate[]>(templates);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState("");
 
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -273,6 +270,7 @@ export default function PrescriptionTemplatesLive({
       const { data } = await supabase.auth.getSession();
       const email = data.session?.user?.email?.trim().toLowerCase() || "";
       setIsAdmin(email === ADMIN_EMAIL);
+      setCurrentUserId(data.session?.user?.id || "");
     }
 
     checkAdmin();
@@ -322,9 +320,17 @@ export default function PrescriptionTemplatesLive({
   ]);
 
   useEffect(() => {
+    if (!currentUserId) {
+      setFavoriteIds([]);
+      return;
+    }
+
     try {
-      const raw = localStorage.getItem(FAVORITES_KEY);
-      if (!raw) return;
+      const raw = localStorage.getItem(favoritesKey(currentUserId));
+      if (!raw) {
+        setFavoriteIds([]);
+        return;
+      }
 
       const parsed = JSON.parse(raw) as unknown;
 
@@ -340,13 +346,17 @@ export default function PrescriptionTemplatesLive({
         setFavoriteIds(uniqueValidIds);
       }
     } catch {}
-  }, [items]);
+  }, [items, currentUserId]);
 
   useEffect(() => {
+    if (!currentUserId) return;
     try {
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds));
+      localStorage.setItem(
+        favoritesKey(currentUserId),
+        JSON.stringify(favoriteIds)
+      );
     } catch {}
-  }, [favoriteIds]);
+  }, [favoriteIds, currentUserId]);
 
   function updateForm<K extends keyof TemplateForm>(
     key: K,
@@ -1138,3 +1148,4 @@ export default function PrescriptionTemplatesLive({
     </section>
   );
 }
+

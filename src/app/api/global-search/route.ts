@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSearchScore } from "@/lib/search";
+import { clinicalCalculators } from "@/lib/clinical-calculators";
 
 type SearchResult = {
   id: string;
@@ -11,7 +12,8 @@ type SearchResult = {
     | "exame"
     | "topico"
     | "flashcard"
-    | "cid";
+    | "cid"
+    | "calculadora";
   title: string;
   subtitle: string;
   href: string;
@@ -20,7 +22,7 @@ type SearchResult = {
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
-function getSupabase() {
+function getSupabase(accessToken: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
@@ -34,7 +36,9 @@ function getSupabase() {
       autoRefreshToken: false,
     },
     global: {
-      headers: {},
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
   });
 }
@@ -84,12 +88,6 @@ function getAccessToken(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const supabase = getSupabase();
-
-  if (!supabase) {
-    return NextResponse.json({ results: [] });
-  }
-
   const query = request.nextUrl.searchParams.get("q") || "";
   const q = query.trim();
 
@@ -100,6 +98,12 @@ export async function GET(request: NextRequest) {
   const accessToken = getAccessToken(request);
 
   if (!accessToken) {
+    return NextResponse.json({ results: [] });
+  }
+
+  const supabase = getSupabase(accessToken);
+
+  if (!supabase) {
     return NextResponse.json({ results: [] });
   }
 
@@ -352,6 +356,26 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (!isGuest) {
+    for (const item of clinicalCalculators) {
+      if (
+        includesSearch(
+          [item.name, item.shortName, item.category, item.description],
+          q
+        )
+      ) {
+        results.push({
+          id: item.id,
+          type: "calculadora",
+          title: item.name,
+          subtitle: item.category,
+          href: `/calculadoras?calculadora=${encodeURIComponent(item.id)}`,
+          badge: "Calculadora",
+        });
+      }
+    }
+  }
+
   const typeBoost: Record<SearchResult["type"], number> = {
     paciente: 9,
     modelo_prescricao: 8,
@@ -360,6 +384,7 @@ export async function GET(request: NextRequest) {
     exame: 5,
     cid: 4,
     flashcard: 3,
+    calculadora: 6.5,
   };
 
   const orderedResults = results
@@ -391,3 +416,4 @@ export async function GET(request: NextRequest) {
     results: orderedResults,
   });
 }
+

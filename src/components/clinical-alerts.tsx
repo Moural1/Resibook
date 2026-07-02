@@ -114,7 +114,6 @@ const HEPATIC_RISK_DRUGS = [
   "fluconazol",
   "metronidazol",
 ];
-const QT_RISK_DRUGS = [...QUINOLONES, ...MACROLIDES, ...ANTIPSYCHOTICS];
 const ANTICOAGULANTS = [
   "varfarina",
   "marevan",
@@ -1070,3 +1069,4 @@ export default function ClinicalAlerts({
     </section>
   );
 }
+

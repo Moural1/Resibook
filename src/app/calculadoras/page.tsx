@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   BookOpen,
@@ -379,10 +380,16 @@ function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator })
   );
 }
 
-export default function CalculadorasPage() {
+function CalculadorasContent() {
+  const searchParams = useSearchParams();
+  const requestedCalculator = searchParams.get("calculadora");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
-  const [selectedId, setSelectedId] = useState(clinicalCalculators[0].id);
+  const [selectedId, setSelectedId] = useState(() =>
+    clinicalCalculators.some((item) => item.id === requestedCalculator)
+      ? requestedCalculator!
+      : clinicalCalculators[0].id
+  );
 
   const categories = useMemo(
     () =>
@@ -534,6 +541,20 @@ export default function CalculadorasPage() {
         </main>
       </section>
     </div>
+  );
+}
+
+export default function CalculadorasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
+          Carregando calculadoras...
+        </div>
+      }
+    >
+      <CalculadorasContent />
+    </Suspense>
   );
 }
 

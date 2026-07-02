@@ -3,8 +3,10 @@
 import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
+import { clearClinicalCaseSession } from "@/lib/clinical-case-session";
 import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 
 const GUEST_EMAIL = "convidado@resibook.com";
@@ -50,6 +52,7 @@ function LoginContent() {
 
     try {
       setLoading(true);
+      clearClinicalCaseSession();
 
       const { error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
@@ -153,9 +156,11 @@ function LoginContent() {
       <div className="w-full max-w-md rounded-[20px] border border-slate-200 bg-white p-7 shadow-[0_20px_60px_rgba(15,23,42,0.09)] sm:p-8">
         <div className="mb-6 flex flex-col items-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
-            <img
+            <Image
               src="/logo-resibook.png"
               alt="ResiBook"
+              width={48}
+              height={48}
               className="h-12 w-12 object-contain"
             />
           </div>
@@ -316,4 +321,5 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
 

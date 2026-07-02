@@ -46,6 +46,10 @@ const GUEST_EMAIL = "convidado@resibook.com";
 const ADMIN_EMAIL = "igormoura@resibook.com";
 const RECENT_CIDS_KEY = "resibook-recent-cids-v1";
 
+function recentCidsKey(userId: string) {
+  return `${RECENT_CIDS_KEY}:${userId}`;
+}
+
 const initialForm: CidForm = {
   codigo: "",
   descricao: "",
@@ -122,6 +126,7 @@ export default function CidsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeCase, setActiveCase] = useState<ClinicalCaseSession | null>(null);
   const [recentIds, setRecentIds] = useState<number[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
 
   useEffect(() => {
     const urlQuery = searchParams.get("q") || searchParams.get("busca") || "";
@@ -146,6 +151,7 @@ export default function CidsPage() {
 
     setIsGuest(email === GUEST_EMAIL);
     setIsAdmin(email === ADMIN_EMAIL);
+    setCurrentUserId(data.session?.user?.id || "");
     setCheckingUser(false);
   }
 
@@ -183,19 +189,26 @@ export default function CidsPage() {
     syncActiveCase();
     window.addEventListener(CLINICAL_CASE_SESSION_EVENT, syncActiveCase);
 
+    return () => {
+      window.removeEventListener(CLINICAL_CASE_SESSION_EVENT, syncActiveCase);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setRecentIds([]);
+      return;
+    }
+
     try {
       const stored = JSON.parse(
-        window.localStorage.getItem(RECENT_CIDS_KEY) || "[]"
+        window.localStorage.getItem(recentCidsKey(currentUserId)) || "[]"
       ) as number[];
       setRecentIds(stored.filter((value) => Number.isFinite(value)).slice(0, 6));
     } catch {
       setRecentIds([]);
     }
-
-    return () => {
-      window.removeEventListener(CLINICAL_CASE_SESSION_EVENT, syncActiveCase);
-    };
-  }, []);
+  }, [currentUserId]);
 
   const grupos = useMemo(() => {
     return Array.from(
@@ -244,9 +257,13 @@ export default function CidsPage() {
   );
 
   function rememberCid(id: number) {
+    if (!currentUserId) return;
     setRecentIds((current) => {
       const next = [id, ...current.filter((item) => item !== id)].slice(0, 6);
-      window.localStorage.setItem(RECENT_CIDS_KEY, JSON.stringify(next));
+      window.localStorage.setItem(
+        recentCidsKey(currentUserId),
+        JSON.stringify(next)
+      );
       return next;
     });
   }

@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   CircleAlert,
   ClipboardList,
-  FileText,
   HeartPulse,
   IdCard,
   Phone,
@@ -567,6 +566,7 @@ export default function PacientesPage() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [referenceTime] = useState(Date.now);
   const [examTemplates, setExamTemplates] = useState<ExamTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -725,14 +725,13 @@ export default function PacientesPage() {
   );
 
   const recentCount = useMemo(() => {
-    const now = Date.now();
     const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
     return patients.filter((patient) => {
       if (!patient.created_at) return false;
-      return now - new Date(patient.created_at).getTime() <= sevenDays;
+      return referenceTime - new Date(patient.created_at).getTime() <= sevenDays;
     }).length;
-  }, [patients]);
+  }, [patients, referenceTime]);
 
   const riskCount = useMemo(() => {
     return patients.filter((patient) => hasRiskFlags(patient)).length;
@@ -2222,4 +2221,5 @@ export default function PacientesPage() {
     </div>
   );
 }
+
 

@@ -399,10 +399,13 @@ export default function DashboardPage() {
 
       try {
         const prescriptionFavorites = JSON.parse(
-          localStorage.getItem("resibook-prescription-template-favorites") || "[]"
+          localStorage.getItem(
+            `resibook-prescription-template-favorites:${userId}`
+          ) || "[]"
         );
         const examFavorites = JSON.parse(
-          localStorage.getItem("resibook-exam-template-favorites") || "[]"
+          localStorage.getItem(`resibook-exam-template-favorites:${userId}`) ||
+            "[]"
         );
 
         setFavoritePrescriptionCount(

@@ -64,7 +64,6 @@ type TopicoForm = {
   fonte: string;
 };
 
-const GUEST_EMAIL = "convidado@resibook.com";
 const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const emptyForm: TopicoForm = {
@@ -399,7 +398,6 @@ export default function TopicosPage() {
   const [flashcards, setFlashcards] = useState<RelatedFlashcard[]>([]);
   const [checkingUser, setCheckingUser] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   const [query, setQuery] = useState("");
@@ -425,7 +423,6 @@ export default function TopicosPage() {
 
     const email = data.session?.user?.email?.trim().toLowerCase() || "";
 
-    setIsGuest(email === GUEST_EMAIL);
     setIsAdmin(email === ADMIN_EMAIL);
     setCheckingUser(false);
   }

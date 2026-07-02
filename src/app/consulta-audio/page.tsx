@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 
 type SearchParams = Promise<{
   success?: string;
@@ -22,38 +22,36 @@ type AiCase = {
   created_at: string;
 };
 
-function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+async function getPrivateData() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!supabaseUrl || !supabaseAnonKey) return null;
+  if (!user) {
+    return { patients: [] as Patient[], cases: [] as AiCase[] };
+  }
 
-  return createClient(supabaseUrl, supabaseAnonKey);
-}
+  const [patientsResponse, casesResponse] = await Promise.all([
+    supabase
+      .from("patients")
+      .select("id, nome")
+      .eq("user_id", user.id)
+      .order("nome", { ascending: true }),
+    supabase
+      .from("ai_cases")
+      .select(
+        "id, patient_id, titulo, queixa, contexto, prompt, resposta, created_at"
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
 
-async function getPatients(): Promise<Patient[]> {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-
-  const { data } = await supabase
-    .from("patients")
-    .select("id, nome")
-    .order("nome", { ascending: true });
-
-  return (data as Patient[]) || [];
-}
-
-async function getCases(): Promise<AiCase[]> {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-
-  const { data } = await supabase
-    .from("ai_cases")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(8);
-
-  return (data as AiCase[]) || [];
+  return {
+    patients: (patientsResponse.data as Patient[]) || [],
+    cases: (casesResponse.data as AiCase[]) || [],
+  };
 }
 
 function formatDate(value: string) {
@@ -73,8 +71,7 @@ export default async function ConsultaAudioPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const patients = await getPatients();
-  const cases = await getCases();
+  const { patients, cases } = await getPrivateData();
   const errorMessage = params.message ? decodeURIComponent(params.message) : null;
 
   return (
@@ -271,3 +268,4 @@ export default async function ConsultaAudioPage({
     </div>
   );
 }
+

@@ -17,7 +17,7 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   if (isPublicRoute(pathname)) return NextResponse.next();
 
-  let response = NextResponse.next();
+  const response = NextResponse.next();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -52,3 +52,4 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|logo-resibook.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };
+

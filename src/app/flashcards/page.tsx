@@ -61,14 +61,6 @@ const emptyForm: FlashcardForm = {
   dificil: false,
 };
 
-function normalize(value?: string | null) {
-  return (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 function formatLabel(value?: string | null, fallback = "Não informado") {
   const clean = value?.trim();
 

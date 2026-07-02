@@ -59,14 +59,6 @@ type HighRiskConfirmationLog = {
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
-function normalize(value?: string | null) {
-  return (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 function formatDate(value?: string | null) {
   if (!value) return "-";
 
@@ -798,3 +790,4 @@ function Tag({ label }: { label: string }) {
     </span>
   );
 }
+
