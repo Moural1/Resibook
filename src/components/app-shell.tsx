@@ -61,7 +61,12 @@ const GUEST_ALLOWED_PATHS = [
   "/suporte",
 ];
 
-const AUTH_PUBLIC_PATHS = [\n  "/login",\n  "/signup",\n  "/register",\n  "/redefinir-senha",\n];
+const AUTH_PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/register",
+  "/redefinir-senha",
+];
 const LEGAL_PUBLIC_PATHS = ["/aceite-legal", "/termos", "/privacidade"];
 const SHELL_HIDDEN_PATHS = [...AUTH_PUBLIC_PATHS, ...LEGAL_PUBLIC_PATHS];
 
