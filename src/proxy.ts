@@ -1,12 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/register", "/termos", "/privacidade", "/aceite-legal"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/termos", "/privacidade", "/aceite-legal"];
 const GUEST_EMAIL = "convidado@resibook.com";
 const GUEST_ALLOWED_PATHS = ["/prescricao", "/caso-rapido", "/topicos", "/cids", "/exames-evolucao", "/termos", "/privacidade", "/aceite-legal", "/suporte"];
 
 function isPublicRoute(pathname: string) {
-  return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  return PUBLIC_ROUTES.some(
+    (route) => pathname === route || (route !== "/" && pathname.startsWith(`${route}/`))
+  );
 }
 
 function isGuestAllowedPath(pathname: string) {

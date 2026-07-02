@@ -24,6 +24,7 @@ const OPERATIONS_ROUTES = [
 ];
 const SHIFT_ROUTES = ["/plantao", "/caso-rapido", "/consulta-audio"];
 const PUBLIC_ROUTES = [
+  "/",
   "/login",
   "/redefinir-senha",
   "/aceite-legal",
@@ -62,3 +63,4 @@ export default function VisualSystemController() {
 
   return null;
 }
+
