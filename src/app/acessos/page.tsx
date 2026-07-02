@@ -8,7 +8,10 @@ import {
   Ban,
   CheckCircle2,
   Clock3,
+  Copy,
+  Download,
   ShieldCheck,
+  Trash2,
   UserRound,
   Users,
 } from "lucide-react";
@@ -34,6 +37,13 @@ type SessionInfo = {
   isAdmin: boolean;
 };
 
+type AuthAccount = {
+  id: string;
+  email: string;
+  createdAt: string;
+  lastSignInAt: string | null;
+};
+
 type UserAccessSummary = {
   email: string;
   totalLogins: number;
@@ -43,6 +53,9 @@ type UserAccessSummary = {
   blockedId?: number;
   blockedReason?: string | null;
   blockedAt?: string | null;
+  accountId?: string;
+  accountCreatedAt?: string | null;
+  authManaged?: boolean;
 };
 
 const ADMIN_EMAIL = "igormoura@resibook.com";
@@ -141,8 +154,11 @@ export default function AcessosPage() {
 
   const [logs, setLogs] = useState<LoginLog[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [authAccounts, setAuthAccounts] = useState<AuthAccount[]>([]);
+  const [adminApiAvailable, setAdminApiAvailable] = useState(false);
 
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [blockEmail, setBlockEmail] = useState("");
   const [blockReason, setBlockReason] = useState("");
 
@@ -165,11 +181,13 @@ export default function AcessosPage() {
     if (!freshSession.isAdmin) {
       setLogs([]);
       setBlockedUsers([]);
+      setAuthAccounts([]);
+      setAdminApiAvailable(false);
       setLoading(false);
       return;
     }
 
-    const [logsRes, blockedRes] = await Promise.all([
+    const [logsRes, blockedRes, accountsRes] = await Promise.all([
       supabase
         .from("login_logs")
         .select("id, user_id, user_email, user_agent, created_at")
@@ -180,6 +198,8 @@ export default function AcessosPage() {
         .from("blocked_users")
         .select("id, email, reason, blocked_at")
         .order("blocked_at", { ascending: false }),
+
+      fetch("/api/admin/users", { cache: "no-store" }),
     ]);
 
     const nextErrors: string[] = [];
@@ -198,6 +218,21 @@ export default function AcessosPage() {
       setBlockedUsers((blockedRes.data as BlockedUser[]) || []);
     }
 
+    if (accountsRes.ok) {
+      const payload = (await accountsRes.json()) as { users?: AuthAccount[] };
+      setAuthAccounts(payload.users || []);
+      setAdminApiAvailable(true);
+    } else {
+      setAuthAccounts([]);
+      setAdminApiAvailable(false);
+      if (accountsRes.status !== 503) {
+        const payload = (await accountsRes.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        nextErrors.push(payload?.error || "Não foi possível listar as contas.");
+      }
+    }
+
     if (nextErrors.length > 0) {
       setError(nextErrors.join(" | "));
     }
@@ -212,6 +247,21 @@ export default function AcessosPage() {
 
   const userSummaries = useMemo<UserAccessSummary[]>(() => {
     const map = new Map<string, UserAccessSummary>();
+
+    for (const account of authAccounts) {
+      const email = account.email.trim().toLowerCase();
+      if (!email) continue;
+      map.set(email, {
+        email,
+        totalLogins: 0,
+        lastAccess: account.lastSignInAt,
+        userAgents: [],
+        blocked: false,
+        accountId: account.id,
+        accountCreatedAt: account.createdAt,
+        authManaged: true,
+      });
+    }
 
     for (const log of logs) {
       const email = log.user_email.trim().toLowerCase();
@@ -270,21 +320,26 @@ export default function AcessosPage() {
       const timeB = b.lastAccess ? new Date(b.lastAccess).getTime() : 0;
       return timeB - timeA;
     });
-  }, [logs, blockedUsers]);
+  }, [authAccounts, logs, blockedUsers]);
 
   const filteredSummaries = useMemo(() => {
     const q = normalize(query);
 
-    if (!q) return userSummaries;
-
     return userSummaries.filter((item) => {
-      return (
+      const matchesQuery =
+        !q ||
         normalize(item.email).includes(q) ||
         normalize(item.blockedReason).includes(q) ||
-        item.userAgents.some((agent) => normalize(agent).includes(q))
-      );
+        item.userAgents.some((agent) => normalize(agent).includes(q));
+      const matchesStatus =
+        !statusFilter ||
+        (statusFilter === "blocked" && item.blocked) ||
+        (statusFilter === "active" && !item.blocked) ||
+        (statusFilter === "account" && item.authManaged);
+
+      return matchesQuery && matchesStatus;
     });
-  }, [userSummaries, query]);
+  }, [userSummaries, query, statusFilter]);
 
   const filteredLogs = useMemo(() => {
     const q = normalize(query);
@@ -402,6 +457,94 @@ export default function AcessosPage() {
     setSaving(false);
   }
 
+  async function copyEmail(email: string) {
+    await navigator.clipboard.writeText(email);
+    setSuccess(`${email} copiado.`);
+    setError("");
+  }
+
+  async function clearUserLogs(email: string) {
+    if (!session.isAdmin) return;
+    const confirmed = window.confirm(
+      `Apagar os registros de login de ${email}? A conta e os dados clínicos não serão alterados.`
+    );
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    const { error } = await supabase
+      .from("login_logs")
+      .delete()
+      .eq("user_email", email);
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setSuccess(`Logs de ${email} apagados.`);
+      await load();
+    }
+    setSaving(false);
+  }
+
+  async function deleteAuthAccount(email: string) {
+    if (!adminApiAvailable) {
+      setError(
+        "Exclusão indisponível: configure SUPABASE_SERVICE_ROLE_KEY apenas no servidor da Vercel."
+      );
+      return;
+    }
+
+    const confirmation = window.prompt(
+      `Esta ação remove o login de ${email}, mas não apaga automaticamente prontuários ou dados sujeitos a retenção. Digite o e-mail completo para confirmar.`
+    );
+    if (confirmation?.trim().toLowerCase() !== email) {
+      if (confirmation !== null) setError("Confirmação diferente do e-mail.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    const response = await fetch("/api/admin/users", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+
+    if (!response.ok) {
+      setError(payload?.error || "Não foi possível excluir a conta.");
+    } else {
+      setSuccess(`Conta de autenticação ${email} excluída.`);
+      await load();
+    }
+    setSaving(false);
+  }
+
+  function exportLogs() {
+    const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const rows = [
+      ["data", "email", "navegador"],
+      ...filteredLogs.map((item) => [
+        item.created_at,
+        item.user_email,
+        simplifyUserAgent(item.user_agent),
+      ]),
+    ];
+    const csv = rows.map((row) => row.map(escape).join(",")).join("\r\n");
+    const url = URL.createObjectURL(
+      new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" })
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `resibook-acessos-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (checking || loading) {
     return (
       <div className="rounded-[28px] border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-600 shadow-sm">
@@ -456,6 +599,16 @@ export default function AcessosPage() {
           {success ? (
             <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
               {success}
+            </div>
+          ) : null}
+
+          {!adminApiAvailable ? (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Listagem e exclusão de contas estão desativadas até configurar
+              <code className="mx-1 rounded bg-white px-1.5 py-0.5 text-xs font-semibold">
+                SUPABASE_SERVICE_ROLE_KEY
+              </code>
+              somente no servidor. Logs e bloqueios continuam disponíveis.
             </div>
           ) : null}
         </div>
@@ -518,12 +671,32 @@ export default function AcessosPage() {
             </p>
           </div>
 
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por e-mail, motivo ou navegador..."
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none md:w-96"
-          />
+          <div className="grid w-full gap-2 sm:grid-cols-[1fr_160px_auto] md:w-auto">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por e-mail, motivo ou navegador..."
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none md:w-80"
+            />
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none"
+            >
+              <option value="">Todos</option>
+              <option value="active">Ativos</option>
+              <option value="blocked">Bloqueados</option>
+              <option value="account">Contas reais</option>
+            </select>
+            <button
+              type="button"
+              onClick={exportLogs}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </button>
+          </div>
         </div>
 
         {filteredSummaries.length === 0 ? (
@@ -580,6 +753,17 @@ export default function AcessosPage() {
                             {item.totalLogins}
                           </p>
                         </div>
+
+                        {item.accountCreatedAt ? (
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:col-span-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                              Conta criada
+                            </p>
+                            <p className="mt-2 text-sm font-medium text-slate-900">
+                              {formatDate(item.accountCreatedAt)}
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
@@ -620,6 +804,15 @@ export default function AcessosPage() {
                     </div>
 
                     <div className="flex shrink-0 flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => copyEmail(item.email)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                        title="Copiar e-mail"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        Copiar
+                      </button>
                       {isAdminUser ? (
                         <span className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600">
                           Protegido
@@ -643,6 +836,34 @@ export default function AcessosPage() {
                           Bloquear
                         </button>
                       )}
+
+                      {!isAdminUser && item.totalLogins > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => clearUserLogs(item.email)}
+                          disabled={saving}
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+                        >
+                          Limpar logs
+                        </button>
+                      ) : null}
+
+                      {!isAdminUser && item.authManaged ? (
+                        <button
+                          type="button"
+                          onClick={() => deleteAuthAccount(item.email)}
+                          disabled={saving || !adminApiAvailable}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                          title={
+                            adminApiAvailable
+                              ? "Excluir conta de autenticação"
+                              : "Configure a chave administrativa no servidor"
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Excluir conta
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </article>
@@ -766,3 +987,4 @@ export default function AcessosPage() {
     </div>
   );
 }
+
