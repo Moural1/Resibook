@@ -218,6 +218,9 @@ function buildCaseSummary(activeCase: ClinicalCaseSession | null) {
     : "";
 
   return [
+    activeCase.selectedCid?.codigo
+      ? `CID selecionado: ${activeCase.selectedCid.codigo} - ${activeCase.selectedCid.descricao}`
+      : "",
     formatCaseVitals(activeCase)
       ? `Sinais vitais iniciais: ${formatCaseVitals(activeCase)}`
       : "",
@@ -554,4 +557,5 @@ function InfoBlock({
     </section>
   );
 }
+
 
