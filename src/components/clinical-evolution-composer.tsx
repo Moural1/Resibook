@@ -54,6 +54,12 @@ function patientLabel(activeCase: ClinicalCaseSession) {
   return details.length ? `Paciente ${details.join(", ")}` : "Paciente";
 }
 
+function selectedCidText(activeCase: ClinicalCaseSession) {
+  return activeCase.selectedCid?.codigo
+    ? `CID: ${activeCase.selectedCid.codigo} - ${activeCase.selectedCid.descricao}.`
+    : "";
+}
+
 function buildSoap(activeCase: ClinicalCaseSession) {
   const reassessment = activeCase.reassessment;
   const subjective = [
@@ -80,6 +86,7 @@ function buildSoap(activeCase: ClinicalCaseSession) {
   ].filter(Boolean);
 
   const assessment = [
+    selectedCidText(activeCase),
     clean(activeCase.severity)
       ? `Classificação/prioridade: ${clean(activeCase.severity)}.`
       : "",
@@ -125,6 +132,7 @@ function buildNarrative(activeCase: ClinicalCaseSession) {
     activeCase.priorities.length
       ? `Prioridades clínicas: ${activeCase.priorities.join("; ")}.`
       : "",
+    selectedCidText(activeCase),
     reassessment?.symptomStatus
       ? `Em reavaliação, apresenta ${clean(reassessment.symptomStatus).toLowerCase()}.`
       : "",
@@ -148,6 +156,7 @@ function buildReassessment(activeCase: ClinicalCaseSession) {
   if (!reassessment) {
     return [
       `Paciente em observação por ${clean(activeCase.complaint)}.`,
+      selectedCidText(activeCase),
       formatCaseVitals(activeCase)
         ? `Parâmetros iniciais: ${formatCaseVitals(activeCase)}.`
         : "",
@@ -159,6 +168,7 @@ function buildReassessment(activeCase: ClinicalCaseSession) {
 
   return [
     `REAVALIAÇÃO CLÍNICA - ${clean(activeCase.complaint)}`,
+    selectedCidText(activeCase),
     reassessment.recordedAt
       ? `Registro: ${new Intl.DateTimeFormat("pt-BR", {
           dateStyle: "short",
@@ -376,4 +386,5 @@ export default function ClinicalEvolutionComposer() {
     mountNode
   );
 }
+
 
