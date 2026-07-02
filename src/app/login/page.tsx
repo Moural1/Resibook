@@ -30,6 +30,8 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const formValido = useMemo(() => {
     return email.trim().length > 0 && senha.trim().length > 0;
@@ -116,6 +118,36 @@ function LoginContent() {
     }
   }
 
+  async function requestPasswordReset() {
+    const normalizedEmail = email.trim().toLowerCase();
+    setErro("");
+    setResetSent(false);
+
+    if (!normalizedEmail) {
+      setErro("Informe seu e-mail para recuperar a senha.");
+      return;
+    }
+
+    try {
+      setResetting(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        normalizedEmail,
+        { redirectTo: `${window.location.origin}/redefinir-senha` }
+      );
+
+      if (error) {
+        setErro("Não foi possível enviar a recuperação agora. Tente novamente.");
+        return;
+      }
+
+      setResetSent(true);
+    } catch {
+      setErro("Não foi possível enviar a recuperação agora. Tente novamente.");
+    } finally {
+      setResetting(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
       <div className="w-full max-w-md rounded-[20px] border border-slate-200 bg-white p-7 shadow-[0_20px_60px_rgba(15,23,42,0.09)] sm:p-8">
@@ -151,6 +183,13 @@ function LoginContent() {
             </div>
           ) : null}
 
+          {resetSent ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              Se houver uma conta com esse e-mail, o link para redefinir a senha
+              chegará em instantes.
+            </div>
+          ) : null}
+
           <div>
             <label htmlFor="email" className="text-sm font-medium text-gray-600">
               E-mail
@@ -171,9 +210,19 @@ function LoginContent() {
           </div>
 
           <div>
-            <label htmlFor="senha" className="text-sm font-medium text-gray-600">
-              Senha
-            </label>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="senha" className="text-sm font-medium text-gray-600">
+                Senha
+              </label>
+              <button
+                type="button"
+                onClick={requestPasswordReset}
+                disabled={resetting || loading}
+                className="text-xs font-semibold text-cyan-800 transition hover:text-cyan-950 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {resetting ? "Enviando..." : "Esqueci minha senha"}
+              </button>
+            </div>
 
             <div className="relative mt-1">
               <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

@@ -67,6 +67,45 @@ export async function GET() {
   });
 }
 
+export async function POST(request: Request) {
+  const authorization = await authorizeAdmin();
+  if ("error" in authorization) {
+    return NextResponse.json(
+      { error: authorization.error },
+      { status: authorization.status }
+    );
+  }
+
+  const admin = getAdminClient();
+  if (!admin) {
+    return NextResponse.json(
+      {
+        error: "Convites não configurados no servidor.",
+        code: "service_role_missing",
+      },
+      { status: 503 }
+    );
+  }
+
+  const body = (await request.json().catch(() => null)) as
+    | { email?: string }
+    | null;
+  const email = body?.email?.trim().toLowerCase() || "";
+  if (!email) {
+    return NextResponse.json({ error: "E-mail obrigatório." }, { status: 400 });
+  }
+
+  const redirectTo = `${new URL(request.url).origin}/redefinir-senha`;
+  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo,
+  });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ success: true, email });
+}
+
 export async function DELETE(request: Request) {
   const authorization = await authorizeAdmin();
   if ("error" in authorization) {

@@ -19,6 +19,7 @@ const OPERATIONS_ROUTES = [
 const SHIFT_ROUTES = ["/plantao", "/caso-rapido", "/consulta-audio"];
 const PUBLIC_ROUTES = [
   "/login",
+  "/redefinir-senha",
   "/aceite-legal",
   "/suporte",
   "/termos",
