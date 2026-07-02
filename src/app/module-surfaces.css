@@ -9,6 +9,11 @@ img[src="/logo-resibook.png"] {
   color: #ffffff !important;
 }
 
+a[class~="text-white"],
+button[class~="text-white"] {
+  color: #ffffff !important;
+}
+
 body[data-resibook-surface="library"] main,
 body[data-resibook-surface="workflow"] main,
 body[data-resibook-surface="operations"] main,
