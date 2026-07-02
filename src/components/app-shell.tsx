@@ -11,6 +11,7 @@ import {
   Activity,
   BarChart3,
   Brain,
+  Calculator,
   ClipboardList,
   FlaskConical,
   Gauge,
@@ -324,6 +325,12 @@ function SidebarContent({
       badge: counts.flashcardsDificeis,
     },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
+    {
+      href: "/calculadoras",
+      label: "Calculadoras",
+      icon: Calculator,
+      badge: null,
+    },
   ];
 
   const guestPrimaryItems = [
