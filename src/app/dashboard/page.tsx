@@ -585,6 +585,11 @@ export default function DashboardPage() {
                       {[activeCase.age, activeCase.sex].filter(Boolean).join(" • ") ||
                         "Identificação ainda não preenchida"}
                     </p>
+                    {activeCase.selectedCid?.codigo ? (
+                      <p className="mt-2 text-xs font-semibold text-cyan-900">
+                        CID {activeCase.selectedCid.codigo} · {activeCase.selectedCid.descricao}
+                      </p>
+                    ) : null}
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
                         href={`/caso-rapido?q=${encodeURIComponent(activeCase.complaint)}`}
@@ -1359,4 +1364,5 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
 
