@@ -3,7 +3,13 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
-const LIBRARY_ROUTES = ["/flashcards", "/topicos", "/cids", "/condutas"];
+const LIBRARY_ROUTES = [
+  "/flashcards",
+  "/topicos",
+  "/cids",
+  "/condutas",
+  "/calculadoras",
+];
 const WORKFLOW_ROUTES = [
   "/prescricao",
   "/modelos-prescricao",
