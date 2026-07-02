@@ -6,7 +6,22 @@ import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
-import { Edit3, Lock, Plus, X } from "lucide-react";
+import {
+  CLINICAL_CASE_SESSION_EVENT,
+  loadClinicalCaseSession,
+  saveClinicalCaseSession,
+  type ClinicalCaseSession,
+} from "@/lib/clinical-case-session";
+import {
+  CheckCircle2,
+  Clock3,
+  Copy,
+  Edit3,
+  Link2,
+  Lock,
+  Plus,
+  X,
+} from "lucide-react";
 
 type CidItem = {
   id: number;
@@ -29,6 +44,7 @@ type CidForm = {
 
 const GUEST_EMAIL = "convidado@resibook.com";
 const ADMIN_EMAIL = "igormoura@resibook.com";
+const RECENT_CIDS_KEY = "resibook-recent-cids-v1";
 
 const initialForm: CidForm = {
   codigo: "",
@@ -104,6 +120,8 @@ export default function CidsPage() {
   const [form, setForm] = useState<CidForm>(initialForm);
   const [editingItem, setEditingItem] = useState<CidItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeCase, setActiveCase] = useState<ClinicalCaseSession | null>(null);
+  const [recentIds, setRecentIds] = useState<number[]>([]);
 
   useEffect(() => {
     const urlQuery = searchParams.get("q") || searchParams.get("busca") || "";
@@ -157,6 +175,28 @@ export default function CidsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    function syncActiveCase() {
+      setActiveCase(loadClinicalCaseSession());
+    }
+
+    syncActiveCase();
+    window.addEventListener(CLINICAL_CASE_SESSION_EVENT, syncActiveCase);
+
+    try {
+      const stored = JSON.parse(
+        window.localStorage.getItem(RECENT_CIDS_KEY) || "[]"
+      ) as number[];
+      setRecentIds(stored.filter((value) => Number.isFinite(value)).slice(0, 6));
+    } catch {
+      setRecentIds([]);
+    }
+
+    return () => {
+      window.removeEventListener(CLINICAL_CASE_SESSION_EVENT, syncActiveCase);
+    };
+  }, []);
+
   const grupos = useMemo(() => {
     return Array.from(
       new Set(allCids.map((item) => item.grupo).filter(Boolean))
@@ -194,6 +234,51 @@ export default function CidsPage() {
       return acc;
     }, {});
   }, [filtered]);
+
+  const recentCids = useMemo(
+    () =>
+      recentIds
+        .map((id) => allCids.find((item) => item.id === id))
+        .filter((item): item is CidItem => Boolean(item)),
+    [allCids, recentIds]
+  );
+
+  function rememberCid(id: number) {
+    setRecentIds((current) => {
+      const next = [id, ...current.filter((item) => item !== id)].slice(0, 6);
+      window.localStorage.setItem(RECENT_CIDS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  async function copyCidCode(item: CidItem) {
+    await navigator.clipboard.writeText(item.codigo);
+    rememberCid(item.id);
+    setSuccess(`CID ${item.codigo} copiado.`);
+    setError("");
+  }
+
+  function attachCidToCase(item: CidItem) {
+    if (!activeCase) {
+      setError("Inicie um Caso rápido antes de vincular o CID.");
+      return;
+    }
+
+    const nextCase: ClinicalCaseSession = {
+      ...activeCase,
+      selectedCid: {
+        codigo: item.codigo,
+        descricao: item.descricao,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveClinicalCaseSession(nextCase);
+    setActiveCase(nextCase);
+    rememberCid(item.id);
+    setSuccess(`CID ${item.codigo} vinculado ao caso ativo.`);
+    setError("");
+  }
 
   function resetForm() {
     setForm(initialForm);
@@ -372,6 +457,54 @@ export default function CidsPage() {
         }
       />
 
+      {activeCase || recentCids.length > 0 ? (
+        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+          {activeCase ? (
+            <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-800">
+                  Caso ativo
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-950">
+                  {activeCase.complaint}
+                </h2>
+              </div>
+              <p className="text-sm text-slate-600">
+                {activeCase.selectedCid?.codigo
+                  ? `CID atual: ${activeCase.selectedCid.codigo} - ${activeCase.selectedCid.descricao}`
+                  : "Nenhum CID vinculado ao atendimento."}
+              </p>
+            </div>
+          ) : null}
+
+          {recentCids.length > 0 ? (
+            <div className={activeCase ? "pt-5" : ""}>
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <Clock3 className="h-4 w-4" />
+                CIDs recentes neste navegador
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {recentCids.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => attachCidToCase(item)}
+                    disabled={!activeCase}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-white disabled:cursor-default disabled:opacity-70"
+                    title={activeCase ? "Vincular ao caso ativo" : item.descricao}
+                  >
+                    <span className="text-cyan-800">{item.codigo}</span>
+                    <span className="max-w-[240px] truncate font-medium text-slate-500">
+                      {item.descricao}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
           <input
@@ -477,7 +610,18 @@ export default function CidsPage() {
                         </p>
                       </div>
 
-                      <CopyButton text={buildCidText(item)} />
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => copyCidCode(item)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100"
+                          title="Copiar somente o código"
+                          aria-label={`Copiar CID ${item.codigo}`}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                        <CopyButton text={buildCidText(item)} />
+                      </div>
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -509,6 +653,24 @@ export default function CidsPage() {
                           })
                         : null}
                     </div>
+
+                    {activeCase ? (
+                      <button
+                        type="button"
+                        onClick={() => attachCidToCase(item)}
+                        disabled={activeCase.selectedCid?.codigo === item.codigo}
+                        className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-cyan-200 bg-white px-4 text-sm font-semibold text-cyan-900 transition hover:bg-cyan-50 disabled:cursor-default disabled:border-emerald-200 disabled:bg-emerald-50 disabled:text-emerald-700"
+                      >
+                        {activeCase.selectedCid?.codigo === item.codigo ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <Link2 className="h-4 w-4" />
+                        )}
+                        {activeCase.selectedCid?.codigo === item.codigo
+                          ? "Vinculado ao caso"
+                          : "Usar no caso ativo"}
+                      </button>
+                    ) : null}
 
                     {isAdmin ? (
                       <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
@@ -661,3 +823,4 @@ export default function CidsPage() {
     </div>
   );
 }
+

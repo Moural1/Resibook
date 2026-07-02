@@ -328,6 +328,12 @@ export default function ClinicalCaseSessionBridge() {
             </p>
           ) : null}
 
+          {activeCase.selectedCid?.codigo ? (
+            <p className="mt-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-900">
+              CID {activeCase.selectedCid.codigo} · {activeCase.selectedCid.descricao}
+            </p>
+          ) : null}
+
           {activeCase.alerts.length ? (
             <p className="mt-2 text-xs font-medium leading-5 text-rose-700">
               {activeCase.alerts.join(" · ")}
@@ -405,3 +411,4 @@ export default function ClinicalCaseSessionBridge() {
     </div>
   );
 }
+

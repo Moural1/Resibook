@@ -107,6 +107,9 @@ function buildSessionForm(saved: ClinicalCaseSession, incomingQuery: string) {
       .filter(Boolean)
       .join("\n"),
     assessment: [
+      saved.selectedCid?.codigo
+        ? `CID selecionado: ${saved.selectedCid.codigo} - ${saved.selectedCid.descricao}`
+        : "",
       initialVitals ? `Sinais vitais iniciais: ${initialVitals}` : "",
       currentVitals ? `Sinais vitais atuais: ${currentVitals}` : "",
       saved.alerts.length
@@ -451,4 +454,5 @@ function FieldCard({
     </section>
   );
 }
+
 
