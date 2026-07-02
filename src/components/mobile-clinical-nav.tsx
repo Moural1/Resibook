@@ -17,7 +17,8 @@ import {
 const HIDDEN_PATHS = [
   "/login",
   "/signup",
-  "/register",\n  "/redefinir-senha",
+  "/register",
+  "/redefinir-senha",
   "/aceite-legal",
   "/termos",
   "/privacidade",
