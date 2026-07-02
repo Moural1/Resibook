@@ -48,14 +48,6 @@ const emptyForm: FormState = {
   conteudo: "",
 };
 
-function normalize(value?: string | null) {
-  return (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 function formatDisplay(value?: string | null, fallback = "Não informado") {
   const clean = value?.trim();
   if (!clean) return fallback;
@@ -780,3 +772,4 @@ export default function ExamesEvolucaoPage() {
     </div>
   );
 }
+

@@ -1,51 +1,18 @@
 import { NextResponse } from "next/server";
 
-type RouteContext = {
-  params: Promise<{
-    id: string;
-  }>;
-};
-
-export async function GET(_request: Request, context: RouteContext) {
-  const { id } = await context.params;
-
-  return NextResponse.json({
-    ok: true,
-    id,
-    message: "Rota de consulta ativa.",
-  });
+function legacyRouteResponse() {
+  return NextResponse.json(
+    {
+      error:
+        "Rota antiga de consulta desativada. Use o prontuário ou a consulta por áudio.",
+    },
+    { status: 410 }
+  );
 }
 
-export async function PATCH(request: Request, context: RouteContext) {
-  const { id } = await context.params;
-  const body = await request.json().catch(() => null);
+export const GET = legacyRouteResponse;
+export const PATCH = legacyRouteResponse;
+export const PUT = legacyRouteResponse;
+export const DELETE = legacyRouteResponse;
 
-  return NextResponse.json({
-    ok: true,
-    id,
-    data: body,
-    message: "Atualização de consulta recebida.",
-  });
-}
 
-export async function PUT(request: Request, context: RouteContext) {
-  const { id } = await context.params;
-  const body = await request.json().catch(() => null);
-
-  return NextResponse.json({
-    ok: true,
-    id,
-    data: body,
-    message: "Atualização de consulta recebida.",
-  });
-}
-
-export async function DELETE(_request: Request, context: RouteContext) {
-  const { id } = await context.params;
-
-  return NextResponse.json({
-    ok: true,
-    id,
-    message: "Consulta removida.",
-  });
-}

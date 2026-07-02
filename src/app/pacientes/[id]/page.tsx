@@ -1722,6 +1722,8 @@ export default function PatientDetailPage() {
 
   useEffect(() => {
     loadPatient();
+    // loadPatient intentionally reloads when the route patient changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
   function updateNoteForm<K extends keyof NoteForm>(key: K, value: NoteForm[K]) {
@@ -2434,19 +2436,6 @@ setSuccess("Problema atualizado com sucesso.");
   }
 
   
-function buildPatientQuickFacts(patient: Patient) {
-  const facts = [
-    patient.sexo ? `Sexo: ${patient.sexo}` : "",
-    typeof patient.idade === "number" ? `Idade: ${patient.idade} anos` : "",
-    patient.telefone ? `Telefone: ${patient.telefone}` : "",
-    patient.especialidade ? `Especialidade: ${patient.especialidade}` : "",
-    patient.plano_saude ? `Plano: ${patient.plano_saude}` : "",
-    patient.local_atendimento ? `Local: ${patient.local_atendimento}` : "",
-  ].filter(Boolean);
-
-  return facts.join(" • ");
-}
-
 function buildSummaryPrintHtml(
   patient: Patient,
   prescriptions: Prescription[],
@@ -4432,4 +4421,5 @@ function openPrintHtml(html: string) {
     </div>
   );
 }
+
 

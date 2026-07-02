@@ -10,6 +10,7 @@ import {
   type ClinicalCaseSession,
 } from "@/lib/clinical-case-session";
 import { buildCaseRouting } from "@/lib/clinical-case-routing";
+import { clinicalCalculators } from "@/lib/clinical-calculators";
 import { getSearchScore, rankSearchResults } from "@/lib/search";
 import {
   ArrowRight,
@@ -45,7 +46,8 @@ type SearchResult = {
     | "topico"
     | "cid"
     | "flashcard"
-    | "conduta";
+    | "conduta"
+    | "calculadora";
 };
 
 type SearchAction = {
@@ -66,7 +68,26 @@ type MarkRow = { flashcard_id: string; dificil: boolean | null };
 type SessionInfo = { userId: string | null; email: string; isGuest: boolean };
 
 const GUEST_EMAIL = "convidado@resibook.com";
-const RECENT_SEARCHES_KEY = "resibook-global-search-recent-v1";
+const RECENT_SEARCHES_KEY = "resibook-global-search-recent-v2";
+
+function recentSearchesKey(userId: string | null) {
+  return `${RECENT_SEARCHES_KEY}:${userId || "anonymous"}`;
+}
+
+function loadRecentSearches(userId: string | null) {
+  try {
+    const stored = JSON.parse(
+      window.localStorage.getItem(recentSearchesKey(userId)) || "[]"
+    );
+    return Array.isArray(stored)
+      ? stored
+          .filter((item): item is string => typeof item === "string")
+          .slice(0, 5)
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 async function getSessionInfo(): Promise<SessionInfo> {
   const supabase = createClient();
@@ -88,6 +109,7 @@ function badgeLabel(type: SearchResult["type"]) {
   if (type === "topico") return "Tópico";
   if (type === "flashcard") return "Flashcard";
   if (type === "conduta") return "Conduta";
+  if (type === "calculadora") return "Calculadora";
   return "CID";
 }
 
@@ -99,6 +121,7 @@ function badgeClass(type: SearchResult["type"]) {
   if (type === "topico") return "border-cyan-200/80 bg-cyan-50 text-cyan-700";
   if (type === "flashcard") return "border-pink-200/80 bg-pink-50 text-pink-700";
   if (type === "conduta") return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
+  if (type === "calculadora") return "border-slate-200 bg-slate-50 text-slate-700";
   return "border-amber-200/80 bg-amber-50 text-amber-700";
 }
 
@@ -110,6 +133,7 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
   if (type === "topico") return <BookOpen className={className} />;
   if (type === "flashcard") return <Brain className={className} />;
   if (type === "conduta") return <Siren className={className} />;
+  if (type === "calculadora") return <Calculator className={className} />;
   return <Tags className={className} />;
 }
 
@@ -133,6 +157,7 @@ export function Topbar() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [activeCase, setActiveCase] = useState<ClinicalCaseSession | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -160,7 +185,7 @@ export function Topbar() {
 
   const groupedResults = useMemo(() => {
     const groups: Array<{ label: string; types: SearchResult["type"][] }> = [
-      { label: "Condutas e tópicos", types: ["conduta", "topico"] },
+      { label: "Condutas e apoio", types: ["conduta", "topico", "calculadora"] },
       { label: "Prescrições", types: ["modelo_prescricao", "prescricao"] },
       { label: "Exames e códigos", types: ["exame", "cid"] },
       { label: "Pacientes e revisão", types: ["paciente", "flashcard"] },
@@ -173,7 +198,10 @@ export function Topbar() {
     if (!clean) return;
     setRecentSearches((current) => {
       const next = [clean, ...current.filter((item) => normalize(item) !== normalize(clean))].slice(0, 5);
-      window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+      window.localStorage.setItem(
+        recentSearchesKey(currentUserId),
+        JSON.stringify(next)
+      );
       return next;
     });
   }
@@ -187,13 +215,6 @@ export function Topbar() {
   }
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(window.localStorage.getItem(RECENT_SEARCHES_KEY) || "[]");
-      if (Array.isArray(stored)) setRecentSearches(stored.filter((item): item is string => typeof item === "string").slice(0, 5));
-    } catch { setRecentSearches([]); }
-  }, []);
-
-  useEffect(() => {
     function refreshActiveCase() { setActiveCase(loadClinicalCaseSession()); }
     refreshActiveCase();
     window.addEventListener(CLINICAL_CASE_SESSION_EVENT, refreshActiveCase);
@@ -203,9 +224,17 @@ export function Topbar() {
   useEffect(() => {
     const supabase = createClient();
     let mounted = true;
-    getSessionInfo().then((info) => { if (mounted) setIsGuest(info.isGuest); });
+    getSessionInfo().then((info) => {
+      if (mounted) {
+        setIsGuest(info.isGuest);
+        setCurrentUserId(info.userId);
+        setRecentSearches(loadRecentSearches(info.userId));
+      }
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsGuest((session?.user?.email?.trim().toLowerCase() || "") === GUEST_EMAIL);
+      setCurrentUserId(session?.user?.id || null);
+      setRecentSearches(loadRecentSearches(session?.user?.id || null));
     });
     return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
@@ -220,7 +249,6 @@ export function Topbar() {
 
   useEffect(() => {
     const q = query.trim();
-    setSelectedIndex(0);
     async function runSearch() {
       if (!q) { setResults([]); setLoading(false); return; }
       const requestId = ++searchRequestRef.current;
@@ -251,10 +279,24 @@ export function Topbar() {
       const cidResults: SearchResult[] = rankSearchResults((cidsRes.data || []) as CidRow[], q, (item) => [{ value: item.codigo, weight: 12 }, { value: item.descricao, weight: 8 }, { value: item.grupo, weight: 3 }]).map((item) => ({ id: `cid-${item.id}`, title: item.codigo || "CID", subtitle: item.descricao || item.grupo || "Consulta CID", href: `/cids?q=${encodeURIComponent(item.codigo || item.descricao || q)}`, type: "cid" }));
       const difficultIds = new Set(((condutasMarksRes.data || []) as MarkRow[]).filter((item) => item.dificil === true).map((item) => String(item.flashcard_id)));
       const flashcardRows = ((flashcardsRes.data || []) as FlashcardRow[]).map((item) => ({ ...item, id: String(item.id) }));
+      const calculatorResults: SearchResult[] = guest
+        ? []
+        : clinicalCalculators
+            .filter((item) =>
+              [item.name, item.shortName, item.category, item.description]
+                .some((value) => normalize(value).includes(normalize(q)))
+            )
+            .map((item) => ({
+              id: `calculadora-${item.id}`,
+              title: item.name,
+              subtitle: item.category,
+              href: `/calculadoras?calculadora=${encodeURIComponent(item.id)}`,
+              type: "calculadora",
+            }));
       const condutaResults: SearchResult[] = rankSearchResults(flashcardRows.filter((item) => difficultIds.has(String(item.id))), q, (item) => [{ value: item.frente, weight: 10 }, { value: item.materia, weight: 6 }, { value: item.area, weight: 5 }, { value: item.verso, weight: 2 }]).map((item) => ({ id: `conduta-${item.id}`, title: item.frente || "Conduta médica", subtitle: item.materia || item.area || "Protocolo marcado por você", href: `/condutas?q=${encodeURIComponent(item.frente || q)}`, type: "conduta" }));
       const flashcardResults: SearchResult[] = rankSearchResults(flashcardRows.filter((item) => !difficultIds.has(String(item.id))), q, (item) => [{ value: item.frente, weight: 10 }, { value: item.materia, weight: 6 }, { value: item.area, weight: 5 }, { value: item.verso, weight: 2 }]).map((item) => ({ id: `flashcard-${item.id}`, title: item.frente || "Flashcard", subtitle: item.materia || item.area || "Revisão rápida", href: `/flashcards?q=${encodeURIComponent(item.frente || q)}`, type: "flashcard" }));
-      const typeBoost: Record<SearchResult["type"], number> = { paciente: 9, modelo_prescricao: 8, prescricao: 7, topico: 6, exame: 5, cid: 4, conduta: 4.5, flashcard: 3 };
-      const merged = [...patientResults, ...topicoResults, ...prescriptionTemplateResults, ...prescriptionResults, ...examResults, ...cidResults, ...condutaResults, ...flashcardResults].sort((a, b) => getSearchScore([{ value: b.title, weight: 10 }, { value: b.subtitle, weight: 4 }], q) + typeBoost[b.type] - getSearchScore([{ value: a.title, weight: 10 }, { value: a.subtitle, weight: 4 }], q) - typeBoost[a.type]).slice(0, 12);
+      const typeBoost: Record<SearchResult["type"], number> = { paciente: 9, modelo_prescricao: 8, prescricao: 7, calculadora: 6.5, topico: 6, exame: 5, cid: 4, conduta: 4.5, flashcard: 3 };
+      const merged = [...patientResults, ...topicoResults, ...calculatorResults, ...prescriptionTemplateResults, ...prescriptionResults, ...examResults, ...cidResults, ...condutaResults, ...flashcardResults].sort((a, b) => getSearchScore([{ value: b.title, weight: 10 }, { value: b.subtitle, weight: 4 }], q) + typeBoost[b.type] - getSearchScore([{ value: a.title, weight: 10 }, { value: a.subtitle, weight: 4 }], q) - typeBoost[a.type]).slice(0, 12);
       setResults(merged);
       setLoading(false);
     }
@@ -276,7 +318,7 @@ export function Topbar() {
         <div className="min-w-0 flex-1">
           <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200/90 bg-white px-4 shadow-[0_8px_30px_rgba(15,23,42,0.05)] transition focus-within:border-cyan-300 focus-within:ring-4 focus-within:ring-cyan-100/60">
             <Search className="h-4 w-4 text-slate-400" />
-            <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={(event) => {
+            <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={(event) => {
               if (event.key === "Escape") setOpen(false);
               if (event.key === "ArrowDown" && navigableItems.length) { event.preventDefault(); setSelectedIndex((current) => (current + 1) % navigableItems.length); }
               if (event.key === "ArrowUp" && navigableItems.length) { event.preventDefault(); setSelectedIndex((current) => (current - 1 + navigableItems.length) % navigableItems.length); }
@@ -289,7 +331,7 @@ export function Topbar() {
             <div className="absolute left-4 right-4 top-[68px] z-50 overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.14)] md:left-6 md:right-6 lg:left-8 lg:right-8">
               <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500"><Sparkles className="h-3.5 w-3.5" />Busca clínica universal</div>{query.trim() ? <span className="hidden items-center gap-1.5 text-[11px] text-slate-400 sm:flex"><CornerDownLeft className="h-3.5 w-3.5" />Enter para abrir</span> : null}</div></div>
               {!query.trim() ? (
-                <div className="p-4"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Buscas recentes</p>{recentSearches.length ? <div className="mt-3 flex flex-wrap gap-2">{recentSearches.map((item) => <button key={item} type="button" onClick={() => { setQuery(item); setOpen(true); }} className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"><Clock3 className="h-3.5 w-3.5 text-slate-400" />{item}</button>)}</div> : <p className="mt-2 text-sm text-slate-500">Digite uma queixa, diagnóstico, medicamento, exame ou CID.</p>}</div>
+                <div className="p-4"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Buscas recentes</p>{recentSearches.length ? <div className="mt-3 flex flex-wrap gap-2">{recentSearches.map((item) => <button key={item} type="button" onClick={() => { setQuery(item); setSelectedIndex(0); setOpen(true); }} className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"><Clock3 className="h-3.5 w-3.5 text-slate-400" />{item}</button>)}</div> : <p className="mt-2 text-sm text-slate-500">Digite uma queixa, diagnóstico, medicamento, exame ou CID.</p>}</div>
               ) : loading ? <div className="px-4 py-6 text-sm text-slate-500">Buscando...</div> : (
                 <div className="max-h-[min(620px,70vh)] overflow-y-auto p-3">
                   <section className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-800">Ações para “{query.trim()}”</p><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{clinicalActions.map((action, index) => <button key={action.label} type="button" onClick={() => navigateSearch(action.href)} className={`flex min-w-0 items-center gap-2 rounded-xl border bg-white p-2.5 text-left transition ${selectedIndex === index ? "border-cyan-400 ring-2 ring-cyan-100" : "border-cyan-100 hover:border-cyan-300"}`}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700"><action.icon className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold text-slate-900">{action.label}</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">{action.description}</span></span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" /></button>)}</div></section>
@@ -306,3 +348,4 @@ export function Topbar() {
     </header>
   );
 }
+

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 
 function publicUrl(request: Request, path: string) {
   const forwardedHost = request.headers.get("x-forwarded-host");
@@ -10,7 +10,13 @@ function publicUrl(request: Request, path: string) {
   return `${proto}://${host}${path}`;
 }
 
-function extractResponseText(json: any): string {
+type OpenAIResponse = {
+  output_text?: string;
+  output?: Array<{ content?: Array<{ text?: string }> }>;
+  error?: { message?: string };
+};
+
+function extractResponseText(json: OpenAIResponse): string {
   if (typeof json?.output_text === "string" && json.output_text.trim()) {
     return json.output_text.trim();
   }
@@ -38,6 +44,18 @@ function extractResponseText(json: any): string {
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.redirect(publicUrl(request, "/login"), {
+        status: 303,
+      });
+    }
+
     const formData = await request.formData();
 
     const patientIdRaw = String(formData.get("patient_id") ?? "").trim();
@@ -53,6 +71,22 @@ export async function POST(request: Request) {
     }
 
     const patientId = patientIdRaw || null;
+
+    if (patientId) {
+      const { data: patient, error: patientError } = await supabase
+        .from("patients")
+        .select("id")
+        .eq("id", patientId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (patientError || !patient) {
+        return NextResponse.redirect(
+          publicUrl(request, "/consulta-audio?error=patient"),
+          { status: 303 }
+        );
+      }
+    }
 
     const prompt = [
       "Você é um assistente clínico.",
@@ -88,7 +122,7 @@ export async function POST(request: Request) {
         }),
       });
 
-      const json = await aiResponse.json();
+      const json = (await aiResponse.json()) as OpenAIResponse;
 
       if (!aiResponse.ok) {
         const message =
@@ -105,20 +139,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.redirect(
-        publicUrl(request, "/consulta-audio?error=env"),
-        { status: 303 }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
     const { error } = await supabase.from("ai_cases").insert([
       {
+        user_id: user.id,
         patient_id: patientId,
         titulo: titulo || null,
         queixa,
@@ -140,9 +163,11 @@ export async function POST(request: Request) {
       publicUrl(request, "/consulta-audio?success=1"),
       { status: 303 }
     );
-  } catch (err: any) {
+  } catch (error: unknown) {
     const safeMessage = encodeURIComponent(
-      err?.message || "Erro inesperado ao processar IA."
+      error instanceof Error
+        ? error.message
+        : "Erro inesperado ao processar IA."
     );
 
     return NextResponse.redirect(
@@ -151,3 +176,4 @@ export async function POST(request: Request) {
     );
   }
 }
+
