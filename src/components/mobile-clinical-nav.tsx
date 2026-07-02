@@ -18,6 +18,7 @@ const HIDDEN_PATHS = [
   "/login",
   "/signup",
   "/register",
+  "/redefinir-senha",
   "/aceite-legal",
   "/termos",
   "/privacidade",
