@@ -66,13 +66,23 @@ jobs:
           test -s resibook-backup.enc
           rm -rf backup resibook-backup.tar.gz
 
-      - name: Guardar backup por 30 dias
+      - name: Verificar integridade da cópia criptografada
+        shell: bash
+        run: |
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 \
+            -in resibook-backup.enc \
+            -out backup-verification.tar.gz \
+            -pass env:BACKUP_ENCRYPTION_PASSWORD
+
+          tar -tzf backup-verification.tar.gz > /dev/null
+          rm -f backup-verification.tar.gz
+
+      - name: Guardar backup por 90 dias
         uses: actions/upload-artifact@v4
         with:
           name: resibook-backup-${{ github.run_id }}
           path: resibook-backup.enc
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
           compression-level: 0
-
 

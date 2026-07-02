@@ -7,7 +7,8 @@ O ResiBook usa duas camadas de proteção:
 
 O workflow nunca grava SQL no repositório. Ele gera os arquivos em um runner
 temporário, criptografa o pacote e envia somente `resibook-backup.enc` como
-artefato com retenção de 30 dias.
+artefato com retenção de 90 dias. Cada execução também descriptografa uma cópia
+temporária e valida o arquivo compactado antes de publicar o artefato.
 
 ## Configuração inicial
 
@@ -24,7 +25,7 @@ Sem ela, o conteúdo dos backups não pode ser recuperado.
 Depois do merge, abra `Actions > Backup semanal criptografado` e execute
 `Run workflow` uma vez. Confirme que a execução ficou verde e que o artefato
 foi criado. A execução automática ocorre aos domingos, 06:00 UTC (03:00 em
-Brasília).
+Brasília), mantendo aproximadamente 13 cópias semanais disponíveis.
 
 ## Como verificar um backup
 
