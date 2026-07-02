@@ -61,7 +61,12 @@ const GUEST_ALLOWED_PATHS = [
   "/suporte",
 ];
 
-const AUTH_PUBLIC_PATHS = ["/login", "/signup", "/register"];
+const AUTH_PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/register",
+  "/redefinir-senha",
+];
 const LEGAL_PUBLIC_PATHS = ["/aceite-legal", "/termos", "/privacidade"];
 const SHELL_HIDDEN_PATHS = [...AUTH_PUBLIC_PATHS, ...LEGAL_PUBLIC_PATHS];
 
@@ -382,16 +387,16 @@ function SidebarContent({
   const visibleSecondaryItems = isGuest ? [] : secondaryItems;
 
   return (
-    <div className="flex h-full flex-col bg-[#081a3a] text-white">
+    <div className="flex h-full flex-col border-r border-white/5 bg-[#09172d] text-white shadow-[18px_0_60px_rgba(8,23,45,0.12)]">
       <div className="border-b border-white/7 px-3.5 py-3.5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/8 bg-white/[0.035] p-2">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white p-2 shadow-sm">
             <Image
               src="/logo-resibook.png"
               alt="ResiBook"
-              width={40}
-              height={40}
-              className="h-auto max-h-8 w-auto max-w-8 object-contain"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
               priority
             />
           </div>
@@ -435,7 +440,7 @@ function SidebarContent({
         ) : null}
       </div>
 
-      <div className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
+      <div className="sidebar-scroll flex-1 space-y-5 overflow-y-auto px-2.5 py-4">
         <NavSection
           title={isGuest ? "Acesso liberado" : "Principal"}
           items={primaryItems}
@@ -824,7 +829,7 @@ export default function AppShell({ children }: Props) {
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
       {desktopSidebarOpen ? (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[286px] border-r border-slate-200/80 lg:block print:hidden">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] lg:block print:hidden">
           <SidebarContent
             pathname={pathname}
             counts={counts}
@@ -838,7 +843,7 @@ export default function AppShell({ children }: Props) {
         type="button"
         onClick={() => setDesktopSidebarOpen((current) => !current)}
         className={`fixed top-1/2 z-[65] hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
-          desktopSidebarOpen ? "left-[264px]" : "left-4"
+          desktopSidebarOpen ? "left-[258px]" : "left-4"
         }`}
         aria-label={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
         title={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
@@ -897,15 +902,15 @@ export default function AppShell({ children }: Props) {
 
       <div
         className={`min-h-screen transition-[padding] duration-200 print:pl-0 ${
-          desktopSidebarOpen ? "lg:pl-[286px]" : "lg:pl-0"
+          desktopSidebarOpen ? "lg:pl-[280px]" : "lg:pl-0"
         }`}
       >
         <div className="print:hidden">
           <Topbar />
         </div>
 
-        <main className="px-3 pb-24 pt-4 sm:px-4 md:px-6 md:py-6 lg:px-8 print:px-0 print:py-0">
-          <div className="mx-auto w-full max-w-7xl print:max-w-none">
+        <main className="px-3 pb-24 pt-4 sm:px-4 md:px-6 md:py-7 lg:px-8 print:px-0 print:py-0">
+          <div className="mx-auto w-full max-w-[1480px] print:max-w-none">
             {children}
           </div>
         </main>
@@ -913,3 +918,4 @@ export default function AppShell({ children }: Props) {
     </div>
   );
 }
+
