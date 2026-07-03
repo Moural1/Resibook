@@ -10,6 +10,7 @@ import { rankSearchResults } from "@/lib/search";
 import {
   ArrowRight,
   BookOpen,
+  BookCopy,
   Brain,
   CheckCircle2,
   Edit3,
@@ -284,7 +285,7 @@ export default function FlashcardsPage() {
     const email = user?.email?.trim().toLowerCase() || "";
     const userId = user?.id || null;
     const guest = email === GUEST_EMAIL;
-    const admin = email === ADMIN_EMAIL;
+    const admin = user?.app_metadata?.role === "admin" || email === ADMIN_EMAIL;
 
     setCurrentUserId(userId);
     setIsGuest(guest);
@@ -571,6 +572,52 @@ export default function FlashcardsPage() {
     }
 
     setSavingIds((current) => current.filter((item) => item !== card.id));
+  }
+
+  async function duplicateToPersonal(card: Flashcard) {
+    if (!currentUserId || isGuest) {
+      setError("Entre com sua conta para duplicar este flashcard.");
+      return;
+    }
+
+    setSavingIds((current) => [...current, card.id]);
+    setError("");
+    setSuccess("");
+
+    const { error: duplicateError } = await supabase
+      .from("personal_content_items")
+      .insert({
+        user_id: currentUserId,
+        item_type: "flashcard",
+        title: card.frente?.trim() || "Flashcard",
+        content: card.verso?.trim() || "",
+        source_global_id: card.id,
+        metadata: {
+          area: card.area,
+          materia: card.materia,
+          tipo: card.tipo,
+          frente: card.frente,
+          verso: card.verso,
+        },
+      });
+
+    if (duplicateError) {
+      setError(duplicateError.message);
+    } else {
+      await supabase.from("user_content_recents").upsert(
+        {
+          user_id: currentUserId,
+          item_type: "flashcard",
+          item_id: card.id,
+          source: "global",
+          accessed_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,item_type,item_id,source" }
+      );
+      setSuccess("Flashcard duplicado para o Meu Resibook.");
+    }
+
+    setSavingIds((current) => current.filter((id) => id !== card.id));
   }
 
   async function handleSave() {
@@ -1064,6 +1111,9 @@ export default function FlashcardsPage() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
+                      Banco Resibook
+                    </span>
                     {item.area ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
                         <Layers3 className="h-3.5 w-3.5 text-slate-500" />
@@ -1162,6 +1212,16 @@ export default function FlashcardsPage() {
                       : item.dificil
                       ? "Remover difícil"
                       : "Marcar difícil"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => duplicateToPersonal(item)}
+                    disabled={savingItem}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-5 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-100 disabled:opacity-60"
+                  >
+                    <BookCopy className="h-4 w-4" />
+                    Duplicar para Meu Resibook
                   </button>
 
                   {isAdmin ? (

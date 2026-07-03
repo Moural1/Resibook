@@ -17,6 +17,7 @@ import {
   Gauge,
   Home,
   LifeBuoy,
+  LibraryBig,
   Lock,
   Menu,
   PanelLeftClose,
@@ -287,6 +288,12 @@ function SidebarContent({
   const fullPrimaryItems = [
     { href: "/plantao", label: "Plantão", icon: Activity, badge: null },
     { href: "/dashboard", label: "Visão geral", icon: Home, badge: null },
+    {
+      href: "/meu-resibook",
+      label: "Meu Resibook",
+      icon: LibraryBig,
+      badge: null,
+    },
     { href: "/caso-rapido", label: "Caso rápido", icon: Gauge, badge: null },
     {
       href: "/pacientes",
@@ -538,7 +545,7 @@ export default function AppShell({ children }: Props) {
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [sessionEmail, setSessionEmail] = useState("");
+  const [sessionIsAdmin, setSessionIsAdmin] = useState(false);
   const [checkingUser, setCheckingUser] = useState(true);
   const [redirectingToLogin, setRedirectingToLogin] = useState(false);
 
@@ -571,7 +578,7 @@ export default function AppShell({ children }: Props) {
     const supabase = createClient();
 
     function resetSessionState() {
-      setSessionEmail("");
+      setSessionIsAdmin(false);
       setIsGuest(false);
       setCurrentUserId(null);
     }
@@ -613,7 +620,9 @@ export default function AppShell({ children }: Props) {
         }
 
         setRedirectingToLogin(false);
-        setSessionEmail(email);
+        setSessionIsAdmin(
+          session.user.app_metadata?.role === "admin" || email === ADMIN_EMAIL
+        );
         setIsGuest(guest);
         setCurrentUserId(userId);
 
@@ -841,7 +850,7 @@ export default function AppShell({ children }: Props) {
             pathname={pathname}
             counts={counts}
             isGuest={isGuest}
-            isAdmin={sessionEmail === ADMIN_EMAIL}
+            isAdmin={sessionIsAdmin}
           />
         </aside>
       ) : null}
@@ -901,7 +910,7 @@ export default function AppShell({ children }: Props) {
               onNavigate={() => setMobileOpen(false)}
               isMobile
               isGuest={isGuest}
-              isAdmin={sessionEmail === ADMIN_EMAIL}
+              isAdmin={sessionIsAdmin}
             />
           </div>
         </div>
