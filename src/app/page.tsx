@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ComponentType } from "react";
+import type { Metadata } from "next";
 import {
   Activity,
   ArrowRight,
@@ -24,6 +25,14 @@ import {
 } from "lucide-react";
 
 export const WHATSAPP_NUMBER = "5531984812506";
+
+export const metadata: Metadata = {
+  title: "O seu banco clínico, pronto para o plantão",
+  description:
+    "Biblioteca clínica organizada e workspace privado para médicos consultarem, duplicarem e personalizarem seus modelos.",
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
+};
 
 const DEFAULT_MESSAGE = "Olá! Tenho interesse em conhecer o Resibook.";
 

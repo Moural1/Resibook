@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ResiBook - Sistema Clínico",
+    name: "ResiBook - Banco clínico e workspace médico",
     short_name: "ResiBook",
-    description: "Apoio clínico, prontuário e ferramentas para o plantão.",
-    start_url: "/plantao",
+    description: "Banco clínico organizado e acervo privado para médicos.",
+    start_url: "/dashboard",
     display: "standalone",
     background_color: "#f4f7fb",
     theme_color: "#09172d",

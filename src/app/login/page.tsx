@@ -7,7 +7,16 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import { clearClinicalCaseSession } from "@/lib/clinical-case-session";
-import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Eye,
+  EyeOff,
+  LibraryBig,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
@@ -152,8 +161,49 @@ function LoginContent() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
-      <div className="w-full max-w-md rounded-[20px] border border-slate-200 bg-white p-7 shadow-[0_20px_60px_rgba(15,23,42,0.09)] sm:p-8">
+    <div className="min-h-screen bg-slate-100 lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+      <aside className="relative hidden overflow-hidden bg-[#081a3a] p-12 text-white lg:flex lg:flex-col lg:justify-between xl:p-16">
+        <div className="pointer-events-none absolute -left-24 top-1/3 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="relative">
+          <Link href="/" className="inline-flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white p-1.5">
+              <Image src="/resibook-icon.svg" alt="" width={40} height={40} className="h-full w-full" />
+            </span>
+            <span className="text-xl font-semibold">RESI<span className="text-cyan-300">BOOK</span></span>
+          </Link>
+
+          <div className="mt-20 max-w-xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+              <LibraryBig className="h-3.5 w-3.5" />
+              Banco clínico + workspace privado
+            </span>
+            <h1 className="mt-6 text-4xl font-semibold leading-tight xl:text-5xl">
+              Seu conteúdo clínico organizado para quando o plantão aperta.
+            </h1>
+            <p className="mt-5 max-w-lg text-base leading-8 text-slate-300">
+              Consulte o Banco Resibook, adapte modelos no Meu Resibook e mantenha seu acervo acessível em uma experiência profissional.
+            </p>
+            <ul className="mt-8 space-y-4 text-sm text-slate-200">
+              {["Biblioteca global padronizada", "Cópias privadas e editáveis", "Acesso individual protegido"].map((item) => (
+                <li key={item} className="flex items-center gap-3">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-300/10 text-cyan-300"><Check className="h-3.5 w-3.5" /></span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <p className="relative text-xs leading-6 text-slate-400">
+          Ferramenta de apoio profissional. A decisão clínica permanece sob responsabilidade do médico.
+        </p>
+      </aside>
+
+      <main id="conteudo-principal" className="flex min-h-screen items-center justify-center px-4 py-8 sm:px-8">
+      <div className="w-full max-w-md rounded-[24px] border border-slate-200 bg-white p-7 shadow-[0_20px_60px_rgba(15,23,42,0.09)] sm:p-8">
+        <Link href="/" className="mb-6 inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-slate-900 lg:hidden">
+          <ArrowLeft className="h-4 w-4" /> Voltar ao site
+        </Link>
         <div className="mb-6 flex flex-col items-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
             <Image
@@ -171,8 +221,11 @@ function LoginContent() {
           </h1>
 
           <p className="mt-2 text-center text-sm text-slate-500">
-            Entre para acessar o sistema clínico.
+            Entre para acessar seu banco clínico.
           </p>
+          <span className="mt-3 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-500">
+            Acesso liberado por convite
+          </span>
         </div>
 
         {blocked ? (
@@ -302,6 +355,7 @@ function LoginContent() {
           Acesso restrito • Conteúdo profissional médico
         </p>
       </div>
+      </main>
     </div>
   );
 }

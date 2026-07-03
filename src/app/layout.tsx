@@ -7,10 +7,49 @@ import AccessibilityBridge from "../components/accessibility-bridge";
 import ClinicalRuntime from "../components/clinical-runtime";
 import VisualSystemController from "../components/visual-system-controller";
 
+const productionHost =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
-  title: "Resibook | Apoio à rotina médica",
+  metadataBase: new URL(productionHost),
+  applicationName: "ResiBook",
+  title: {
+    default: "ResiBook | Banco clínico e workspace médico",
+    template: "%s | ResiBook",
+  },
   description:
-    "Ferramenta para médicos com prescrições, condutas, flashcards, CIDs, calculadoras e modelos de evolução.",
+    "Banco clínico organizado e workspace privado para médicos consultarem, adaptarem e organizarem conteúdo para a rotina e o plantão.",
+  keywords: [
+    "ResiBook",
+    "banco clínico",
+    "prescrições médicas",
+    "plantão médico",
+    "flashcards medicina",
+    "workspace médico",
+  ],
+  creator: "ResiBook",
+  publisher: "ResiBook",
+  category: "medical software",
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: "ResiBook",
+    title: "ResiBook | O seu banco clínico, pronto para o plantão",
+    description:
+      "Consulte o Banco ResiBook e organize cópias privadas editáveis no Meu ResiBook.",
+    images: [{ url: "/logo-resibook-horizontal.png", alt: "ResiBook" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ResiBook | Banco clínico e workspace médico",
+    description:
+      "Conteúdo clínico organizado e um acervo privado para cada médico.",
+    images: ["/logo-resibook-horizontal.png"],
+  },
+  robots: { index: false, follow: false },
   icons: {
     icon: [
       {
