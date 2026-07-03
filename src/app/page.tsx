@@ -81,17 +81,23 @@ const FEATURES: Feature[] = [
 ];
 
 const PREVIEW_MODULES = [
-  { label: "Plantão", icon: Activity },
+  { label: "Meu Resibook", icon: LibraryBig },
   { label: "Prescrição", icon: ClipboardList },
   { label: "Exames / Evolução", icon: FlaskConical },
   { label: "Tópicos", icon: BookOpen },
   { label: "Flashcards", icon: Brain },
-  { label: "Condutas", icon: Siren },
+  { label: "Plantão", icon: Activity },
   { label: "CIDs", icon: Tags },
   { label: "Calculadoras", icon: Calculator },
 ];
 
-function Brand({ compact = false }: { compact?: boolean }) {
+function Brand({
+  compact = false,
+  inverse = false,
+}: {
+  compact?: boolean;
+  inverse?: boolean;
+}) {
   return (
     <span className="inline-flex items-center gap-2.5">
       <span
@@ -106,9 +112,14 @@ function Brand({ compact = false }: { compact?: boolean }) {
         />
       </span>
       <span
-        className={`${compact ? "text-base" : "text-xl"} font-semibold tracking-[0] text-[#0b1d40]`}
+        className={`${compact ? "text-base" : "text-xl"} font-semibold tracking-[0] ${
+          inverse ? "text-white" : "text-[#0b1d40]"
+        }`}
       >
-        RESI<span className="text-cyan-700">BOOK</span>
+        RESI
+        <span className={inverse ? "text-cyan-300" : "text-cyan-700"}>
+          BOOK
+        </span>
       </span>
     </span>
   );
@@ -119,7 +130,7 @@ function AppPreview() {
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.14)]">
       <div className="grid min-h-[430px] grid-cols-[150px_minmax(0,1fr)] sm:grid-cols-[175px_minmax(0,1fr)]">
         <aside className="bg-[#091a38] p-3.5 text-white sm:p-4">
-          <Brand compact />
+          <Brand compact inverse />
           <div className="mt-6 space-y-1">
             {PREVIEW_MODULES.map((item, index) => {
               const Icon = item.icon;
