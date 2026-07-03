@@ -3,7 +3,7 @@ import { createHmac } from "node:crypto";
 import test from "node:test";
 
 import { isDisabledCommercialRoute } from "../src/lib/product-config.ts";
-import { BILLING_PLANS } from "../src/lib/billing/plans.ts";
+import { BILLING_PLANS, MERCADO_PAGO_WEBHOOK_URL } from "../src/lib/billing/plans.ts";
 import {
   buildExternalReference,
   parseExternalReference,
@@ -33,6 +33,13 @@ test("rotas da biblioteca permanecem disponíveis", () => {
 test("preços dos planos não podem ser controlados pelo navegador", () => {
   assert.equal(BILLING_PLANS.basic.price, 30);
   assert.equal(BILLING_PLANS.complete.price, 50);
+});
+
+test("checkout usa o webhook público definitivo de assinaturas", () => {
+  assert.equal(
+    MERCADO_PAGO_WEBHOOK_URL,
+    "https://www.resibook.com.br/api/mercado-pago/webhook"
+  );
 });
 
 test("referência de cobrança vincula somente usuário e plano válidos", () => {
