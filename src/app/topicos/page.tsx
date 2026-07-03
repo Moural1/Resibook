@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { isResibookAdmin } from "@/lib/auth-role";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
@@ -64,7 +65,6 @@ type TopicoForm = {
   fonte: string;
 };
 
-const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const emptyForm: TopicoForm = {
   area: "",
@@ -421,9 +421,7 @@ export default function TopicosPage() {
       return;
     }
 
-    const email = data.session?.user?.email?.trim().toLowerCase() || "";
-
-    setIsAdmin(email === ADMIN_EMAIL);
+    setIsAdmin(isResibookAdmin(data.session?.user));
     setCheckingUser(false);
   }
 

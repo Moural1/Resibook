@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSearchScore } from "@/lib/search";
 import { clinicalCalculators } from "@/lib/clinical-calculators";
+import { PRODUCT_CAPABILITIES } from "@/lib/product-config";
 
 type SearchResult = {
   id: string;
@@ -121,7 +122,7 @@ export async function GET(request: NextRequest) {
   const email = user.email.trim().toLowerCase();
   const isGuest = email === GUEST_EMAIL;
 
-  const patientsPromise = isGuest
+  const patientsPromise = isGuest || !PRODUCT_CAPABILITIES.patientRecords
     ? Promise.resolve({ data: [], error: null })
     : supabase
         .from("patients")

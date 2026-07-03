@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { isResibookAdmin } from "@/lib/auth-role";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
@@ -43,7 +44,6 @@ type CidForm = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
-const ADMIN_EMAIL = "igormoura@resibook.com";
 const RECENT_CIDS_KEY = "resibook-recent-cids-v1";
 
 function recentCidsKey(userId: string) {
@@ -150,7 +150,7 @@ export default function CidsPage() {
     const email = data.session?.user?.email?.trim().toLowerCase() || "";
 
     setIsGuest(email === GUEST_EMAIL);
-    setIsAdmin(email === ADMIN_EMAIL);
+    setIsAdmin(isResibookAdmin(data.session?.user));
     setCurrentUserId(data.session?.user?.id || "");
     setCheckingUser(false);
   }

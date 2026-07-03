@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
+import { PRODUCT_CAPABILITIES } from "@/lib/product-config";
 import {
   CLINICAL_CASE_SESSION_EVENT,
   formatClinicalCaseAge,
@@ -262,7 +263,9 @@ export default function DashboardPage() {
         patientFollowupsRes,
         pendingExamsRes,
       ] = await Promise.all([
-        getTableCount("patients", { column: "user_id", value: userId }),
+        PRODUCT_CAPABILITIES.patientRecords
+          ? getTableCount("patients", { column: "user_id", value: userId })
+          : Promise.resolve(0),
         getTableCount("prescriptions", { column: "user_id", value: userId }),
         getTableCount("exam_templates"),
         getTableCount("topicos_medicos"),
@@ -286,12 +289,14 @@ export default function DashboardPage() {
             return count ?? 0;
           }),
 
-        supabase
-          .from("patients")
-          .select("id, nome, especialidade, queixa, created_at")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(5),
+        PRODUCT_CAPABILITIES.patientRecords
+          ? supabase
+              .from("patients")
+              .select("id, nome, especialidade, queixa, created_at")
+              .eq("user_id", userId)
+              .order("created_at", { ascending: false })
+              .limit(5)
+          : Promise.resolve({ data: [], error: null }),
 
         supabase
           .from("prescriptions")
@@ -312,21 +317,25 @@ export default function DashboardPage() {
           .order("atualizado_em", { ascending: false, nullsFirst: false })
           .limit(5),
 
-        supabase
-          .from("patients")
-          .select("id, nome, retorno_previsto_em")
-          .eq("user_id", userId)
-          .not("retorno_previsto_em", "is", null)
-          .order("retorno_previsto_em", { ascending: true })
-          .limit(12),
+        PRODUCT_CAPABILITIES.patientRecords
+          ? supabase
+              .from("patients")
+              .select("id, nome, retorno_previsto_em")
+              .eq("user_id", userId)
+              .not("retorno_previsto_em", "is", null)
+              .order("retorno_previsto_em", { ascending: true })
+              .limit(12)
+          : Promise.resolve({ data: [], error: null }),
 
-        supabase
-          .from("patient_exam_requests")
-          .select("id, patient_id, nome_exame, status, requested_at")
-          .eq("user_id", userId)
-          .in("status", ["solicitado", "recebido"])
-          .order("requested_at", { ascending: true, nullsFirst: false })
-          .limit(12),
+        PRODUCT_CAPABILITIES.patientRecords
+          ? supabase
+              .from("patient_exam_requests")
+              .select("id, patient_id, nome_exame, status, requested_at")
+              .eq("user_id", userId)
+              .in("status", ["solicitado", "recebido"])
+              .order("requested_at", { ascending: true, nullsFirst: false })
+              .limit(12)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       if (!mounted) return;
@@ -507,7 +516,9 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
-              <HeaderPill label="Pacientes" value={counts.patients} />
+              {PRODUCT_CAPABILITIES.patientRecords ? (
+                <HeaderPill label="Pacientes" value={counts.patients} />
+              ) : null}
               <HeaderPill label="Prescrições" value={counts.prescriptions} />
               <HeaderPill label="Condutas" value={counts.flashcardsDificeis} />
             </div>
@@ -527,6 +538,22 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-5 p-4 md:p-6">
+          <section className="grid gap-4 lg:grid-cols-2">
+            <Link href="/prescricao" className="group rounded-[26px] bg-[#091a38] p-6 text-white shadow-[0_20px_50px_rgba(9,26,56,0.16)] transition hover:-translate-y-0.5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">Banco Resibook</p>
+              <h2 className="mt-3 text-2xl font-semibold">Conteúdo clínico pronto para consultar</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">Prescrições, tópicos, flashcards e modelos globais organizados para a rotina médica.</p>
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-cyan-200">Explorar o banco <ArrowUpRight className="h-4 w-4" /></span>
+            </Link>
+            <Link href="/meu-resibook" className="group rounded-[26px] border border-cyan-200 bg-gradient-to-br from-cyan-50 to-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-800">Meu Resibook</p>
+              <h2 className="mt-3 text-2xl font-semibold text-slate-950">Seu workspace clínico privado</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">Duplique, personalize e organize modelos sem alterar o conteúdo do banco global.</p>
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-cyan-800">Abrir meu acervo <ArrowUpRight className="h-4 w-4" /></span>
+            </Link>
+          </section>
+
+          {PRODUCT_CAPABILITIES.patientRecords ? (
           <section className="overflow-hidden rounded-[26px] border border-cyan-200 bg-white">
             <div className="border-b border-cyan-100 bg-cyan-50/60 px-4 py-4 md:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -719,6 +746,7 @@ export default function DashboardPage() {
               </div>
             </div>
           </section>
+          ) : null}
 
           <section className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-4 md:p-5">
             <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
@@ -810,13 +838,15 @@ export default function DashboardPage() {
           </section>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard
-              title="Pacientes"
-              value={counts.patients}
-              description="Cadastros do seu login"
-              href="/pacientes"
-              icon={Users}
-            />
+            {PRODUCT_CAPABILITIES.patientRecords ? (
+              <MetricCard
+                title="Pacientes"
+                value={counts.patients}
+                description="Cadastros do seu login"
+                href="/pacientes"
+                icon={Users}
+              />
+            ) : null}
 
             <MetricCard
               title="Prescrições"
@@ -892,12 +922,14 @@ export default function DashboardPage() {
               icon={LibraryBig}
             />
 
-            <ShortcutCard
-              href="/pacientes"
-              title="Abrir pacientes"
-              description="Cadastro, busca e edição rápida."
-              icon={Users}
-            />
+            {PRODUCT_CAPABILITIES.patientRecords ? (
+              <ShortcutCard
+                href="/pacientes"
+                title="Abrir pacientes"
+                description="Cadastro, busca e edição rápida."
+                icon={Users}
+              />
+            ) : null}
 
             <ShortcutCard
               href="/prescricao"
@@ -976,7 +1008,9 @@ export default function DashboardPage() {
                 Fluxo recomendado
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-700">
-                Paciente → Prescrição → Exames/Evolução → Tópicos → Flashcards.
+                {PRODUCT_CAPABILITIES.patientRecords
+                  ? "Paciente → Prescrição → Exames/Evolução → Tópicos → Flashcards."
+                  : "Banco Resibook → Meu Resibook → Prescrição → Tópicos → Flashcards."}
               </p>
             </div>
           </div>
@@ -984,6 +1018,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
+        {PRODUCT_CAPABILITIES.patientRecords ? (
         <RecentPanel
           title="Pacientes recentes"
           actionHref="/pacientes"
@@ -1010,6 +1045,7 @@ export default function DashboardPage() {
             </div>
           )}
         </RecentPanel>
+        ) : null}
 
         <RecentPanel
           title="Prescrições recentes"

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { isResibookAdmin } from "@/lib/auth-role";
 import ModulePageHeader from "../../components/module-page-header";
 import CopyButton from "../../components/copy-button";
 import { rankSearchResults } from "@/lib/search";
@@ -38,7 +39,6 @@ type FormState = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
-const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const emptyForm: FormState = {
   categoria: "",
@@ -172,7 +172,7 @@ export default function ExamesEvolucaoPage() {
     const email = data.session?.user?.email?.trim().toLowerCase() || "";
 
     setIsGuest(email === GUEST_EMAIL);
-    setIsAdmin(email === ADMIN_EMAIL);
+    setIsAdmin(isResibookAdmin(data.session?.user));
     setCheckingUser(false);
   }
 

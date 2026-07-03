@@ -9,12 +9,15 @@ import {
   Calculator,
   Check,
   ClipboardList,
+  Database,
   FlaskConical,
   HeartPulse,
   LibraryBig,
+  LockKeyhole,
   MessageCircle,
   Search,
   ShieldCheck,
+  Sparkles,
   Siren,
   Stethoscope,
   Tags,
@@ -268,6 +271,8 @@ export default function HomePage() {
 
       <main id="conteudo-principal">
         <section className="relative overflow-hidden border-b border-slate-200 bg-[#eef4f9]">
+          <div className="pointer-events-none absolute -left-32 top-12 h-80 w-80 rounded-full bg-cyan-300/20 blur-3xl" />
+          <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-blue-200/25 blur-3xl" />
           <div className="mx-auto grid max-w-[1440px] gap-10 px-4 pb-12 pt-12 sm:px-6 sm:pt-16 lg:min-h-[650px] lg:grid-cols-[0.78fr_1.22fr] lg:items-center lg:px-10 lg:pb-16 lg:pt-14">
             <div className="relative z-10 max-w-2xl">
               <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
@@ -283,8 +288,8 @@ export default function HomePage() {
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <InterestLink className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(14,116,144,0.2)] transition hover:bg-cyan-900">
-                  Tenho interesse
+                <InterestLink className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(14,116,144,0.2)] transition hover:-translate-y-0.5 hover:bg-cyan-900">
+                  Quero conhecer o Resibook
                   <ArrowRight className="h-4 w-4" />
                 </InterestLink>
                 <Link
@@ -309,6 +314,22 @@ export default function HomePage() {
               <AppPreview />
             </div>
           </div>
+          <div className="relative z-10 mx-auto grid max-w-[1320px] grid-cols-2 gap-px border-x border-t border-slate-200 bg-slate-200 sm:grid-cols-4">
+            {[
+              [Database, "Banco clínico organizado"],
+              [LibraryBig, "Workspace privado"],
+              [LockKeyhole, "Dados isolados por usuário"],
+              [Sparkles, "Fluxo pensado para médicos"],
+            ].map(([Icon, label]) => {
+              const TrustIcon = Icon as ComponentType<{ className?: string }>;
+              return (
+                <div key={label as string} className="flex min-h-20 items-center justify-center gap-2 bg-white px-3 text-center text-xs font-semibold text-slate-700 sm:text-sm">
+                  <TrustIcon className="h-4 w-4 shrink-0 text-cyan-700" />
+                  {label as string}
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         <section id="como-funciona" className="scroll-mt-24 border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
@@ -327,6 +348,34 @@ export default function HomePage() {
                   <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
                 </article>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#091a38] py-16 text-white sm:py-20">
+          <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-10">
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Um produto, duas camadas</p>
+              <h2 className="mt-3 text-3xl font-semibold sm:text-4xl">Conteúdo confiável para começar. Liberdade para adaptar.</h2>
+              <p className="mt-4 text-base leading-7 text-slate-300">O banco global permanece padronizado; cada médico constrói seu próprio acervo sem interferir no trabalho dos demais.</p>
+            </div>
+            <div className="mt-10 grid gap-5 md:grid-cols-2">
+              <article className="rounded-2xl border border-white/10 bg-white/[0.05] p-6">
+                <Database className="h-6 w-6 text-cyan-300" />
+                <h3 className="mt-5 text-2xl font-semibold">Banco Resibook</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-300">Biblioteca clínica global para consultar, buscar, copiar, favoritar e levar modelos para o seu fluxo.</p>
+                <ul className="mt-5 space-y-3 text-sm text-slate-200">
+                  {["Conteúdo centralizado", "Atualização administrativa", "Consulta rápida no plantão"].map((item) => <li key={item} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 text-cyan-300" />{item}</li>)}
+                </ul>
+              </article>
+              <article className="rounded-2xl border border-cyan-300/25 bg-cyan-300/[0.08] p-6">
+                <LibraryBig className="h-6 w-6 text-cyan-300" />
+                <h3 className="mt-5 text-2xl font-semibold">Meu Resibook</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-300">Workspace individual para criar, adaptar, editar e organizar conteúdos que só pertencem ao médico.</p>
+                <ul className="mt-5 space-y-3 text-sm text-slate-200">
+                  {["Cópias privadas editáveis", "Favoritos sincronizados", "Isolamento por conta"].map((item) => <li key={item} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 text-cyan-300" />{item}</li>)}
+                </ul>
+              </article>
             </div>
           </div>
         </section>
@@ -440,6 +489,25 @@ export default function HomePage() {
                   <MessageCircle className="h-4 w-4" />
                 </InterestLink>
               </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Perguntas frequentes</p>
+            <h2 className="mt-3 text-3xl font-semibold text-[#091a38]">Antes de começar</h2>
+            <div className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
+              {[
+                ["O Banco Resibook pode ser alterado por qualquer médico?", "Não. Médicos consultam e duplicam; a administração do conteúdo global fica restrita a perfis autorizados."],
+                ["Minhas adaptações ficam visíveis para outras pessoas?", "Não. O Meu Resibook é privado e protegido por regras de acesso vinculadas ao usuário autenticado."],
+                ["O sistema substitui decisão ou protocolo clínico?", "Não. O Resibook organiza conteúdo de apoio; revisão profissional, contexto do paciente e protocolos atualizados continuam indispensáveis."],
+              ].map(([question, answer]) => (
+                <article key={question} className="py-5">
+                  <h3 className="text-base font-semibold text-slate-950">{question}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{answer}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>

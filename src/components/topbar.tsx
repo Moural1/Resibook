@@ -12,6 +12,7 @@ import {
 import { buildCaseRouting } from "@/lib/clinical-case-routing";
 import { clinicalCalculators } from "@/lib/clinical-calculators";
 import { getSearchScore, rankSearchResults } from "@/lib/search";
+import { PRODUCT_CAPABILITIES } from "@/lib/product-config";
 import {
   ArrowRight,
   BookOpen,
@@ -138,7 +139,9 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
 }
 
 const fullQuickLinks = [
-  { href: "/pacientes", label: "Pacientes", icon: Users },
+  ...(PRODUCT_CAPABILITIES.patientRecords
+    ? [{ href: "/pacientes", label: "Pacientes", icon: Users }]
+    : []),
   { href: "/prescricao", label: "Prescrição", icon: ClipboardList },
   { href: "/exames-evolucao", label: "Exames", icon: FlaskConical },
   { href: "/topicos", label: "Tópicos", icon: Stethoscope },
@@ -261,7 +264,7 @@ export function Topbar() {
       const userId = sessionInfo.userId;
       const guest = sessionInfo.isGuest;
       const [patientsRes, prescriptionsRes, prescriptionTemplatesRes, examsRes, topicosRes, cidsRes, flashcardsRes, condutasMarksRes] = await Promise.all([
-        guest ? Promise.resolve({ data: [], error: null }) : supabase.from("patients").select("id, nome, especialidade, queixa, diagnostico_principal").eq("user_id", userId).limit(40),
+        guest || !PRODUCT_CAPABILITIES.patientRecords ? Promise.resolve({ data: [], error: null }) : supabase.from("patients").select("id, nome, especialidade, queixa, diagnostico_principal").eq("user_id", userId).limit(40),
         guest ? Promise.resolve({ data: [], error: null }) : supabase.from("prescriptions").select("id, paciente_nome, medicamento, posologia").eq("user_id", userId).limit(40),
         supabase.from("prescription_templates").select("id, categoria, titulo, conteudo, observacoes").limit(60),
         supabase.from("exam_templates").select("id, titulo, categoria, conteudo").limit(40),
@@ -323,7 +326,7 @@ export function Topbar() {
               if (event.key === "ArrowDown" && navigableItems.length) { event.preventDefault(); setSelectedIndex((current) => (current + 1) % navigableItems.length); }
               if (event.key === "ArrowUp" && navigableItems.length) { event.preventDefault(); setSelectedIndex((current) => (current - 1 + navigableItems.length) % navigableItems.length); }
               if (event.key === "Enter") { event.preventDefault(); handleSubmitSearch(); }
-            }} placeholder={isGuest ? "Buscar prescrições, tópicos, exames e CIDs..." : "Buscar pacientes, condutas, tópicos, prescrições, exames, CIDs e flashcards..."} className="h-full w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" />
+            }} placeholder={isGuest ? "Buscar prescrições, tópicos, exames e CIDs..." : PRODUCT_CAPABILITIES.patientRecords ? "Buscar pacientes, condutas, tópicos, prescrições, exames, CIDs e flashcards..." : "Buscar condutas, tópicos, prescrições, exames, CIDs e flashcards..."} className="h-full w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" />
             {query ? <button type="button" onClick={() => { setQuery(""); setResults([]); setOpen(false); }} className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700" aria-label="Limpar busca"><X className="h-4 w-4" /></button> : null}
           </div>
 

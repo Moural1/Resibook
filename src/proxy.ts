@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isDisabledCommercialRoute } from "@/lib/product-config";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/termos", "/privacidade", "/aceite-legal"];
 const GUEST_EMAIL = "convidado@resibook.com";
@@ -18,6 +19,13 @@ function isGuestAllowedPath(pathname: string) {
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   if (isPublicRoute(pathname)) return NextResponse.next();
+
+  if (isDisabledCommercialRoute(pathname)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/dashboard";
+    redirectUrl.searchParams.set("recurso", "indisponivel");
+    return NextResponse.redirect(redirectUrl);
+  }
 
   const response = NextResponse.next();
   const supabase = createServerClient(
