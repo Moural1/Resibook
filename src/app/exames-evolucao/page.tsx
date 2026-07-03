@@ -602,7 +602,10 @@ export default function ExamesEvolucaoPage() {
                   </div>
 
                   <div className="shrink-0">
-                    <CopyButton text={formatTemplateText(item)} />
+                    <CopyButton
+                      text={formatTemplateText(item)}
+                      confirmationMessage="Confirme que você revisou e adaptou este modelo ao contexto clínico antes de copiar. Deseja continuar?"
+                    />
                   </div>
                 </div>
 

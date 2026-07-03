@@ -16,6 +16,7 @@ import ModulePageHeader from "@/components/module-page-header";
 import {
   clinicalCalculators,
   getCalculatorInitialValues,
+  validateCalculatorValues,
   type CalculatorField,
   type CalculatorResult,
   type CalculatorValue,
@@ -34,12 +35,19 @@ function normalize(value: string) {
 function NumberField({
   field,
   value,
+  values,
   onChange,
 }: {
   field: CalculatorField;
   value: CalculatorValue;
+  values: CalculatorValues;
   onChange: (value: CalculatorValue) => void;
 }) {
+  const unit = field.unitByValue
+    ? field.unitByValue.units[String(values[field.unitByValue.fieldId] ?? "")] ||
+      field.unit
+    : field.unit;
+
   return (
     <label className="block">
       <span className="text-sm font-semibold text-slate-800">{field.label}</span>
@@ -59,9 +67,9 @@ function NumberField({
           onChange={(event) => onChange(event.target.value)}
           className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 pr-20 text-sm text-slate-950 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
         />
-        {field.unit ? (
+        {unit ? (
           <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-slate-400">
-            {field.unit}
+            {unit}
           </span>
         ) : null}
       </div>
@@ -110,51 +118,59 @@ function BooleanField({
   value: CalculatorValue;
   onChange: (value: CalculatorValue) => void;
 }) {
-  const checked = value === true;
+  const answered = typeof value === "boolean";
   return (
-    <label
-      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
-        checked
-          ? "border-cyan-300 bg-cyan-50/70"
-          : "border-slate-200 bg-white hover:bg-slate-50"
-      }`}
-    >
-      <span
-        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-          checked
-            ? "border-cyan-700 bg-cyan-700 text-white"
-            : "border-slate-300 bg-white text-transparent"
-        }`}
-      >
-        <Check className="h-3.5 w-3.5" />
-      </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="sr-only"
-      />
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold leading-5 text-slate-800">
+    <fieldset className={`rounded-xl border p-3.5 transition ${answered ? "border-slate-200 bg-white" : "border-amber-200 bg-amber-50/40"}`}>
+      <legend className="sr-only">{field.label}</legend>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold leading-5 text-slate-800">
           {field.label}
-        </span>
-        {field.help ? (
-          <span className="mt-1 block text-xs leading-5 text-slate-500">
-            {field.help}
           </span>
-        ) : null}
-      </span>
-    </label>
+          {field.help ? (
+            <span className="mt-1 block text-xs leading-5 text-slate-500">
+              {field.help}
+            </span>
+          ) : null}
+        </span>
+        <span className="grid shrink-0 grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+          {[
+            { label: "Não", nextValue: false },
+            { label: "Sim", nextValue: true },
+          ].map((option) => {
+            const active = value === option.nextValue;
+            return (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => onChange(option.nextValue)}
+                aria-pressed={active}
+                className={`min-w-16 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  active
+                    ? "bg-cyan-800 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-white"
+                }`}
+              >
+                {active ? <Check className="mr-1 inline h-3 w-3" /> : null}
+                {option.label}
+              </button>
+            );
+          })}
+        </span>
+      </div>
+    </fieldset>
   );
 }
 
 function CalculatorFieldControl({
   field,
   value,
+  values,
   onChange,
 }: {
   field: CalculatorField;
   value: CalculatorValue;
+  values: CalculatorValues;
   onChange: (value: CalculatorValue) => void;
 }) {
   if (field.type === "boolean") {
@@ -163,7 +179,7 @@ function CalculatorFieldControl({
   if (field.type === "select") {
     return <SelectField field={field} value={value} onChange={onChange} />;
   }
-  return <NumberField field={field} value={value} onChange={onChange} />;
+  return <NumberField field={field} value={value} values={values} onChange={onChange} />;
 }
 
 function ResultPanel({ result }: { result: CalculatorResult }) {
@@ -261,6 +277,12 @@ function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator })
   }
 
   function calculate() {
+    const validationError = validateCalculatorValues(calculator, values);
+    if (validationError) {
+      setError(validationError);
+      setCalculatedResult(null);
+      return;
+    }
     const nextResult = calculator.calculate(values);
     if (!nextResult) {
       setError("Preencha todos os campos numéricos obrigatórios para calcular.");
@@ -320,6 +342,7 @@ function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator })
                   key={field.id}
                   field={field}
                   value={values[field.id]}
+                  values={values}
                   onChange={(value) => updateValue(field.id, value)}
                 />
               ))}
@@ -337,6 +360,7 @@ function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator })
                     key={field.id}
                     field={field}
                     value={values[field.id]}
+                    values={values}
                     onChange={(value) => updateValue(field.id, value)}
                   />
                 ))}

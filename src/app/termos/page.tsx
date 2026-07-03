@@ -12,7 +12,7 @@ export default function TermosDeUsoPage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Última atualização: 06/06/2026
+            Última atualização: 03/07/2026
           </p>
         </div>
 
@@ -151,7 +151,22 @@ export default function TermosDeUsoPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              10. Propriedade intelectual
+              10. Recursos de inteligência artificial
+            </h2>
+            <p className="mt-2">
+              Recursos de IA devem receber somente casos desidentificados. O
+              usuário não deve inserir nome, CPF, CNS, telefone, e-mail ou outro
+              identificador direto no texto enviado para análise.
+            </p>
+            <p className="mt-2">
+              Respostas geradas por IA podem conter erros, omissões ou conteúdo
+              desatualizado e exigem revisão clínica integral antes de qualquer uso.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              11. Propriedade intelectual
             </h2>
             <p className="mt-2">
               O ResiBook, sua organização, layout, estrutura, funcionalidades e
@@ -163,7 +178,7 @@ export default function TermosDeUsoPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              11. Alterações dos termos
+              12. Alterações dos termos
             </h2>
             <p className="mt-2">
               Estes Termos de Uso poderão ser atualizados periodicamente para
@@ -174,7 +189,7 @@ export default function TermosDeUsoPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              12. Contato
+              13. Contato
             </h2>
             <p className="mt-2">
               Dúvidas, solicitações ou questões relacionadas ao uso do ResiBook

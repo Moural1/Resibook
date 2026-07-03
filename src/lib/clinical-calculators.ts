@@ -17,6 +17,12 @@ export type CalculatorField = {
   step?: number;
   help?: string;
   options?: CalculatorOption[];
+  required?: boolean;
+  unitByValue?: {
+    fieldId: string;
+    units: Record<string, string>;
+  };
+  validate?: (value: number, values: CalculatorValues) => string | null;
 };
 
 export type CalculatorResult = {
@@ -60,7 +66,7 @@ function selected(values: CalculatorValues, id: string) {
 }
 
 function checkbox(id: string, label: string, help?: string): CalculatorField {
-  return { id, label, type: "boolean", defaultValue: false, help };
+  return { id, label, type: "boolean", defaultValue: "", help, required: true };
 }
 
 function numberField(
@@ -70,9 +76,10 @@ function numberField(
   min: number,
   max: number,
   step = 1,
-  help?: string
+  help?: string,
+  required = true
 ): CalculatorField {
-  return { id, label, type: "number", defaultValue: "", unit, min, max, step, help };
+  return { id, label, type: "number", defaultValue: "", unit, min, max, step, help, required };
 }
 
 function selectField(
@@ -122,7 +129,43 @@ const curb65: ClinicalCalculator = {
   description: "Estratificação de gravidade na pneumonia adquirida na comunidade.",
   fields: [
     numberField("age", "Idade", "anos", 18, 120),
-    numberField("urea", "Ureia sérica", "mmol/L", 0, 80, 0.1, "Pontua se > 7 mmol/L."),
+    selectField(
+      "ureaUnit",
+      "Exame e unidade da ureia",
+      [
+        { value: "urea_mgdl", label: "Ureia total (mg/dL) — padrão no Brasil" },
+        { value: "bun_mgdl", label: "Nitrogênio ureico / BUN (mg/dL)" },
+        { value: "urea_mmoll", label: "Ureia (mmol/L)" },
+      ],
+      "urea_mgdl",
+      "Pontua se ureia > 42 mg/dL, BUN > 19,6 mg/dL ou ureia > 7 mmol/L."
+    ),
+    {
+      ...numberField(
+        "urea",
+        "Resultado da ureia",
+        "mg/dL",
+        0,
+        500,
+        0.1,
+        "Informe o valor exatamente como aparece no laboratório."
+      ),
+      unitByValue: {
+        fieldId: "ureaUnit",
+        units: {
+          urea_mgdl: "mg/dL",
+          bun_mgdl: "mg/dL (BUN)",
+          urea_mmoll: "mmol/L",
+        },
+      },
+      validate(value, values) {
+        const unit = selected(values, "ureaUnit");
+        const max = unit === "urea_mmoll" ? 80 : unit === "bun_mgdl" ? 250 : 500;
+        return value > max
+          ? `Resultado de ureia fora da faixa aceita para ${unit === "urea_mmoll" ? "mmol/L" : "mg/dL"}.`
+          : null;
+      },
+    },
     numberField("rr", "Frequência respiratória", "irpm", 1, 80),
     numberField("sbp", "Pressão arterial sistólica", "mmHg", 30, 300),
     numberField("dbp", "Pressão arterial diastólica", "mmHg", 10, 200),
@@ -135,14 +178,28 @@ const curb65: ClinicalCalculator = {
   calculate(values) {
     const age = num(values, "age");
     const urea = num(values, "urea");
+    const ureaUnit = selected(values, "ureaUnit");
     const rr = num(values, "rr");
     const sbp = num(values, "sbp");
     const dbp = num(values, "dbp");
     if ([age, urea, rr, sbp, dbp].some((value) => value === null)) return null;
 
+    const elevatedUrea =
+      ureaUnit === "urea_mmoll"
+        ? urea! > 7
+        : ureaUnit === "bun_mgdl"
+          ? urea! > 19.6
+          : urea! > 42;
+    const ureaDescription =
+      ureaUnit === "urea_mmoll"
+        ? "ureia > 7 mmol/L"
+        : ureaUnit === "bun_mgdl"
+          ? "BUN > 19,6 mg/dL"
+          : "ureia total > 42 mg/dL";
+
     const criteria = [
       [yes(values, "confusion"), "confusão"],
-      [urea! > 7, "ureia > 7 mmol/L"],
+      [elevatedUrea, ureaDescription],
       [rr! >= 30, "FR ≥ 30 irpm"],
       [sbp! < 90 || dbp! <= 60, "PAS < 90 ou PAD ≤ 60 mmHg"],
       [age! >= 65, "idade ≥ 65 anos"],
@@ -734,7 +791,7 @@ const anionGap: ClinicalCalculator = {
     numberField("sodium", "Sódio", "mEq/L", 80, 200, 0.1),
     numberField("chloride", "Cloro", "mEq/L", 50, 180, 0.1),
     numberField("bicarbonate", "Bicarbonato / CO₂ total", "mEq/L", 1, 60, 0.1),
-    numberField("albumin", "Albumina (opcional)", "g/dL", 0.5, 6, 0.1, "Se preenchida, aplica AG corrigido = AG + 2,5 × (4 - albumina)."),
+    numberField("albumin", "Albumina (opcional)", "g/dL", 0.5, 6, 0.1, "Se preenchida, aplica AG corrigido = AG + 2,5 × (4 - albumina).", false),
   ],
   reference: {
     label: "Revisão NCBI - acidose metabólica",
@@ -883,9 +940,50 @@ export const clinicalCalculators: ClinicalCalculator[] = [
 
 export function getCalculatorInitialValues(calculator: ClinicalCalculator) {
   return calculator.fields.reduce<CalculatorValues>((acc, field) => {
-    acc[field.id] = field.defaultValue ?? (field.type === "boolean" ? false : "");
+    acc[field.id] = field.defaultValue ?? "";
     return acc;
   }, {});
+}
+
+export function validateCalculatorValues(
+  calculator: ClinicalCalculator,
+  values: CalculatorValues
+) {
+  for (const field of calculator.fields) {
+    const value = values[field.id];
+
+    if (field.type === "boolean") {
+      if (field.required !== false && typeof value !== "boolean") {
+        return `Responda “Sim” ou “Não” em: ${field.label}.`;
+      }
+      continue;
+    }
+
+    if (field.type === "select") {
+      if (field.required !== false && !String(value ?? "").trim()) {
+        return `Selecione uma opção em: ${field.label}.`;
+      }
+      continue;
+    }
+
+    if (value === "" || value === null || value === undefined) {
+      if (field.required !== false) return `Preencha o campo: ${field.label}.`;
+      continue;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return `Informe um número válido em: ${field.label}.`;
+    if (field.min !== undefined && parsed < field.min) {
+      return `${field.label} deve ser maior ou igual a ${field.min}${field.unit ? ` ${field.unit}` : ""}.`;
+    }
+    if (field.max !== undefined && parsed > field.max) {
+      return `${field.label} deve ser menor ou igual a ${field.max}${field.unit ? ` ${field.unit}` : ""}.`;
+    }
+    const customError = field.validate?.(parsed, values);
+    if (customError) return customError;
+  }
+
+  return null;
 }
 
 export function calculateClinicalScore(id: string, values: CalculatorValues) {

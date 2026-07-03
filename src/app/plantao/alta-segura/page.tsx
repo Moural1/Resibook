@@ -374,14 +374,19 @@ export default function SafeDischargePage() {
                 Alta e retorno
               </p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-                Alta segura
+                Orientações de alta
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
                 Gere orientações claras para casa, sinais de retorno e checklist de documentação antes de liberar o paciente.
               </p>
             </div>
 
-            <CopyButton text={text} label="Copiar alta" copiedLabel="Alta copiada" />
+            <CopyButton
+              text={text}
+              label="Copiar orientações"
+              copiedLabel="Orientações copiadas"
+              confirmationMessage="Confirme que estabilidade, critérios de alta, entendimento do paciente e sinais de retorno foram revisados. Deseja copiar as orientações?"
+            />
           </div>
         </div>
 
@@ -493,7 +498,12 @@ export default function SafeDischargePage() {
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{guide.summary}</p>
                 </div>
-                <CopyButton text={text} label="Copiar" copiedLabel="Copiado" />
+                <CopyButton
+                  text={text}
+                  label="Copiar"
+                  copiedLabel="Copiado"
+                  confirmationMessage="Confirme que você revisou estas orientações para o paciente e o contexto atual. Deseja copiar?"
+                />
               </div>
 
               <div className="mt-4 grid gap-3 lg:grid-cols-2">

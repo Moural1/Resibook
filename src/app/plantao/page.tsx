@@ -66,7 +66,7 @@ const SHIFT_ACTIONS = [
     icon: ClipboardList,
   },
   {
-    title: "Alta segura",
+    title: "Orientações de alta",
     description: "Gere orientações e sinais de retorno para o paciente.",
     href: "/plantao/alta-segura",
     icon: LogOut,
