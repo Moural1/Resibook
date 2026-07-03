@@ -13,13 +13,20 @@ export const PRODUCT_CAPABILITIES = Object.freeze({
 export function isDisabledCommercialRoute(pathname: string) {
   if (
     !PRODUCT_CAPABILITIES.patientRecords &&
-    (pathname === "/pacientes" || pathname.startsWith("/pacientes/"))
+    (pathname === "/pacientes" ||
+      pathname.startsWith("/pacientes/") ||
+      pathname === "/api/patients" ||
+      pathname.startsWith("/api/patients/"))
   ) {
     return true;
   }
 
   return (
     !PRODUCT_CAPABILITIES.clinicalAudio &&
-    (pathname === "/consulta-audio" || pathname.startsWith("/consulta-audio/"))
+    (pathname === "/consulta-audio" ||
+      pathname.startsWith("/consulta-audio/") ||
+      pathname === "/api/ai/case-review" ||
+      pathname === "/api/consultas" ||
+      pathname.startsWith("/api/consultas/"))
   );
 }
