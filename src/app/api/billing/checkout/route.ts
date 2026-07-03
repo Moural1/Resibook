@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getBillingPlan } from "@/lib/billing/plans";
+import { getBillingPlan, MERCADO_PAGO_WEBHOOK_URL } from "@/lib/billing/plans";
 import {
   buildExternalReference,
   getSiteUrl,
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
             currency_id: "BRL",
           },
           back_url: `${siteUrl}/minha-assinatura?retorno=mercado-pago`,
-          notification_url: `${siteUrl}/api/billing/webhook?source_news=webhooks`,
+          notification_url: MERCADO_PAGO_WEBHOOK_URL,
           status: "pending",
         }),
       }

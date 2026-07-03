@@ -1,5 +1,8 @@
 export type BillingPlanId = "basic" | "complete";
 
+export const MERCADO_PAGO_WEBHOOK_URL =
+  "https://www.resibook.com.br/api/mercado-pago/webhook";
+
 export type BillingPlan = {
   id: BillingPlanId;
   name: string;

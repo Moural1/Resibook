@@ -59,7 +59,7 @@ Com `RESIBOOK_ENFORCE_SUBSCRIPTIONS=false`:
 O webhook utilizado é:
 
 ```text
-https://SEU-DOMINIO/api/billing/webhook?source_news=webhooks
+https://www.resibook.com.br/api/mercado-pago/webhook
 ```
 
 As notificações aceitas são validadas por HMAC e sincronizadas consultando a API

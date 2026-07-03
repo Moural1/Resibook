@@ -4,7 +4,7 @@ import { isResibookAdmin } from "@/lib/auth-role";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import { isDisabledCommercialRoute } from "@/lib/product-config";
 
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/auth/callback", "/auth/confirm", "/termos", "/privacidade", "/aceite-legal", "/api/billing/webhook"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/auth/callback", "/auth/confirm", "/termos", "/privacidade", "/aceite-legal", "/api/mercado-pago/webhook"];
 const GUEST_EMAIL = "convidado@resibook.com";
 const GUEST_ALLOWED_PATHS = ["/prescricao", "/caso-rapido", "/topicos", "/cids", "/exames-evolucao", "/termos", "/privacidade", "/aceite-legal", "/suporte"];
 const BILLING_ALLOWED_PATHS = ["/assinar", "/minha-assinatura", "/api/billing", "/dados-da-conta", "/suporte"];
