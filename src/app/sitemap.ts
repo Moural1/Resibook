@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: host, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    { url: `${host}/cadastro`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${host}/termos`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
     { url: `${host}/privacidade`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
   ];

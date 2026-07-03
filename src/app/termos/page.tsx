@@ -166,7 +166,23 @@ export default function TermosDeUsoPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              11. Propriedade intelectual
+              11. Planos, cobrança e cancelamento
+            </h2>
+            <p className="mt-2">
+              O acesso comercial é oferecido nos planos e valores apresentados
+              no momento da contratação. A cobrança recorrente é processada pelo
+              Mercado Pago, conforme as condições exibidas no checkout.
+            </p>
+            <p className="mt-2">
+              O usuário pode solicitar o cancelamento pela área Minha assinatura.
+              O acesso aos recursos pagos poderá ser suspenso quando a assinatura
+              estiver cancelada, pausada, vencida ou com pagamento pendente.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              12. Propriedade intelectual
             </h2>
             <p className="mt-2">
               O ResiBook, sua organização, layout, estrutura, funcionalidades e
@@ -178,7 +194,7 @@ export default function TermosDeUsoPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              12. Alterações dos termos
+              13. Alterações dos termos
             </h2>
             <p className="mt-2">
               Estes Termos de Uso poderão ser atualizados periodicamente para
@@ -189,7 +205,7 @@ export default function TermosDeUsoPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              13. Contato
+              14. Contato
             </h2>
             <p className="mt-2">
               Dúvidas, solicitações ou questões relacionadas ao uso do ResiBook
