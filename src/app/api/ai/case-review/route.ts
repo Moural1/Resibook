@@ -83,6 +83,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (titulo.length > 160 || queixa.length > 6000 || contexto.length > 6000) {
+      return NextResponse.redirect(
+        publicUrl(request, "/consulta-audio?error=length"),
+        { status: 303 }
+      );
+    }
+
     if (!deidentified) {
       return NextResponse.redirect(
         publicUrl(request, "/consulta-audio?error=deidentified"),
@@ -93,7 +100,7 @@ export async function POST(request: Request) {
     const identifier = detectDirectIdentifier([titulo, queixa, contexto].join("\n"));
     if (identifier) {
       return NextResponse.redirect(
-        publicUrl(request, `/consulta-audio?error=identifiers&message=${encodeURIComponent(`Remova ${identifier} antes de enviar o caso à IA.`)}`),
+        publicUrl(request, "/consulta-audio?error=identifiers"),
         { status: 303 }
       );
     }
@@ -137,7 +144,10 @@ export async function POST(request: Request) {
     const apiKey = process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
-      resposta = "IA não configurada. Adicione OPENAI_API_KEY no arquivo .env.local e reinicie o servidor.";
+      return NextResponse.redirect(
+        publicUrl(request, "/consulta-audio?error=unavailable"),
+        { status: 303 }
+      );
     } else {
       const aiResponse = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -154,11 +164,11 @@ export async function POST(request: Request) {
       const json = (await aiResponse.json()) as OpenAIResponse;
 
       if (!aiResponse.ok) {
-        const message =
-          json?.error?.message ||
-          "Falha ao chamar a API da OpenAI.";
-
-        resposta = `Erro da IA: ${message}`;
+        console.error("Falha na análise por IA", aiResponse.status, json?.error?.message);
+        return NextResponse.redirect(
+          publicUrl(request, "/consulta-audio?error=unavailable"),
+          { status: 303 }
+        );
       } else {
         resposta = extractResponseText(json);
 
@@ -181,9 +191,9 @@ export async function POST(request: Request) {
     ]);
 
     if (error) {
-      const safeMessage = encodeURIComponent(error.message);
+      console.error("Falha ao salvar caso clínico", error.message);
       return NextResponse.redirect(
-        publicUrl(request, `/consulta-audio?error=db&message=${safeMessage}`),
+        publicUrl(request, "/consulta-audio?error=db"),
         { status: 303 }
       );
     }
@@ -193,14 +203,10 @@ export async function POST(request: Request) {
       { status: 303 }
     );
   } catch (error: unknown) {
-    const safeMessage = encodeURIComponent(
-      error instanceof Error
-        ? error.message
-        : "Erro inesperado ao processar IA."
-    );
+    console.error("Falha inesperada ao processar IA", error);
 
     return NextResponse.redirect(
-      publicUrl(request, `/consulta-audio?error=unexpected&message=${safeMessage}`),
+      publicUrl(request, "/consulta-audio?error=unexpected"),
       { status: 303 }
     );
   }
