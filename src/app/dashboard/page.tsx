@@ -22,6 +22,7 @@ import {
   FileText,
   FlaskConical,
   Lock,
+  LibraryBig,
   Search,
   Siren,
   Stethoscope,
@@ -398,19 +399,18 @@ export default function DashboardPage() {
       );
 
       try {
-        const prescriptionFavorites = JSON.parse(
-          localStorage.getItem(
-            `resibook-prescription-template-favorites:${userId}`
-          ) || "[]"
-        );
+        const { count: prescriptionFavoriteCount } = await supabase
+          .from("user_content_favorites")
+          .select("item_id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("item_type", "prescription")
+          .eq("source", "global");
         const examFavorites = JSON.parse(
           localStorage.getItem(`resibook-exam-template-favorites:${userId}`) ||
             "[]"
         );
 
-        setFavoritePrescriptionCount(
-          Array.isArray(prescriptionFavorites) ? prescriptionFavorites.length : 0
-        );
+        setFavoritePrescriptionCount(prescriptionFavoriteCount ?? 0);
         setFavoriteExamCount(Array.isArray(examFavorites) ? examFavorites.length : 0);
       } catch {
         setFavoritePrescriptionCount(0);
@@ -736,7 +736,13 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+              <ActionCard
+                href="/meu-resibook"
+                title="Meu Resibook"
+                description="Abrir seu acervo clínico privado."
+                icon={LibraryBig}
+              />
               <ActionCard
                 href="/caso-rapido"
                 title="Caso rápido"
@@ -880,6 +886,13 @@ export default function DashboardPage() {
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <ShortcutCard
+              href="/meu-resibook"
+              title="Meu Resibook"
+              description="Abrir seu acervo clínico privado."
+              icon={LibraryBig}
+            />
+
+            <ShortcutCard
               href="/pacientes"
               title="Abrir pacientes"
               description="Cadastro, busca e edição rápida."
@@ -940,7 +953,7 @@ export default function DashboardPage() {
         <section className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-950/[0.02]">
           <SectionHeader
             title="Favoritos salvos"
-            description="Modelos favoritos para acesso rápido neste navegador."
+            description="Modelos favoritos vinculados ao seu usuário."
           />
 
           <div className="mt-5 space-y-4">

@@ -11,6 +11,7 @@ import {
   ClipboardList,
   FlaskConical,
   HeartPulse,
+  LibraryBig,
   MessageCircle,
   Search,
   ShieldCheck,
@@ -34,6 +35,11 @@ type Feature = {
 };
 
 const FEATURES: Feature[] = [
+  {
+    title: "Meu Resibook",
+    description: "Workspace privado para adaptar modelos e organizar seu acervo clínico.",
+    icon: LibraryBig,
+  },
   {
     title: "Prescrições prontas",
     description: "Modelos organizados para consulta e adaptação à rotina clínica.",
@@ -225,17 +231,20 @@ export default function HomePage() {
             <Brand />
           </Link>
 
-          <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
-            <a href="#recursos" className="transition hover:text-slate-950">
+          <nav className="hidden items-center gap-1 rounded-xl bg-slate-50/80 p-1 text-sm font-medium text-slate-600 shadow-sm md:flex">
+            <a href="#recursos" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
               Recursos
             </a>
-            <a href="#planos" className="transition hover:text-slate-950">
+            <a href="#como-funciona" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
+              Como funciona
+            </a>
+            <a href="#planos" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
               Planos
             </a>
-            <a href="#seguranca" className="transition hover:text-slate-950">
+            <a href="#seguranca" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
               Segurança
             </a>
-            <Link href="/login" className="transition hover:text-slate-950">
+            <Link href="/login" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
               Entrar
             </Link>
           </nav>
@@ -263,15 +272,14 @@ export default function HomePage() {
             <div className="relative z-10 max-w-2xl">
               <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
                 <HeartPulse className="h-4 w-4" />
-                Plataforma para médicos
+                Biblioteca clínica + workspace pessoal
               </div>
               <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-[0] text-[#091a38] sm:text-5xl lg:text-[58px]">
-                Sua rotina médica em um só lugar
+                O seu banco clínico, pronto para o plantão
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-                Prescrições, condutas de plantão, flashcards, CIDs,
-                calculadoras, tópicos médicos e modelos de evolução em uma
-                plataforma organizada para apoiar a rotina clínica.
+                Consulte o Banco Resibook e transforme modelos padronizados em
+                cópias privadas e editáveis no seu próprio acervo clínico.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -291,10 +299,34 @@ export default function HomePage() {
                 <ShieldCheck className="h-4 w-4 shrink-0 text-cyan-700" />
                 Uso profissional médico • Ferramenta de apoio à decisão clínica
               </p>
+              <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-slate-700">
+                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-700" />Banco clínico padronizado</span>
+                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-700" />Acervo privado por médico</span>
+              </div>
             </div>
 
             <div className="relative z-10 lg:translate-x-4">
               <AppPreview />
+            </div>
+          </div>
+        </section>
+
+        <section id="como-funciona" className="scroll-mt-24 border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
+          <div className="mx-auto max-w-[1120px] px-4 sm:px-6 lg:px-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Como funciona</p>
+            <h2 className="mt-3 text-3xl font-semibold text-[#091a38] sm:text-4xl">Do banco clínico ao seu jeito de trabalhar</h2>
+            <div className="mt-10 grid gap-6 md:grid-cols-3">
+              {[
+                ["01", "Consulte", "Encontre conteúdo clínico global, padronizado e revisado no Banco Resibook."],
+                ["02", "Duplique", "Leve prescrições e flashcards para seu workspace privado com um clique."],
+                ["03", "Personalize", "Edite, organize, favorite e marque os modelos principais do seu acervo."],
+              ].map(([number, title, description]) => (
+                <article key={number} className="border-l-2 border-cyan-700 pl-5">
+                  <p className="text-xs font-semibold tracking-[0.18em] text-cyan-700">{number}</p>
+                  <h3 className="mt-3 text-xl font-semibold text-slate-950">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>

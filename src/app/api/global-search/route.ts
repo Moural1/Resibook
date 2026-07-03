@@ -12,6 +12,7 @@ type SearchResult = {
     | "exame"
     | "topico"
     | "flashcard"
+    | "personal"
     | "cid"
     | "calculadora";
   title: string;
@@ -167,6 +168,14 @@ export async function GET(request: NextRequest) {
     .select("id, codigo, descricao, grupo, area, tags")
     .limit(80);
 
+  const personalContentPromise = isGuest
+    ? Promise.resolve({ data: [], error: null })
+    : supabase
+        .from("personal_content_items")
+        .select("id, item_type, title, content, metadata")
+        .eq("user_id", userId)
+        .limit(80);
+
   const [
     patientsRes,
     prescriptionsRes,
@@ -175,6 +184,7 @@ export async function GET(request: NextRequest) {
     topicosRes,
     flashcardsRes,
     cidsRes,
+    personalContentRes,
   ] = await Promise.all([
     patientsPromise,
     prescriptionsPromise,
@@ -183,6 +193,7 @@ export async function GET(request: NextRequest) {
     topicosPromise,
     flashcardsPromise,
     cidsPromise,
+    personalContentPromise,
   ]);
 
   const results: SearchResult[] = [];
@@ -253,7 +264,7 @@ export async function GET(request: NextRequest) {
         title: item.titulo || "Prescrição pronta",
         subtitle: item.categoria || item.source_file || "Biblioteca de plantão",
         href: `/prescricao?q=${encodeURIComponent(item.titulo || q)}`,
-        badge: "Modelo",
+        badge: "Banco Resibook",
       });
     }
   }
@@ -282,7 +293,7 @@ export async function GET(request: NextRequest) {
           item.source_file ||
           "Biblioteca clínica",
         href: `/exames-evolucao?q=${encodeURIComponent(item.titulo || q)}`,
-        badge: "Exame",
+        badge: "Banco Resibook",
       });
     }
   }
@@ -313,7 +324,7 @@ export async function GET(request: NextRequest) {
         title: item.titulo || "Tópico médico",
         subtitle: item.area || item.resumo || "Biblioteca médica",
         href: `/topicos?q=${encodeURIComponent(item.titulo || q)}`,
-        badge: "Tópico",
+        badge: "Banco Resibook",
       });
     }
   }
@@ -331,7 +342,7 @@ export async function GET(request: NextRequest) {
         title: item.frente || "Flashcard",
         subtitle: item.materia || item.area || item.tipo || "Revisão clínica",
         href: `/flashcards?q=${encodeURIComponent(item.frente || q)}`,
-        badge: "Flashcard",
+        badge: "Banco Resibook",
       });
     }
   }
@@ -352,6 +363,22 @@ export async function GET(request: NextRequest) {
         subtitle: item.grupo || item.area || "CID-10",
         href: `/cids?q=${encodeURIComponent(item.codigo || item.descricao || q)}`,
         badge: "CID",
+      });
+    }
+  }
+
+  for (const item of personalContentRes.data || []) {
+    const metadata = item.metadata
+      ? JSON.stringify(item.metadata)
+      : "";
+    if (includesSearch([item.title, item.content, item.item_type, metadata], q)) {
+      results.push({
+        id: String(item.id),
+        type: "personal",
+        title: item.title || "Conteúdo pessoal",
+        subtitle: item.content?.slice(0, 120) || "Acervo clínico privado",
+        href: `/meu-resibook?q=${encodeURIComponent(item.title || q)}`,
+        badge: "Meu Resibook",
       });
     }
   }
@@ -385,6 +412,7 @@ export async function GET(request: NextRequest) {
     cid: 4,
     flashcard: 3,
     calculadora: 6.5,
+    personal: 10,
   };
 
   const orderedResults = results
