@@ -92,7 +92,8 @@ export default async function ConsultaAudioPage({
               Consulta por áudio / caso clínico
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Envie um caso clínico para análise estruturada e grave a resposta da IA.
+              Envie somente casos desidentificados para análise estruturada. CPF,
+              CNS, telefone e e-mail são bloqueados antes do envio à IA.
             </p>
           </div>
         </div>
@@ -171,6 +172,20 @@ export default async function ConsultaAudioPage({
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                   />
                 </div>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                  <input
+                    type="checkbox"
+                    name="deidentified"
+                    value="confirmed"
+                    required
+                    className="mt-1 h-4 w-4 accent-amber-700"
+                  />
+                  <span>
+                    Confirmo que removi nome, CPF, CNS, telefone, e-mail e outros
+                    identificadores diretos do texto enviado à IA.
+                  </span>
+                </label>
               </div>
             </div>
 

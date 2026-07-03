@@ -177,7 +177,7 @@ export function Topbar() {
       { label: "Buscar conduta", description: "Protocolos e manejo relacionado", href: `/condutas?busca=${encoded}`, icon: Siren },
       { label: "Checklist de risco", description: "Red flags e bloqueios de alta", href: `/plantao/checklist-risco?q=${encoded}`, icon: ShieldCheck },
       { label: "Prescrição guiada", description: "Plano, segurança e reavaliação", href: `/plantao/prescricao-guiada?q=${encoded}`, icon: ClipboardList },
-      { label: "Alta segura", description: "Orientações e sinais de retorno", href: `/plantao/alta-segura?q=${encoded}`, icon: LogOut },
+      { label: "Orientações de alta", description: "Cuidados e sinais de retorno", href: `/plantao/alta-segura?q=${encoded}`, icon: LogOut },
     ];
   }, [query]);
 

@@ -16,6 +16,18 @@ type OpenAIResponse = {
   error?: { message?: string };
 };
 
+function detectDirectIdentifier(value: string) {
+  const checks = [
+    { label: "CPF", pattern: /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/ },
+    { label: "CNS", pattern: /\b\d{3}[ .-]?\d{4}[ .-]?\d{4}[ .-]?\d{4}\b/ },
+    { label: "e-mail", pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
+    { label: "telefone", pattern: /(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]\d{4}\b/ },
+    { label: "identificador rotulado", pattern: /\b(?:cpf|cns|telefone|celular|e-?mail)\s*:/i },
+  ];
+
+  return checks.find(({ pattern }) => pattern.test(value))?.label || null;
+}
+
 function extractResponseText(json: OpenAIResponse): string {
   if (typeof json?.output_text === "string" && json.output_text.trim()) {
     return json.output_text.trim();
@@ -62,10 +74,26 @@ export async function POST(request: Request) {
     const titulo = String(formData.get("titulo") ?? "").trim();
     const queixa = String(formData.get("queixa") ?? "").trim();
     const contexto = String(formData.get("contexto") ?? "").trim();
+    const deidentified = String(formData.get("deidentified") ?? "") === "confirmed";
 
     if (!queixa) {
       return NextResponse.redirect(
         publicUrl(request, "/consulta-audio?error=required"),
+        { status: 303 }
+      );
+    }
+
+    if (!deidentified) {
+      return NextResponse.redirect(
+        publicUrl(request, "/consulta-audio?error=deidentified"),
+        { status: 303 }
+      );
+    }
+
+    const identifier = detectDirectIdentifier([titulo, queixa, contexto].join("\n"));
+    if (identifier) {
+      return NextResponse.redirect(
+        publicUrl(request, `/consulta-audio?error=identifiers&message=${encodeURIComponent(`Remova ${identifier} antes de enviar o caso à IA.`)}`),
         { status: 303 }
       );
     }
@@ -91,6 +119,7 @@ export async function POST(request: Request) {
     const prompt = [
       "Você é um assistente clínico.",
       "Analise o caso abaixo e responda em português, de forma estruturada.",
+      "O caso foi enviado de forma desidentificada. Não tente inferir a identidade do paciente.",
       "",
       `Título: ${titulo || "Caso clínico"}`,
       `Queixa principal: ${queixa}`,

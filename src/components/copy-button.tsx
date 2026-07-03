@@ -8,6 +8,7 @@ type Props = {
   cleanMetadata?: boolean;
   label?: string;
   copiedLabel?: string;
+  confirmationMessage?: string;
 };
 
 function cleanCopiedText(value: string) {
@@ -36,13 +37,16 @@ function cleanCopiedText(value: string) {
 
 export default function CopyButton({
   text,
-  cleanMetadata = true,
+  cleanMetadata = false,
   label = "Copiar",
   copiedLabel = "Copiado!",
+  confirmationMessage,
 }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
+    if (confirmationMessage && !window.confirm(confirmationMessage)) return;
+
     try {
       const textToCopy = cleanMetadata ? cleanCopiedText(text) : text.trim();
 

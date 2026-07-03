@@ -389,6 +389,13 @@ export default function DadosDaContaPage() {
   async function handleExportOne(config: ExportConfig) {
     if (checkingSession) return;
 
+    const confirmed = window.confirm(
+      config.isPrivate
+        ? `O arquivo de ${config.label} pode conter dados pessoais ou clínicos sensíveis. Confirme que será armazenado em local seguro e não será compartilhado indevidamente.`
+        : `O arquivo de ${config.label} será baixado para este dispositivo. Confirme que deseja continuar.`
+    );
+    if (!confirmed) return;
+
     setError("");
     setSuccess("");
     setLoadingTable(config.table);
@@ -447,6 +454,11 @@ export default function DadosDaContaPage() {
 
   async function handleExportAll() {
     if (checkingSession) return;
+
+    const confirmed = window.confirm(
+      "O backup completo pode conter dados pessoais e clínicos sensíveis. Ao continuar, você assume a responsabilidade por armazená-lo de forma segura, com acesso restrito. Deseja baixar o arquivo?"
+    );
+    if (!confirmed) return;
 
     setError("");
     setSuccess("");

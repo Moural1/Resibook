@@ -12,7 +12,7 @@ export default function PoliticaDePrivacidadePage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Última atualização: 06/06/2026
+            Última atualização: 03/07/2026
           </p>
         </div>
 
@@ -45,6 +45,7 @@ export default function PoliticaDePrivacidadePage() {
               <li>evoluções, anotações, prescrições e documentos vinculados;</li>
               <li>logs de acesso, como e-mail, data, hora e navegador utilizado;</li>
               <li>marcações pessoais do usuário, como flashcards difíceis.</li>
+              <li>casos clínicos desidentificados enviados voluntariamente a recursos de IA.</li>
             </ul>
           </section>
 
@@ -152,6 +153,23 @@ export default function PoliticaDePrivacidadePage() {
               deve armazenar arquivos exportados em local seguro, especialmente
               quando contiverem dados clínicos ou informações identificáveis de
               pacientes.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              9.1. Processamento por inteligência artificial
+            </h2>
+            <p className="mt-2">
+              Quando o recurso de IA estiver habilitado, o texto desidentificado
+              do caso poderá ser enviado ao provedor técnico configurado para gerar
+              a resposta. O sistema bloqueia padrões de CPF, CNS, telefone e e-mail,
+              mas o usuário continua responsável por remover outros identificadores.
+            </p>
+            <p className="mt-2">
+              O vínculo interno com um paciente, quando utilizado, serve apenas para
+              organização e validação de acesso e não inclui automaticamente o nome
+              do paciente no texto enviado à IA.
             </p>
           </section>
 
