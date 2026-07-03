@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import CopyButton from "./copy-button";
 import { showToast } from "../lib/toast";
 import { rankSearchResults } from "../lib/search";
+import { isResibookAdmin } from "@/lib/auth-role";
 import { BookCopy, Edit3, Plus, Trash2, X } from "lucide-react";
 
 type PrescriptionTemplate = {
@@ -52,7 +53,6 @@ type Props = {
   initialQuery?: string;
 };
 
-const ADMIN_EMAIL = "igormoura@resibook.com";
 const emptyForm: TemplateForm = {
   categoria: "",
   titulo: "",
@@ -262,9 +262,7 @@ export default function PrescriptionTemplatesLive({
   useEffect(() => {
     async function checkAdmin() {
       const { data } = await supabase.auth.getSession();
-      const email = data.session?.user?.email?.trim().toLowerCase() || "";
-      const role = data.session?.user?.app_metadata?.role;
-      setIsAdmin(role === "admin" || email === ADMIN_EMAIL);
+      setIsAdmin(isResibookAdmin(data.session?.user));
       setCurrentUserId(data.session?.user?.id || "");
     }
 

@@ -1,6 +1,6 @@
 # Auditoria de dados e isolamento multiusuário
 
-Data da revisão: 2 de julho de 2026.
+Data da revisão: 3 de julho de 2026.
 
 ## Modelo adotado
 
@@ -38,7 +38,7 @@ As telas já ocultam comandos administrativos para médicos comuns. A RLS passa 
 | `login_logs` | Registro de acesso | Usuário insere o próprio; admin lê |
 | `blocked_users` | Estado de bloqueio | Usuário lê o próprio; admin gerencia |
 
-Favoritos de modelos e históricos recentes ficam no navegador, agora com chave separada pelo UUID do usuário. Eles não cruzam contas no mesmo navegador, mas não sincronizam entre dispositivos. Caso sejam migrados ao banco, deverão usar `user_id` obrigatório e policies próprias.
+Favoritos de prescrições, conteúdos pessoais e históricos recentes ficam no Supabase com `user_id` obrigatório e policies próprias. Preferências legadas de outros módulos que ainda usam o navegador permanecem separadas pelo UUID e devem seguir a mesma migração antes de ganharem sincronização entre dispositivos.
 
 ## Dados clínicos sensíveis
 
@@ -54,7 +54,7 @@ Favoritos de modelos e históricos recentes ficam no navegador, agora com chave 
 | `consultas` | Consulta por áudio estruturada | Próprio `user_id` |
 | `ai_cases` | Casos enviados à IA | Próprio `user_id` |
 
-O produto ainda contém prontuário e dados identificáveis de pacientes. Eles não devem ser apresentados como biblioteca compartilhada. Para uma edição comercial sem prontuário, as rotas `/pacientes` e `/consulta-audio` devem ser ocultadas por configuração de produto, não apenas removidas visualmente.
+O produto ainda contém prontuário e dados identificáveis de pacientes. Eles não são apresentados como biblioteca compartilhada. Na edição comercial, as rotas `/pacientes` e `/consulta-audio` ficam desativadas por configuração e bloqueadas no proxy. A edição clínica só deve habilitá-las explicitamente após atender aos requisitos de governança LGPD.
 
 ## Rotas e queries revisadas
 
@@ -68,13 +68,13 @@ O produto ainda contém prontuário e dados identificáveis de pacientes. Eles n
 
 ## Riscos residuais e LGPD
 
-- A migration precisa ser aplicada no Supabase antes de considerar o isolamento implantado.
+- As migrations de isolamento e Meu Resibook precisam estar aplicadas no Supabase antes de cada release.
 - Registros antigos de `ai_cases` sem `user_id` ficam invisíveis aos médicos; devem ser atribuídos manualmente ou eliminados por política de retenção.
 - A `SUPABASE_SERVICE_ROLE_KEY` ignora RLS. Deve existir somente no servidor e ser limitada às rotas administrativas revisadas.
 - O administrador de infraestrutura do Supabase continua tecnicamente capaz de acessar dados; isso exige governança, logs, contrato, política de retenção e resposta a incidentes.
 - Casos enviados à IA podem conter dados pessoais. É necessário definir base legal, minimização, transparência, retenção e contrato com o subprocessador antes de uso comercial.
 - Backups baixados pelo médico saem do controle técnico do sistema e precisam de orientação de armazenamento seguro.
-- O e-mail do admin ainda é uma regra de produto. Para uma equipe administrativa maior, migrar futuramente para tabela de papéis gerenciada fora do cliente.
+- A autorização administrativa aceita `app_metadata.role = admin`; o e-mail histórico permanece apenas como compatibilidade temporária e deve ser removido após a migração das contas administrativas.
 
 ## Aplicação segura
 
@@ -83,4 +83,11 @@ O produto ainda contém prontuário e dados identificáveis de pacientes. Eles n
 3. Executar o checklist de dois usuários.
 4. Somente depois aplicar em produção.
 5. Confirmar que nenhuma chave service role está exposta em variáveis `NEXT_PUBLIC_*`.
+
+## Configuração da edição comercial
+
+- `NEXT_PUBLIC_RESIBOOK_ENABLE_PATIENT_RECORDS=false`: oculta e bloqueia prontuário.
+- `NEXT_PUBLIC_RESIBOOK_ENABLE_CLINICAL_AUDIO=false`: oculta e bloqueia consulta por áudio.
+- As duas capacidades são desativadas por padrão. A consulta por áudio também depende da habilitação do prontuário.
+- A configuração de referência e o checklist de release estão em `.env.example` e `docs/commercial-readiness-checklist.md`.
 

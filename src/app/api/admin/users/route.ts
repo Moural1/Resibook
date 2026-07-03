@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-
-const ADMIN_EMAIL = "igormoura@resibook.com";
+import { isResibookAdmin, LEGACY_ADMIN_EMAIL } from "@/lib/auth-role";
 
 async function authorizeAdmin() {
   const supabase = await createServerClient();
   const { data, error } = await supabase.auth.getUser();
-  const email = data.user?.email?.trim().toLowerCase() || "";
 
   if (error || !data.user) {
     return { error: "Sessão administrativa não confirmada.", status: 401 };
   }
-  if (email !== ADMIN_EMAIL) {
+  if (!isResibookAdmin(data.user)) {
     return { error: "Ação permitida apenas ao administrador.", status: 403 };
   }
 
@@ -63,6 +61,7 @@ export async function GET() {
       email: user.email || "",
       createdAt: user.created_at,
       lastSignInAt: user.last_sign_in_at || null,
+      isAdmin: isResibookAdmin(user),
     })),
   });
 }
@@ -133,7 +132,7 @@ export async function DELETE(request: Request) {
   if (!email) {
     return NextResponse.json({ error: "E-mail obrigatório." }, { status: 400 });
   }
-  if (email === ADMIN_EMAIL) {
+  if (email === LEGACY_ADMIN_EMAIL) {
     return NextResponse.json(
       { error: "A conta administradora é protegida." },
       { status: 400 }
@@ -155,6 +154,12 @@ export async function DELETE(request: Request) {
     return NextResponse.json(
       { error: "Conta de autenticação não encontrada." },
       { status: 404 }
+    );
+  }
+  if (isResibookAdmin(target)) {
+    return NextResponse.json(
+      { error: "Contas administradoras são protegidas." },
+      { status: 400 }
     );
   }
 

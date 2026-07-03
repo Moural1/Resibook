@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { isResibookAdmin, LEGACY_ADMIN_EMAIL } from "@/lib/auth-role";
 import {
   Activity,
   AlertTriangle,
@@ -44,6 +45,7 @@ type AuthAccount = {
   email: string;
   createdAt: string;
   lastSignInAt: string | null;
+  isAdmin: boolean;
 };
 
 type UserAccessSummary = {
@@ -58,9 +60,10 @@ type UserAccessSummary = {
   accountId?: string;
   accountCreatedAt?: string | null;
   authManaged?: boolean;
+  isAdmin?: boolean;
 };
 
-const ADMIN_EMAIL = "igormoura@resibook.com";
+const ADMIN_EMAIL = LEGACY_ADMIN_EMAIL;
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -112,7 +115,7 @@ async function getSessionInfo(): Promise<SessionInfo> {
   return {
     userId,
     email,
-    isAdmin: email === ADMIN_EMAIL,
+    isAdmin: isResibookAdmin(data.session?.user),
   };
 }
 
@@ -263,6 +266,7 @@ export default function AcessosPage() {
         accountId: account.id,
         accountCreatedAt: account.createdAt,
         authManaged: true,
+        isAdmin: account.isAdmin,
       });
     }
 
@@ -395,7 +399,10 @@ export default function AcessosPage() {
       return;
     }
 
-    if (email === ADMIN_EMAIL) {
+    if (
+      email === ADMIN_EMAIL ||
+      userSummaries.some((item) => item.email === email && item.isAdmin)
+    ) {
       setError("Você não pode bloquear o administrador.");
       return;
     }
@@ -807,7 +814,7 @@ export default function AcessosPage() {
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
             {filteredSummaries.map((item) => {
-              const isAdminUser = item.email === ADMIN_EMAIL;
+              const isAdminUser = Boolean(item.isAdmin);
 
               return (
                 <article
@@ -1052,7 +1059,7 @@ export default function AcessosPage() {
                         </td>
 
                         <td className="whitespace-nowrap px-4 py-3">
-                          {email === ADMIN_EMAIL ? (
+                          {userSummaries.find((user) => user.email === email)?.isAdmin ? (
                             <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
                               <ShieldCheck className="h-3.5 w-3.5" />
                               Admin

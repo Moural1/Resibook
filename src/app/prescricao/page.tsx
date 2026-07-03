@@ -1121,6 +1121,10 @@ export default function PrescricaoPage() {
   }
 
   async function handleConfirmSave() {
+    if (!confirmationReason.trim()) {
+      setError("Informe a justificativa clínica para confirmar uma prescrição de alto risco.");
+      return;
+    }
     setPendingSave(true);
     await persistCreate();
   }
@@ -1808,7 +1812,7 @@ export default function PrescricaoPage() {
 
             <div className="mt-6">
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Motivo da confirmação (opcional)
+                Justificativa clínica obrigatória
               </label>
               <textarea
                 rows={3}
@@ -1839,7 +1843,7 @@ export default function PrescricaoPage() {
               <button
                 type="button"
                 onClick={handleConfirmSave}
-                disabled={saving}
+                disabled={saving || !confirmationReason.trim()}
                 className="inline-flex h-11 items-center justify-center rounded-xl bg-rose-600 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "Salvando..." : "Confirmar e salvar mesmo assim"}

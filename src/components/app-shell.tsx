@@ -7,6 +7,8 @@ import { usePathname, useRouter } from "next/navigation";
 import type { SupabaseClient, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
+import { isResibookAdmin } from "@/lib/auth-role";
+import { PRODUCT_CAPABILITIES } from "@/lib/product-config";
 import {
   Activity,
   BarChart3,
@@ -48,7 +50,6 @@ type CountMap = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
-const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const GUEST_ALLOWED_PATHS = [
   "/plantao",
@@ -295,12 +296,14 @@ function SidebarContent({
       badge: null,
     },
     { href: "/caso-rapido", label: "Caso rápido", icon: Gauge, badge: null },
-    {
-      href: "/pacientes",
-      label: "Pacientes",
-      icon: Users,
-      badge: counts.pacientes,
-    },
+    ...(PRODUCT_CAPABILITIES.patientRecords
+      ? [{
+          href: "/pacientes",
+          label: "Pacientes",
+          icon: Users,
+          badge: counts.pacientes,
+        }]
+      : []),
     {
       href: "/prescricao",
       label: "Prescrição",
@@ -620,9 +623,7 @@ export default function AppShell({ children }: Props) {
         }
 
         setRedirectingToLogin(false);
-        setSessionIsAdmin(
-          session.user.app_metadata?.role === "admin" || email === ADMIN_EMAIL
-        );
+        setSessionIsAdmin(isResibookAdmin(session.user));
         setIsGuest(guest);
         setCurrentUserId(userId);
 

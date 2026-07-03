@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
+import { isResibookAdmin } from "@/lib/auth-role";
 import {
   ArrowRight,
   BookOpen,
@@ -51,7 +52,6 @@ type MarkRow = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
-const ADMIN_EMAIL = "igormoura@resibook.com";
 
 const emptyForm: FlashcardForm = {
   area: "",
@@ -285,7 +285,7 @@ export default function FlashcardsPage() {
     const email = user?.email?.trim().toLowerCase() || "";
     const userId = user?.id || null;
     const guest = email === GUEST_EMAIL;
-    const admin = user?.app_metadata?.role === "admin" || email === ADMIN_EMAIL;
+    const admin = isResibookAdmin(user);
 
     setCurrentUserId(userId);
     setIsGuest(guest);

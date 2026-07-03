@@ -3,8 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-
-const ADMIN_EMAIL = "igormoura@resibook.com";
+import { isResibookAdmin } from "@/lib/auth-role";
 
 export default function AccessLogger() {
   const router = useRouter();
@@ -41,7 +40,7 @@ export default function AccessLogger() {
       if (!mounted || lastRunRef.current !== runId) return;
       if (blockedError) return;
 
-      if (blockedData && email !== ADMIN_EMAIL) {
+      if (blockedData && !isResibookAdmin(user)) {
         await supabase.auth.signOut();
 
         if (!mounted || lastRunRef.current !== runId) return;
