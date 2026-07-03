@@ -26,5 +26,6 @@
 
 - [ ] `npm run lint`
 - [ ] `npx tsc --noEmit`
+- [ ] `npm run test:clinical`
 - [ ] `npm run build`
 - [ ] Teste manual com médico A, médico B e admin.

@@ -64,7 +64,7 @@ O produto ainda contém prontuário e dados identificáveis de pacientes. Eles n
 - A página de consulta por áudio usa o cliente Supabase do servidor e filtra pacientes/casos pelo usuário.
 - A rota de criação de consulta valida que o paciente pertence ao usuário.
 - APIs antigas de pacientes, prescrições, flashcards, consultas por ID e modelos de exame foram encerradas com HTTP 410.
-- Administração de contas valida o e-mail administrador no servidor antes de usar a service role.
+- Administração de contas exige `app_metadata.role = admin` no servidor antes de usar a service role; o e-mail histórico existe apenas como compatibilidade temporária.
 
 ## Riscos residuais e LGPD
 

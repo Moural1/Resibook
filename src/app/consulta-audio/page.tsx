@@ -22,6 +22,17 @@ type AiCase = {
   created_at: string;
 };
 
+const errorMessages: Record<string, string> = {
+  required: "Preencha a queixa principal.",
+  deidentified: "Confirme que o caso foi desidentificado.",
+  identifiers: "Remova os identificadores diretos antes de enviar o caso.",
+  patient: "O paciente selecionado não está disponível para esta conta.",
+  length: "O caso ultrapassa o tamanho permitido. Resuma os dados clínicos.",
+  unavailable: "A análise por IA não está disponível no momento.",
+  db: "Não foi possível salvar o caso.",
+  unexpected: "Não foi possível processar o caso.",
+};
+
 async function getPrivateData() {
   const supabase = await createClient();
   const {
@@ -72,7 +83,7 @@ export default async function ConsultaAudioPage({
 }) {
   const params = await searchParams;
   const { patients, cases } = await getPrivateData();
-  const errorMessage = params.message ? decodeURIComponent(params.message) : null;
+  const errorMessage = params.error ? errorMessages[params.error] : null;
 
   return (
     <div className="space-y-6">
@@ -143,6 +154,7 @@ export default async function ConsultaAudioPage({
                   <input
                     name="titulo"
                     type="text"
+                    maxLength={160}
                     placeholder="Ex.: Dor torácica em paciente jovem"
                     className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                   />
@@ -156,6 +168,7 @@ export default async function ConsultaAudioPage({
                     name="queixa"
                     rows={5}
                     required
+                    maxLength={6000}
                     placeholder="Descreva a queixa principal e os achados mais importantes..."
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                   />
@@ -168,6 +181,7 @@ export default async function ConsultaAudioPage({
                   <textarea
                     name="contexto"
                     rows={6}
+                    maxLength={6000}
                     placeholder="História breve, exame físico, medicações, contexto clínico..."
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                   />
