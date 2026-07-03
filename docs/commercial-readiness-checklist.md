@@ -16,6 +16,11 @@
 
 ## Operação comercial
 
+- [ ] Criar aplicação no Mercado Pago e configurar `MERCADO_PAGO_ACCESS_TOKEN`.
+- [ ] Configurar `MERCADO_PAGO_WEBHOOK_SECRET` e testar o evento `subscription_preapproval`.
+- [ ] Aplicar `20260703190000_billing_subscriptions.sql` antes de ativar cobranças.
+- [ ] Testar os planos Básico (R$ 30/mês) e Completo (R$ 50/mês) em ambiente de teste.
+- [ ] Ativar `RESIBOOK_ENFORCE_SUBSCRIPTIONS=true` somente após o teste ponta a ponta.
 - [ ] Publicar termos de uso, política de privacidade, canal de suporte e responsável pelo tratamento.
 - [ ] Definir política de retenção e exclusão de contas/dados.
 - [ ] Documentar backup, restauração e resposta a incidentes.

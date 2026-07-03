@@ -38,6 +38,7 @@ export default function PoliticaDePrivacidadePage() {
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-6">
               <li>dados de conta do usuário, como e-mail de login;</li>
+              <li>plano contratado, situação da assinatura e datas de cobrança;</li>
               <li>dados cadastrais de pacientes, como nome, idade, sexo e telefone;</li>
               <li>dados de plano de saúde ou carteirinha, quando preenchidos;</li>
               <li>dados clínicos, como queixa, HMA, HPP e medicamentos em uso;</li>
@@ -78,6 +79,7 @@ export default function PoliticaDePrivacidadePage() {
               <li>melhorar a navegação e segurança do sistema;</li>
               <li>registrar acessos para auditoria básica;</li>
               <li>bloquear usuários quando necessário.</li>
+              <li>processar a contratação e controlar o acesso ao plano escolhido.</li>
             </ul>
           </section>
 
@@ -165,6 +167,12 @@ export default function PoliticaDePrivacidadePage() {
               do caso poderá ser enviado ao provedor técnico configurado para gerar
               a resposta. O sistema bloqueia padrões de CPF, CNS, telefone e e-mail,
               mas o usuário continua responsável por remover outros identificadores.
+            </p>
+            <p className="mt-2">
+              Para processar assinaturas, o e-mail da conta, o plano escolhido e
+              uma referência interna do usuário são enviados ao Mercado Pago. Os
+              dados do cartão e demais dados financeiros são coletados e tratados
+              diretamente pelo provedor de pagamento, não pelo ResiBook.
             </p>
             <p className="mt-2">
               O vínculo interno com um paciente, quando utilizado, serve apenas para

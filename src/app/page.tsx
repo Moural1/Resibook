@@ -15,7 +15,6 @@ import {
   HeartPulse,
   LibraryBig,
   LockKeyhole,
-  MessageCircle,
   Search,
   ShieldCheck,
   Sparkles,
@@ -24,8 +23,6 @@ import {
   Tags,
 } from "lucide-react";
 
-export const WHATSAPP_NUMBER = "5531984812506";
-
 export const metadata: Metadata = {
   title: "O seu banco clínico, pronto para o plantão",
   description:
@@ -33,12 +30,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },
 };
-
-const DEFAULT_MESSAGE = "Olá! Tenho interesse em conhecer o Resibook.";
-
-function whatsappUrl(message: string) {
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-}
 
 type Feature = {
   title: string;
@@ -224,27 +215,6 @@ function AppPreview() {
   );
 }
 
-function InterestLink({
-  message = DEFAULT_MESSAGE,
-  children,
-  className = "",
-}: {
-  message?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <a
-      href={whatsappUrl(message)}
-      target="_blank"
-      rel="noreferrer"
-      className={className}
-    >
-      {children}
-    </a>
-  );
-}
-
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#f7f9fc] text-slate-950">
@@ -279,12 +249,12 @@ export default function HomePage() {
             >
               Entrar
             </Link>
-            <InterestLink
+            <Link
+              href="/cadastro?plano=complete"
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-900"
             >
-              <MessageCircle className="hidden h-4 w-4 sm:block" />
-              Tenho interesse
-            </InterestLink>
+              Criar conta
+            </Link>
           </div>
         </div>
       </header>
@@ -308,10 +278,10 @@ export default function HomePage() {
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <InterestLink className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(14,116,144,0.2)] transition hover:-translate-y-0.5 hover:bg-cyan-900">
-                  Quero conhecer o Resibook
+                <Link href="/cadastro?plano=complete" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(14,116,144,0.2)] transition hover:-translate-y-0.5 hover:bg-cyan-900">
+                  Começar agora
                   <ArrowRight className="h-4 w-4" />
-                </InterestLink>
+                </Link>
                 <Link
                   href="/login"
                   className="inline-flex h-12 items-center justify-center rounded-lg border border-cyan-700 bg-white px-6 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-50"
@@ -449,8 +419,8 @@ export default function HomePage() {
                 Escolha o acesso para sua rotina
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                Sem checkout automático neste momento. O atendimento e a
-                liberação são feitos diretamente pelo WhatsApp.
+                Crie sua conta, pague com segurança no Mercado Pago e tenha o
+                acesso liberado automaticamente.
               </p>
             </div>
 
@@ -461,24 +431,24 @@ export default function HomePage() {
                   R$ 30<span className="text-base font-medium text-slate-500">/mês</span>
                 </p>
                 <p className="mt-5 min-h-[72px] text-sm leading-6 text-slate-600">
-                  Acesso limitado às funções básicas do Resibook para consulta
-                  rápida e organização da rotina médica.
+                  Biblioteca clínica para consulta, estudo e apoio durante a
+                  rotina médica.
                 </p>
                 <ul className="mt-6 space-y-3 text-sm text-slate-700">
-                  {["Biblioteca clínica essencial", "Consulta rápida por módulos", "Acesso individual protegido"].map((item) => (
+                  {["Calculadoras clínicas", "CIDs e tópicos médicos", "Flashcards e biblioteca essencial"].map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-cyan-700" />
                       {item}
                     </li>
                   ))}
                 </ul>
-                <InterestLink
-                  message="Olá! Tenho interesse no Plano Básico do Resibook."
+                <Link
+                  href="/cadastro?plano=basic"
                   className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-cyan-700 bg-white px-5 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-50"
                 >
-                  Tenho interesse no Básico
-                  <MessageCircle className="h-4 w-4" />
-                </InterestLink>
+                  Assinar o Básico
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </article>
 
               <article className="relative rounded-lg border border-cyan-700 bg-[#091a38] p-7 text-white shadow-[0_18px_48px_rgba(9,26,56,0.18)]">
@@ -490,24 +460,24 @@ export default function HomePage() {
                   R$ 50<span className="text-base font-medium text-slate-300">/mês</span>
                 </p>
                 <p className="mt-5 min-h-[72px] text-sm leading-6 text-slate-300">
-                  Acesso à aba de plantão rápido, prescrições prontas e
-                  flashcards do banco, além dos recursos essenciais do Resibook.
+                  Acesso completo ao workspace privado, plantão, prescrições,
+                  exames e todos os recursos do Resibook.
                 </p>
                 <ul className="mt-6 space-y-3 text-sm text-slate-200">
-                  {["Plantão rápido e condutas", "Prescrições e flashcards", "Todos os recursos essenciais"].map((item) => (
+                  {["Tudo do plano Básico", "Meu Resibook e cópias privadas", "Plantão, prescrições, exames e condutas"].map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-cyan-300" />
                       {item}
                     </li>
                   ))}
                 </ul>
-                <InterestLink
-                  message="Olá! Tenho interesse no Plano Completo do Resibook."
+                <Link
+                  href="/cadastro?plano=complete"
                   className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-5 text-sm font-semibold text-white transition hover:bg-cyan-500"
                 >
-                  Tenho interesse no Completo
-                  <MessageCircle className="h-4 w-4" />
-                </InterestLink>
+                  Assinar o Completo
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </article>
             </div>
           </div>
@@ -574,10 +544,9 @@ export default function HomePage() {
             <Link href="/login" className="transition hover:text-white">
               Entrar
             </Link>
-            <InterestLink className="inline-flex items-center gap-2 font-semibold text-cyan-300 transition hover:text-cyan-200">
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </InterestLink>
+            <Link href="/suporte" className="font-semibold text-cyan-300 transition hover:text-cyan-200">
+              Suporte
+            </Link>
           </nav>
         </div>
         <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-slate-500">

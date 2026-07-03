@@ -4,9 +4,11 @@ import { isResibookAdmin } from "@/lib/auth-role";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import { isDisabledCommercialRoute } from "@/lib/product-config";
 
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/termos", "/privacidade", "/aceite-legal"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/auth/callback", "/auth/confirm", "/termos", "/privacidade", "/aceite-legal", "/api/billing/webhook"];
 const GUEST_EMAIL = "convidado@resibook.com";
 const GUEST_ALLOWED_PATHS = ["/prescricao", "/caso-rapido", "/topicos", "/cids", "/exames-evolucao", "/termos", "/privacidade", "/aceite-legal", "/suporte"];
+const BILLING_ALLOWED_PATHS = ["/assinar", "/minha-assinatura", "/api/billing", "/dados-da-conta", "/suporte"];
+const COMPLETE_ONLY_PATHS = ["/meu-resibook", "/plantao", "/caso-rapido", "/prescricao", "/modelos-prescricao", "/exames-evolucao", "/condutas", "/flashcards-dificeis"];
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.some(
@@ -16,6 +18,10 @@ function isPublicRoute(pathname: string) {
 
 function isGuestAllowedPath(pathname: string) {
   return GUEST_ALLOWED_PATHS.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+function isInside(pathname: string, routes: string[]) {
+  return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
 type PendingCookie = { name: string; value: string; options: CookieOptions };
@@ -159,6 +165,55 @@ export async function proxy(request: NextRequest) {
       redirectUrl.search = "";
       if (legalError) redirectUrl.searchParams.set("error", "validation");
       return applyCookies(NextResponse.redirect(redirectUrl), pendingCookies);
+    }
+
+    const subscriptionsEnforced = process.env.RESIBOOK_ENFORCE_SUBSCRIPTIONS === "true";
+    const admin = isResibookAdmin(user);
+    const billingRoute = isInside(pathname, BILLING_ALLOWED_PATHS);
+    if (subscriptionsEnforced && !admin && !billingRoute) {
+      const { data: activeSubscription, error: billingError } = await supabase
+        .from("billing_subscriptions")
+        .select("plan_id")
+        .eq("user_id", user.id)
+        .eq("status", "authorized")
+        .order("amount", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (billingError || !activeSubscription) {
+        if (isApiRoute) {
+          return applyCookies(
+            apiError(
+              billingError ? "Não foi possível validar a assinatura." : "Assinatura necessária para acessar este recurso.",
+              billingError ? 503 : 402,
+              billingError ? "billing_check_failed" : "subscription_required"
+            ),
+            pendingCookies
+          );
+        }
+
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/assinar";
+        redirectUrl.search = "";
+        if (billingError) redirectUrl.searchParams.set("erro", "configuracao");
+        return applyCookies(NextResponse.redirect(redirectUrl), pendingCookies);
+      }
+
+      if (activeSubscription.plan_id === "basic" && isInside(pathname, COMPLETE_ONLY_PATHS)) {
+        if (isApiRoute) {
+          return applyCookies(
+            apiError("Este recurso exige o plano Completo.", 403, "complete_plan_required"),
+            pendingCookies
+          );
+        }
+
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/assinar";
+        redirectUrl.search = "";
+        redirectUrl.searchParams.set("plano", "complete");
+        redirectUrl.searchParams.set("upgrade", "1");
+        return applyCookies(NextResponse.redirect(redirectUrl), pendingCookies);
+      }
     }
   }
 

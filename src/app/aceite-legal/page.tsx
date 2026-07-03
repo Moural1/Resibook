@@ -8,6 +8,11 @@ import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
+function safeNextPath(value: string | null) {
+  if (!value?.startsWith("/") || value.startsWith("//")) return null;
+  return value;
+}
+
 export default function AceiteLegalPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -40,8 +45,14 @@ export default function AceiteLegalPage() {
       }
 
       const normalizedEmail = user.email?.trim().toLowerCase() || "";
+      const paramsNext = safeNextPath(new URLSearchParams(window.location.search).get("next"));
+      const storedPlan = localStorage.getItem("resibook_selected_plan");
       const nextPath =
-        normalizedEmail === GUEST_EMAIL ? "/prescricao" : "/dashboard";
+        normalizedEmail === GUEST_EMAIL
+          ? "/prescricao"
+          : paramsNext || (storedPlan === "basic" || storedPlan === "complete"
+            ? `/assinar?plano=${storedPlan}`
+            : "/dashboard");
 
       const now = new Date().toISOString();
 
@@ -67,6 +78,7 @@ export default function AceiteLegalPage() {
         return;
       }
 
+      localStorage.removeItem("resibook_selected_plan");
       router.replace(nextPath);
     } catch {
       setError("Não foi possível salvar o aceite. Tente novamente.");

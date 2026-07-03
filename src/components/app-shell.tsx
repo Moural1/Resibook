@@ -15,6 +15,7 @@ import {
   Brain,
   Calculator,
   ClipboardList,
+  CreditCard,
   FlaskConical,
   Gauge,
   Home,
@@ -68,6 +69,10 @@ const AUTH_PUBLIC_PATHS = [
   "/login",
   "/signup",
   "/register",
+  "/cadastro",
+  "/assinar",
+  "/auth/callback",
+  "/auth/confirm",
   "/redefinir-senha",
 ];
 const LEGAL_PUBLIC_PATHS = ["/aceite-legal", "/termos", "/privacidade"];
@@ -374,6 +379,12 @@ function SidebarContent({
   ];
 
   const secondaryItems = [
+    {
+      href: "/minha-assinatura",
+      label: "Minha assinatura",
+      icon: CreditCard,
+      badge: null,
+    },
     {
       href: "/dados-da-conta",
       label: "Dados da conta",

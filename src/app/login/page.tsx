@@ -34,10 +34,13 @@ function LoginContent() {
 
   const redirectTo = sanitizeRedirect(searchParams.get("redirect"));
   const blocked = searchParams.get("blocked") === "1";
+  const confirmationError = searchParams.get("error") === "confirmation";
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState("");
+  const [erro, setErro] = useState(
+    confirmationError ? "O link de confirmação é inválido ou expirou. Solicite um novo acesso." : ""
+  );
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
@@ -120,6 +123,13 @@ function LoginContent() {
 
       if (!acceptedCurrentTerms || !acceptedCurrentPrivacy) {
         window.location.replace("/aceite-legal");
+        return;
+      }
+
+      const storedPlan = localStorage.getItem("resibook_selected_plan");
+      if (storedPlan === "basic" || storedPlan === "complete") {
+        localStorage.removeItem("resibook_selected_plan");
+        window.location.replace(`/assinar?plano=${storedPlan}`);
         return;
       }
 
@@ -224,7 +234,7 @@ function LoginContent() {
             Entre para acessar seu banco clínico.
           </p>
           <span className="mt-3 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-500">
-            Acesso liberado por convite
+            Cadastro e pagamento online
           </span>
         </div>
 
@@ -325,6 +335,12 @@ function LoginContent() {
             {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
+        <p className="mt-5 text-center text-sm text-slate-500">
+          Ainda não possui conta?{" "}
+          <Link href="/cadastro" className="font-semibold text-cyan-700">
+            Criar conta
+          </Link>
+        </p>
 
         <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
           <p className="text-xs leading-5 text-slate-500">
