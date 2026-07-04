@@ -3,6 +3,7 @@ import { CreditCard, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { BILLING_PLANS, isBillingPlanId } from "@/lib/billing/plans";
 import { BillingActions } from "./billing-actions";
+import { getBillingRuntimeConfig } from "@/lib/billing/config";
 
 const statusLabels: Record<string, string> = {
   authorized: "Ativa",
@@ -12,12 +13,14 @@ const statusLabels: Record<string, string> = {
 };
 
 export default async function MinhaAssinaturaPage() {
+  const billingConfig = getBillingRuntimeConfig();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: subscription } = user ? await supabase
     .from("billing_subscriptions")
-    .select("plan_id, status, amount, next_payment_at, updated_at")
+    .select("plan_id, status, amount, next_payment_at, updated_at, environment")
     .eq("user_id", user.id)
+    .eq("environment", billingConfig.environment)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle() : { data: null };
@@ -28,6 +31,7 @@ export default async function MinhaAssinaturaPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <section className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
         <div className="flex items-center gap-4"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700"><CreditCard /></span><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Cobrança</p><h1 className="text-2xl font-semibold text-slate-950">Minha assinatura</h1></div></div>
+        {billingConfig.testMode ? <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Ambiente de teste — esta assinatura não altera o acesso comercial.</div> : null}
         {subscription && plan ? (
           <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm text-slate-500">Plano atual</p><p className="mt-1 text-xl font-semibold text-slate-950">{plan.name} · R$ {Number(subscription.amount).toFixed(0)}/mês</p></div><span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">{statusLabels[subscription.status] || subscription.status}</span></div>

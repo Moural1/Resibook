@@ -1,8 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getBillingPlan, MERCADO_PAGO_WEBHOOK_URL } from "@/lib/billing/plans";
+import { buildCheckoutPayload } from "@/lib/billing/checkout-payload";
 import {
+  getBillingRuntimeConfig,
+  getTestPayerEmail,
+} from "@/lib/billing/config";
+import { logBillingError } from "@/lib/billing/logger";
+import { getBillingPlan } from "@/lib/billing/plans";
+import {
+  BillingConfigurationError,
   buildExternalReference,
   getSiteUrl,
   mercadoPagoRequest,
@@ -11,6 +18,17 @@ import {
 } from "@/lib/billing/server";
 
 export async function POST(request: Request) {
+  const config = getBillingRuntimeConfig();
+  if (!config.configured) {
+    return NextResponse.json(
+      {
+        error: `Billing não configurado: ${config.missing.join(", ")}.`,
+        code: "billing_configuration_invalid",
+      },
+      { status: 503 }
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,6 +48,7 @@ export async function POST(request: Request) {
     .from("billing_subscriptions")
     .select("plan_id, status, checkout_url, provider_subscription_id")
     .eq("user_id", user.id)
+    .eq("environment", config.environment)
     .in("status", ["pending", "authorized"])
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -43,16 +62,24 @@ export async function POST(request: Request) {
           {
             method: "PUT",
             body: JSON.stringify({
-              reason: `Resibook ${plan.name} - assinatura mensal`,
-              external_reference: buildExternalReference(user.id, plan.id),
+              reason: `${config.testMode ? "[TESTE] " : ""}Resibook ${plan.name} - assinatura mensal`,
+              external_reference: buildExternalReference(
+                user.id,
+                plan.id,
+                config.environment
+              ),
               auto_recurring: { transaction_amount: plan.price, currency_id: "BRL" },
             }),
-          }
+          },
+          config.environment
         );
-        await syncMercadoPagoSubscription(upgraded);
+        await syncMercadoPagoSubscription(upgraded, config.environment);
         return NextResponse.json({ redirectUrl: "/minha-assinatura?upgrade=1" });
       } catch (error) {
-        console.error("Failed to upgrade subscription", error);
+        logBillingError("subscription_upgrade_failed", {
+          environment: config.environment,
+          configurationError: error instanceof BillingConfigurationError,
+        });
         return NextResponse.json({ error: "Não foi possível atualizar o plano agora." }, { status: 503 });
       }
     }
@@ -74,33 +101,32 @@ export async function POST(request: Request) {
 
   const siteUrl = getSiteUrl();
   try {
+    const checkoutPayload = buildCheckoutPayload({
+      environment: config.environment,
+      plan,
+      userId: user.id,
+      accountEmail: user.email,
+      testPayerEmail: getTestPayerEmail(),
+      siteUrl,
+    });
     const subscription = await mercadoPagoRequest<MercadoPagoSubscription>(
       "/preapproval",
       {
         method: "POST",
         headers: { "X-Idempotency-Key": randomUUID() },
-        body: JSON.stringify({
-          reason: `Resibook ${plan.name} - assinatura mensal`,
-          external_reference: buildExternalReference(user.id, plan.id),
-          payer_email: user.email,
-          auto_recurring: {
-            frequency: 1,
-            frequency_type: "months",
-            transaction_amount: plan.price,
-            currency_id: "BRL",
-          },
-          back_url: `${siteUrl}/minha-assinatura?retorno=mercado-pago`,
-          notification_url: MERCADO_PAGO_WEBHOOK_URL,
-          status: "pending",
-        }),
-      }
+        body: JSON.stringify(checkoutPayload),
+      },
+      config.environment
     );
 
-    await syncMercadoPagoSubscription(subscription);
+    await syncMercadoPagoSubscription(subscription, config.environment);
     if (!subscription.init_point) throw new Error("Checkout não retornado.");
     return NextResponse.json({ checkoutUrl: subscription.init_point });
   } catch (error) {
-    console.error("Failed to create Mercado Pago checkout", error);
+    logBillingError("checkout_creation_failed", {
+      environment: config.environment,
+      configurationError: error instanceof BillingConfigurationError,
+    });
     return NextResponse.json(
       { error: "Não foi possível abrir o pagamento agora." },
       { status: 503 }
