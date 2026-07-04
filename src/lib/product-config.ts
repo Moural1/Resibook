@@ -1,8 +1,8 @@
-const patientRecordsEnabled =
-  process.env.NEXT_PUBLIC_RESIBOOK_ENABLE_PATIENT_RECORDS === "true";
+// Pacientes é um recurso central do produto e já possui isolamento por usuário
+// no Supabase. Não pode desaparecer por ausência de variável na Vercel.
+const patientRecordsEnabled = true;
 
 const clinicalAudioEnabled =
-  patientRecordsEnabled &&
   process.env.NEXT_PUBLIC_RESIBOOK_ENABLE_CLINICAL_AUDIO === "true";
 
 export const PRODUCT_CAPABILITIES = Object.freeze({

@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import test from "node:test";
 
 import { isDisabledCommercialRoute } from "../src/lib/product-config.ts";
+import { isResibookAdmin } from "../src/lib/auth-role.ts";
 import { BILLING_PLANS, MERCADO_PAGO_WEBHOOK_URL } from "../src/lib/billing/plans.ts";
 import { getBillingRuntimeConfig } from "../src/lib/billing/config.ts";
 import { buildCheckoutPayload } from "../src/lib/billing/checkout-payload.ts";
@@ -14,11 +15,23 @@ import {
   verifyMercadoPagoSignature,
 } from "../src/lib/billing/security.ts";
 
-test("edição biblioteca bloqueia prontuário na página e na API", () => {
-  assert.equal(isDisabledCommercialRoute("/pacientes"), true);
-  assert.equal(isDisabledCommercialRoute("/pacientes/123"), true);
-  assert.equal(isDisabledCommercialRoute("/api/patients"), true);
-  assert.equal(isDisabledCommercialRoute("/api/patients/123"), true);
+test("carteira de pacientes permanece disponível para usuários autenticados", () => {
+  assert.equal(isDisabledCommercialRoute("/pacientes"), false);
+  assert.equal(isDisabledCommercialRoute("/pacientes/123"), false);
+  assert.equal(isDisabledCommercialRoute("/api/patients"), false);
+  assert.equal(isDisabledCommercialRoute("/api/patients/123"), false);
+});
+
+test("conta proprietária é reconhecida como administradora", () => {
+  assert.equal(isResibookAdmin({ email: "igormoura@resibook.com" }), true);
+  assert.equal(isResibookAdmin({ email: "medico@example.com" }), false);
+  assert.equal(
+    isResibookAdmin({
+      email: "medico@example.com",
+      app_metadata: { role: "admin" },
+    }),
+    true
+  );
 });
 
 test("edição biblioteca bloqueia IA clínica e consultas também nas APIs", () => {

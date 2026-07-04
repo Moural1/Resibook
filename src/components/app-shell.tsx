@@ -393,23 +393,24 @@ function SidebarContent({
     },
     { href: "/metricas", label: "Métricas", icon: BarChart3, badge: null },
     { href: "/suporte", label: "Suporte", icon: LifeBuoy, badge: null },
-    ...(isAdmin
-      ? [
-          {
-            href: "/modelos-prescricao",
-            label: "Modelos prescrição",
-            icon: ClipboardList,
-            badge: null,
-          },
-          {
-            href: "/acessos",
-            label: "Acessos",
-            icon: ShieldCheck,
-            badge: null,
-          },
-        ]
-      : []),
   ];
+
+  const adminItems = isAdmin
+    ? [
+        {
+          href: "/modelos-prescricao",
+          label: "Modelos prescrição",
+          icon: ClipboardList,
+          badge: null,
+        },
+        {
+          href: "/acessos",
+          label: "Acessos e usuários",
+          icon: ShieldCheck,
+          badge: null,
+        },
+      ]
+    : [];
 
   const primaryItems = isGuest ? guestPrimaryItems : fullPrimaryItems;
   const visibleSecondaryItems = isGuest ? [] : secondaryItems;
@@ -439,23 +440,27 @@ function SidebarContent({
           </div>
         </div>
 
-        <div
-          className={`mt-3.5 rounded-2xl border px-3 py-2.5 ${
-            isGuest
-              ? "border-amber-300/15 bg-amber-400/[0.06]"
+        <div className={`mt-3.5 rounded-2xl border px-3 py-2.5 ${
+          isGuest
+            ? "border-amber-300/15 bg-amber-400/[0.06]"
+            : isAdmin
+              ? "border-cyan-300/25 bg-cyan-400/[0.08]"
               : "border-white/8 bg-white/[0.035]"
-          }`}
-        >
+        }`}>
           <p
             className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${
               isGuest ? "text-amber-200" : "text-slate-400"
             }`}
           >
-            {isGuest ? "Modo" : "Ambiente"}
+            {isGuest ? "Modo" : isAdmin ? "Perfil" : "Ambiente"}
           </p>
 
           <p className="mt-1 text-[13px] font-semibold text-white">
-            {isGuest ? "Acesso convidado" : "Operação clínica"}
+            {isGuest
+              ? "Acesso convidado"
+              : isAdmin
+                ? "Administrador"
+                : "Operação clínica"}
           </p>
         </div>
 
@@ -480,6 +485,15 @@ function SidebarContent({
           <NavSection
             title="Conta e acesso"
             items={visibleSecondaryItems}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
+        ) : null}
+
+        {adminItems.length > 0 ? (
+          <NavSection
+            title="Administração"
+            items={adminItems}
             pathname={pathname}
             onNavigate={onNavigate}
           />
@@ -531,12 +545,14 @@ function SidebarContent({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {isGuest ? "Sessão" : "Conta"}
+                {isGuest ? "Sessão" : isAdmin ? "Administrador" : "Conta"}
               </p>
               <p className="mt-1 text-[13px] text-slate-300">
                 {isGuest
                   ? "Usuário convidado ativo."
-                  : "Saída segura do ambiente clínico."}
+                  : isAdmin
+                    ? "Sessão administrativa protegida."
+                    : "Saída segura do ambiente clínico."}
               </p>
             </div>
           </div>
