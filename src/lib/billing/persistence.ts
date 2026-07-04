@@ -22,6 +22,8 @@ export function buildSubscriptionRow(input: {
   environment: BillingEnvironment;
   paymentId?: string | null;
   currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
+  keepAccessAfterCancellation?: boolean;
   now?: string;
 }) {
   const { subscription, reference, environment } = input;
@@ -46,7 +48,11 @@ export function buildSubscriptionRow(input: {
     ...(input.currentPeriodStart
       ? { current_period_start: input.currentPeriodStart }
       : {}),
-    current_period_end: subscription.next_payment_date || null,
+    current_period_end:
+      subscription.status === "cancelled" &&
+      input.keepAccessAfterCancellation === false
+        ? null
+        : subscription.next_payment_date || input.currentPeriodEnd || null,
     canceled_at:
       subscription.status === "cancelled"
         ? subscription.last_modified || input.now || new Date().toISOString()

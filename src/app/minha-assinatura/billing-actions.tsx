@@ -7,7 +7,7 @@ export function BillingActions({ canCancel }: { canCancel: boolean }) {
   const [error, setError] = useState("");
 
   async function run(action: "refresh" | "cancel") {
-    if (action === "cancel" && !window.confirm("Deseja cancelar a renovação da assinatura?")) return;
+    if (action === "cancel" && !window.confirm("Deseja cancelar a renovação? O acesso continua até o fim do período já pago.")) return;
     setLoading(action);
     setError("");
     const response = await fetch(`/api/billing/${action === "refresh" ? "status" : "cancel"}`, { method: "POST" });

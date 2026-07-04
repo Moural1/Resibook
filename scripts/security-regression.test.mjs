@@ -10,6 +10,10 @@ import { buildCheckoutPayload } from "../src/lib/billing/checkout-payload.ts";
 import { sanitizeBillingLog } from "../src/lib/billing/logger.ts";
 import { buildSubscriptionRow } from "../src/lib/billing/persistence.ts";
 import {
+  getBestActiveEntitlement,
+  hasSubscriptionAccess,
+} from "../src/lib/billing/entitlement.ts";
+import {
   buildExternalReference,
   parseExternalReference,
   verifyMercadoPagoSignature,
@@ -220,4 +224,57 @@ test("logs de billing removem credenciais e dados pessoais", () => {
   assert.doesNotMatch(sanitized, /APP_USR|webhook-value|person@example\.com/);
   assert.match(sanitized, /REDACTED/);
   assert.match(sanitized, /401/);
+});
+
+test("cancelamento mantém acesso somente até o fim do período pago", () => {
+  const now = new Date("2026-07-04T12:00:00.000Z");
+  assert.equal(
+    hasSubscriptionAccess(
+      {
+        plan_id: "complete",
+        status: "cancelled",
+        current_period_end: "2026-08-04T12:00:00.000Z",
+      },
+      now
+    ),
+    true
+  );
+  assert.equal(
+    hasSubscriptionAccess(
+      {
+        plan_id: "complete",
+        status: "cancelled",
+        current_period_end: "2026-07-03T12:00:00.000Z",
+      },
+      now
+    ),
+    false
+  );
+});
+
+test("plano completo ativo prevalece sobre o básico", () => {
+  const entitlement = getBestActiveEntitlement([
+    { plan_id: "basic", status: "authorized", current_period_end: null },
+    { plan_id: "complete", status: "authorized", current_period_end: null },
+  ]);
+  assert.equal(entitlement?.plan_id, "complete");
+});
+
+test("cancelamento pendente não cria período de acesso pago", () => {
+  const row = buildSubscriptionRow({
+    environment: "production",
+    reference: {
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      planId: "basic",
+      environment: "production",
+    },
+    currentPeriodEnd: "2026-08-04T12:00:00.000Z",
+    keepAccessAfterCancellation: false,
+    subscription: {
+      id: "preapproval-pending-cancelled",
+      status: "cancelled",
+      next_payment_date: "2026-08-04T12:00:00.000Z",
+    },
+  });
+  assert.equal(row.current_period_end, null);
 });
