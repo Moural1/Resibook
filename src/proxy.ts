@@ -4,6 +4,7 @@ import { isResibookAdmin } from "@/lib/auth-role";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import { isDisabledCommercialRoute } from "@/lib/product-config";
 import { getBillingRuntimeConfig } from "@/lib/billing/config";
+import { getBestActiveEntitlement } from "@/lib/billing/entitlement";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/auth/callback", "/auth/confirm", "/termos", "/privacidade", "/aceite-legal", "/api/mercado-pago/webhook"];
 const GUEST_EMAIL = "convidado@resibook.com";
@@ -178,15 +179,16 @@ export async function proxy(request: NextRequest) {
     const admin = isResibookAdmin(user);
     const billingRoute = isInside(pathname, BILLING_ALLOWED_PATHS);
     if (billingConfig.enforcementSafe && !admin && !billingRoute) {
-      const { data: activeSubscription, error: billingError } = await supabase
+      const { data: subscriptions, error: billingError } = await supabase
         .from("billing_subscriptions")
-        .select("plan_id")
+        .select("plan_id, status, current_period_end")
         .eq("user_id", user.id)
         .eq("environment", "production")
-        .eq("status", "authorized")
+        .in("status", ["authorized", "cancelled"])
         .order("amount", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
+
+      const activeSubscription = getBestActiveEntitlement(subscriptions);
 
       if (billingError) {
         // Fail open: an infrastructure/configuration failure must not lock out users.

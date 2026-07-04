@@ -18,7 +18,7 @@ export default async function MinhaAssinaturaPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: subscription } = user ? await supabase
     .from("billing_subscriptions")
-    .select("plan_id, status, amount, next_payment_at, updated_at, environment")
+    .select("plan_id, status, amount, next_payment_at, current_period_end, updated_at, environment")
     .eq("user_id", user.id)
     .eq("environment", billingConfig.environment)
     .order("updated_at", { ascending: false })
@@ -35,7 +35,9 @@ export default async function MinhaAssinaturaPage() {
         {subscription && plan ? (
           <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm text-slate-500">Plano atual</p><p className="mt-1 text-xl font-semibold text-slate-950">{plan.name} · R$ {Number(subscription.amount).toFixed(0)}/mês</p></div><span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">{statusLabels[subscription.status] || subscription.status}</span></div>
-            {subscription.next_payment_at ? <p className="mt-4 text-sm text-slate-600">Próxima cobrança prevista: {new Intl.DateTimeFormat("pt-BR").format(new Date(subscription.next_payment_at))}</p> : null}
+            {subscription.status === "cancelled" && subscription.current_period_end ? (
+              <p className="mt-4 text-sm font-medium text-slate-700">A renovação foi cancelada. Acesso disponível até {new Intl.DateTimeFormat("pt-BR").format(new Date(subscription.current_period_end))}.</p>
+            ) : subscription.next_payment_at ? <p className="mt-4 text-sm text-slate-600">Próxima cobrança prevista: {new Intl.DateTimeFormat("pt-BR").format(new Date(subscription.next_payment_at))}</p> : null}
             <BillingActions canCancel={canCancel} />
           </div>
         ) : (

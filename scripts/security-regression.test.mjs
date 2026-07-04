@@ -3,22 +3,39 @@ import { createHmac } from "node:crypto";
 import test from "node:test";
 
 import { isDisabledCommercialRoute } from "../src/lib/product-config.ts";
+import { isResibookAdmin } from "../src/lib/auth-role.ts";
 import { BILLING_PLANS, MERCADO_PAGO_WEBHOOK_URL } from "../src/lib/billing/plans.ts";
 import { getBillingRuntimeConfig } from "../src/lib/billing/config.ts";
 import { buildCheckoutPayload } from "../src/lib/billing/checkout-payload.ts";
 import { sanitizeBillingLog } from "../src/lib/billing/logger.ts";
 import { buildSubscriptionRow } from "../src/lib/billing/persistence.ts";
 import {
+  getBestActiveEntitlement,
+  hasSubscriptionAccess,
+} from "../src/lib/billing/entitlement.ts";
+import {
   buildExternalReference,
   parseExternalReference,
   verifyMercadoPagoSignature,
 } from "../src/lib/billing/security.ts";
 
-test("edição biblioteca bloqueia prontuário na página e na API", () => {
-  assert.equal(isDisabledCommercialRoute("/pacientes"), true);
-  assert.equal(isDisabledCommercialRoute("/pacientes/123"), true);
-  assert.equal(isDisabledCommercialRoute("/api/patients"), true);
-  assert.equal(isDisabledCommercialRoute("/api/patients/123"), true);
+test("carteira de pacientes permanece disponível para usuários autenticados", () => {
+  assert.equal(isDisabledCommercialRoute("/pacientes"), false);
+  assert.equal(isDisabledCommercialRoute("/pacientes/123"), false);
+  assert.equal(isDisabledCommercialRoute("/api/patients"), false);
+  assert.equal(isDisabledCommercialRoute("/api/patients/123"), false);
+});
+
+test("conta proprietária é reconhecida como administradora", () => {
+  assert.equal(isResibookAdmin({ email: "igormoura@resibook.com" }), true);
+  assert.equal(isResibookAdmin({ email: "medico@example.com" }), false);
+  assert.equal(
+    isResibookAdmin({
+      email: "medico@example.com",
+      app_metadata: { role: "admin" },
+    }),
+    true
+  );
 });
 
 test("edição biblioteca bloqueia IA clínica e consultas também nas APIs", () => {
@@ -207,4 +224,57 @@ test("logs de billing removem credenciais e dados pessoais", () => {
   assert.doesNotMatch(sanitized, /APP_USR|webhook-value|person@example\.com/);
   assert.match(sanitized, /REDACTED/);
   assert.match(sanitized, /401/);
+});
+
+test("cancelamento mantém acesso somente até o fim do período pago", () => {
+  const now = new Date("2026-07-04T12:00:00.000Z");
+  assert.equal(
+    hasSubscriptionAccess(
+      {
+        plan_id: "complete",
+        status: "cancelled",
+        current_period_end: "2026-08-04T12:00:00.000Z",
+      },
+      now
+    ),
+    true
+  );
+  assert.equal(
+    hasSubscriptionAccess(
+      {
+        plan_id: "complete",
+        status: "cancelled",
+        current_period_end: "2026-07-03T12:00:00.000Z",
+      },
+      now
+    ),
+    false
+  );
+});
+
+test("plano completo ativo prevalece sobre o básico", () => {
+  const entitlement = getBestActiveEntitlement([
+    { plan_id: "basic", status: "authorized", current_period_end: null },
+    { plan_id: "complete", status: "authorized", current_period_end: null },
+  ]);
+  assert.equal(entitlement?.plan_id, "complete");
+});
+
+test("cancelamento pendente não cria período de acesso pago", () => {
+  const row = buildSubscriptionRow({
+    environment: "production",
+    reference: {
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      planId: "basic",
+      environment: "production",
+    },
+    currentPeriodEnd: "2026-08-04T12:00:00.000Z",
+    keepAccessAfterCancellation: false,
+    subscription: {
+      id: "preapproval-pending-cancelled",
+      status: "cancelled",
+      next_payment_date: "2026-08-04T12:00:00.000Z",
+    },
+  });
+  assert.equal(row.current_period_end, null);
 });

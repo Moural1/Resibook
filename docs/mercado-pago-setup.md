@@ -176,6 +176,9 @@ valores.
 
 Se uma assinatura real tiver sido criada, cancele-a imediatamente na conta
 vendedora real e confirme no painel do Mercado Pago que não há próxima cobrança.
+No cancelamento normal, a renovação é interrompida e o acesso permanece liberado
+até `current_period_end`, correspondente ao fim do período já pago. Depois dessa
+data, o controle de acesso deixa de considerar a assinatura válida.
 
 ## Checklist de variáveis na Vercel
 

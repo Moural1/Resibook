@@ -24,7 +24,7 @@ export async function POST() {
 
   const { data: current } = await supabase
     .from("billing_subscriptions")
-    .select("provider_subscription_id")
+    .select("provider_subscription_id, status, current_period_end")
     .eq("user_id", user.id)
     .eq("environment", config.environment)
     .in("status", ["pending", "authorized", "paused"])
@@ -36,13 +36,23 @@ export async function POST() {
   }
 
   try {
+    const beforeCancellation = await mercadoPagoRequest<MercadoPagoSubscription>(
+      `/preapproval/${encodeURIComponent(current.provider_subscription_id)}`,
+      undefined,
+      config.environment
+    );
     const subscription = await mercadoPagoRequest<MercadoPagoSubscription>(
       `/preapproval/${encodeURIComponent(current.provider_subscription_id)}`,
       { method: "PUT", body: JSON.stringify({ status: "cancelled" }) },
       config.environment
     );
-    await syncMercadoPagoSubscription(subscription, config.environment);
-    return NextResponse.json({ success: true });
+    const accessUntil = current.status === "authorized"
+      ? beforeCancellation.next_payment_date || current.current_period_end || null
+      : null;
+    await syncMercadoPagoSubscription(subscription, config.environment, {
+      periodEnd: accessUntil,
+    });
+    return NextResponse.json({ success: true, accessUntil });
   } catch {
     logBillingError("subscription_cancel_failed", { environment: config.environment });
     return NextResponse.json({ error: "Não foi possível cancelar a assinatura." }, { status: 503 });

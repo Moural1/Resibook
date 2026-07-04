@@ -81,7 +81,11 @@ export async function mercadoPagoRequest<T>(
 export async function syncMercadoPagoSubscription(
   subscription: MercadoPagoSubscription,
   environment: BillingEnvironment = getBillingEnvironment(),
-  payment?: { id?: string | number | null; periodStart?: string | null }
+  context?: {
+    id?: string | number | null;
+    periodStart?: string | null;
+    periodEnd?: string | null;
+  }
 ) {
   const reference = parseExternalReference(subscription.external_reference);
   const admin = createBillingAdminClient();
@@ -106,12 +110,26 @@ export async function syncMercadoPagoSubscription(
     throw new Error("Assinatura vinculada a uma conta inválida.");
   }
 
+  const { data: existing } = await admin
+    .from("billing_subscriptions")
+    .select("status, mercado_pago_payment_id, current_period_start, current_period_end")
+    .eq("provider_subscription_id", subscription.id)
+    .maybeSingle();
+
   const row = buildSubscriptionRow({
     subscription,
     reference,
     environment,
-    paymentId: payment?.id ? String(payment.id) : null,
-    currentPeriodStart: payment?.periodStart,
+    paymentId: context?.id
+      ? String(context.id)
+      : existing?.mercado_pago_payment_id,
+    currentPeriodStart:
+      context?.periodStart || existing?.current_period_start,
+    currentPeriodEnd: context?.periodEnd || existing?.current_period_end,
+    keepAccessAfterCancellation:
+      subscription.status !== "cancelled" ||
+      existing?.status === "authorized" ||
+      (existing?.status === "cancelled" && Boolean(existing.current_period_end)),
   });
   const { error } = await admin
     .from("billing_subscriptions")
