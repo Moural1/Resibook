@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isResibookAdmin } from "@/lib/auth-role";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import { isDisabledCommercialRoute } from "@/lib/product-config";
+import { getBillingRuntimeConfig } from "@/lib/billing/config";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/auth/callback", "/auth/confirm", "/termos", "/privacidade", "/aceite-legal", "/api/mercado-pago/webhook"];
 const GUEST_EMAIL = "convidado@resibook.com";
@@ -167,26 +168,38 @@ export async function proxy(request: NextRequest) {
       return applyCookies(NextResponse.redirect(redirectUrl), pendingCookies);
     }
 
-    const subscriptionsEnforced = process.env.RESIBOOK_ENFORCE_SUBSCRIPTIONS === "true";
+    const billingConfig = getBillingRuntimeConfig();
+    if (billingConfig.enforcementRequested && !billingConfig.enforcementSafe) {
+      console.error("[billing] subscription_enforcement_disabled", {
+        environment: billingConfig.environment,
+        missing: billingConfig.missing,
+      });
+    }
     const admin = isResibookAdmin(user);
     const billingRoute = isInside(pathname, BILLING_ALLOWED_PATHS);
-    if (subscriptionsEnforced && !admin && !billingRoute) {
+    if (billingConfig.enforcementSafe && !admin && !billingRoute) {
       const { data: activeSubscription, error: billingError } = await supabase
         .from("billing_subscriptions")
         .select("plan_id")
         .eq("user_id", user.id)
+        .eq("environment", "production")
         .eq("status", "authorized")
         .order("amount", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (billingError || !activeSubscription) {
+      if (billingError) {
+        // Fail open: an infrastructure/configuration failure must not lock out users.
+        console.error("[billing] subscription_access_check_failed", {
+          databaseCode: billingError.code,
+        });
+      } else if (!activeSubscription) {
         if (isApiRoute) {
           return applyCookies(
             apiError(
-              billingError ? "Não foi possível validar a assinatura." : "Assinatura necessária para acessar este recurso.",
-              billingError ? 503 : 402,
-              billingError ? "billing_check_failed" : "subscription_required"
+              "Assinatura necessária para acessar este recurso.",
+              402,
+              "subscription_required"
             ),
             pendingCookies
           );
@@ -195,11 +208,10 @@ export async function proxy(request: NextRequest) {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/assinar";
         redirectUrl.search = "";
-        if (billingError) redirectUrl.searchParams.set("erro", "configuracao");
         return applyCookies(NextResponse.redirect(redirectUrl), pendingCookies);
       }
 
-      if (activeSubscription.plan_id === "basic" && isInside(pathname, COMPLETE_ONLY_PATHS)) {
+      if (activeSubscription?.plan_id === "basic" && isInside(pathname, COMPLETE_ONLY_PATHS)) {
         if (isApiRoute) {
           return applyCookies(
             apiError("Este recurso exige o plano Completo.", 403, "complete_plan_required"),

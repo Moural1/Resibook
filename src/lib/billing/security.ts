@@ -1,29 +1,49 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { BillingEnvironment } from "./config";
 import type { BillingPlanId } from "./plans";
 
-export function buildExternalReference(userId: string, planId: BillingPlanId) {
-  return `resibook|${userId}|${planId}`;
+export type ParsedExternalReference = {
+  userId: string;
+  planId: BillingPlanId;
+  environment: BillingEnvironment;
+};
+
+export function buildExternalReference(
+  userId: string,
+  planId: BillingPlanId,
+  environment: BillingEnvironment = "production"
+) {
+  return `resibook|${environment}|${userId}|${planId}`;
 }
 
 export function parseExternalReference(value?: string | null) {
-  const [product, userId, planId] = String(value || "").split("|");
+  const parts = String(value || "").split("|");
+  const legacy = parts.length === 3;
+  const [product, rawEnvironment, rawUserId, rawPlanId] = legacy
+    ? [parts[0], "production", parts[1], parts[2]]
+    : parts;
+  const environment = rawEnvironment as BillingEnvironment;
+  const userId = rawUserId;
+  const planId = rawPlanId;
   if (
     product !== "resibook" ||
+    (environment !== "test" && environment !== "production") ||
     !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(userId || "") ||
     (planId !== "basic" && planId !== "complete")
   ) {
     return null;
   }
 
-  return { userId, planId: planId as BillingPlanId };
+  return { userId, planId: planId as BillingPlanId, environment };
 }
 
 export function verifyMercadoPagoSignature(input: {
   xSignature: string | null;
   xRequestId: string | null;
   dataId: string;
+  secret: string | undefined;
 }) {
-  const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+  const secret = input.secret;
   if (!secret || !input.xSignature || !input.xRequestId || !input.dataId) {
     return false;
   }
