@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BILLING_PLANS, isBillingPlanId } from "@/lib/billing/plans";
 import { BillingActions } from "./billing-actions";
 import { getBillingRuntimeConfig } from "@/lib/billing/config";
+import { hasSubscriptionAccess } from "@/lib/billing/entitlement";
 
 const statusLabels: Record<string, string> = {
   authorized: "Ativa",
@@ -26,6 +27,20 @@ export default async function MinhaAssinaturaPage() {
     .maybeSingle() : { data: null };
   const plan = subscription && isBillingPlanId(subscription.plan_id) ? BILLING_PLANS[subscription.plan_id] : null;
   const canCancel = ["authorized", "pending", "paused"].includes(subscription?.status || "");
+  const canResubscribe = subscription?.status === "cancelled";
+  const periodEnd = subscription?.current_period_end
+    ? new Date(subscription.current_period_end)
+    : null;
+  const accessExpired = Boolean(
+    canResubscribe &&
+      periodEnd &&
+      !Number.isNaN(periodEnd.getTime()) &&
+      !hasSubscriptionAccess({
+        plan_id: subscription.plan_id,
+        status: subscription.status,
+        current_period_end: subscription.current_period_end,
+      })
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -35,10 +50,12 @@ export default async function MinhaAssinaturaPage() {
         {subscription && plan ? (
           <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm text-slate-500">Plano atual</p><p className="mt-1 text-xl font-semibold text-slate-950">{plan.name} · R$ {Number(subscription.amount).toFixed(0)}/mês</p></div><span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">{statusLabels[subscription.status] || subscription.status}</span></div>
-            {subscription.status === "cancelled" && subscription.current_period_end ? (
-              <p className="mt-4 text-sm font-medium text-slate-700">A renovação foi cancelada. Acesso disponível até {new Intl.DateTimeFormat("pt-BR").format(new Date(subscription.current_period_end))}.</p>
+            {subscription.status === "cancelled" && periodEnd ? (
+              <p className={`mt-4 text-sm font-medium ${accessExpired ? "text-rose-700" : "text-slate-700"}`}>{accessExpired ? "O período pago terminou em" : "A renovação foi cancelada. Acesso disponível até"} {new Intl.DateTimeFormat("pt-BR").format(periodEnd)}.</p>
+            ) : subscription.status === "cancelled" ? (
+              <p className="mt-4 text-sm font-medium text-rose-700">A assinatura foi cancelada. Assine novamente para recuperar o acesso.</p>
             ) : subscription.next_payment_at ? <p className="mt-4 text-sm text-slate-600">Próxima cobrança prevista: {new Intl.DateTimeFormat("pt-BR").format(new Date(subscription.next_payment_at))}</p> : null}
-            <BillingActions canCancel={canCancel} />
+            <BillingActions canCancel={canCancel} canResubscribe={canResubscribe} planId={plan.id} />
           </div>
         ) : (
           <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5"><p className="font-semibold text-amber-900">Nenhuma assinatura encontrada.</p><p className="mt-2 text-sm text-amber-800">Escolha um plano para liberar seu acesso.</p><Link href="/assinar" className="mt-4 inline-flex h-11 items-center rounded-xl bg-cyan-700 px-5 text-sm font-semibold text-white">Ver planos</Link></div>
