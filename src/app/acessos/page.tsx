@@ -522,13 +522,43 @@ export default function AcessosPage() {
       body: JSON.stringify({ email }),
     });
     const payload = (await response.json().catch(() => null)) as
-      | { error?: string }
+      | { error?: string; deletedAccount?: boolean }
       | null;
 
     if (!response.ok) {
       setError(payload?.error || "Não foi possível excluir a conta.");
     } else {
-      setSuccess(`Conta de autenticação ${email} excluída.`);
+      setSuccess(payload?.deletedAccount
+        ? `Conta ${email} e seu histórico de login foram excluídos.`
+        : `${email} foi removido da lista de acessos.`);
+      await load();
+    }
+    setSaving(false);
+  }
+
+  async function removeStaleUser(email: string) {
+    if (!adminApiAvailable) {
+      setError("Limpeza indisponível no servidor.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Remover ${email} da lista? Esta conta já não existe no Supabase Auth; serão apagados apenas os logs e bloqueios antigos.`
+    );
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    const response = await fetch("/api/admin/users", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) {
+      setError(payload?.error || "Não foi possível remover o usuário da lista.");
+    } else {
+      setSuccess(`${email} foi removido da lista de acessos.`);
       await load();
     }
     setSaving(false);
@@ -983,6 +1013,19 @@ export default function AcessosPage() {
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           Excluir conta
+                        </button>
+                      ) : null}
+
+                      {!isAdminUser && !item.authManaged ? (
+                        <button
+                          type="button"
+                          onClick={() => removeStaleUser(item.email)}
+                          disabled={saving || !adminApiAvailable}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                          title="Remover logs e bloqueios de uma conta que já não existe"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Remover da lista
                         </button>
                       ) : null}
                     </div>

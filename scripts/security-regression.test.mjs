@@ -24,6 +24,8 @@ import {
 } from "../src/lib/billing/mercado-pago-error.ts";
 import {
   buildManualPixOrder,
+  getManualPixAccessState,
+  getManualPixDaysRemaining,
   getManualPixConfig,
 } from "../src/lib/billing/manual-pix.ts";
 import {
@@ -375,6 +377,41 @@ test("Pix manual aprovado libera somente o período vigente", () => {
     status: "rejected",
     current_period_end: "2026-08-04T12:00:00.000Z",
   }, now), false);
+});
+
+test("painel Pix identifica vencimento e dias restantes", () => {
+  const order = {
+    id: "123e4567-e89b-12d3-a456-426614174000",
+    plan_id: "complete",
+    status: "approved",
+    amount: 50,
+    customer_email: "doctor@example.com",
+    created_at: "2026-07-05T12:00:00.000Z",
+    access_expires_at: "2026-07-08T00:00:00.000Z",
+  };
+  assert.equal(
+    getManualPixAccessState(order, new Date("2026-07-06T12:00:00.000Z")),
+    "active"
+  );
+  assert.equal(
+    getManualPixDaysRemaining(order.access_expires_at, new Date("2026-07-06T12:00:00.000Z")),
+    2
+  );
+  assert.equal(
+    getManualPixAccessState(order, new Date("2026-07-08T00:00:00.000Z")),
+    "expired"
+  );
+});
+
+test("limpeza de usuários protege contas internas e remove registros órfãos", () => {
+  const route = readFileSync(
+    new URL("../src/app/api/admin/users/route.ts", import.meta.url),
+    "utf8"
+  );
+  assert.match(route, /isSubscriptionExempt\(\{ email \}\)/);
+  assert.match(route, /from\("login_logs"\)\.delete\(\)/);
+  assert.match(route, /from\("blocked_users"\)\.delete\(\)/);
+  assert.match(route, /deletedAccount: Boolean\(target\)/);
 });
 
 test("migration Pix isola usuários e restringe aprovação ao admin", () => {
