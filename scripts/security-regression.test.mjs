@@ -4,7 +4,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { isDisabledCommercialRoute } from "../src/lib/product-config.ts";
-import { isResibookAdmin } from "../src/lib/auth-role.ts";
+import {
+  isResibookAdmin,
+  isSubscriptionExempt,
+} from "../src/lib/auth-role.ts";
 import { BILLING_PLANS, MERCADO_PAGO_WEBHOOK_URL } from "../src/lib/billing/plans.ts";
 import {
   getBillingRuntimeConfig,
@@ -50,6 +53,15 @@ test("conta proprietária é reconhecida como administradora", () => {
     }),
     true
   );
+});
+
+test("contas internas ficam isentas da cobrança sem receber permissão administrativa", () => {
+  for (const email of ["liviarosa@resibook.com", "convidado@resibook.com"]) {
+    assert.equal(isSubscriptionExempt({ email }), true);
+    assert.equal(isResibookAdmin({ email }), false);
+  }
+  assert.equal(isSubscriptionExempt({ email: " LIVIAROSA@RESIBOOK.COM " }), true);
+  assert.equal(isSubscriptionExempt({ email: "medico@example.com" }), false);
 });
 
 test("edição biblioteca bloqueia IA clínica e consultas também nas APIs", () => {
