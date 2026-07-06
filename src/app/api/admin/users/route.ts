@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { isResibookAdmin, LEGACY_ADMIN_EMAIL } from "@/lib/auth-role";
+import {
+  isResibookAdmin,
+  isSubscriptionExempt,
+  LEGACY_ADMIN_EMAIL,
+} from "@/lib/auth-role";
 
 async function authorizeAdmin() {
   const supabase = await createServerClient();
@@ -132,9 +136,9 @@ export async function DELETE(request: Request) {
   if (!email) {
     return NextResponse.json({ error: "E-mail obrigatório." }, { status: 400 });
   }
-  if (email === LEGACY_ADMIN_EMAIL) {
+  if (email === LEGACY_ADMIN_EMAIL || isSubscriptionExempt({ email })) {
     return NextResponse.json(
-      { error: "A conta administradora é protegida." },
+      { error: "Esta conta interna é protegida e não pode ser excluída." },
       { status: 400 }
     );
   }
@@ -150,24 +154,37 @@ export async function DELETE(request: Request) {
   const target = data.users.find(
     (user) => user.email?.trim().toLowerCase() === email
   );
-  if (!target) {
-    return NextResponse.json(
-      { error: "Conta de autenticação não encontrada." },
-      { status: 404 }
-    );
-  }
-  if (isResibookAdmin(target)) {
+  if (target && isResibookAdmin(target)) {
     return NextResponse.json(
       { error: "Contas administradoras são protegidas." },
       { status: 400 }
     );
   }
 
-  const { error: deleteError } = await admin.auth.admin.deleteUser(target.id);
-  if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  if (target) {
+    const { error: deleteError } = await admin.auth.admin.deleteUser(target.id);
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
   }
 
-  return NextResponse.json({ success: true, email });
+  const [logsCleanup, blocksCleanup] = await Promise.all([
+    admin.from("login_logs").delete().ilike("user_email", email),
+    admin.from("blocked_users").delete().ilike("email", email),
+  ]);
+  const cleanupError = logsCleanup.error || blocksCleanup.error;
+  if (cleanupError) {
+    return NextResponse.json(
+      { error: "A conta foi processada, mas não foi possível limpar seu histórico da lista." },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    email,
+    deletedAccount: Boolean(target),
+    cleanedHistory: true,
+  });
 }
 

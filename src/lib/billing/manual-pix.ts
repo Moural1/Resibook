@@ -16,7 +16,39 @@ export type ManualPixOrder = {
   created_at: string;
   approved_at?: string | null;
   rejected_at?: string | null;
+  access_status?: string | null;
+  access_started_at?: string | null;
+  access_expires_at?: string | null;
 };
+
+export type ManualPixAccessState =
+  | "pending"
+  | "active"
+  | "expired"
+  | "rejected"
+  | "canceled"
+  | "missing";
+
+export function getManualPixAccessState(
+  order: ManualPixOrder,
+  now = new Date()
+): ManualPixAccessState {
+  if (order.status !== "approved") return order.status;
+  if (!order.access_expires_at) return "missing";
+  const expiresAt = new Date(order.access_expires_at);
+  if (Number.isNaN(expiresAt.getTime())) return "missing";
+  return expiresAt.getTime() > now.getTime() ? "active" : "expired";
+}
+
+export function getManualPixDaysRemaining(
+  expiresAt?: string | null,
+  now = new Date()
+) {
+  if (!expiresAt) return null;
+  const end = new Date(expiresAt);
+  if (Number.isNaN(end.getTime())) return null;
+  return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86_400_000));
+}
 
 export function getManualPixConfig(env: BillingEnv = process.env) {
   const key = env.RESIBOOK_PIX_KEY?.trim() || "";
@@ -53,4 +85,3 @@ export function buildManualPixOrder(input: {
     customer_name: customerName,
   };
 }
-
