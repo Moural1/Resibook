@@ -27,6 +27,8 @@ export async function POST() {
     .select("provider_subscription_id")
     .eq("user_id", user.id)
     .eq("environment", config.environment)
+    .eq("provider", "mercado_pago")
+    .eq("payment_method", "mercado_pago")
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();

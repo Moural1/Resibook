@@ -2,6 +2,7 @@ export type BillingEntitlement = {
   plan_id: string;
   status: string;
   current_period_end?: string | null;
+  payment_method?: string | null;
 };
 
 export function hasSubscriptionAccess(
@@ -9,7 +10,10 @@ export function hasSubscriptionAccess(
   now = new Date()
 ) {
   if (subscription.status === "authorized") return true;
-  if (subscription.status !== "cancelled" || !subscription.current_period_end) {
+  if (
+    (subscription.status !== "active" && subscription.status !== "cancelled") ||
+    !subscription.current_period_end
+  ) {
     return false;
   }
 
@@ -17,10 +21,10 @@ export function hasSubscriptionAccess(
   return !Number.isNaN(periodEnd.getTime()) && periodEnd.getTime() > now.getTime();
 }
 
-export function getBestActiveEntitlement(
-  subscriptions: BillingEntitlement[] | null | undefined,
+export function getBestActiveEntitlement<T extends BillingEntitlement>(
+  subscriptions: T[] | null | undefined,
   now = new Date()
-) {
+): T | null {
   return (subscriptions || [])
     .filter((subscription) => hasSubscriptionAccess(subscription, now))
     .sort((left, right) => {
@@ -29,4 +33,3 @@ export function getBestActiveEntitlement(
       return rightPriority - leftPriority;
     })[0] || null;
 }
-

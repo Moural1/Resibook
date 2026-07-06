@@ -1,14 +1,28 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { isDisabledCommercialRoute } from "../src/lib/product-config.ts";
 import { isResibookAdmin } from "../src/lib/auth-role.ts";
 import { BILLING_PLANS, MERCADO_PAGO_WEBHOOK_URL } from "../src/lib/billing/plans.ts";
-import { getBillingRuntimeConfig } from "../src/lib/billing/config.ts";
+import {
+  getBillingRuntimeConfig,
+  getMercadoPagoAccessToken,
+} from "../src/lib/billing/config.ts";
 import { buildCheckoutPayload } from "../src/lib/billing/checkout-payload.ts";
 import { sanitizeBillingLog } from "../src/lib/billing/logger.ts";
 import { buildSubscriptionRow } from "../src/lib/billing/persistence.ts";
+import { normalizeBillingEmail } from "../src/lib/billing/email.ts";
+import {
+  extractMercadoPagoDiagnostic,
+  MercadoPagoApiError,
+  mercadoPagoErrorResponse,
+} from "../src/lib/billing/mercado-pago-error.ts";
+import {
+  buildManualPixOrder,
+  getManualPixConfig,
+} from "../src/lib/billing/manual-pix.ts";
 import {
   getBestActiveEntitlement,
   hasSubscriptionAccess,
@@ -108,7 +122,7 @@ test("checkout de teste usa comprador, referência e aviso isolados", () => {
     environment: "test",
     plan: BILLING_PLANS.basic,
     userId: "123e4567-e89b-12d3-a456-426614174000",
-    accountEmail: "real@example.com",
+    billingEmail: "real@example.com",
     testPayerEmail: "buyer@testuser.com",
     siteUrl: "https://preview.example.com",
   });
@@ -133,12 +147,38 @@ test("checkout de produção preserva o comprador real e exige env crítica", ()
     environment: "production",
     plan: BILLING_PLANS.complete,
     userId: "123e4567-e89b-12d3-a456-426614174000",
-    accountEmail: "customer@example.com",
+    billingEmail: "customer@example.com",
     siteUrl: "https://www.resibook.com.br",
   });
   assert.equal(payload.payer_email, "customer@example.com");
   assert.doesNotMatch(payload.reason, /TESTE/);
   assert.match(payload.external_reference, /\|production\|/);
+  assert.equal(getMercadoPagoAccessToken("production", env), "production-token");
+  assert.notEqual(getMercadoPagoAccessToken("production", {
+    ...env,
+    MERCADO_PAGO_TEST_ACCESS_TOKEN: "test-token",
+  }), "test-token");
+});
+
+test("e-mail de cobrança é editável, normalizado e validado", () => {
+  assert.equal(normalizeBillingEmail(" Buyer@Example.COM "), "buyer@example.com");
+  assert.equal(normalizeBillingEmail("email-invalido"), null);
+});
+
+test("erro do Mercado Pago retorna diagnóstico controlado e sanitizado", () => {
+  const diagnostic = extractMercadoPagoDiagnostic({
+    message: "payer buyer@example.com invalid",
+    error: "bad_request",
+    status_detail: "subscription_invalid_user",
+    cause: [{ code: "invalid_email", payer_email: "buyer@example.com" }],
+  });
+  const response = mercadoPagoErrorResponse(
+    new MercadoPagoApiError(400, "/preapproval", diagnostic, "request-123")
+  );
+  assert.equal(response.error, "mercado_pago_checkout_failed");
+  assert.equal(response.mercadoPagoStatus, 400);
+  assert.equal(response.mercadoPagoStatusDetail, "subscription_invalid_user");
+  assert.doesNotMatch(JSON.stringify(response), /buyer@example\.com/);
 });
 
 test("modo teste nunca permite enforcement comercial", () => {
@@ -212,6 +252,20 @@ test("sincronização prepara billing_subscriptions com ambiente e preço valida
     },
   });
   assert.equal(invalid.status, "invalid_amount");
+
+  const rejected = buildSubscriptionRow({
+    environment: "production",
+    reference: { ...reference, environment: "production" },
+    paymentStatus: "rejected",
+    paymentStatusDetail: "cc_rejected_other_reason",
+    subscription: {
+      id: "preapproval-rejected",
+      status: "pending",
+      auto_recurring: { transaction_amount: 30, currency_id: "BRL" },
+    },
+  });
+  assert.equal(rejected.status, "payment_failed");
+  assert.equal(hasSubscriptionAccess(rejected), false);
 });
 
 test("logs de billing removem credenciais e dados pessoais", () => {
@@ -277,4 +331,58 @@ test("cancelamento pendente não cria período de acesso pago", () => {
     },
   });
   assert.equal(row.current_period_end, null);
+});
+
+test("Pix manual cria pedido pending com preço controlado pelo servidor", () => {
+  const order = buildManualPixOrder({
+    userId: "123e4567-e89b-12d3-a456-426614174000",
+    planId: "complete",
+    customerEmail: "doctor@example.com",
+    customerName: "Dra. Teste",
+  });
+  assert.equal(order?.status, "pending");
+  assert.equal(order?.payment_method, "pix_manual");
+  assert.equal(order?.amount, 50);
+  assert.equal(getManualPixConfig({}).configured, false);
+});
+
+test("Pix manual aprovado libera somente o período vigente", () => {
+  const now = new Date("2026-07-05T12:00:00.000Z");
+  assert.equal(hasSubscriptionAccess({
+    plan_id: "complete",
+    status: "active",
+    current_period_end: "2026-08-04T12:00:00.000Z",
+  }, now), true);
+  assert.equal(hasSubscriptionAccess({
+    plan_id: "complete",
+    status: "active",
+    current_period_end: "2026-07-04T12:00:00.000Z",
+  }, now), false);
+  assert.equal(hasSubscriptionAccess({
+    plan_id: "complete",
+    status: "rejected",
+    current_period_end: "2026-08-04T12:00:00.000Z",
+  }, now), false);
+});
+
+test("migration Pix isola usuários e restringe aprovação ao admin", () => {
+  const migration = readFileSync(
+    new URL("../supabase/migrations/20260705120000_manual_pix_billing.sql", import.meta.url),
+    "utf8"
+  );
+  assert.match(migration, /user_id = \(select auth\.uid\(\)\)/);
+  assert.match(migration, /public\.is_resibook_admin\(\)/);
+  assert.match(migration, /if not public\.is_resibook_admin\(\)/);
+  assert.match(migration, /status = 'active'/);
+  assert.match(migration, /payment_method[\s\S]+pix_manual/);
+  assert.doesNotMatch(migration, /for update to authenticated[\s\S]{0,120}user_id = \(select auth\.uid\(\)\)/);
+});
+
+test("nova tentativa de pagamento não libera acesso pelo botão", () => {
+  const actions = readFileSync(
+    new URL("../src/app/minha-assinatura/billing-actions.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(actions, /retry=1/);
+  assert.doesNotMatch(actions, /status:\s*["']authorized["']/);
 });

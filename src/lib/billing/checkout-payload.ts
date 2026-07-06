@@ -7,7 +7,7 @@ export function buildCheckoutPayload(input: {
   environment: BillingEnvironment;
   plan: BillingPlan;
   userId: string;
-  accountEmail: string;
+  billingEmail: string;
   testPayerEmail?: string;
   siteUrl: string;
 }) {
@@ -23,7 +23,7 @@ export function buildCheckoutPayload(input: {
       input.plan.id,
       input.environment
     ),
-    payer_email: isTest ? input.testPayerEmail : input.accountEmail,
+    payer_email: isTest ? input.testPayerEmail : input.billingEmail,
     auto_recurring: {
       frequency: 1,
       frequency_type: "months",

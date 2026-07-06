@@ -175,6 +175,12 @@ export default function PoliticaDePrivacidadePage() {
               diretamente pelo provedor de pagamento, não pelo ResiBook.
             </p>
             <p className="mt-2">
+              No Pix manual, o ResiBook registra usuário, plano, valor, e-mail,
+              nome de identificação e situação da conferência. O comprovante é
+              enviado pelo canal de suporte e deve conter apenas os dados
+              necessários para confirmar o pagamento.
+            </p>
+            <p className="mt-2">
               O vínculo interno com um paciente, quando utilizado, serve apenas para
               organização e validação de acesso e não inclui automaticamente o nome
               do paciente no texto enviado à IA.
