@@ -27,6 +27,7 @@ Aplicar as migrations, na ordem:
 ```text
 supabase/migrations/20260703190000_billing_subscriptions.sql
 supabase/migrations/20260704100000_billing_test_mode.sql
+supabase/migrations/20260705120000_manual_pix_billing.sql
 ```
 
 A segunda migration marca registros anteriores como `production` e cria o
@@ -50,6 +51,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
 RESIBOOK_BILLING_TEST_MODE=false
 RESIBOOK_ENFORCE_SUBSCRIPTIONS=false
+RESIBOOK_PIX_KEY=chave-configurada-na-vercel
+RESIBOOK_PIX_RECEIVER_NAME=nome-do-recebedor
+RESIBOOK_PIX_RECEIVER_DOCUMENT=documento-exibido-no-pix
 ```
 
 Nunca use `NEXT_PUBLIC_` em tokens, secrets ou service role. Não altere
@@ -193,3 +197,98 @@ data, o controle de acesso deixa de considerar a assinatura válida.
 | `RESIBOOK_ENFORCE_SUBSCRIPTIONS` | `false` até validação completa | sempre `false` |
 | `NEXT_PUBLIC_SUPABASE_URL` | sim | sim |
 | `SUPABASE_SERVICE_ROLE_KEY` | sim | sim |
+| `RESIBOOK_PIX_KEY` | sim, para oferecer Pix manual | opcional |
+| `RESIBOOK_PIX_RECEIVER_NAME` | sim, para oferecer Pix manual | opcional |
+| `RESIBOOK_PIX_RECEIVER_DOCUMENT` | recomendado | opcional |
+
+## Integração atual da preapproval
+
+O checkout usa `POST https://api.mercadopago.com/preapproval`, com os headers:
+
+```text
+Authorization: Bearer <token do ambiente>
+Content-Type: application/json
+X-Idempotency-Key: <UUID por tentativa>
+```
+
+O token nunca é enviado ao navegador. Produção usa
+`MERCADO_PAGO_ACCESS_TOKEN`; test mode usa
+`MERCADO_PAGO_TEST_ACCESS_TOKEN`. O corpo enviado é equivalente a:
+
+```json
+{
+  "reason": "Resibook Completo - assinatura mensal",
+  "external_reference": "resibook|production|USER_ID|complete",
+  "payer_email": "email-da-conta-mercado-pago@exemplo.com",
+  "auto_recurring": {
+    "frequency": 1,
+    "frequency_type": "months",
+    "transaction_amount": 50,
+    "currency_id": "BRL"
+  },
+  "back_url": "https://www.resibook.com.br/minha-assinatura?retorno=mercado-pago",
+  "notification_url": "https://www.resibook.com.br/api/mercado-pago/webhook",
+  "status": "pending"
+}
+```
+
+O plano Básico usa `transaction_amount: 30`. Não são enviados `metadata` nem
+`back_urls`; Assinaturas usa `back_url`. A liberação é vinculada por
+`external_reference` (`environment`, `user_id`, `plan_id`), não pela igualdade
+entre o login do Resibook e o e-mail pagador.
+
+## Diagnóstico de pagamento recusado
+
+Recusas podem vir do banco emissor, limite, cartão bloqueado, dados incorretos,
+tentativas duplicadas ou antifraude. O detalhe confiável é o `status_detail` do
+pagamento no Mercado Pago. O backend registra, de forma sanitizada:
+
+- status HTTP e endpoint;
+- `message`, `error`, `status_detail` e `cause`;
+- request ID retornado pelo provedor;
+- payload sem token, e-mail, cartão, CPF, secrets, service role ou referência do usuário.
+
+Erros retornam `mercado_pago_checkout_failed` ao navegador com campos técnicos
+controlados. Se aparecer “Seu e-mail não corresponde ao da assinatura”, informe
+em `/assinar` o mesmo e-mail da conta Mercado Pago compradora e gere nova
+tentativa. Não repita rapidamente os mesmos dados, pois isso pode acionar
+prevenção de fraude ou duplicidade.
+
+## Pix manual: venda alternativa
+
+O Pix manual não substitui a assinatura automática. Ele concede 30 dias de
+acesso após conferência humana do comprovante.
+
+1. Configure as três variáveis `RESIBOOK_PIX_*` na Vercel Production.
+2. O cliente escolhe **Pix manual** em `/assinar` e cria um pedido `pending`.
+3. O cliente paga o valor exato e envia o comprovante pelo WhatsApp exibido.
+4. O administrador abre `/admin/pix-manual`.
+5. Confira recebedor, valor, data e identificação antes de clicar **Aprovar**.
+6. A aprovação cria `billing_subscriptions` com `provider=manual`,
+   `payment_method=pix_manual`, `status=active`, `environment=production` e
+   período de 30 dias.
+7. **Rejeitar** nunca cria entitlement.
+
+RLS permite ao usuário inserir e consultar apenas o próprio pedido. Apenas o
+admin pode revisar; aprovação e assinatura são gravadas na mesma transação.
+
+### Testar Pix manual
+
+1. Mantenha `RESIBOOK_ENFORCE_SUBSCRIPTIONS=false`.
+2. Crie um pedido com conta comum e confirme `status=pending`.
+3. Confirme que outra conta não consegue ler esse pedido.
+4. Tente revisar como usuário comum: deve falhar por autorização/RLS.
+5. Aprove como admin e confirme assinatura `active`, `pix_manual`, por 30 dias.
+6. Rejeite outro pedido e confirme que nenhum acesso foi criado.
+
+## Checklist antes de divulgar
+
+- migration `20260705120000_manual_pix_billing.sql` aplicada;
+- checkout Básico (R$ 30) e Completo (R$ 50) abrem;
+- e-mail de cobrança corresponde à conta Mercado Pago compradora;
+- webhook aprovado atualiza `billing_subscriptions`;
+- pagamento recusado vira `payment_failed` e oferece nova tentativa/Pix;
+- Pix `pending` não libera; Pix aprovado libera 30 dias;
+- admin acessa `/admin/pix-manual` e não é bloqueado;
+- `RESIBOOK_BILLING_TEST_MODE=false` em Production;
+- `RESIBOOK_ENFORCE_SUBSCRIPTIONS=false` até concluir todos os itens.

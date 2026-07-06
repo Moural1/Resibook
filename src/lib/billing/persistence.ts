@@ -23,6 +23,8 @@ export function buildSubscriptionRow(input: {
   paymentId?: string | null;
   currentPeriodStart?: string | null;
   currentPeriodEnd?: string | null;
+  paymentStatus?: string | null;
+  paymentStatusDetail?: string | null;
   keepAccessAfterCancellation?: boolean;
   now?: string;
 }) {
@@ -39,7 +41,15 @@ export function buildSubscriptionRow(input: {
     ...(input.paymentId ? { mercado_pago_payment_id: input.paymentId } : {}),
     environment,
     plan_id: reference.planId,
-    status: validPrice && currency === "BRL" ? subscription.status : "invalid_amount",
+    status: !validPrice || currency !== "BRL"
+      ? "invalid_amount"
+      : subscription.status === "cancelled"
+        ? "cancelled"
+        : input.paymentStatus === "rejected"
+          ? "payment_failed"
+          : subscription.status,
+    last_payment_status: input.paymentStatus || null,
+    last_payment_status_detail: input.paymentStatusDetail || null,
     payer_email: subscription.payer_email || null,
     amount,
     currency,

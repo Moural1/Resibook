@@ -23,10 +23,19 @@ type AuthorizedPayment = {
   id: string | number;
   preapproval_id?: string | null;
   debit_date?: string | null;
-  payment?: { id?: string | number | null } | null;
+  payment?: {
+    id?: string | number | null;
+    status?: string | null;
+    status_detail?: string | null;
+  } | null;
 };
 
 type AuthorizedPaymentSearch = { results?: AuthorizedPayment[] };
+type MercadoPagoPayment = {
+  id: string | number;
+  status?: string | null;
+  status_detail?: string | null;
+};
 
 const ENVIRONMENTS: BillingEnvironment[] = ["production", "test"];
 const SUPPORTED_TYPES = new Set([
@@ -42,7 +51,13 @@ async function getSubscriptionNotification(
   environment: BillingEnvironment
 ) {
   if (type === "subscription_preapproval") {
-    return { preapprovalId: dataId, paymentId: null, periodStart: null };
+    return {
+      preapprovalId: dataId,
+      paymentId: null,
+      periodStart: null,
+      paymentStatus: null,
+      paymentStatusDetail: null,
+    };
   }
 
   if (type === "subscription_authorized_payment") {
@@ -55,12 +70,19 @@ async function getSubscriptionNotification(
       preapprovalId: invoice.preapproval_id || null,
       paymentId: invoice.payment?.id || null,
       periodStart: invoice.debit_date || null,
+      paymentStatus: invoice.payment?.status || null,
+      paymentStatusDetail: invoice.payment?.status_detail || null,
     };
   }
 
   if (type === "payment") {
     // A payment notification does not identify the subscription directly.
     // Resolve it through the provider's authorized-payment search endpoint.
+    const payment = await mercadoPagoRequest<MercadoPagoPayment>(
+      `/v1/payments/${encodeURIComponent(dataId)}`,
+      undefined,
+      environment
+    );
     const result = await mercadoPagoRequest<AuthorizedPaymentSearch>(
       `/authorized_payments/search?payment_id=${encodeURIComponent(dataId)}`,
       undefined,
@@ -71,10 +93,19 @@ async function getSubscriptionNotification(
       preapprovalId: invoice?.preapproval_id || null,
       paymentId: invoice?.payment?.id || dataId,
       periodStart: invoice?.debit_date || null,
+      paymentStatus: payment.status || invoice?.payment?.status || null,
+      paymentStatusDetail:
+        payment.status_detail || invoice?.payment?.status_detail || null,
     };
   }
 
-  return { preapprovalId: null, paymentId: null, periodStart: null };
+  return {
+    preapprovalId: null,
+    paymentId: null,
+    periodStart: null,
+    paymentStatus: null,
+    paymentStatusDetail: null,
+  };
 }
 
 export async function POST(request: Request) {
@@ -158,6 +189,8 @@ export async function POST(request: Request) {
       await syncMercadoPagoSubscription(subscription, environment, {
         id: notification.paymentId,
         periodStart: notification.periodStart,
+        paymentStatus: notification.paymentStatus,
+        paymentStatusDetail: notification.paymentStatusDetail,
       });
       return NextResponse.json({ received: true });
     } catch {

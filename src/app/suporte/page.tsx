@@ -9,10 +9,11 @@ import {
   AlertCircle,
   FileText,
 } from "lucide-react";
-
-const SUPPORT_EMAIL = "igormouralopes@hotmail.com";
-const SUPPORT_PHONE = "(31) 98481-2506";
-const SUPPORT_PHONE_LINK = "5531984812506";
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_PHONE,
+  SUPPORT_PHONE_LINK,
+} from "@/lib/support";
 
 export default function SuportePage() {
   return (

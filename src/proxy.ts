@@ -184,7 +184,7 @@ export async function proxy(request: NextRequest) {
         .select("plan_id, status, current_period_end")
         .eq("user_id", user.id)
         .eq("environment", "production")
-        .in("status", ["authorized", "cancelled"])
+        .in("status", ["active", "authorized", "cancelled"])
         .order("amount", { ascending: false })
         .limit(10);
 

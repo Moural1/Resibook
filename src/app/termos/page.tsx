@@ -174,6 +174,12 @@ export default function TermosDeUsoPage() {
               Mercado Pago, conforme as condições exibidas no checkout.
             </p>
             <p className="mt-2">
+              Como alternativa, o Pix manual concede um período de acesso após
+              conferência administrativa do comprovante. O envio do comprovante
+              não libera acesso automaticamente e pode ser rejeitado em caso de
+              divergência de valor, identificação ou recebimento.
+            </p>
+            <p className="mt-2">
               O usuário pode solicitar o cancelamento pela área Minha assinatura.
               O acesso aos recursos pagos poderá ser suspenso quando a assinatura
               estiver cancelada, pausada, vencida ou com pagamento pendente.

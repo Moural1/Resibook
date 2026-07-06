@@ -2,16 +2,28 @@ import { createClient } from "@supabase/supabase-js";
 import {
   getBillingEnvironment,
   getMercadoPagoAccessToken,
-  getTestPayerEmail,
   type BillingEnvironment,
 } from "./config";
 import { logBillingError } from "./logger";
+import {
+  extractMercadoPagoDiagnostic,
+  MercadoPagoApiError,
+} from "./mercado-pago-error";
 import { buildSubscriptionRow, type SubscriptionSnapshot } from "./persistence";
 import { parseExternalReference } from "./security";
 
 export { buildExternalReference, verifyMercadoPagoSignature } from "./security";
 
 const MERCADO_PAGO_API = "https://api.mercadopago.com";
+
+function parseRequestBody(body?: BodyInit | null) {
+  if (typeof body !== "string") return null;
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    return null;
+  }
+}
 
 export type MercadoPagoSubscription = SubscriptionSnapshot & {
   external_reference?: string | null;
@@ -67,12 +79,27 @@ export async function mercadoPagoRequest<T>(
   const payload = (await response.json().catch(() => null)) as T | null;
 
   if (!response.ok || !payload) {
+    const diagnostic = extractMercadoPagoDiagnostic(payload);
+    const endpoint = path.split("?")[0];
+    const requestId = response.headers.get("x-request-id");
     logBillingError("mercado_pago_request_failed", {
       environment,
       status: response.status,
+      endpoint,
       method: init?.method || "GET",
+      message: diagnostic.message,
+      error: diagnostic.error,
+      statusDetail: diagnostic.statusDetail,
+      cause: diagnostic.cause,
+      requestId,
+      payload: parseRequestBody(init?.body),
     });
-    throw new Error("Não foi possível processar a assinatura no Mercado Pago.");
+    throw new MercadoPagoApiError(
+      response.status,
+      endpoint,
+      diagnostic,
+      requestId
+    );
   }
 
   return payload;
@@ -85,6 +112,8 @@ export async function syncMercadoPagoSubscription(
     id?: string | number | null;
     periodStart?: string | null;
     periodEnd?: string | null;
+    paymentStatus?: string | null;
+    paymentStatusDetail?: string | null;
   }
 ) {
   const reference = parseExternalReference(subscription.external_reference);
@@ -96,23 +125,13 @@ export async function syncMercadoPagoSubscription(
   const { data: account, error: accountError } = await admin.auth.admin.getUserById(
     reference.userId
   );
-  const payerEmail = subscription.payer_email?.trim().toLowerCase() || "";
-  const expectedPayerEmail =
-    environment === "test"
-      ? getTestPayerEmail()?.toLowerCase() || ""
-      : account.user?.email?.trim().toLowerCase() || "";
-  if (
-    accountError ||
-    !account.user ||
-    !expectedPayerEmail ||
-    (payerEmail && payerEmail !== expectedPayerEmail)
-  ) {
+  if (accountError || !account.user) {
     throw new Error("Assinatura vinculada a uma conta inválida.");
   }
 
   const { data: existing } = await admin
     .from("billing_subscriptions")
-    .select("status, mercado_pago_payment_id, current_period_start, current_period_end")
+    .select("status, mercado_pago_payment_id, current_period_start, current_period_end, last_payment_status, last_payment_status_detail")
     .eq("provider_subscription_id", subscription.id)
     .maybeSingle();
 
@@ -126,6 +145,9 @@ export async function syncMercadoPagoSubscription(
     currentPeriodStart:
       context?.periodStart || existing?.current_period_start,
     currentPeriodEnd: context?.periodEnd || existing?.current_period_end,
+    paymentStatus: context?.paymentStatus ?? existing?.last_payment_status,
+    paymentStatusDetail:
+      context?.paymentStatusDetail ?? existing?.last_payment_status_detail,
     keepAccessAfterCancellation:
       subscription.status !== "cancelled" ||
       existing?.status === "authorized" ||

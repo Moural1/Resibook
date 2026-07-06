@@ -25,6 +25,7 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  QrCode,
   Settings,
   ShieldCheck,
   Siren,
@@ -407,6 +408,12 @@ function SidebarContent({
           href: "/acessos",
           label: "Acessos e usuários",
           icon: ShieldCheck,
+          badge: null,
+        },
+        {
+          href: "/admin/pix-manual",
+          label: "Aprovar Pix",
+          icon: QrCode,
           badge: null,
         },
       ]
