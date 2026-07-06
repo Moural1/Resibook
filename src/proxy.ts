@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isResibookAdmin } from "@/lib/auth-role";
+import { isResibookAdmin, isSubscriptionExempt } from "@/lib/auth-role";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import { isDisabledCommercialRoute } from "@/lib/product-config";
 import { getBillingRuntimeConfig } from "@/lib/billing/config";
@@ -177,8 +177,9 @@ export async function proxy(request: NextRequest) {
       });
     }
     const admin = isResibookAdmin(user);
+    const subscriptionExempt = isSubscriptionExempt(user);
     const billingRoute = isInside(pathname, BILLING_ALLOWED_PATHS);
-    if (billingConfig.enforcementSafe && !admin && !billingRoute) {
+    if (billingConfig.enforcementSafe && !admin && !subscriptionExempt && !billingRoute) {
       const { data: subscriptions, error: billingError } = await supabase
         .from("billing_subscriptions")
         .select("plan_id, status, current_period_end")
