@@ -616,6 +616,222 @@ const cha2ds2Vasc: ClinicalCalculator = {
   },
 };
 
+type AscvdCoefficientSet = {
+  baselineSurvival: number;
+  meanTerms: number;
+  lnAge: number;
+  lnAgeSquared?: number;
+  lnTotalCholesterol: number;
+  lnAgeTotalCholesterol?: number;
+  lnHdl: number;
+  lnAgeHdl?: number;
+  lnTreatedSbp: number;
+  lnAgeTreatedSbp?: number;
+  lnUntreatedSbp: number;
+  lnAgeUntreatedSbp?: number;
+  smoker: number;
+  lnAgeSmoker?: number;
+  diabetes: number;
+};
+
+const ascvdPceCoefficients: Record<string, AscvdCoefficientSet> = {
+  female_other: {
+    baselineSurvival: 0.9665,
+    meanTerms: -29.18,
+    lnAge: -29.799,
+    lnAgeSquared: 4.884,
+    lnTotalCholesterol: 13.54,
+    lnAgeTotalCholesterol: -3.114,
+    lnHdl: -13.578,
+    lnAgeHdl: 3.149,
+    lnTreatedSbp: 2.019,
+    lnUntreatedSbp: 1.957,
+    smoker: 7.574,
+    lnAgeSmoker: -1.665,
+    diabetes: 0.661,
+  },
+  male_other: {
+    baselineSurvival: 0.9144,
+    meanTerms: 61.18,
+    lnAge: 12.344,
+    lnTotalCholesterol: 11.853,
+    lnAgeTotalCholesterol: -2.664,
+    lnHdl: -7.99,
+    lnAgeHdl: 1.769,
+    lnTreatedSbp: 1.797,
+    lnUntreatedSbp: 1.764,
+    smoker: 7.837,
+    lnAgeSmoker: -1.795,
+    diabetes: 0.658,
+  },
+  female_black: {
+    baselineSurvival: 0.9533,
+    meanTerms: 86.61,
+    lnAge: 17.114,
+    lnTotalCholesterol: 0.94,
+    lnHdl: -18.92,
+    lnAgeHdl: 4.475,
+    lnTreatedSbp: 29.291,
+    lnAgeTreatedSbp: -6.432,
+    lnUntreatedSbp: 27.82,
+    lnAgeUntreatedSbp: -6.087,
+    smoker: 0.691,
+    diabetes: 0.874,
+  },
+  male_black: {
+    baselineSurvival: 0.8954,
+    meanTerms: 19.54,
+    lnAge: 2.469,
+    lnTotalCholesterol: 0.302,
+    lnHdl: -0.307,
+    lnTreatedSbp: 1.916,
+    lnUntreatedSbp: 1.809,
+    smoker: 0.549,
+    diabetes: 0.645,
+  },
+};
+
+function calculateAscvdPooledCohortRisk(input: {
+  sex: string;
+  race: string;
+  age: number;
+  totalCholesterol: number;
+  hdl: number;
+  sbp: number;
+  treatedSbp: boolean;
+  smoker: boolean;
+  diabetes: boolean;
+}) {
+  const key = `${input.sex}_${input.race}`;
+  const coefficients = ascvdPceCoefficients[key] || ascvdPceCoefficients[`${input.sex}_other`];
+  const lnAge = Math.log(input.age);
+  const lnTotalCholesterol = Math.log(input.totalCholesterol);
+  const lnHdl = Math.log(input.hdl);
+  const lnSbp = Math.log(input.sbp);
+  const sbpCoefficient = input.treatedSbp
+    ? coefficients.lnTreatedSbp
+    : coefficients.lnUntreatedSbp;
+  const ageSbpCoefficient = input.treatedSbp
+    ? coefficients.lnAgeTreatedSbp
+    : coefficients.lnAgeUntreatedSbp;
+
+  const sum =
+    coefficients.lnAge * lnAge +
+    (coefficients.lnAgeSquared || 0) * Math.pow(lnAge, 2) +
+    coefficients.lnTotalCholesterol * lnTotalCholesterol +
+    (coefficients.lnAgeTotalCholesterol || 0) * lnAge * lnTotalCholesterol +
+    coefficients.lnHdl * lnHdl +
+    (coefficients.lnAgeHdl || 0) * lnAge * lnHdl +
+    sbpCoefficient * lnSbp +
+    (ageSbpCoefficient || 0) * lnAge * lnSbp +
+    (input.smoker ? coefficients.smoker + (coefficients.lnAgeSmoker || 0) * lnAge : 0) +
+    (input.diabetes ? coefficients.diabetes : 0);
+
+  return (1 - Math.pow(coefficients.baselineSurvival, Math.exp(sum - coefficients.meanTerms))) * 100;
+}
+
+const ascvdRisk: ClinicalCalculator = {
+  id: "ascvd-risk",
+  name: "Risco cardiovascular ASCVD em 10 anos",
+  shortName: "Risco CV 10 anos",
+  category: "Cardiologia",
+  description: "Estimativa de risco de evento cardiovascular aterosclerótico em 10 anos pelas Pooled Cohort Equations ACC/AHA.",
+  fields: [
+    numberField("age", "Idade", "anos", 40, 79, 1, "Aplicável de 40 a 79 anos."),
+    selectField("sex", "Sexo", [
+      { value: "male", label: "Masculino" },
+      { value: "female", label: "Feminino" },
+    ]),
+    selectField(
+      "race",
+      "Grupo usado na equação",
+      [
+        { value: "other", label: "Branco / outro / não negro" },
+        { value: "black", label: "Negro" },
+      ],
+      "other",
+      "A equação original é norte-americana e usa grupos branco e negro; para outros grupos, costuma-se usar 'branco/outro' com cautela."
+    ),
+    numberField("totalCholesterol", "Colesterol total", "mg/dL", 130, 320, 1),
+    numberField("hdl", "HDL-colesterol", "mg/dL", 20, 100, 1),
+    numberField("sbp", "Pressão arterial sistólica", "mmHg", 90, 200, 1),
+    checkbox("treatedSbp", "Em tratamento para hipertensão"),
+    checkbox("diabetes", "Diabetes mellitus"),
+    checkbox("smoker", "Tabagista atual"),
+    checkbox("knownAscvdOrLdl190", "ASCVD clínica conhecida ou LDL ≥ 190 mg/dL", "Se sim, a calculadora não deve guiar sozinha decisão de prevenção primária."),
+  ],
+  reference: {
+    label: "ACC/AHA 2013 - Pooled Cohort Equations",
+    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC4700825/",
+  },
+  calculate(values) {
+    const age = num(values, "age");
+    const totalCholesterol = num(values, "totalCholesterol");
+    const hdl = num(values, "hdl");
+    const sbp = num(values, "sbp");
+    if ([age, totalCholesterol, hdl, sbp].some((value) => value === null)) return null;
+
+    if (yes(values, "knownAscvdOrLdl190")) {
+      return result(
+        "—",
+        "fora do escopo",
+        "Não aplicar como decisão isolada",
+        "ASCVD clínica conhecida ou LDL ≥ 190 mg/dL colocam o paciente fora do uso habitual da calculadora de prevenção primária.",
+        "Conduzir conforme diretriz de prevenção secundária ou hipercolesterolemia importante, com avaliação individual de estatina, metas, causas secundárias e risco global.",
+        "A Pooled Cohort Equation foi desenhada para estimar risco em prevenção primária. Não substitui diretriz, julgamento clínico nem discussão compartilhada.",
+        "Risco ASCVD 10 anos não calculado como decisão isolada: ASCVD clínica conhecida ou LDL ≥ 190 mg/dL. Conduzir conforme prevenção secundária/hipercolesterolemia importante e contexto clínico.",
+        ["Fora do escopo de prevenção primária"]
+      );
+    }
+
+    const risk = calculateAscvdPooledCohortRisk({
+      sex: selected(values, "sex"),
+      race: selected(values, "race"),
+      age: age!,
+      totalCholesterol: totalCholesterol!,
+      hdl: hdl!,
+      sbp: sbp!,
+      treatedSbp: yes(values, "treatedSbp"),
+      smoker: yes(values, "smoker"),
+      diabetes: yes(values, "diabetes"),
+    });
+    const displayedRisk = Math.max(0, Math.min(100, risk));
+    const classification = displayedRisk < 5
+      ? "Baixo risco"
+      : displayedRisk < 7.5
+        ? "Risco limítrofe"
+        : displayedRisk < 20
+          ? "Risco intermediário"
+          : "Alto risco";
+    const recommendation = displayedRisk < 5
+      ? "Priorizar mudanças de estilo de vida e controle de fatores modificáveis; reavaliar periodicamente conforme contexto."
+      : displayedRisk < 7.5
+        ? "Discutir intensificação de estilo de vida e considerar modificadores de risco antes de decisão medicamentosa."
+        : displayedRisk < 20
+          ? "Discutir prevenção farmacológica, intensidade de estatina, risco-benefício e preferências, considerando LDL, comorbidades e modificadores de risco."
+          : "Risco alto: avaliar prevenção intensiva, estatina conforme diretriz, controle agressivo de fatores modificáveis e acompanhamento estruturado.";
+
+    const percent = displayedRisk.toFixed(displayedRisk < 10 ? 1 : 0);
+    return result(
+      percent,
+      "% em 10 anos",
+      classification,
+      `Risco estimado de ASCVD em 10 anos de aproximadamente ${percent}%.`,
+      recommendation,
+      "Equação derivada de coortes norte-americanas, validada principalmente para adultos de 40-79 anos sem ASCVD clínica. Pode superestimar ou subestimar risco em populações brasileiras; não substitui diretrizes locais, LDL, história familiar, DRC, albuminúria, CAC ou outros modificadores.",
+      `Risco cardiovascular ASCVD em 10 anos ≈ ${percent}% (${classification}). ${recommendation}`,
+      [
+        `${age} anos`,
+        `CT ${totalCholesterol} mg/dL`,
+        `HDL ${hdl} mg/dL`,
+        `PAS ${sbp} mmHg${yes(values, "treatedSbp") ? " tratada" : " não tratada"}`,
+        yes(values, "diabetes") ? "diabetes" : "sem diabetes",
+        yes(values, "smoker") ? "tabagista" : "não tabagista",
+      ]
+    );
+  },
+};
+
 const hasBled: ClinicalCalculator = {
   id: "has-bled",
   name: "HAS-BLED",
@@ -930,6 +1146,7 @@ export const clinicalCalculators: ClinicalCalculator[] = [
   wellsPe,
   wellsDvt,
   cha2ds2Vasc,
+  ascvdRisk,
   hasBled,
   glasgow,
   cockcroftGault,
