@@ -59,7 +59,7 @@ test("conta proprietária é reconhecida como administradora", () => {
 });
 
 test("contas internas ficam isentas da cobrança sem receber permissão administrativa", () => {
-  for (const email of ["liviarosa@resibook.com", "convidado@resibook.com"]) {
+  for (const email of ["liviarosa@resibook.com", "convidado@resibook.com", "thiagoyan@resibook.com"]) {
     assert.equal(isSubscriptionExempt({ email }), true);
     assert.equal(isResibookAdmin({ email }), false);
   }
