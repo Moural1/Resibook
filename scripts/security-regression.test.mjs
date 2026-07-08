@@ -452,6 +452,10 @@ test("ECG guiado associa imagem local com checklist sem laudo automático", () =
     new URL("../src/app/ecg-guiado/page.tsx", import.meta.url),
     "utf8"
   );
+  const route = readFileSync(
+    new URL("../src/app/api/ecg/analyze/route.ts", import.meta.url),
+    "utf8"
+  );
   const shell = readFileSync(
     new URL("../src/components/app-shell.tsx", import.meta.url),
     "utf8"
@@ -459,8 +463,14 @@ test("ECG guiado associa imagem local com checklist sem laudo automático", () =
   assert.match(page, /ECG guiado/);
   assert.match(page, /accept="image\/\*"/);
   assert.match(page, /URL\.createObjectURL/);
+  assert.match(page, /Analisar imagem com IA/);
+  assert.match(page, /Cruzamento com dados manuais/);
   assert.match(page, /não faz diagnóstico automático por IA/i);
   assert.match(page, /Texto para evolução/);
+  assert.match(route, /OPENAI_API_KEY/);
+  assert.match(route, /input_image/);
+  assert.match(route, /Não dê laudo definitivo/);
+  assert.doesNotMatch(route, /billing_subscriptions|manual_pix_orders|insert\(/);
   assert.match(shell, /\/ecg-guiado/);
 });
 
