@@ -7,6 +7,7 @@ export type ManualPixStatus = "pending" | "approved" | "rejected" | "canceled";
 
 export type ManualPixOrder = {
   id: string;
+  user_id?: string;
   plan_id: BillingPlanId;
   status: ManualPixStatus;
   amount: number;
@@ -48,6 +49,15 @@ export function getManualPixDaysRemaining(
   const end = new Date(expiresAt);
   if (Number.isNaN(end.getTime())) return null;
   return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86_400_000));
+}
+
+export function isManualPixExpiringSoon(
+  expiresAt?: string | null,
+  now = new Date(),
+  windowDays = 7
+) {
+  const daysRemaining = getManualPixDaysRemaining(expiresAt, now);
+  return daysRemaining !== null && daysRemaining > 0 && daysRemaining <= windowDays;
 }
 
 export function getManualPixConfig(env: BillingEnv = process.env) {

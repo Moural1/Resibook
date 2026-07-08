@@ -27,6 +27,7 @@ import {
   getManualPixAccessState,
   getManualPixDaysRemaining,
   getManualPixConfig,
+  isManualPixExpiringSoon,
 } from "../src/lib/billing/manual-pix.ts";
 import {
   getBestActiveEntitlement,
@@ -401,6 +402,32 @@ test("painel Pix identifica vencimento e dias restantes", () => {
     getManualPixAccessState(order, new Date("2026-07-08T00:00:00.000Z")),
     "expired"
   );
+  assert.equal(
+    isManualPixExpiringSoon(order.access_expires_at, new Date("2026-07-06T12:00:00.000Z")),
+    true
+  );
+  assert.equal(
+    isManualPixExpiringSoon("2026-08-08T00:00:00.000Z", new Date("2026-07-06T12:00:00.000Z")),
+    false
+  );
+});
+
+test("painel Pix permite renovar e encerrar acesso sem abrir o Supabase", () => {
+  const route = readFileSync(
+    new URL("../src/app/api/admin/pix-manual/route.ts", import.meta.url),
+    "utf8"
+  );
+  const client = readFileSync(
+    new URL("../src/app/admin/pix-manual/pix-manual-admin-client.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(route, /action === "renew"/);
+  assert.match(route, /action === "revoke"/);
+  assert.match(route, /current_period_end: nextEnd\.toISOString\(\)/);
+  assert.match(route, /status: "cancelled"/);
+  assert.match(client, /Renovar \+30 dias/);
+  assert.match(client, /Encerrar acesso/);
+  assert.match(client, /Vence em 7 dias/);
 });
 
 test("limpeza de usuários protege contas internas e remove registros órfãos", () => {
