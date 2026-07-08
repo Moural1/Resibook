@@ -12,6 +12,7 @@ import {
   ImagePlus,
   RotateCcw,
   ShieldAlert,
+  Sparkles,
   Upload,
 } from "lucide-react";
 import CopyButton from "@/components/copy-button";
@@ -36,6 +37,16 @@ type EcgState = {
   hypertrophy: ToggleValue;
   urgentSymptoms: ToggleValue;
   notes: string;
+};
+
+type EcgAiAnalysis = {
+  quality?: string;
+  visualSummary?: string;
+  possibleFindings?: string[];
+  manualCrossCheck?: string[];
+  redFlags?: string[];
+  limitations?: string[];
+  suggestedReview?: string[];
 };
 
 const initialState: EcgState = {
@@ -137,7 +148,7 @@ function getRedFlags(values: EcgState) {
   return flags;
 }
 
-function buildInterpretation(values: EcgState) {
+function buildInterpretation(values: EcgState, aiAnalysis?: EcgAiAnalysis | null) {
   const rate = toNumber(values.rate);
   const pr = toNumber(values.pr);
   const qrs = toNumber(values.qrs);
@@ -181,10 +192,23 @@ function buildInterpretation(values: EcgState) {
   const urgency = redFlags.length
     ? `Atenção: há achados/sinais de maior risco (${redFlags.join("; ")}). Priorizar avaliação clínica imediata conforme sintomas e protocolo local.`
     : "Sem red flags marcadas nesta triagem estruturada.";
+  const aiBlock = aiAnalysis
+    ? [
+        "Apoio visual por IA:",
+        aiAnalysis.quality ? `Qualidade da imagem: ${aiAnalysis.quality}.` : "",
+        aiAnalysis.visualSummary ? `Resumo visual: ${aiAnalysis.visualSummary}` : "",
+        aiAnalysis.possibleFindings?.length ? `Achados possíveis: ${aiAnalysis.possibleFindings.join("; ")}.` : "",
+        aiAnalysis.manualCrossCheck?.length ? `Cruzamento com preenchimento manual: ${aiAnalysis.manualCrossCheck.join("; ")}.` : "",
+        aiAnalysis.redFlags?.length ? `Red flags por imagem/IA: ${aiAnalysis.redFlags.join("; ")}.` : "",
+        aiAnalysis.suggestedReview?.length ? `Revisar no traçado original: ${aiAnalysis.suggestedReview.join("; ")}.` : "",
+        aiAnalysis.limitations?.length ? `Limitações da análise visual: ${aiAnalysis.limitations.join("; ")}.` : "",
+      ].filter(Boolean)
+    : [];
 
   return [
     "ECG guiado - interpretação estruturada:",
     ...parts,
+    ...aiBlock,
     `Impressão: ${impression}`,
     urgency,
     "Limitação: texto gerado a partir de campos preenchidos e imagem anexada apenas como apoio visual; não substitui laudo, revisão do ECG original nem julgamento clínico.",
@@ -229,7 +253,11 @@ function ToggleField({
 export default function EcgGuiadoPage() {
   const [values, setValues] = useState<EcgState>(initialState);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const interpretation = useMemo(() => buildInterpretation(values), [values]);
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<EcgAiAnalysis | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const interpretation = useMemo(() => buildInterpretation(values, aiAnalysis), [values, aiAnalysis]);
   const redFlags = useMemo(() => getRedFlags(values), [values]);
 
   function update<K extends keyof EcgState>(key: K, value: EcgState[K]) {
@@ -240,15 +268,53 @@ export default function EcgGuiadoPage() {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setValues(initialState);
     setImagePreview(null);
+    setImageDataUrl(null);
+    setAiAnalysis(null);
+    setAiError("");
   }
 
   function handleImage(file?: File) {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     if (!file) {
       setImagePreview(null);
+      setImageDataUrl(null);
+      setAiAnalysis(null);
       return;
     }
     setImagePreview(URL.createObjectURL(file));
+    setAiAnalysis(null);
+    setAiError("");
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageDataUrl(typeof reader.result === "string" ? reader.result : null);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function analyzeImage() {
+    if (!imageDataUrl) {
+      setAiError("Envie uma imagem do ECG antes de pedir análise visual.");
+      return;
+    }
+    setAiLoading(true);
+    setAiError("");
+    const response = await fetch("/api/ecg/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageDataUrl, manualData: values }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      analysis?: EcgAiAnalysis;
+      message?: string;
+      error?: string;
+    } | null;
+    if (!response.ok || !payload?.analysis) {
+      setAiError(payload?.message || payload?.error || "Não foi possível analisar a imagem agora.");
+      setAiLoading(false);
+      return;
+    }
+    setAiAnalysis(payload.analysis);
+    setAiLoading(false);
   }
 
   return (
@@ -358,7 +424,7 @@ export default function EcgGuiadoPage() {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700"><Camera className="h-5 w-5" /></span>
               <div>
                 <h2 className="text-lg font-semibold text-slate-950">Imagem de apoio</h2>
-                <p className="text-sm text-slate-500">Fica apenas no navegador nesta versão.</p>
+                <p className="text-sm text-slate-500">Não é salva no banco; só é enviada se você pedir análise por IA.</p>
               </div>
             </div>
             <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-cyan-400 hover:bg-cyan-50/40">
@@ -377,6 +443,47 @@ export default function EcgGuiadoPage() {
                 A imagem ajuda você a conferir o preenchimento, mas o texto é gerado pelos campos estruturados.
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => void analyzeImage()}
+              disabled={!imageDataUrl || aiLoading}
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Sparkles className="h-4 w-4" />
+              {aiLoading ? "Analisando imagem..." : "Analisar imagem com IA"}
+            </button>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              A IA cruza a imagem com os campos preenchidos e aponta inconsistências ou achados possíveis. Não substitui laudo.
+            </p>
+            {aiError ? (
+              <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                {aiError}
+              </p>
+            ) : null}
+            {aiAnalysis ? (
+              <div className="mt-4 space-y-3 rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4 text-sm text-slate-700">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Apoio visual por IA</p>
+                  <p className="mt-1 font-semibold text-slate-950">Qualidade: {aiAnalysis.quality || "não informada"}</p>
+                  {aiAnalysis.visualSummary ? <p className="mt-2 leading-6">{aiAnalysis.visualSummary}</p> : null}
+                </div>
+                {aiAnalysis.possibleFindings?.length ? (
+                  <div><p className="font-semibold text-slate-900">Achados possíveis</p><ul className="mt-1 list-disc space-y-1 pl-5">{aiAnalysis.possibleFindings.map((item) => <li key={item}>{item}</li>)}</ul></div>
+                ) : null}
+                {aiAnalysis.manualCrossCheck?.length ? (
+                  <div><p className="font-semibold text-slate-900">Cruzamento com dados manuais</p><ul className="mt-1 list-disc space-y-1 pl-5">{aiAnalysis.manualCrossCheck.map((item) => <li key={item}>{item}</li>)}</ul></div>
+                ) : null}
+                {aiAnalysis.redFlags?.length ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800"><p className="font-semibold">Red flags sugeridas</p><ul className="mt-1 list-disc space-y-1 pl-5">{aiAnalysis.redFlags.map((item) => <li key={item}>{item}</li>)}</ul></div>
+                ) : null}
+                {aiAnalysis.suggestedReview?.length ? (
+                  <div><p className="font-semibold text-slate-900">Revisar no traçado original</p><ul className="mt-1 list-disc space-y-1 pl-5">{aiAnalysis.suggestedReview.map((item) => <li key={item}>{item}</li>)}</ul></div>
+                ) : null}
+                {aiAnalysis.limitations?.length ? (
+                  <div><p className="font-semibold text-slate-900">Limitações</p><ul className="mt-1 list-disc space-y-1 pl-5">{aiAnalysis.limitations.map((item) => <li key={item}>{item}</li>)}</ul></div>
+                ) : null}
+              </div>
+            ) : null}
           </article>
 
           <article className={`rounded-2xl border p-5 shadow-sm ${redFlags.length ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
