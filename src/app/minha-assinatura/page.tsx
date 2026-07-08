@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CreditCard, ShieldCheck } from "lucide-react";
+import { Clock3, CreditCard, QrCode, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { BILLING_PLANS, isBillingPlanId } from "@/lib/billing/plans";
 import { BillingActions } from "./billing-actions";
@@ -31,6 +31,12 @@ type SubscriptionRow = {
   last_payment_status_detail: string | null;
 };
 
+function formatDate(value: Date | string) {
+  return new Intl.DateTimeFormat("pt-BR").format(
+    typeof value === "string" ? new Date(value) : value
+  );
+}
+
 export default async function MinhaAssinaturaPage() {
   const billingConfig = getBillingRuntimeConfig();
   const supabase = await createClient();
@@ -46,6 +52,7 @@ export default async function MinhaAssinaturaPage() {
   const subscription = getBestActiveEntitlement(subscriptions) || subscriptions?.[0] || null;
   const plan = subscription && isBillingPlanId(subscription.plan_id) ? BILLING_PLANS[subscription.plan_id] : null;
   const isMercadoPago = subscription?.provider === "mercado_pago";
+  const isPixManual = subscription?.payment_method === "pix_manual";
   const canCancel = isMercadoPago && ["authorized", "pending", "paused"].includes(subscription?.status || "");
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end)
@@ -59,7 +66,7 @@ export default async function MinhaAssinaturaPage() {
   const canResubscribe = Boolean(
     subscription &&
       (retry || subscription.status === "cancelled" ||
-        (subscription.payment_method === "pix_manual" && !hasAccess))
+        (isPixManual && !hasAccess))
   );
   const accessExpired = Boolean(periodEnd && !Number.isNaN(periodEnd.getTime()) && !hasAccess);
 
@@ -71,23 +78,30 @@ export default async function MinhaAssinaturaPage() {
         {subscription && plan ? (
           <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm text-slate-500">Plano atual</p><p className="mt-1 text-xl font-semibold text-slate-950">{plan.name} · R$ {Number(subscription.amount).toFixed(0)}/mês</p></div><span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">{statusLabels[subscription.status] || subscription.status}</span></div>
+
+            {isPixManual ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="flex items-center gap-2 font-semibold"><QrCode className="h-4 w-4" />Pagamento por Pix manual</p><p className="mt-1">Acesso liberado por 30 dias após conferência do comprovante.</p></div> : null}
+
             {subscription.status === "cancelled" && periodEnd ? (
-              <p className={`mt-4 text-sm font-medium ${accessExpired ? "text-rose-700" : "text-slate-700"}`}>{accessExpired ? "O período pago terminou em" : "A renovação foi cancelada. Acesso disponível até"} {new Intl.DateTimeFormat("pt-BR").format(periodEnd)}.</p>
+              <p className={`mt-4 text-sm font-medium ${accessExpired ? "text-rose-700" : "text-slate-700"}`}>{accessExpired ? "O período pago terminou em" : "A renovação foi cancelada. Acesso disponível até"} {formatDate(periodEnd)}.</p>
             ) : subscription.status === "cancelled" ? (
               <p className="mt-4 text-sm font-medium text-rose-700">A assinatura foi cancelada. Assine novamente para recuperar o acesso.</p>
             ) : subscription.status === "payment_failed" ? (
               <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p className="font-semibold">Pagamento recusado pelo Mercado Pago ou banco emissor.</p><p className="mt-1">Tente outro cartão, outra conta Mercado Pago ou pagamento manual por Pix.</p></div>
-            ) : subscription.payment_method === "pix_manual" && accessExpired ? (
-              <p className="mt-4 text-sm font-medium text-rose-700">O período do Pix terminou em {periodEnd ? new Intl.DateTimeFormat("pt-BR").format(periodEnd) : "data não informada"}. Faça um novo pagamento para renovar.</p>
-            ) : subscription.next_payment_at ? <p className="mt-4 text-sm text-slate-600">Próxima cobrança prevista: {new Intl.DateTimeFormat("pt-BR").format(new Date(subscription.next_payment_at))}</p> : null}
-            <p className="mt-3 text-xs font-medium text-slate-500">Pagamento: {subscription.payment_method === "pix_manual" ? "Pix manual" : "Mercado Pago"}</p>
+            ) : isPixManual && accessExpired ? (
+              <p className="mt-4 text-sm font-medium text-rose-700">O período do Pix terminou em {periodEnd ? formatDate(periodEnd) : "data não informada"}. Gere um novo pedido Pix para renovar.</p>
+            ) : isPixManual && periodEnd ? (
+              <p className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-700"><Clock3 className="h-4 w-4 text-emerald-700" />Acesso Pix disponível até {formatDate(periodEnd)}.</p>
+            ) : subscription.next_payment_at ? <p className="mt-4 text-sm text-slate-600">Próxima cobrança prevista: {formatDate(subscription.next_payment_at)}</p> : null}
+
+            <p className="mt-3 text-xs font-medium text-slate-500">Pagamento: {isPixManual ? "Pix manual" : "Mercado Pago"}</p>
             {isMercadoPago && subscription.status === "authorized" ? <p className="mt-3 text-sm text-slate-600">Para alterar a forma de pagamento, gere uma nova tentativa após cancelar a renovação ou entre em contato com o suporte.</p> : null}
+            {isPixManual && !accessExpired && periodEnd ? <p className="mt-3 text-sm text-slate-600">Quando receber um novo Pix, o administrador pode renovar seu acesso por mais 30 dias.</p> : null}
             <BillingActions canCancel={canCancel} canResubscribe={canResubscribe} canRefresh={isMercadoPago} retry={retry} planId={plan.id} />
           </div>
         ) : (
           <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5"><p className="font-semibold text-amber-900">Nenhuma assinatura encontrada.</p><p className="mt-2 text-sm text-amber-800">Escolha um plano para liberar seu acesso.</p><Link href="/assinar" className="mt-4 inline-flex h-11 items-center rounded-xl bg-cyan-700 px-5 text-sm font-semibold text-white">Ver planos</Link></div>
         )}
-        <p className="mt-6 flex items-start gap-2 text-xs leading-5 text-slate-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />Cobranças e dados de pagamento são processados pelo Mercado Pago.</p>
+        <p className="mt-6 flex items-start gap-2 text-xs leading-5 text-slate-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />Cobranças por cartão são processadas pelo Mercado Pago. No Pix manual, a liberação acontece após conferência administrativa do comprovante.</p>
       </section>
     </div>
   );

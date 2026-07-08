@@ -430,6 +430,23 @@ test("painel Pix permite renovar e encerrar acesso sem abrir o Supabase", () => 
   assert.match(client, /Vence em 7 dias/);
 });
 
+test("checkout Pix orienta comprovante, status e renovação manual", () => {
+  const checkout = readFileSync(
+    new URL("../src/app/assinar/assinar-client.tsx", import.meta.url),
+    "utf8"
+  );
+  const subscription = readFileSync(
+    new URL("../src/app/minha-assinatura/page.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(checkout, /Enviar comprovante/);
+  assert.match(checkout, /Atualizar status/);
+  assert.match(checkout, /Aguardando conferência do comprovante/);
+  assert.match(checkout, /Após conferência, o acesso fica ativo por 30 dias/);
+  assert.match(subscription, /Pagamento por Pix manual/);
+  assert.match(subscription, /Gere um novo pedido Pix para renovar/);
+});
+
 test("limpeza de usuários protege contas internas e remove registros órfãos", () => {
   const route = readFileSync(
     new URL("../src/app/api/admin/users/route.ts", import.meta.url),
