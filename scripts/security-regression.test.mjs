@@ -447,6 +447,23 @@ test("checkout Pix orienta comprovante, status e renovação manual", () => {
   assert.match(subscription, /Gere um novo pedido Pix para renovar/);
 });
 
+test("ECG guiado associa imagem local com checklist sem laudo automático", () => {
+  const page = readFileSync(
+    new URL("../src/app/ecg-guiado/page.tsx", import.meta.url),
+    "utf8"
+  );
+  const shell = readFileSync(
+    new URL("../src/components/app-shell.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(page, /ECG guiado/);
+  assert.match(page, /accept="image\/\*"/);
+  assert.match(page, /URL\.createObjectURL/);
+  assert.match(page, /não faz diagnóstico automático por IA/i);
+  assert.match(page, /Texto para evolução/);
+  assert.match(shell, /\/ecg-guiado/);
+});
+
 test("limpeza de usuários protege contas internas e remove registros órfãos", () => {
   const route = readFileSync(
     new URL("../src/app/api/admin/users/route.ts", import.meta.url),

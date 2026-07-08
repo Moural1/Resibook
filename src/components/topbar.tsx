@@ -22,6 +22,7 @@ import {
   Clock3,
   CornerDownLeft,
   FlaskConical,
+  HeartPulse,
   ListChecks,
   LogOut,
   Search,
@@ -150,6 +151,7 @@ const fullQuickLinks = [
   { href: "/condutas", label: "Condutas", icon: Siren },
   { href: "/cids", label: "CIDs", icon: Tags },
   { href: "/calculadoras", label: "Calculadoras", icon: Calculator },
+  { href: "/ecg-guiado", label: "ECG guiado", icon: HeartPulse },
 ];
 const guestQuickLinks = fullQuickLinks.filter((item) => ["/prescricao", "/exames-evolucao", "/topicos", "/cids"].includes(item.href));
 

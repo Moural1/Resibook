@@ -18,6 +18,7 @@ import {
   CreditCard,
   FlaskConical,
   Gauge,
+  HeartPulse,
   Home,
   LifeBuoy,
   LibraryBig,
@@ -345,6 +346,12 @@ function SidebarContent({
       href: "/calculadoras",
       label: "Calculadoras",
       icon: Calculator,
+      badge: null,
+    },
+    {
+      href: "/ecg-guiado",
+      label: "ECG guiado",
+      icon: HeartPulse,
       badge: null,
     },
   ];
