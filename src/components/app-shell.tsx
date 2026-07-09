@@ -36,6 +36,7 @@ import {
   X,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
+import { FeedbackWidget } from "./feedback-widget";
 import { Topbar } from "./topbar";
 
 type Props = {
@@ -972,6 +973,7 @@ export default function AppShell({ children }: Props) {
             {children}
           </div>
         </main>
+        <FeedbackWidget />
       </div>
     </div>
   );

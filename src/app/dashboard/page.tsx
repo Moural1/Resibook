@@ -29,6 +29,7 @@ import {
   Stethoscope,
   Tags,
   Users,
+  X,
 } from "lucide-react";
 
 type Patient = {
@@ -85,6 +86,20 @@ type DashboardCounts = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
+const ONBOARDING_DISMISSED_KEY = "resibook-dashboard-onboarding-dismissed";
+
+const HIGH_VALUE_TOPICS = [
+  { title: "Dor torácica", description: "Fluxo inicial, risco e conduta no plantão.", href: "/caso-rapido?q=dor%20tor%C3%A1cica" },
+  { title: "Pneumonia", description: "Antibiótico, gravidade e critérios de internação.", href: "/topicos?q=pneumonia" },
+  { title: "AVC", description: "Tempo de sintomas, alarme e próximos passos.", href: "/caso-rapido?q=AVC" },
+  { title: "Crise convulsiva", description: "Primeira abordagem e causas reversíveis.", href: "/caso-rapido?q=crise%20convulsiva" },
+  { title: "Asma", description: "Crise, gravidade e prescrição prática.", href: "/prescricao?q=asma" },
+  { title: "ITU", description: "Tratamento, pielonefrite e sinais de risco.", href: "/prescricao?q=ITU" },
+  { title: "Gastroenterite", description: "Hidratação, alerta e receita objetiva.", href: "/caso-rapido?q=gastroenterite" },
+  { title: "Cefaleia", description: "Red flags e investigação inicial.", href: "/caso-rapido?q=cefaleia" },
+  { title: "Dor lombar", description: "Alarme, analgesia e orientação de alta.", href: "/caso-rapido?q=dor%20lombar" },
+  { title: "Anafilaxia", description: "Adrenalina, suporte e observação.", href: "/prescricao?q=anafilaxia" },
+];
 
 async function getTableCount(
   tableName: string,
@@ -182,6 +197,18 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [isGuest, setIsGuest] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    setShowOnboarding(
+      window.localStorage.getItem(ONBOARDING_DISMISSED_KEY) !== "true"
+    );
+  }, []);
+
+  function dismissOnboarding() {
+    window.localStorage.setItem(ONBOARDING_DISMISSED_KEY, "true");
+    setShowOnboarding(false);
+  }
 
   useEffect(() => {
     function refreshActiveCase() {
@@ -504,15 +531,51 @@ export default function DashboardPage() {
 
           <div className="mt-5 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
+              <p className="mb-3 inline-flex rounded-full border border-cyan-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-800">
+                Plantão, revisão e conduta em segundos
+              </p>
               <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
                 Dashboard clínico
               </h1>
+
+              <p className="mt-3 max-w-3xl text-base font-semibold leading-7 text-slate-800">
+                Resibook economiza tempo no plantão e na revisão médica com
+                condutas, prescrições e flashcards prontos.
+              </p>
 
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
                 Painel para entrar rápido no fluxo de plantão: buscar conduta,
                 abrir prescrição, consultar CID ou revisar conteúdo sem perder
                 tempo navegando por várias telas.
               </p>
+            </div>
+
+            <div className="flex max-w-xl flex-wrap gap-2.5 xl:justify-end">
+              <Link
+                href="/plantao"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Começar pelo Plantão
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/prescricao"
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
+              >
+                Ver prescrições prontas
+              </Link>
+              <Link
+                href="/flashcards"
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
+              >
+                Revisar flashcards
+              </Link>
+              <Link
+                href="/condutas"
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50 px-4 text-sm font-semibold text-cyan-900 transition hover:bg-cyan-100"
+              >
+                Buscar uma conduta
+              </Link>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
@@ -538,6 +601,89 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-5 p-4 md:p-6">
+          {showOnboarding ? (
+            <section className="relative overflow-hidden rounded-[26px] border border-cyan-200 bg-[radial-gradient(circle_at_top_left,#e0faff_0%,#ffffff_42%,#f8fafc_100%)] p-5 shadow-sm">
+              <button
+                type="button"
+                onClick={dismissOnboarding}
+                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                aria-label="Fechar onboarding"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <div className="max-w-2xl pr-10">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-800">
+                  Comece em 30 segundos
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                  Não precisa explorar tudo: siga este caminho.
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  O Resibook foi feito para resolver uma situação real primeiro,
+                  depois organizar seus favoritos e revisão.
+                </p>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <OnboardingStep
+                  step="1"
+                  title="Busque uma condição"
+                  description="Digite dor torácica, pneumonia, ITU, asma ou outra queixa do plantão."
+                  icon={Search}
+                />
+                <OnboardingStep
+                  step="2"
+                  title="Acesse conduta e prescrição"
+                  description="Abra o fluxo, copie modelos e use como apoio à decisão clínica."
+                  icon={ClipboardList}
+                />
+                <OnboardingStep
+                  step="3"
+                  title="Salve e revise"
+                  description="Marque favoritos, use Meu Resibook e volte aos flashcards depois."
+                  icon={Brain}
+                />
+              </div>
+            </section>
+          ) : null}
+
+          <section className="rounded-[26px] border border-slate-200 bg-white p-4 md:p-5">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+                  Valor imediato
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                  Temas que todo mundo usa no plantão
+                </h2>
+              </div>
+              <p className="max-w-xl text-sm leading-6 text-slate-500">
+                Atalhos para o usuário bater o olho e pensar: “isso eu usaria hoje”.
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              {HIGH_VALUE_TOPICS.map((topic) => (
+                <Link
+                  key={topic.title}
+                  href={topic.href}
+                  className="group rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 transition hover:-translate-y-0.5 hover:border-cyan-200 hover:bg-white hover:shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-950">
+                      {topic.title}
+                    </p>
+                    <ArrowUpRight className="h-4 w-4 text-slate-400 transition group-hover:text-cyan-700" />
+                  </div>
+                  <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                    {topic.description}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+
           <section className="grid gap-4 lg:grid-cols-2">
             <Link href="/prescricao" className="group rounded-[26px] bg-[#091a38] p-6 text-white shadow-[0_20px_50px_rgba(9,26,56,0.16)] transition hover:-translate-y-0.5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">Banco Resibook</p>
@@ -1178,6 +1324,33 @@ function SectionHeader({
       </h2>
       <p className="mt-1 text-sm text-slate-500">{description}</p>
     </div>
+  );
+}
+
+function OnboardingStep({
+  step,
+  title,
+  description,
+  icon: Icon,
+}: {
+  step: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <article className="rounded-2xl border border-white bg-white/85 p-4 shadow-sm shadow-slate-950/[0.03]">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 text-xs font-semibold text-white">
+          {step}
+        </span>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-800">
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+      <h3 className="mt-4 text-sm font-semibold text-slate-950">{title}</h3>
+      <p className="mt-1.5 text-xs leading-5 text-slate-500">{description}</p>
+    </article>
   );
 }
 
