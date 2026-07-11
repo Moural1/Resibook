@@ -10,9 +10,11 @@ import {
 
 const curb65 = clinicalCalculators.find(({ id }) => id === "curb65");
 const ascvdRisk = clinicalCalculators.find(({ id }) => id === "ascvd-risk");
+const centor = clinicalCalculators.find(({ id }) => id === "centor-mcisaac");
 
 assert.ok(curb65, "A calculadora CURB-65 precisa existir.");
 assert.ok(ascvdRisk, "A calculadora de risco cardiovascular ASCVD precisa existir.");
+assert.ok(centor, "A calculadora Centor/McIsaac precisa existir.");
 
 function validCurb(overrides = {}) {
   return {
@@ -108,4 +110,44 @@ test("risco cardiovascular ASCVD respeita faixa validada e prevenção secundár
     calculateClinicalScore("ascvd-risk", { ...values, age: 60, knownAscvdOrLdl190: true }).value,
     "—"
   );
+});
+
+test("Centor/McIsaac orienta antibiótico somente após confirmação", () => {
+  const lowRisk = calculateClinicalScore("centor-mcisaac", {
+    age: 30,
+    exudate: false,
+    nodes: false,
+    fever: false,
+    noCough: false,
+  });
+  assert.equal(lowRisk.value, "0");
+  assert.match(lowRisk.recommendation, /antibiótico não indicado/i);
+
+  const intermediateRisk = calculateClinicalScore("centor-mcisaac", {
+    age: 30,
+    exudate: true,
+    nodes: true,
+    fever: false,
+    noCough: false,
+  });
+  assert.equal(intermediateRisk.value, "2");
+  assert.match(intermediateRisk.recommendation, /somente se houver confirmação/i);
+
+  const highRisk = calculateClinicalScore("centor-mcisaac", {
+    age: 10,
+    exudate: true,
+    nodes: true,
+    fever: true,
+    noCough: true,
+  });
+  assert.equal(highRisk.value, "5");
+  assert.match(highRisk.recommendation, /teste rápido ou a cultura forem positivos/i);
+  assert.match(highRisk.limitations, /nem indica antibiótico empírico/i);
+});
+
+test("Centor/McIsaac aplica corretamente o ajuste de idade", () => {
+  const base = { exudate: false, nodes: false, fever: false, noCough: false };
+  assert.equal(calculateClinicalScore("centor-mcisaac", { ...base, age: 14 }).value, "1");
+  assert.equal(calculateClinicalScore("centor-mcisaac", { ...base, age: 15 }).value, "0");
+  assert.equal(calculateClinicalScore("centor-mcisaac", { ...base, age: 45 }).value, "-1");
 });
