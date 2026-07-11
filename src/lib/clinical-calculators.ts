@@ -1050,7 +1050,7 @@ const centor: ClinicalCalculator = {
   name: "Centor modificado / McIsaac",
   shortName: "Centor/McIsaac",
   category: "Infectologia e otorrino",
-  description: "Probabilidade clínica de faringite estreptocócica e apoio à decisão de testagem.",
+  description: "Probabilidade clínica de faringite estreptocócica e apoio à decisão de testagem e antibioticoterapia.",
   fields: [
     numberField("age", "Idade", "anos", 3, 120),
     checkbox("exudate", "Exsudato ou edema tonsilar"),
@@ -1080,18 +1080,24 @@ const centor: ClinicalCalculator = {
       score -= 1;
       breakdown.push("-1 idade ≥ 45 anos");
     }
-    const classification = score <= 1 ? "Baixa probabilidade" : score <= 3 ? "Probabilidade intermediária" : "Maior probabilidade";
+    const classification = score <= 1
+      ? "Baixo risco (7,6-13,1%)"
+      : score <= 3
+        ? "Risco intermediário (20,8-33,6%)"
+        : "Alto risco (50,7-69,3%)";
     const recommendation = score <= 1
-      ? "Em geral, não testar nem prescrever antibiótico apenas pelo escore; oferecer cuidado sintomático e orientações."
-      : "Realizar teste rápido e/ou cultura conforme idade e protocolo; tratar casos confirmados e pesquisar diagnósticos alternativos ou complicações.";
+      ? "Antibiótico não indicado pelo escore. Em geral, não testar; oferecer cuidado sintomático e orientações, salvo fatores de alto risco ou suspeita de complicação."
+      : score <= 3
+        ? "Realizar teste rápido para estreptococo e/ou cultura conforme idade e protocolo. Prescrever antibiótico somente se houver confirmação de estreptococo do grupo A."
+        : "Testar prontamente para estreptococo do grupo A. Prescrever antibiótico se o teste rápido ou a cultura forem positivos; o escore alto, isoladamente, não confirma etiologia bacteriana.";
     return result(
       String(score),
       "pontos",
       classification,
-      `Centor/McIsaac = ${score}, compatível com ${classification.toLowerCase()} de estreptococo do grupo A.`,
+      `Centor/McIsaac = ${score}, compatível com ${classification.toLowerCase()} de teste positivo para estreptococo do grupo A.`,
       recommendation,
-      "Sintomas virais claros reduzem a utilidade de testagem. O escore não confirma etiologia; em crianças, teste rápido negativo costuma exigir cultura de confirmação conforme protocolo.",
-      `Centor/McIsaac = ${score} pontos. ${classification} para faringite estreptocócica. ${recommendation}`,
+      "Não aplicar a menores de 3 anos. Sintomas virais claros reduzem a utilidade da testagem. O escore seleciona quem testar, mas não confirma etiologia nem indica antibiótico empírico; em crianças e adolescentes, teste rápido negativo costuma exigir cultura de confirmação conforme protocolo.",
+      `Centor/McIsaac = ${score} pontos. ${classification} para teste positivo de estreptococo do grupo A. ${recommendation}`,
       breakdown
     );
   },
