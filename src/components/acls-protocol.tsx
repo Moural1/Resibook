@@ -7,9 +7,9 @@ import {
   BookOpen,
   ChevronDown,
   ChevronsUpDown,
-  CircleAlert,
   HeartPulse,
   LockKeyhole,
+  Search,
 } from "lucide-react";
 import { ACLS_NAVIGATION, getAclsHref } from "@/lib/acls-navigation";
 import type { AclsProtocol } from "@/lib/acls-protocols";
@@ -81,9 +81,9 @@ function lineTone(line: string) {
   return "default";
 }
 
-function ProtocolLines({ lines }: { lines: string[] }) {
+function ProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boolean }) {
   return (
-    <div className="space-y-2.5">
+    <div className={flow ? "mx-auto max-w-xl space-y-2.5" : "space-y-2.5"}>
       {lines.map((rawLine, index) => {
         const line = rawLine.trim();
         if (!line) return null;
@@ -94,8 +94,19 @@ function ProtocolLines({ lines }: { lines: string[] }) {
 
         if (line === "↓") {
           return (
-            <div key={index} className="flex justify-center py-0.5 text-xl font-bold text-slate-400" aria-hidden="true">
-              ↓
+            <div key={index} className="flex h-9 flex-col items-center justify-center" aria-hidden="true">
+              <span className="h-5 w-px bg-cyan-300" />
+              <span className="-mt-1 flex h-4 w-4 items-center justify-center rounded-full bg-cyan-700 text-[10px] font-bold text-white">↓</span>
+            </div>
+          );
+        }
+
+        if (flow && (line === "OU" || line === "+")) {
+          return (
+            <div key={index} className="flex justify-center py-0.5">
+              <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-cyan-800">
+                {line}
+              </span>
             </div>
           );
         }
@@ -144,11 +155,12 @@ function ProtocolLines({ lines }: { lines: string[] }) {
         }[tone];
         const isListItem = /^(- |• |✔ |☐ |☑ )/.test(line);
         const isEmphasized = tone !== "default" || isListItem;
+        const isFlowStep = flow && !isListItem;
 
         return (
           <div
             key={index}
-            className={isEmphasized ? `rounded-xl border px-3.5 py-2.5 text-sm leading-6 ${classes}` : "px-1 text-sm font-medium leading-6 text-slate-700"}
+            className={isEmphasized || isFlowStep ? `rounded-xl border px-3.5 py-2.5 text-sm leading-6 ${isFlowStep && tone === "default" ? "border-cyan-200 bg-white text-center font-semibold text-slate-800 shadow-sm" : classes}` : "px-1 text-sm font-medium leading-6 text-slate-700"}
           >
             {cleanMarkdown(line)}
           </div>
@@ -160,10 +172,32 @@ function ProtocolLines({ lines }: { lines: string[] }) {
 
 function ProtocolNavigation() {
   const pathname = usePathname();
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
+  const filteredItems = ACLS_NAVIGATION.filter((item) =>
+    !normalizedQuery || `${item.label} ${item.group}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery)
+  );
+  const groups = Array.from(new Set(filteredItems.map((item) => item.group)));
 
   return (
-    <nav aria-label="Protocolos ACLS" className="space-y-1.5">
-      {ACLS_NAVIGATION.map((item) => {
+    <nav aria-label="Protocolos ACLS">
+      <label className="relative mb-3 block">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        <span className="sr-only">Buscar protocolo ACLS</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Buscar no ACLS"
+          className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+        />
+      </label>
+      <div className="space-y-4">
+      {groups.map((group) => (
+        <div key={group}>
+          <p className="mb-1.5 px-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-400">{group}</p>
+          <div className="space-y-1">
+          {filteredItems.filter((item) => item.group === group).map((item) => {
         const href = getAclsHref(item.slug);
         const active = pathname === href;
 
@@ -189,7 +223,11 @@ function ProtocolNavigation() {
             {item.label}
           </Link>
         );
-      })}
+          })}
+          </div>
+        </div>
+      ))}
+      </div>
     </nav>
   );
 }
@@ -310,6 +348,7 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
       <div className="space-y-3">
         {sections.map((section) => {
           const normalizedTitle = section.title.toLowerCase();
+          const flow = normalizedTitle.includes("resumo rápido") || normalizedTitle.includes("algoritmo") || normalizedTitle.includes("fluxograma") || section.lines.filter((line) => line.trim() === "↓").length >= 3;
           const pearl = normalizedTitle.includes("pérolas") || normalizedTitle.includes("nunca esquecer");
           const alert = normalizedTitle.includes("alertas");
           const contraindication = normalizedTitle.includes("erros frequentes");
@@ -333,7 +372,7 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
                 <ChevronDown className={`h-4 w-4 shrink-0 transition group-open:rotate-180 ${pearl ? "text-slate-300" : "text-slate-400"}`} />
               </summary>
               <div className={`border-t px-5 py-5 ${pearl ? "border-white/10 bg-white text-slate-950" : "border-slate-200 bg-slate-50/50"}`}>
-                <ProtocolLines lines={section.lines} />
+                <ProtocolLines lines={section.lines} flow={flow} />
               </div>
             </details>
           );
@@ -343,14 +382,35 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
   );
 }
 
-export function AclsIntroductionPending() {
+export function AclsOverview() {
+  const availableItems = ACLS_NAVIGATION.filter((item) => item.available && item.slug);
+  const groups = Array.from(new Set(availableItems.map((item) => item.group)));
+
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700">ACLS</p>
-      <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Introdução</h2>
-      <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
-        <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-        <p className="text-sm font-semibold leading-6">Conteúdo médico ainda não fornecido pelo editor.</p>
+      <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Protocolos ACLS</h2>
+      <p className="mt-2 text-sm font-medium text-slate-600">Acesso rápido aos protocolos disponíveis.</p>
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        {groups.map((group) => {
+          const items = availableItems.filter((item) => item.group === group);
+          return (
+            <div key={group} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+                <h3 className="text-sm font-bold text-slate-950">{group}</h3>
+                <span className="rounded-full bg-cyan-50 px-2 py-1 text-[10px] font-bold text-cyan-800">{items.length}</span>
+              </div>
+              <div className="grid gap-2 p-3">
+                {items.map((item) => (
+                  <Link key={item.slug} href={getAclsHref(item.slug)} className="flex items-center justify-between gap-3 rounded-xl border border-transparent bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-cyan-200 hover:text-cyan-950">
+                    {item.label}
+                    <span className="text-cyan-700" aria-hidden="true">→</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

@@ -27,6 +27,14 @@ const SOURCE_HASHES = {
   "iam-sem-supra": "645a97d7eb7c67737a5fc518db6190361532bd549ccdae6619aa7e55aa2f9db8",
   "medicamentos-iam": "dee2c364ba2c6e783173b585a29c67b3d7efb6498d68fc2351aef404ea85e17e",
   "complicacoes-iam": "0d5c578e7036c97a551a1d1a2589bd1fac876e12f0c8db365a799eb05bf78ee4",
+  "avc": "436f0062dc06aaf77efe8ed9bae6b78a2e9aa0a23c55434e126baf1b4e54308e",
+  "avc-isquemico": "58020d26e084fef4945bf9f8586c26b3deae2fcd827a5c0c3c8afeed2aaa3951",
+  "trombolise-avc-isquemico": "a14aeecd8ca148193cebfbb421e57b6ef5e536a3dd7ff8cf65dcd3cd85046139",
+  "trombectomia-avc-isquemico": "849ecc5972b30daf972575d5e50d852869b734fca3e72c20a6337aca115b70c0",
+  "cuidados-pos-trombolise": "e11d293b15c14a7a95c62e69146cb2f6aafa0825c7e287e506e7d97a44913750",
+  "medicamentos-avc-isquemico": "40112df6ee577588d6655a03176f1114685d7a07270afda53ff4db04138dfd2c",
+  "avc-hemorragico": "560d18879979eb3d8a38d79271e9a413b295bbf044190ec1f99177bc1ff0d5bb",
+  "fluxograma-final-avc": "675a1da93cf11bbdfffd25dae89e95ccc3efcd5daeb42445e0a9b1ac402e3cca",
   "via-aerea": "1ff6c51f00b11258ca655583c548b20fafdbd40aaccbf06a2b3ee97eb8e39f21",
 };
 
@@ -50,7 +58,7 @@ test("conteúdo médico ACLS permanece idêntico aos arquivos editoriais", () =>
 
 test("sidebar libera somente protocolos ACLS com conteúdo fornecido", () => {
   const availableSlugs = ACLS_NAVIGATION
-    .filter((item) => item.available)
+    .filter((item) => item.available && item.slug)
     .map((item) => item.slug)
     .sort();
   const protocolSlugs = ACLS_PROTOCOLS.map((protocol) => protocol.slug).sort();
