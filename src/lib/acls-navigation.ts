@@ -20,7 +20,7 @@ export const ACLS_NAVIGATION: AclsNavigationItem[] = [
   { slug: "drogas-acls", label: "Drogas ACLS", group: "PCR e arritmias", available: true },
   { slug: "ritmos-cardiacos", label: "Ritmos Cardíacos", group: "PCR e arritmias", available: true },
   { slug: "cardioversao-vs-desfibrilacao", label: "Cardioversão x Desfibrilação", group: "PCR e arritmias", available: true },
-  { slug: "pos-pcr", label: "Pós-PCR", group: "Pós-PCR", available: false },
+  { slug: "pos-pcr", label: "Cuidados Pós-PCR", group: "Pós-PCR", available: true },
   { slug: "iam", label: "SCA / IAM", group: "SCA e IAM", available: true },
   { slug: "iam-com-supra", label: "IAM com Supra", group: "SCA e IAM", available: true },
   { slug: "estrategias-reperfusao-iamcsst", label: "Estratégias de Reperfusão", group: "SCA e IAM", available: true },

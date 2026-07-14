@@ -2041,6 +2041,431 @@ Nos pacientes estáveis, a análise do QRS (largo ou estreito) e da regularidade
 A TPSV responde à manobra vagal e à adenosina. A TV com pulso deve ser tratada preferencialmente com amiodarona ou cardioversão conforme estabilidade. A Torsades de Pointes deve ser tratada com desfibrilação e sulfato de magnésio, evitando amiodarona. Na fibrilação atrial, a decisão de cardioversão depende da estabilidade e do tempo de evolução do episódio.`,
   },
   {
+    slug: "pos-pcr",
+    title: "Cuidados Pós-PCR (Pós-RCE)",
+    source: `# 🫀 CUIDADOS PÓS-PCR (PÓS-RCE)
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 2 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+RCE
+
+↓
+
+ABCDE
+
+↓
+
+SatO₂ 92–98%
+
+↓
+
+PaCO₂ normal
+
+↓
+
+PAM ≥65 mmHg
+
+↓
+
+ECG 12 derivações
+
+↓
+
+Controle de temperatura
+
+↓
+
+Controle glicêmico
+
+↓
+
+Avaliação neurológica
+
+↓
+
+Pesquisar causa da PCR
+
+↓
+
+UTI
+
+---
+
+# 📌 QUANDO UTILIZAR
+
+Todo paciente que apresentou
+
+✔ Retorno da Circulação Espontânea (RCE)
+
+Após qualquer PCR.
+
+---
+
+# 🎯 OBJETIVOS
+
+✔ Evitar nova PCR
+
+✔ Preservar função cerebral
+
+✔ Corrigir a causa da parada
+
+✔ Reduzir mortalidade
+
+---
+
+# ⚡ PASSO 1 — CONFIRMAR RCE
+
+Sinais
+
+✔ Pulso palpável
+
+✔ Aumento súbito do ETCO₂
+
+✔ PA mensurável
+
+✔ Movimento espontâneo
+
+✔ Respiração espontânea
+
+---
+
+# ⚡ PASSO 2 — ABCDE
+
+Reavaliar completamente.
+
+---
+
+## 🅰️ VIA AÉREA
+
+Confirmar tubo
+
+Capnografia contínua
+
+Fixar TOT
+
+Aspiração quando indicada
+
+---
+
+## 🅱️ RESPIRAÇÃO
+
+Oxigênio inicialmente
+
+100%
+
+↓
+
+Após estabilização
+
+Titular
+
+### SatO₂
+
+**92–98%**
+
+Evitar
+
+❌ Hipóxia
+
+❌ Hiperóxia
+
+---
+
+Meta de PaO₂
+
+**60–100 mmHg**
+
+---
+
+Meta de PaCO₂
+
+**35–45 mmHg**
+
+Evitar hiperventilação.
+
+---
+
+## 🅲 CIRCULAÇÃO
+
+Objetivos
+
+### PAS
+
+≥90 mmHg
+
+---
+
+### PAM
+
+≥65 mmHg
+
+---
+
+Monitorizar
+
+✔ ECG
+
+✔ PA invasiva se disponível
+
+✔ Diurese
+
+✔ Lactato
+
+---
+
+# 💊 HIPOTENSÃO
+
+Primeiro
+
+Cristaloide
+
+500–1000 mL
+
+conforme contexto clínico.
+
+Persistindo
+
+↓
+
+Vasopressor
+
+Preferir
+
+### Noradrenalina
+
+Titular conforme PAM.
+
+Alternativas
+
+✔ Epinefrina
+
+✔ Dopamina
+
+quando indicadas.
+
+---
+
+# ❤️ ECG
+
+Realizar ECG de 12 derivações o mais rápido possível.
+
+---
+
+Se IAM com Supra
+
+↓
+
+Hemodinâmica imediata.
+
+---
+
+Mesmo sem Supra
+
+Se alta suspeita de causa coronária
+
+↓
+
+Considerar coronariografia.
+
+---
+
+# 🌡 CONTROLE DE TEMPERATURA
+
+Paciente comatoso
+
+↓
+
+Controle ativo da temperatura.
+
+Meta
+
+**32–37,5°C**
+
+(conforme protocolo institucional)
+
+Evitar principalmente
+
+❌ Febre
+
+---
+
+# 🍬 GLICEMIA
+
+Meta
+
+**140–180 mg/dL**
+
+Evitar
+
+❌ Hipoglicemia
+
+❌ Hiperglicemia importante
+
+---
+
+# 🧠 AVALIAÇÃO NEUROLÓGICA
+
+Realizar
+
+AVDI
+
+ou
+
+Escala de Glasgow
+
+---
+
+Avaliar
+
+✔ Pupilas
+
+✔ Reflexos
+
+✔ Convulsões
+
+---
+
+Se suspeita de crise
+
+↓
+
+EEG quando disponível.
+
+---
+
+# 💊 CONVULSÕES
+
+Tratar prontamente.
+
+Seguir protocolo institucional.
+
+---
+
+# 💧 CONTROLE HIDROELETROLÍTICO
+
+Corrigir
+
+✔ Potássio
+
+✔ Magnésio
+
+✔ Cálcio
+
+✔ Acidose
+
+---
+
+# 🔎 INVESTIGAR A CAUSA DA PCR
+
+Sempre responder:
+
+"O que provocou essa parada?"
+
+Pesquisar
+
+✔ IAM
+
+✔ TEP
+
+✔ Hipóxia
+
+✔ Hipovolemia
+
+✔ Distúrbios hidroeletrolíticos
+
+✔ Intoxicações
+
+✔ Tamponamento
+
+✔ Pneumotórax hipertensivo
+
+---
+
+# 📊 ETCO₂
+
+Monitorização contínua.
+
+Ajuda a avaliar
+
+✔ Ventilação
+
+✔ Perfusão
+
+✔ Qualidade da circulação
+
+---
+
+# 🚨 DESTINO
+
+Paciente pós-PCR
+
+↓
+
+Internação em UTI
+
+Monitorização contínua.
+
+---
+
+# ⚠️ ALERTAS
+
+❌ Não manter hiperóxia.
+
+❌ Evitar hiperventilação.
+
+❌ Não esquecer ECG.
+
+❌ Não negligenciar febre.
+
+❌ Não esquecer causa da PCR.
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Considerar atendimento encerrado após retorno do pulso.
+
+❌ Não investigar IAM.
+
+❌ Não controlar temperatura.
+
+❌ Não monitorizar ETCO₂.
+
+❌ Hiperventilar paciente.
+
+❌ Não tratar hipotensão.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 O cérebro continua sofrendo após o retorno da circulação.
+
+🧠 Febre aumenta lesão neurológica.
+
+🧠 Hipóxia e hiperóxia são igualmente prejudiciais.
+
+🧠 Muitos pacientes necessitam cateterismo mesmo sem supra de ST.
+
+🧠 O tratamento da causa da PCR é tão importante quanto a própria ressuscitação.
+
+---
+
+# 📚 MODO ESTUDO
+
+Os cuidados pós-PCR têm como objetivo preservar o cérebro e evitar recorrência da parada.
+
+Após o retorno da circulação espontânea, deve-se realizar nova avaliação ABCDE, otimizar oxigenação (SatO₂ 92–98%), manter normocapnia (PaCO₂ 35–45 mmHg), garantir PAM ≥65 mmHg, realizar ECG de 12 derivações, controlar rigorosamente a temperatura, corrigir distúrbios metabólicos e investigar a causa da PCR.
+
+Todo paciente pós-PCR deve ser encaminhado para monitorização intensiva em UTI.`,
+  },
+  {
     slug: "drogas-acls",
     title: "Drogas do ACLS",
     source: `# 💊 DROGAS DO ACLS
