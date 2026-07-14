@@ -30,6 +30,14 @@ const titleToSlug = new Map([
   ["iam sem supra iamssst nstemi", "iam-sem-supra"],
   ["medicamentos do iam", "medicamentos-iam"],
   ["complicacoes do iam", "complicacoes-iam"],
+  ["avc reconhecimento e fluxograma inicial", "avc"],
+  ["avc isquemico avci", "avc-isquemico"],
+  ["trombolise no avc isquemico", "trombolise-avc-isquemico"],
+  ["trombectomia mecanica no avc isquemico", "trombectomia-avc-isquemico"],
+  ["cuidados pos trombolise", "cuidados-pos-trombolise"],
+  ["medicamentos no avc isquemico", "medicamentos-avc-isquemico"],
+  ["avc hemorragico hemorragia intraparenquimatosa", "avc-hemorragico"],
+  ["fluxograma final do avc", "fluxograma-final-avc"],
   ["via aerea no acls", "via-aerea"],
 ]);
 

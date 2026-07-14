@@ -5086,6 +5086,1851 @@ Hipotensão após IAM inferior = excluir infarto de ventrículo direito.
 As complicações do IAM dividem-se em elétricas (FV, TV, BAV), hemodinâmicas (choque cardiogênico, insuficiência cardíaca) e mecânicas (ruptura do músculo papilar, comunicação interventricular e ruptura da parede livre). O reconhecimento precoce é essencial, pois muitas dessas complicações exigem intervenção cirúrgica ou reperfusão urgente.`,
   },
   {
+    slug: "avc",
+    title: "AVC - Reconhecimento e Fluxograma Inicial",
+    source: `# 🧠 AVC - RECONHECIMENTO E FLUXOGRAMA INICIAL
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 2 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+Suspeita de AVC
+
+↓
+
+Último momento visto bem
+
+↓
+
+ABCDE
+
+↓
+
+Glicemia Capilar
+
+↓
+
+NIHSS
+
+↓
+
+TC de Crânio SEM contraste
+
+↓
+
+Hemorragia?
+
+↓
+
+SIM
+
+↓
+
+Protocolo AVCH
+
+↓
+
+NÃO
+
+↓
+
+Elegível para trombólise?
+
+↓
+
+SIM
+
+↓
+
+Alteplase/Tenecteplase
+
+↓
+
+Elegível para trombectomia?
+
+↓
+
+SIM
+
+↓
+
+Hemodinâmica
+
+↓
+
+UTI / Unidade AVC
+
+---
+
+# 📌 QUANDO UTILIZAR
+
+Todo paciente com déficit neurológico focal súbito.
+
+---
+
+# 🚨 SINAIS DE AVC
+
+✔ Hemiparesia
+
+✔ Assimetria facial
+
+✔ Disartria
+
+✔ Afasia
+
+✔ Perda visual
+
+✔ Ataxia
+
+✔ Alteração súbita da sensibilidade
+
+✔ Rebaixamento inexplicado
+
+---
+
+# 🚑 AVALIAÇÃO INICIAL
+
+## ABCDE
+
+↓
+
+Monitor cardíaco
+
+↓
+
+PA
+
+↓
+
+Oximetria
+
+↓
+
+Acesso venoso
+
+↓
+
+Glicemia capilar
+
+↓
+
+ECG
+
+↓
+
+TC de crânio SEM contraste
+
+---
+
+# 🍬 GLICEMIA
+
+Obrigatória.
+
+Hipoglicemia pode simular AVC.
+
+Corrigir imediatamente se
+
+<60 mg/dL.
+
+---
+
+# ⏰ ÚLTIMO MOMENTO VISTO BEM
+
+Registrar exatamente.
+
+Não utilizar horário em que o paciente acordou.
+
+Utilizar
+
+**Last Known Well**
+
+---
+
+# 🧠 NIHSS
+
+Realizar em todos os pacientes.
+
+Utilidade
+
+✔ Gravidade
+
+✔ Prognóstico
+
+✔ Elegibilidade para trombectomia
+
+---
+
+# 🩻 TOMOGRAFIA
+
+Primeiro exame.
+
+Objetivo
+
+Excluir hemorragia.
+
+Não esperar laudo para iniciar protocolo.
+
+---
+
+# 📊 DIFERENCIAR
+
+## AVC Isquêmico
+
+TC inicial frequentemente normal.
+
+↓
+
+Avaliar reperfusão.
+
+---
+
+## AVC Hemorrágico
+
+Sangramento visível.
+
+↓
+
+Controle rigoroso da PA.
+
+↓
+
+Neurocirurgia quando indicada.
+
+---
+
+# ❤️ OXIGÊNIO
+
+Administrar somente se
+
+SatO₂ <94%.
+
+---
+
+# 🌡 TEMPERATURA
+
+Febre piora prognóstico.
+
+Tratar >37,5°C.
+
+---
+
+# 🍬 GLICEMIA
+
+Meta
+
+140–180 mg/dL
+
+Evitar
+
+Hipoglicemia
+
+Hiperglicemia
+
+---
+
+# 🚫 NÃO FAZER
+
+❌ Esperar laboratório antes da TC.
+
+❌ Esperar neurologista para iniciar protocolo.
+
+❌ Atrasar trombólise.
+
+---
+
+# ⚠️ ALERTAS
+
+Tempo é cérebro.
+
+Cada minuto sem reperfusão leva à perda de milhões de neurônios.
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Não perguntar Last Known Well.
+
+❌ Não medir glicemia.
+
+❌ Solicitar TC com contraste.
+
+❌ Demorar para chamar protocolo AVC.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 Glicemia é o primeiro diagnóstico diferencial.
+
+🧠 TC sem contraste é o exame inicial.
+
+🧠 Todo AVC suspeito deve ser tratado como emergência absoluta.
+
+---
+
+# 📚 MODO ESTUDO
+
+Todo paciente com déficit neurológico focal súbito deve ser tratado inicialmente como AVC. A avaliação deve seguir o ABCDE, com glicemia capilar imediata, determinação do horário do último momento visto bem, realização da NIHSS e tomografia de crânio sem contraste para diferenciar AVC isquêmico de hemorrágico. O principal objetivo é identificar rapidamente candidatos à reperfusão.`,
+  },
+  {
+    slug: "avc-isquemico",
+    title: "AVC Isquêmico (AVCI)",
+    source: `# 🧠 AVC ISQUÊMICO (AVCI)
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 2 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+TC sem sangue
+
+↓
+
+Elegível para trombólise?
+
+↓
+
+SIM
+
+↓
+
+Alteplase ou Tenecteplase
+
+↓
+
+Grande vaso?
+
+↓
+
+SIM
+
+↓
+
+Trombectomia
+
+↓
+
+Internação Unidade AVC
+
+---
+
+# 📌 DEFINIÇÃO
+
+Interrupção do fluxo sanguíneo cerebral por oclusão arterial.
+
+Representa cerca de 85% dos AVC.
+
+---
+
+# 🎯 OBJETIVO
+
+Restabelecer rapidamente o fluxo cerebral.
+
+---
+
+# ⚡ PASSO 1
+
+Confirmar ausência de hemorragia na TC.
+
+---
+
+# ⚡ PASSO 2
+
+Determinar tempo de evolução.
+
+Até
+
+4h30
+
+↓
+
+Avaliar trombólise.
+
+Até
+
+24 horas
+
+↓
+
+Avaliar trombectomia.
+
+---
+
+# 💉 REPERFUSÃO
+
+## Trombólise
+
+Até
+
+4h30
+
+quando elegível.
+
+---
+
+## Trombectomia
+
+Até
+
+24 horas
+
+em pacientes selecionados.
+
+---
+
+# ❤️ PRESSÃO ARTERIAL
+
+Paciente candidato à trombólise
+
+↓
+
+PA
+
+<185 x 110
+
+antes.
+
+Após trombólise
+
+↓
+
+<180 x 105
+
+por 24 horas.
+
+---
+
+Paciente NÃO candidato
+
+↓
+
+Permitir até
+
+220 x 120
+
+na fase aguda
+
+(exceto indicações específicas).
+
+---
+
+# 🌡 CONTROLE CLÍNICO
+
+✔ Glicemia
+
+✔ Temperatura
+
+✔ Saturação
+
+✔ Monitorização cardíaca
+
+---
+
+# 💊 ANTIAGREGAÇÃO
+
+Se NÃO trombolisado
+
+↓
+
+AAS
+
+160–300 mg
+
+nas primeiras
+
+24–48 horas.
+
+---
+
+Se trombolisado
+
+↓
+
+Aguardar
+
+24 horas
+
+↓
+
+Nova TC
+
+↓
+
+Iniciar AAS.
+
+---
+
+# ⚠️ ALERTAS
+
+Nunca administrar AAS antes da TC.
+
+Nunca iniciar antiagregação imediatamente após trombólise.
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Não controlar PA.
+
+❌ Dar AAS antes da imagem.
+
+❌ Perder janela terapêutica.
+
+❌ Não encaminhar para trombectomia.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 Tempo é cérebro.
+
+🧠 Trombólise e trombectomia podem ser complementares.
+
+🧠 Todo paciente deve ser avaliado para reperfusão.
+
+---
+
+# 📚 MODO ESTUDO
+
+O AVC isquêmico é uma emergência tempo-dependente. O tratamento consiste em reperfusão com trombólise intravenosa até 4 horas e 30 minutos quando indicada, e trombectomia mecânica em pacientes selecionados com oclusão de grande vaso, podendo estender-se até 24 horas conforme critérios de imagem.`,
+  },
+  {
+    slug: "trombolise-avc-isquemico",
+    title: "Trombólise no AVC Isquêmico",
+    source: `# 🧠 TROMBÓLISE NO AVC ISQUÊMICO
+
+⭐⭐⭐⭐⭐
+⏱ Leitura: 3 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+Déficit neurológico focal incapacitante
+
+↓
+
+Definir **última vez visto bem**
+
+↓
+
+Glicemia + NIHSS
+
+↓
+
+TC de crânio sem contraste
+
+↓
+
+Sem hemorragia
+
+↓
+
+Janela e critérios compatíveis?
+
+↓
+
+Controlar PA para **<185/110 mmHg**
+
+↓
+
+**Alteplase 0,9 mg/kg**
+ou
+**Tenecteplase 0,25 mg/kg**, conforme protocolo
+
+↓
+
+Manter PA **<180/105 mmHg por 24 horas**
+
+↓
+
+Não administrar antiagregante ou anticoagulante nas primeiras **24 horas**
+
+↓
+
+TC de controle antes de iniciar antitrombótico
+
+---
+
+# 📌 QUANDO CONSIDERAR
+
+✔ Diagnóstico clínico de AVC isquêmico.
+
+✔ Déficit neurológico mensurável e potencialmente incapacitante.
+
+✔ Início dos sintomas ou última vez visto bem dentro da janela de tratamento.
+
+✔ TC sem hemorragia intracraniana.
+
+✔ Ausência de contraindicação relevante.
+
+✔ Idade ≥18 anos.
+
+O benefício é dependente do tempo: o tratamento não deve ser atrasado aguardando melhora espontânea nem exames que não sejam indispensáveis. ([professional.heart.org][1])
+
+---
+
+# ⏰ JANELAS
+
+## Janela convencional
+
+Tratamento iniciado em até:
+
+**4 horas e 30 minutos**
+
+a partir do início dos sintomas ou da última vez em que o paciente foi visto normal.
+
+---
+
+## AVC ao despertar ou início desconhecido
+
+Pode haver indicação em pacientes selecionados por neuroimagem avançada, como:
+
+* incompatibilidade DWI–FLAIR na ressonância;
+* tecido cerebral potencialmente salvável em estudo de perfusão.
+
+Não trombolisar automaticamente apenas porque o paciente acordou com sintomas: é necessária seleção conforme protocolo de AVC. ([professional.heart.org][1])
+
+---
+
+# 💊 ALTEPLASE
+
+## Dose total
+
+**0,9 mg/kg IV**
+
+Dose máxima:
+
+**90 mg**
+
+---
+
+## Administração
+
+**10% da dose total em bolus IV durante 1 minuto**
+
+↓
+
+**90% restantes em infusão durante 60 minutos**
+
+---
+
+## Exemplo: paciente de 70 kg
+
+Dose total:
+
+**63 mg**
+
+Bolus:
+
+**6,3 mg**
+
+Infusão:
+
+**56,7 mg em 60 minutos**
+
+A alteplase pode ser usada dentro de 3 horas e, em pacientes selecionados, entre 3 e 4,5 horas. ([professional.heart.org][1])
+
+---
+
+# 💊 TENECTEPLASE
+
+## Dose
+
+**0,25 mg/kg IV em bolus único**
+
+Dose máxima:
+
+**25 mg**
+
+---
+
+## Tabela prática
+
+|    Peso | Dose aproximada |
+| ------: | --------------: |
+|   50 kg |     **12,5 mg** |
+|   60 kg |       **15 mg** |
+|   70 kg |     **17,5 mg** |
+|   80 kg |       **20 mg** |
+|   90 kg |     **22,5 mg** |
+| ≥100 kg |       **25 mg** |
+
+Pode ser utilizada conforme protocolo institucional, especialmente em pacientes também candidatos à trombectomia mecânica. Não utilizar o esquema de tenecteplase do IAM no AVC. ([professional.heart.org][1])
+
+---
+
+# ❤️ PRESSÃO ARTERIAL
+
+## Antes da trombólise
+
+PA deve estar:
+
+**<185/110 mmHg**
+
+---
+
+## Após a trombólise
+
+Manter:
+
+**<180/105 mmHg**
+
+durante pelo menos **24 horas**. ([AHA Journals][2])
+
+---
+
+# 💊 REDUÇÃO DA PA ANTES DA TROMBÓLISE
+
+## Labetalol
+
+**10–20 mg IV em 1–2 minutos**
+
+Pode repetir uma vez.
+
+---
+
+## Nicardipina
+
+Iniciar:
+
+**5 mg/h IV**
+
+Aumentar **2,5 mg/h a cada 5–15 minutos**
+
+Máximo:
+
+**15 mg/h**
+
+---
+
+## Clevidipina
+
+Iniciar:
+
+**1–2 mg/h IV**
+
+Dobrar a dose a cada **2–5 minutos** até atingir a meta.
+
+Máximo usual:
+
+**21 mg/h**
+
+---
+
+## Se não for possível manter PA ≤185/110 mmHg
+
+❌ Não administrar trombolítico.
+
+---
+
+# 🧪 EXAMES
+
+## Obrigatório antes da trombólise
+
+✔ Glicemia capilar.
+
+✔ TC de crânio sem contraste.
+
+---
+
+## Não atrasar trombólise aguardando exames quando não houver suspeita de alteração
+
+* hemograma;
+* plaquetas;
+* TP/INR;
+* TTPa;
+* função renal;
+* troponina;
+* radiografia de tórax.
+
+Se houver uso de anticoagulante, coagulopatia conhecida, trombocitopenia ou outra suspeita clínica, aguardar os exames pertinentes. ([professional.heart.org][1])
+
+---
+
+# 🚫 PRINCIPAIS CONTRAINDICAÇÕES
+
+## Hemorragia e sistema nervoso central
+
+❌ Hemorragia intracraniana na TC.
+
+❌ Suspeita de hemorragia subaracnóidea, mesmo com TC inicial normal.
+
+❌ Hemorragia intracraniana prévia, conforme avaliação do protocolo local.
+
+❌ Neoplasia intracraniana intra-axial, MAV ou lesão vascular com alto risco hemorrágico.
+
+❌ Cirurgia intracraniana ou espinal recente.
+
+❌ Trauma craniano grave recente.
+
+---
+
+## Pressão arterial
+
+❌ PA persistentemente >185/110 mmHg apesar do tratamento.
+
+---
+
+## Sangramento
+
+❌ Sangramento interno ativo.
+
+❌ Suspeita de dissecção aguda de aorta.
+
+❌ Endocardite infecciosa.
+
+❌ Plaquetas **<100.000/mm³**.
+
+---
+
+## Anticoagulantes
+
+❌ Varfarina com **INR >1,7**.
+
+❌ Heparina não fracionada recente com TTPa elevado.
+
+❌ Dose terapêutica de heparina de baixo peso molecular nas últimas **24 horas**.
+
+❌ Uso recente de anticoagulante oral direto com efeito anticoagulante presumidamente ativo, salvo exclusão laboratorial validada ou reversão conforme protocolo especializado. A AHA contraindica alteplase após dose terapêutica plena de HBPM nas 24 horas anteriores. ([professional.heart.org][1])
+
+---
+
+## Imagem
+
+❌ Hemorragia intracraniana.
+
+❌ Área extensa de infarto já estabelecido com alto risco de transformação hemorrágica, conforme avaliação da equipe de AVC.
+
+---
+
+# ⚠️ SITUAÇÕES QUE EXIGEM DECISÃO INDIVIDUALIZADA
+
+* AVC leve, porém incapacitante.
+* AVC leve não incapacitante.
+* Convulsão no início com déficit persistente possivelmente atribuível ao AVC.
+* Cirurgia ou trauma importante recente.
+* Sangramento gastrointestinal ou geniturinário recente.
+* Gestação ou puerpério.
+* IAM recente.
+* Punção arterial em local não compressível.
+* Idade avançada.
+* Demência ou incapacidade funcional prévia.
+
+**NIHSS baixo não exclui trombólise quando o déficit é incapacitante**, como afasia, hemianopsia, perda funcional da mão dominante ou incapacidade para deambular. Para déficit leve e não incapacitante, a alteplase não é recomendada rotineiramente. ([professional.heart.org][1])
+
+---
+
+# ⚡ TROMBÓLISE + TROMBECTOMIA
+
+Paciente elegível para trombólise IV e com suspeita de oclusão de grande vaso:
+
+✔ Administrar trombolítico sem atraso.
+
+✔ Acionar simultaneamente a equipe de trombectomia.
+
+✔ Não aguardar resposta clínica ao trombolítico antes de encaminhar para procedimento endovascular.
+
+✔ A trombólise não substitui a trombectomia quando esta estiver indicada. ([professional.heart.org][1])
+
+---
+
+# 🩺 CUIDADOS DURANTE E APÓS A TROMBÓLISE
+
+## Monitorização
+
+* avaliação neurológica frequente;
+* PA frequente;
+* monitor cardíaco;
+* oximetria;
+* vigilância de sangramentos;
+* unidade de AVC ou terapia intensiva conforme gravidade.
+
+---
+
+## Primeiras 24 horas
+
+❌ Não administrar AAS.
+
+❌ Não administrar clopidogrel.
+
+❌ Não administrar heparina.
+
+❌ Não administrar anticoagulante oral.
+
+❌ Evitar punções arteriais, sondas e procedimentos invasivos desnecessários.
+
+✔ Realizar TC ou RNM de controle após **24 horas** antes de iniciar antitrombótico.
+
+O risco do uso de antitrombóticos nas primeiras 24 horas é incerto; a PA deve permanecer abaixo de 180/105 mmHg. ([professional.heart.org][1])
+
+---
+
+# 🚨 SUSPEITA DE HEMORRAGIA INTRACRANIANA
+
+Suspeitar diante de:
+
+* piora neurológica súbita;
+* cefaleia intensa;
+* náuseas ou vômitos;
+* hipertensão aguda;
+* redução do nível de consciência.
+
+## Conduta imediata
+
+1. **Interromper a infusão de alteplase.**
+2. Solicitar **TC de crânio urgente**.
+3. Colher:
+
+   * hemograma;
+   * plaquetas;
+   * TP/INR;
+   * TTPa;
+   * fibrinogênio;
+   * tipagem e prova cruzada.
+4. Acionar neurologia, neurocirurgia, hematologia e banco de sangue.
+5. Considerar reversão conforme protocolo institucional.
+
+---
+
+# 🫁 ANGIOEDEMA OROLINGUAL
+
+Pode ocorrer após alteplase, principalmente em pacientes que utilizam IECA.
+
+## Conduta
+
+* interromper alteplase;
+* avaliar via aérea imediatamente;
+* suspender IECA;
+* administrar tratamento para angioedema conforme gravidade;
+* preparar intubação precoce se houver progressão.
+
+A equipe deve estar preparada para tratar hemorragia e angioedema com comprometimento da via aérea. ([professional.heart.org][1])
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Usar o horário em que o paciente foi encontrado em vez da última vez visto bem.
+
+❌ Aguardar troponina ou radiografia de tórax.
+
+❌ Excluir trombólise apenas porque o NIHSS é baixo.
+
+❌ Trombolisar sem medir glicemia.
+
+❌ Não controlar PA antes e depois da medicação.
+
+❌ Administrar AAS logo após a trombólise.
+
+❌ Aguardar resposta à trombólise antes de transferir para trombectomia.
+
+❌ Usar a dose de tenecteplase do IAM no AVC.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 **Alteplase: 0,9 mg/kg, máximo 90 mg; 10% em bolus e o restante em 60 minutos.**
+
+🧠 **Tenecteplase no AVC: 0,25 mg/kg, máximo 25 mg, em bolus único.**
+
+🧠 **PA antes: <185/110 mmHg.**
+
+🧠 **PA depois: <180/105 mmHg por 24 horas.**
+
+🧠 **Nenhum antiagregante ou anticoagulante antes da imagem de controle de 24 horas.**
+
+🧠 **Trombólise não deve atrasar trombectomia.**
+
+O protocolo preserva os tempos e a lógica presentes no seu resumo do ACLS — identificação rápida, última vez visto bem, imagem urgente, trombólise e avaliação simultânea para terapia endovascular. 
+
+[1]: https://professional.heart.org/en/-/media/PHD-Files-2/Science-News/2/2019/2019-Guidelines-for-the-Early-Management-of-Patients-with-Acute-Ischemic-Stroke-Slide-Set.pdf?sc_lang=en "Slide Set for 2019 Update to the 2018 Guidelines for the Early Management of Acute Ischemic Stroke"
+[2]: https://www.ahajournals.org/doi/10.1161/STROKEAHA.121.036143?utm_source=chatgpt.com "Blood Pressure Management for Ischemic Stroke in the ..."`,
+  },
+  {
+    slug: "trombectomia-avc-isquemico",
+    title: "Trombectomia Mecânica no AVC Isquêmico",
+    source: `# 🧠 TROMBECTOMIA MECÂNICA NO AVC ISQUÊMICO
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 2 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+AVC isquêmico
+
+↓
+
+Suspeita de oclusão de grande vaso
+
+↓
+
+Angio-TC / Angio-RM
+
+↓
+
+Elegível?
+
+↓
+
+Acionar centro de trombectomia
+
+↓
+
+Trombólise IV se indicada
+
+↓
+
+NÃO esperar resposta à trombólise
+
+↓
+
+Trombectomia mecânica
+
+---
+
+# 📌 QUANDO CONSIDERAR
+
+Paciente com AVC isquêmico e suspeita de oclusão arterial de grande vaso.
+
+Pensar principalmente em oclusão de:
+
+- Carótida interna intracraniana
+- Segmento M1 da cerebral média
+- Basilar
+- Outros vasos proximais conforme avaliação especializada
+
+---
+
+# 🚨 SINAIS DE SUSPEITA DE GRANDE VASO
+
+- Hemiplegia importante
+- Afasia grave
+- Negligência
+- Desvio conjugado do olhar
+- NIHSS elevado
+- Alteração importante da consciência
+- Síndrome de circulação posterior grave
+
+---
+
+# ⚡ PASSO A PASSO
+
+## 1. Confirmar AVC isquêmico
+
+- TC sem contraste
+- Excluir hemorragia
+
+---
+
+## 2. Realizar imagem vascular
+
+- Angio-TC de crânio e pescoço
+- Angio-RM quando disponível
+
+A investigação vascular não deve atrasar trombólise IV em paciente elegível.
+
+---
+
+## 3. Avaliar janela
+
+### Até 6 horas
+
+Avaliação por:
+
+- Oclusão de grande vaso
+- Gravidade clínica
+- ASPECTS
+- Independência funcional prévia
+- Relação risco-benefício
+
+---
+
+### Entre 6 e 24 horas
+
+Necessária seleção por imagem e critérios clínicos.
+
+Podem ser utilizados:
+
+- Perfusão por TC
+- Perfusão por RM
+- Difusão/perfusão
+- Avaliação de tecido cerebral potencialmente salvável
+
+A elegibilidade não deve ser definida apenas pelo relógio.
+
+---
+
+# 🚑 TRANSFERÊNCIA
+
+Se o hospital não realiza trombectomia:
+
+- Acionar imediatamente centro de referência
+- Não aguardar melhora clínica
+- Não aguardar resposta à alteplase ou tenecteplase
+- Transferir assim que possível
+
+---
+
+# 💉 TROMBÓLISE ASSOCIADA
+
+Paciente elegível para trombólise IV:
+
+- Administrar trombolítico
+- Acionar simultaneamente a equipe endovascular
+- Não atrasar trombectomia
+
+Trombólise e trombectomia são tratamentos complementares.
+
+---
+
+# 🩻 ASPECTS
+
+Escala tomográfica utilizada para estimar extensão da isquemia precoce na circulação anterior.
+
+- Valor maior: menor área de infarto estabelecido
+- Valor menor: maior área de núcleo isquêmico
+
+Não utilizar isoladamente sem considerar clínica, imagem vascular e protocolo local.
+
+---
+
+# ⚠️ ALERTAS
+
+- NIHSS baixo não exclui oclusão de grande vaso.
+- AVC de circulação posterior pode ter NIHSS artificialmente baixo.
+- TC inicial normal não exclui AVC grave.
+- Não atrasar transferência para completar exames desnecessários.
+- Trombectomia pode ser benéfica em pacientes selecionados mesmo com área isquêmica extensa, conforme avaliação especializada e protocolos atuais.
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Esperar resposta à trombólise antes de transferir.
+
+❌ Não solicitar imagem vascular.
+
+❌ Excluir trombectomia apenas por idade.
+
+❌ Excluir grande vaso apenas por NIHSS baixo.
+
+❌ Considerar que trombólise substitui trombectomia.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 Trombólise dissolve coágulo; trombectomia remove mecanicamente.
+
+🧠 Grande vaso exige avaliação endovascular imediata.
+
+🧠 O paciente pode receber trombólise e trombectomia no mesmo evento.
+
+🧠 Tempo é cérebro, mas imagem também define tecido salvável.`,
+  },
+  {
+    slug: "cuidados-pos-trombolise",
+    title: "Cuidados Pós-Trombólise",
+    source: `# 🧠 CUIDADOS PÓS-TROMBÓLISE
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 2 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+Trombólise realizada
+
+↓
+
+Unidade de AVC / UTI
+
+↓
+
+PA <180/105 mmHg
+
+↓
+
+Avaliação neurológica frequente
+
+↓
+
+Sem AAS, clopidogrel, heparina ou anticoagulante por 24 h
+
+↓
+
+TC/RM de controle em 24 h
+
+↓
+
+Sem sangramento
+
+↓
+
+Iniciar antitrombótico conforme indicação
+
+---
+
+# ❤️ PRESSÃO ARTERIAL
+
+Manter durante as primeiras 24 horas:
+
+**<180/105 mmHg**
+
+Tratar elevações persistentes conforme protocolo institucional.
+
+---
+
+# 🩺 MONITORIZAÇÃO
+
+Avaliar regularmente:
+
+- NIHSS
+- Nível de consciência
+- Pupilas
+- PA
+- FC
+- Saturação
+- Sinais de sangramento
+- Cefaleia
+- Náuseas ou vômitos
+
+---
+
+# 🚫 PRIMEIRAS 24 HORAS
+
+Não administrar:
+
+- AAS
+- Clopidogrel
+- Heparina
+- Enoxaparina terapêutica
+- Anticoagulante oral
+
+Evitar:
+
+- Punção arterial
+- Sonda nasogástrica
+- Sonda vesical
+- Cateter central
+- Injeções intramusculares
+- Outros procedimentos invasivos desnecessários
+
+---
+
+# 🩻 IMAGEM DE CONTROLE
+
+Realizar TC ou RM após aproximadamente:
+
+**24 horas**
+
+Antes de iniciar antiagregante ou anticoagulante.
+
+---
+
+# 🚨 PIORA NEUROLÓGICA
+
+Suspeitar de hemorragia se houver:
+
+- Cefaleia súbita
+- Vômitos
+- Elevação aguda da PA
+- Redução da consciência
+- Piora do déficit
+- Novo déficit neurológico
+
+---
+
+# ⚡ CONDUTA NA SUSPEITA DE HEMORRAGIA
+
+1. Interromper alteplase se ainda estiver em infusão.
+2. Solicitar TC urgente.
+3. Colher hemograma, plaquetas, TP/INR, TTPa e fibrinogênio.
+4. Acionar neurologia, neurocirurgia e hemoterapia.
+5. Considerar crioprecipitado e outras medidas de reversão conforme protocolo.
+
+---
+
+# 🫁 ANGIOEDEMA OROLINGUAL
+
+Suspeitar principalmente em uso concomitante de IECA.
+
+Conduta:
+
+- Interromper trombolítico
+- Avaliar via aérea imediatamente
+- Preparar intubação se progressão
+- Tratar conforme protocolo de angioedema
+
+---
+
+# 🍬 GLICEMIA
+
+Evitar:
+
+- Hipoglicemia
+- Hiperglicemia persistente
+
+Faixa prática habitual:
+
+**140–180 mg/dL**
+
+---
+
+# 🌡 TEMPERATURA
+
+- Tratar febre
+- Investigar infecção
+- Evitar hipertermia
+
+---
+
+# 🍽 DEGLUTIÇÃO
+
+Antes de alimentação oral:
+
+- Realizar triagem de disfagia
+- Evitar dieta oral até avaliação
+
+---
+
+# ⚠️ ALERTAS
+
+- AAS somente após imagem de controle sem hemorragia.
+- Não iniciar anticoagulação precoce de rotina.
+- Não reduzir PA agressivamente além da meta.
+- Alteração neurológica após trombólise é hemorragia até prova em contrário.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 Pós-trombólise: PA <180/105 por 24 h.
+
+🧠 Sem antitrombóticos por 24 h.
+
+🧠 Nova TC antes de liberar AAS.
+
+🧠 Piora neurológica exige TC imediata.`,
+  },
+  {
+    slug: "medicamentos-avc-isquemico",
+    title: "Medicamentos no AVC Isquêmico",
+    source: `# 💊 MEDICAMENTOS NO AVC ISQUÊMICO
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 2 minutos
+
+---
+
+# 💉 ALTEPLASE
+
+Dose:
+
+**0,9 mg/kg IV**
+
+Máximo:
+
+**90 mg**
+
+Administração:
+
+- 10% em bolus por 1 minuto
+- 90% em infusão por 60 minutos
+
+---
+
+# 💉 TENECTEPLASE
+
+Dose no AVC:
+
+**0,25 mg/kg IV em bolus único**
+
+Máximo:
+
+**25 mg**
+
+⚠️ Não utilizar a dose de tenecteplase do IAM.
+
+---
+
+# 💊 AAS
+
+Paciente não trombolisado:
+
+**160–300 mg**
+
+Iniciar geralmente dentro de 24–48 horas, após excluir hemorragia.
+
+Paciente trombolisado:
+
+- Aguardar 24 horas
+- Realizar imagem de controle
+- Iniciar se não houver sangramento
+
+---
+
+# 💊 DUPLA ANTIAGREGAÇÃO
+
+Considerar em AVC menor não cardioembólico ou AIT de alto risco, em pacientes selecionados:
+
+- AAS
+- Clopidogrel
+
+Uso geralmente por período curto, conforme protocolo de neurologia.
+
+Não utilizar rotineiramente após AVC moderado ou grave devido ao risco hemorrágico.
+
+---
+
+# 💊 LABETALOL
+
+Para controle de PA:
+
+**10–20 mg IV em 1–2 minutos**
+
+Pode repetir conforme resposta.
+
+---
+
+# 💊 NICARDIPINA
+
+Iniciar:
+
+**5 mg/h IV**
+
+Aumentar:
+
+**2,5 mg/h a cada 5–15 minutos**
+
+Máximo:
+
+**15 mg/h**
+
+---
+
+# 💊 CLEVIDIPINA
+
+Iniciar:
+
+**1–2 mg/h IV**
+
+Dobrar a cada 2–5 minutos conforme resposta.
+
+---
+
+# 💊 ESTATINA
+
+Considerar estatina de alta intensidade após estabilização, especialmente em doença aterosclerótica.
+
+Exemplo:
+
+**Atorvastatina 40–80 mg/dia**
+
+---
+
+# 🚫 NÃO UTILIZAR ROTINEIRAMENTE
+
+- Heparina plena na fase hiperaguda
+- Anticoagulação imediata para prevenir progressão
+- Corticoide para edema cerebral isquêmico
+- Anticonvulsivante profilático sem crise
+- Vasodilatadores que causem queda abrupta da PA
+
+---
+
+# ⚠️ ALERTAS
+
+- Não dar AAS antes de excluir sangramento.
+- Não iniciar antitrombótico antes de 24 h após trombólise.
+- Anticoagulação na fibrilação atrial deve ser iniciada posteriormente, conforme tamanho do infarto e risco hemorrágico.
+- Não tratar PA elevada automaticamente em paciente que não receberá reperfusão.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 AVC não trombolisado: AAS precoce após excluir hemorragia.
+
+🧠 AVC trombolisado: AAS somente após 24 h e imagem de controle.
+
+🧠 Tenecteplase no AVC: máximo 25 mg.
+
+🧠 Heparina plena não é tratamento agudo de rotina do AVC isquêmico.`,
+  },
+  {
+    slug: "avc-hemorragico",
+    title: "AVC Hemorrágico — Hemorragia Intraparenquimatosa",
+    source: `# 🧠 AVC HEMORRÁGICO — HEMORRAGIA INTRAPARENQUIMATOSA
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 3 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+TC com hemorragia
+
+↓
+
+Suspender antitrombóticos
+
+↓
+
+Controlar PA
+
+↓
+
+Reverter anticoagulação
+
+↓
+
+Avaliar neurocirurgia
+
+↓
+
+Controlar PIC
+
+↓
+
+UTI / Unidade neurocrítica
+
+---
+
+# 📌 OBJETIVOS
+
+- Evitar expansão do hematoma
+- Corrigir coagulopatia
+- Controlar pressão intracraniana
+- Prevenir herniação
+- Identificar indicação cirúrgica
+
+---
+
+# ⚡ PASSO A PASSO
+
+## 1. ABCDE
+
+- Proteger via aérea
+- Oxigênio se hipoxemia
+- Monitor
+- Acesso venoso
+- Avaliação neurológica seriada
+
+Considerar intubação se:
+
+- Glasgow baixo
+- Perda de reflexos de proteção
+- Hipoventilação
+- Herniação iminente
+
+---
+
+## 2. Suspender antitrombóticos
+
+Interromper:
+
+- Varfarina
+- DOAC
+- Heparina
+- Enoxaparina
+- Antiagregantes
+
+---
+
+## 3. Controlar PA
+
+Em pacientes com PAS entre aproximadamente 150 e 220 mmHg e sem contraindicação, pode-se considerar redução cuidadosa para alvo próximo de:
+
+**140 mmHg**
+
+Manter geralmente na faixa de:
+
+**130–150 mmHg**
+
+Evitar queda excessiva para menos de 130 mmHg.
+
+A meta deve ser individualizada em hemorragias graves, hipertensão intracraniana ou necessidade cirúrgica.
+
+---
+
+# 💊 CONTROLE DA PA
+
+Preferir fármacos tituláveis:
+
+- Nicardipina
+- Clevidipina
+- Labetalol
+
+Evitar hipotensão e grandes oscilações.
+
+---
+
+# 💉 REVERSÃO DA VARFARINA
+
+Preferir:
+
+- Complexo protrombínico de 4 fatores
+- Vitamina K IV
+
+Objetivo: reversão rápida do INR.
+
+---
+
+# 💉 REVERSÃO DA HEPARINA
+
+Utilizar:
+
+**Protamina**
+
+Dose conforme quantidade e tempo desde a última heparina.
+
+---
+
+# 💉 REVERSÃO DA ENOXAPARINA
+
+Protamina pode reverter parcialmente o efeito.
+
+Dose conforme intervalo desde a última administração.
+
+---
+
+# 💉 REVERSÃO DO DABIGATRANA
+
+Antídoto:
+
+**Idarucizumabe 5 g IV**
+
+---
+
+# 💉 REVERSÃO DE INIBIDORES DO FATOR Xa
+
+Para apixabana ou rivaroxabana:
+
+- Andexanet alfa quando disponível
+- Complexo protrombínico conforme protocolo local
+
+---
+
+# 🧠 PRESSÃO INTRACRANIANA
+
+Suspeitar diante de:
+
+- Rebaixamento progressivo
+- Anisocoria
+- Vômitos
+- Bradicardia + hipertensão
+- Alteração respiratória
+- Herniação
+
+---
+
+# 💊 TERAPIA HIPEROSMOLAR
+
+Pode ser utilizada em hipertensão intracraniana ou herniação.
+
+Opções:
+
+- Salina hipertônica
+- Manitol
+
+Utilizar conforme neurointensivismo e monitorização clínica/laboratorial.
+
+Não usar profilaticamente em todos os pacientes.
+
+---
+
+# 🏥 NEUROCIRURGIA
+
+Avaliação urgente em:
+
+- Hemorragia cerebelar
+- Compressão do tronco
+- Hidrocefalia
+- Deterioração neurológica
+- Hematoma superficial selecionado
+- Necessidade de derivação ventricular externa
+
+Hemorragia cerebelar com deterioração, compressão de tronco ou hidrocefalia frequentemente exige evacuação cirúrgica imediata.
+
+---
+
+# ⚡ CONVULSÕES
+
+- Tratar crises clínicas
+- Considerar EEG em rebaixamento inexplicado
+- Não utilizar anticonvulsivante profilático de rotina sem crise
+
+---
+
+# 🚫 TRANSFUSÃO DE PLAQUETAS
+
+Não realizar rotineiramente apenas por uso prévio de AAS, salvo situação cirúrgica específica ou orientação especializada.
+
+---
+
+# ⚠️ ALERTAS
+
+- Não trombolisar.
+- Não dar AAS.
+- Corrigir coagulopatia imediatamente.
+- Evitar queda brusca da PA.
+- Hemorragia cerebelar pode deteriorar rapidamente.
+- Hidrocefalia exige avaliação para derivação ventricular.
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Demorar para reverter anticoagulação.
+
+❌ Reduzir PAS excessivamente.
+
+❌ Usar manitol de rotina sem hipertensão intracraniana.
+
+❌ Fazer anticonvulsivante profilático para todos.
+
+❌ Não chamar neurocirurgia precocemente.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 AVC hemorrágico: primeiro interromper expansão, depois tratar complicações.
+
+🧠 Anticoagulante deve ser revertido imediatamente.
+
+🧠 PAS muito alta piora expansão; PAS muito baixa piora perfusão cerebral.
+
+🧠 Hemorragia cerebelar + deterioração = neurocirurgia urgente.`,
+  },
+  {
+    slug: "fluxograma-final-avc",
+    title: "Fluxograma Final do AVC",
+    source: `# 🧠 FLUXOGRAMA FINAL DO AVC
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 45 segundos
+
+---
+
+# 🚨 ALGORITMO
+
+Déficit neurológico focal súbito
+
+↓
+
+ABCDE + Glicemia
+
+↓
+
+Determinar última vez visto bem
+
+↓
+
+NIHSS
+
+↓
+
+TC de crânio sem contraste
+
+↓
+
+## TEM SANGUE?
+
+### SIM
+
+➡️ AVC hemorrágico
+
+- Suspender antitrombóticos
+- Controlar PA
+- Reverter anticoagulação
+- Avaliar neurocirurgia
+- UTI
+
+---
+
+### NÃO
+
+➡️ AVC isquêmico
+
+↓
+
+## DÉFICIT INCAPACITANTE E JANELA COMPATÍVEL?
+
+### SIM
+
+- PA <185/110
+- Alteplase ou tenecteplase
+- Meta pós-trombólise <180/105
+
+↓
+
+## SUSPEITA DE GRANDE VASO?
+
+### SIM
+
+- Angio-TC
+- Acionar trombectomia
+- Não esperar resposta à trombólise
+
+---
+
+## NÃO TROMBOLISADO
+
+- AAS após excluir hemorragia
+- Investigar etiologia
+- Unidade de AVC
+
+---
+
+## TROMBOLISADO
+
+- Sem antitrombóticos por 24 h
+- TC/RM de controle
+- Iniciar AAS somente se ausência de sangramento
+
+---
+
+# ⏱ METAS
+
+- Avaliação inicial: até 10 min
+- TC iniciada: até 20 min
+- Interpretação de imagem: até 45 min
+- Porta-agulha: até 60 min
+- Transferência para trombectomia: sem atraso
+
+---
+
+# 🧠 NUNCA ESQUECER
+
+- Glicemia antes de tudo
+- Última vez visto bem
+- TC sem contraste
+- NIHSS
+- Trombólise não exclui trombectomia
+- Sem AAS por 24 h após trombólise
+- Piora neurológica = repetir TC imediatamente`,
+  },
+  {
     slug: "via-aerea",
     title: "Via Aérea no ACLS",
     source: `# 🫀 VIA AÉREA NO ACLS
