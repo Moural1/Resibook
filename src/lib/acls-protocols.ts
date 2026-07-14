@@ -2040,6 +2040,990 @@ Nos pacientes estáveis, a análise do QRS (largo ou estreito) e da regularidade
 
 A TPSV responde à manobra vagal e à adenosina. A TV com pulso deve ser tratada preferencialmente com amiodarona ou cardioversão conforme estabilidade. A Torsades de Pointes deve ser tratada com desfibrilação e sulfato de magnésio, evitando amiodarona. Na fibrilação atrial, a decisão de cardioversão depende da estabilidade e do tempo de evolução do episódio.`,
   },
+  {
+    slug: "drogas-acls",
+    title: "Drogas do ACLS",
+    source: `# 💊 DROGAS DO ACLS
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 2 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+| Droga | Principal indicação |
+|---------|---------------------|
+| Epinefrina | PCR / Bradicardia refratária |
+| Amiodarona | FV/TVSP / TV com pulso |
+| Lidocaína | Alternativa à amiodarona |
+| Adenosina | TPSV regular de QRS estreito |
+| Atropina | Bradicardia sintomática |
+| Dopamina | Bradicardia refratária |
+| Epinefrina infusão | Bradicardia refratária |
+| Sulfato de Magnésio | Torsades de Pointes |
+
+---
+
+# 💊 EPINEFRINA (BOLUS)
+
+## Indicações
+
+✔ PCR (FV, TVSP, AESP e Assistolia)
+
+---
+
+## Dose
+
+**1 mg IV/IO**
+
+---
+
+## Repetição
+
+**A cada 3–5 minutos**
+
+---
+
+## Administração
+
+✔ Flush 20 mL SF
+
+✔ Elevar membro
+
+---
+
+## Observações
+
+• Nunca atrasar RCP para administrar.
+
+• Nos ritmos chocáveis iniciar após o 2º choque.
+
+• Nos ritmos não chocáveis administrar o mais precocemente possível.
+
+---
+
+# 💊 AMIODARONA
+
+## Indicações
+
+✔ FV
+
+✔ TV sem pulso
+
+✔ TV com pulso estável
+
+---
+
+## PCR (FV/TVSP)
+
+Primeira dose
+
+**300 mg IV/IO**
+
+Persistindo ritmo chocável
+
+↓
+
+Segunda dose
+
+**150 mg IV/IO**
+
+---
+
+## TV COM PULSO
+
+**150 mg**
+
+Diluir em
+
+100 mL SG5%
+
+Infundir em
+
+10 minutos
+
+---
+
+## Contraindicações / Cautela
+
+⚠️ Não utilizar em Torsades de Pointes.
+
+⚠️ Pode prolongar QT.
+
+---
+
+# 💊 LIDOCAÍNA
+
+## Indicações
+
+Alternativa quando Amiodarona indisponível.
+
+---
+
+## Dose inicial
+
+**1–1,5 mg/kg IV**
+
+---
+
+## Doses adicionais
+
+0,5–0,75 mg/kg
+
+---
+
+## Dose máxima
+
+**3 mg/kg**
+
+---
+
+# 💊 ADENOSINA
+
+## Indicação
+
+TPSV regular
+
+QRS estreito
+
+---
+
+## Dose
+
+Primeira
+
+**6 mg IV em bolus**
+
+↓
+
+Flush
+
+20 mL SF
+
+↓
+
+Elevar membro
+
+---
+
+Persistiu
+
+↓
+
+**12 mg**
+
+---
+
+Persistiu
+
+↓
+
+**12 mg**
+
+---
+
+## Administração
+
+Sempre em acesso proximal.
+
+Quanto mais proximal, maior eficácia.
+
+---
+
+## Avisar paciente
+
+Pode causar
+
+✔ Calor
+
+✔ Dor torácica
+
+✔ Sensação de morte
+
+✔ Assistolia transitória
+
+---
+
+## Contraindicações / Cautela
+
+⚠️ Asma
+
+⚠️ Broncoespasmo
+
+⚠️ Transplante cardíaco
+
+⚠️ Dipiridamol
+
+---
+
+# 💊 ATROPINA
+
+## Indicação
+
+Bradicardia sintomática.
+
+---
+
+## Dose
+
+**1 mg IV**
+
+---
+
+## Repetição
+
+A cada
+
+3–5 minutos
+
+---
+
+## Dose máxima
+
+**3 mg**
+
+---
+
+## Observações
+
+Pouco eficaz em
+
+• Mobitz II
+
+• BAV 3º grau
+
+• Bloqueios infranodais
+
+---
+
+# 💊 DOPAMINA
+
+## Indicação
+
+Bradicardia sintomática refratária.
+
+---
+
+## Dose
+
+**5–20 mcg/kg/min**
+
+---
+
+## Administração
+
+Infusão contínua.
+
+Titular conforme resposta clínica.
+
+---
+
+# 💊 EPINEFRINA (INFUSÃO)
+
+## Indicação
+
+Bradicardia refratária.
+
+---
+
+## Dose
+
+**2–10 mcg/min**
+
+---
+
+## Administração
+
+Infusão contínua.
+
+Titular conforme resposta.
+
+---
+
+# 💊 SULFATO DE MAGNÉSIO
+
+## Indicação
+
+Torsades de Pointes.
+
+---
+
+## Dose
+
+**1–2 g IV**
+
+Diluir em
+
+100 mL SF
+
+Infundir em
+
+5–10 minutos
+
+---
+
+## Observações
+
+✔ Corrige QT prolongado.
+
+✔ Antiarrítmico de escolha no Torsades.
+
+---
+
+## NÃO UTILIZAR
+
+Amiodarona no Torsades.
+
+---
+
+# 💊 CRISTALOIDES
+
+## Indicação
+
+Hipovolemia
+
+Hipotensão
+
+Choque
+
+Pós-PCR
+
+---
+
+# 📊 RESUMO DAS DOSES
+
+| Droga | Dose |
+|--------|------|
+| Epinefrina PCR | **1 mg** |
+| Epinefrina Infusão | **2–10 mcg/min** |
+| Atropina | **1 mg** |
+| Amiodarona PCR | **300 → 150 mg** |
+| Amiodarona TV | **150 mg/10 min** |
+| Lidocaína | **1–1,5 mg/kg** |
+| Adenosina | **6 → 12 → 12 mg** |
+| Magnésio | **1–2 g** |
+| Dopamina | **5–20 mcg/kg/min** |
+
+---
+
+# ⚠️ ALERTAS
+
+❌ Não atrasar RCP para administrar drogas.
+
+❌ Não usar Amiodarona em Torsades.
+
+❌ Não insistir em Atropina nos bloqueios infranodais.
+
+❌ Não fazer Adenosina em ritmos irregulares (FA irregular/WPW).
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Esquecer flush após Adenosina.
+
+❌ Administrar Adenosina lentamente.
+
+❌ Não elevar o membro após Epinefrina.
+
+❌ Esquecer segunda dose de Amiodarona.
+
+❌ Confundir Epinefrina em bolus com infusão.
+
+❌ Dar Magnésio sem suspeita de Torsades.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 Nenhuma droga substitui uma RCP de alta qualidade.
+
+🧠 O choque continua sendo o tratamento mais importante da FV/TV sem pulso.
+
+🧠 Adenosina é diagnóstica e terapêutica na TPSV.
+
+🧠 Quanto mais proximal o acesso da Adenosina, maior a chance de sucesso.
+
+🧠 Toda TV de QRS largo deve ser considerada ventricular até prova em contrário.
+
+---
+
+# 📚 MODO ESTUDO
+
+As medicações do ACLS atuam como terapias adjuvantes e nunca substituem os pilares do atendimento: RCP de alta qualidade, desfibrilação precoce quando indicada e correção das causas reversíveis.
+
+A Epinefrina permanece a droga vasopressora de escolha durante a PCR. A Amiodarona é o antiarrítmico preferencial para FV/TV sem pulso refratária, enquanto a Lidocaína pode ser utilizada como alternativa.
+
+Na TPSV regular de QRS estreito, a Adenosina continua sendo a medicação de primeira linha após falha das manobras vagais.
+
+Nas bradicardias sintomáticas, a Atropina é a droga inicial, sendo Dopamina, Epinefrina em infusão e Marcapasso Transcutâneo as principais opções quando não houver resposta.`,
+  },
+  {
+    slug: "ritmos-cardiacos",
+    title: "Ritmos Cardíacos - Reconhecimento Rápido",
+    source: `# 🫀 RITMOS CARDÍACOS - RECONHECIMENTO RÁPIDO
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 2 minutos
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+Tem onda P?
+
+↓
+
+SIM
+
+↓
+
+Sinusal
+
+↓
+
+QRS largo?
+
+↓
+
+SIM
+
+↓
+
+TV até prova em contrário
+
+↓
+
+NÃO
+
+↓
+
+RR regular?
+
+↓
+
+SIM
+
+↓
+
+TPSV
+
+↓
+
+NÃO
+
+↓
+
+FA
+
+↓
+
+Tem onda F serrilhada?
+
+↓
+
+Flutter
+
+---
+
+# 📌 OBJETIVO
+
+Reconhecer rapidamente o ritmo cardíaco para direcionar corretamente o algoritmo do ACLS.
+
+---
+
+# 🔎 PASSO A PASSO
+
+## 1. Existe onda P?
+
+SIM
+
+↓
+
+Pensar em ritmo sinusal ou bradicardia sinusal.
+
+---
+
+NÃO
+
+↓
+
+Continuar avaliação.
+
+---
+
+## 2. Existe onda F serrilhada?
+
+SIM
+
+↓
+
+Flutter atrial.
+
+---
+
+## 3. O QRS é largo?
+
+SIM
+
+↓
+
+Considerar Taquicardia Ventricular até prova em contrário.
+
+Lembrar dos diferenciais:
+
+• TSV com aberrância
+
+• WPW
+
+---
+
+NÃO
+
+↓
+
+Continuar.
+
+---
+
+## 4. O RR é regular?
+
+SIM
+
+↓
+
+TPSV
+
+---
+
+NÃO
+
+↓
+
+Fibrilação Atrial
+
+---
+
+# 📊 PRINCIPAIS RITMOS
+
+## Ritmo Sinusal
+
+✔ Onda P antes de todos QRS
+
+✔ FC 60–100 bpm
+
+✔ PR constante
+
+Conduta
+
+Normal.
+
+---
+
+## Bradicardia Sinusal
+
+✔ Onda P presente
+
+✔ FC <60
+
+Conduta
+
+Tratar apenas se sintomática.
+
+---
+
+## Taquicardia Sinusal
+
+✔ Onda P presente
+
+✔ FC >100
+
+Conduta
+
+Tratar causa.
+
+Não cardioverter.
+
+---
+
+## Flutter Atrial
+
+✔ Ondas F serrilhadas
+
+✔ Geralmente regular
+
+Conduta
+
+Instável
+
+↓
+
+Cardioversão sincronizada
+
+Estável
+
+↓
+
+Controle da frequência ou ritmo.
+
+---
+
+## Fibrilação Atrial
+
+✔ Sem onda P
+
+✔ RR irregular
+
+✔ QRS geralmente estreito
+
+Conduta
+
+Instável
+
+↓
+
+Cardioversão sincronizada
+
+Estável
+
+↓
+
+Controle FC
+
+Avaliar anticoagulação
+
+---
+
+## TPSV
+
+✔ Regular
+
+✔ QRS estreito
+
+✔ Geralmente sem onda P visível
+
+Conduta
+
+Manobra vagal
+
+↓
+
+Adenosina
+
+↓
+
+Betabloqueador ou BCC
+
+---
+
+## TV Monomórfica
+
+✔ QRS largo
+
+✔ Regular
+
+✔ Geralmente sem onda P
+
+Conduta
+
+Instável
+
+↓
+
+Cardioversão
+
+Estável
+
+↓
+
+Amiodarona
+
+---
+
+## Torsades de Pointes
+
+✔ TV Polimórfica
+
+✔ QT longo
+
+Conduta
+
+Desfibrilar
+
++
+
+Magnésio
+
+---
+
+## Fibrilação Ventricular
+
+✔ Caótica
+
+✔ Sem QRS organizado
+
+✔ Ritmo de parada
+
+Conduta
+
+Desfibrilação
+
++
+
+RCP
+
+---
+
+## Assistolia
+
+Linha praticamente reta
+
+Confirmar em duas derivações.
+
+Conduta
+
+RCP
+
++
+
+Epinefrina
+
+---
+
+## AESP
+
+Qualquer ritmo organizado
+
++
+
+SEM pulso
+
+Conduta
+
+RCP
+
++
+
+Epinefrina
+
++
+
+5Hs/5Ts
+
+---
+
+# ⚠️ ALERTAS
+
+Toda TV de QRS largo deve ser considerada ventricular até prova em contrário.
+
+Toda atividade elétrica sem pulso é AESP.
+
+Assistolia deve ser confirmada antes do diagnóstico.
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Confundir FA com TPSV
+
+❌ Chocar AESP
+
+❌ Chocar Assistolia
+
+❌ Dar Adenosina para FA irregular
+
+❌ Não reconhecer Torsades
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 Tem onda P → provavelmente sinusal.
+
+🧠 Onda F → Flutter.
+
+🧠 RR irregular → pensar primeiro em FA.
+
+🧠 QRS largo → TV até prova em contrário.
+
+🧠 Ritmo organizado + sem pulso = AESP.`,
+  },
+  {
+    slug: "cardioversao-vs-desfibrilacao",
+    title: "Cardioversão x Desfibrilação",
+    source: `# ⚡ CARDIOVERSÃO x DESFIBRILAÇÃO
+
+⭐⭐⭐⭐⭐
+
+⏱ Leitura: 1 minuto
+
+---
+
+# 🚨 RESUMO RÁPIDO
+
+FV
+
+➡️ Desfibrilar
+
+TV sem pulso
+
+➡️ Desfibrilar
+
+TV com pulso instável
+
+➡️ Cardioversão sincronizada
+
+TPSV instável
+
+➡️ Cardioversão sincronizada
+
+Flutter instável
+
+➡️ Cardioversão sincronizada
+
+FA instável
+
+➡️ Cardioversão sincronizada
+
+Torsades
+
+➡️ Desfibrilar
+
+---
+
+# 📌 DIFERENÇA
+
+## DESFIBRILAÇÃO
+
+Choque NÃO sincronizado.
+
+Utilizado em
+
+✔ FV
+
+✔ TV sem pulso
+
+✔ Torsades
+
+Botão
+
+❌ NÃO apertar SYNC.
+
+---
+
+## CARDIOVERSÃO
+
+Choque sincronizado.
+
+O aparelho identifica o QRS.
+
+Utilizado em
+
+✔ FA
+
+✔ Flutter
+
+✔ TPSV
+
+✔ TV com pulso
+
+Botão
+
+✅ Apertar SYNC.
+
+---
+
+# ⚡ ENERGIAS
+
+## DESFIBRILAÇÃO
+
+Bifásico
+
+120–200 J
+
+(se desconhecido usar 200 J)
+
+Choques seguintes
+
+Maior energia disponível.
+
+Monofásico
+
+360 J
+
+---
+
+## CARDIOVERSÃO
+
+### TPSV
+
+50–100 J
+
+---
+
+### Flutter
+
+50–100 J
+
+---
+
+### FA
+
+120–200 J bifásico
+
+---
+
+### TV Monomórfica
+
+100 J
+
+---
+
+# ⚠️ SEDAÇÃO
+
+Sempre que possível
+
+Sedar antes da cardioversão.
+
+Exceção
+
+Paciente em risco iminente de morte.
+
+---
+
+# ⚠️ ALERTAS
+
+Nunca sincronizar FV.
+
+Nunca sincronizar TV sem pulso.
+
+Sempre conferir se o botão SYNC permanece ligado antes de cada choque.
+
+---
+
+# ❌ ERROS FREQUENTES
+
+❌ Esquecer botão SYNC.
+
+❌ Desfibrilar FA.
+
+❌ Cardioverter FV.
+
+❌ Aguardar sedação em paciente extremamente instável.
+
+---
+
+# 💎 PÉROLAS RESIBOOK
+
+🧠 Vivo → cardioversão.
+
+🧠 Morto (PCR) → desfibrilação.
+
+🧠 Torsades é a exceção: paciente pode ter pulso e ainda assim precisar de desfibrilação devido à dificuldade de sincronização e instabilidade.`,
+  },
 ];
 
 export function getAclsProtocol(slug: string) {
