@@ -12,6 +12,10 @@ const SOURCE_HASHES = {
   "avaliacao-secundaria-sample": "5c3a933b20c337b57cfeee36fb2bfd1a0d6963f8517d7e5294bbde8d0d932e80",
   "cadeia-de-sobrevivencia": "69eab95ced3a41b93291c9e98a0298a31679e2bd0e1d0b33ba9a60fca7088621",
   "rcp-de-alta-qualidade": "0315ac22c0e2bcfbea8240e335c78f510a1c530a49cb1f0bb3c6685739cb9f00",
+  "bradicardia": "c99ff8e2d79f4fc252ed137c5c23e22dcb7c070603b6eafe20985a4f26d556d1",
+  "pcr-ritmo-chocavel": "6433298bc6ca8cf56481a8b1316560be034bd21b1d894af56c8b276fbc80987c",
+  "pcr-ritmo-nao-chocavel": "3a35fd34e4e9c1b5fe4c153e989e4719ec9764489ca9d831c50f3d864e282805",
+  "taquicardia": "5bd5478f3d438e0c0a6b53065b6520d8e02adad4b09c5184ff26a9b1efc14b52",
 };
 
 function sourceHash(source) {
