@@ -20,6 +20,12 @@ type ProtocolSection = {
   lines: string[];
 };
 
+type ParsedProtocol = {
+  title: string;
+  preamble: string[];
+  sections: ProtocolSection[];
+};
+
 function slugify(value: string) {
   return value
     .normalize("NFD")
@@ -29,26 +35,37 @@ function slugify(value: string) {
     .toLowerCase();
 }
 
-function parseSections(source: string): ProtocolSection[] {
+function parseProtocol(source: string): ParsedProtocol {
   const lines = source.replace(/\r\n/g, "\n").split("\n");
+  const usesPrimarySections = lines.filter((line) => line.startsWith("# ")).length > 1;
   const sections: ProtocolSection[] = [];
+  const preamble: string[] = [];
   let current: ProtocolSection | null = null;
+  let title = "";
 
   for (const line of lines) {
-    if (line.startsWith("# ")) continue;
+    if (!title && line.startsWith("# ")) {
+      title = line.slice(2);
+      continue;
+    }
 
-    if (line.startsWith("## ")) {
+    const startsSection = usesPrimarySections
+      ? line.startsWith("# ")
+      : line.startsWith("## ");
+
+    if (startsSection) {
       if (current) sections.push(current);
-      const title = line.slice(3);
-      current = { id: slugify(title), title, lines: [] };
+      const sectionTitle = line.slice(usesPrimarySections ? 2 : 3);
+      current = { id: slugify(sectionTitle), title: sectionTitle, lines: [] };
       continue;
     }
 
     if (current) current.lines.push(line);
+    else preamble.push(line);
   }
 
   if (current) sections.push(current);
-  return sections;
+  return { title, preamble, sections };
 }
 
 function cleanMarkdown(value: string) {
@@ -57,8 +74,10 @@ function cleanMarkdown(value: string) {
 
 function lineTone(line: string) {
   if (/^\*\*.*\*\*$/.test(line)) return "dose";
+  if (/^❌/.test(line)) return "contraindication";
   if (/^(⚠️|🚨)/.test(line)) return line.includes("NÃO") ? "contraindication" : "alert";
-  if (/^(➡️|✅)/.test(line)) return "conduct";
+  if (/^(➡️|✅|✔)/.test(line)) return "conduct";
+  if (/^🧠/.test(line)) return "pearl";
   return "default";
 }
 
@@ -81,10 +100,11 @@ function ProtocolLines({ lines }: { lines: string[] }) {
           );
         }
 
-        if (line.startsWith("### ")) {
+        if (line.startsWith("## ") || line.startsWith("### ")) {
+          const level = line.startsWith("### ") ? 4 : 3;
           return (
             <h3 key={index} className="mt-5 border-l-4 border-cyan-700 pl-3 text-sm font-bold text-slate-950 first:mt-0">
-              {line.slice(4)}
+              {line.slice(level)}
             </h3>
           );
         }
@@ -95,6 +115,7 @@ function ProtocolLines({ lines }: { lines: string[] }) {
           alert: "border-amber-200 bg-amber-50 text-amber-950 font-semibold",
           contraindication: "border-rose-200 bg-rose-50 text-rose-950 font-semibold",
           conduct: "border-emerald-200 bg-emerald-50 text-emerald-950 font-semibold",
+          pearl: "border-slate-800 bg-slate-950 text-white font-semibold",
           default: "border-slate-200 bg-white text-slate-700",
         }[tone];
         const isListItem = /^(- |• |✔ |☐ |☑ )/.test(line);
@@ -196,7 +217,8 @@ export function AclsShell({ children }: { children: React.ReactNode }) {
 }
 
 export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
-  const sections = useMemo(() => parseSections(protocol.source), [protocol.source]);
+  const parsed = useMemo(() => parseProtocol(protocol.source), [protocol.source]);
+  const sections = parsed.sections;
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set(sections[0] ? [sections[0].id] : [])
   );
@@ -221,7 +243,12 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700">ACLS</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{protocol.title}</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{parsed.title || protocol.title}</h2>
+            {parsed.preamble.some((line) => line.trim() && line.trim() !== "---") ? (
+              <div className="mt-3 max-w-sm">
+                <ProtocolLines lines={parsed.preamble} />
+              </div>
+            ) : null}
           </div>
           <button
             type="button"
@@ -236,7 +263,7 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
         <div className="mt-5 rounded-xl border border-cyan-100 bg-cyan-50/60 p-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-cyan-900">
             <BookOpen className="h-4 w-4" />
-            Resumo rápido
+            Navegação rápida
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {sections.map((section) => (
@@ -258,14 +285,24 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
 
       <div className="space-y-3">
         {sections.map((section) => {
-          const pearl = section.title.toLowerCase() === "nunca esquecer";
+          const normalizedTitle = section.title.toLowerCase();
+          const pearl = normalizedTitle.includes("pérolas") || normalizedTitle.includes("nunca esquecer");
+          const alert = normalizedTitle.includes("alertas");
+          const contraindication = normalizedTitle.includes("erros frequentes");
+          const sectionClasses = pearl
+            ? "border-slate-900 bg-slate-950"
+            : contraindication
+              ? "border-rose-200 bg-rose-50"
+              : alert
+                ? "border-amber-200 bg-amber-50"
+                : "border-slate-200 bg-white";
           return (
             <details
               key={section.id}
               id={section.id}
               open={openSections.has(section.id)}
               onToggle={(event) => toggleSection(section.id, event.currentTarget.open)}
-              className={`group scroll-mt-24 overflow-hidden rounded-2xl border shadow-sm ${pearl ? "border-slate-900 bg-slate-950" : "border-slate-200 bg-white"}`}
+              className={`group scroll-mt-24 overflow-hidden rounded-2xl border shadow-sm ${sectionClasses}`}
             >
               <summary className={`flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-base font-semibold ${pearl ? "text-white" : "text-slate-950"}`}>
                 {section.title}
