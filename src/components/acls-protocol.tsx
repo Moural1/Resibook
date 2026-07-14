@@ -100,6 +100,30 @@ function ProtocolLines({ lines }: { lines: string[] }) {
           );
         }
 
+        if (/^\|.*\|$/.test(line)) {
+          if (/^\|[\s|:-]+\|$/.test(line)) return null;
+          const cells = line
+            .slice(1, -1)
+            .split("|")
+            .map((cell) => cleanMarkdown(cell.trim()));
+          const nextLine = lines[index + 1]?.trim() || "";
+          const header = /^\|[\s|:-]+\|$/.test(nextLine);
+
+          return (
+            <div
+              key={index}
+              className={`grid overflow-hidden rounded-xl border text-xs sm:text-sm ${header ? "border-blue-200 bg-blue-50 font-bold text-blue-950" : "border-slate-200 bg-white text-slate-700"}`}
+              style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}
+            >
+              {cells.map((cell, cellIndex) => (
+                <div key={cellIndex} className="border-r border-inherit px-3 py-2.5 last:border-r-0">
+                  {cell}
+                </div>
+              ))}
+            </div>
+          );
+        }
+
         if (line.startsWith("## ") || line.startsWith("### ")) {
           const level = line.startsWith("### ") ? 4 : 3;
           return (

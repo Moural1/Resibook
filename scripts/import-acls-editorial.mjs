@@ -19,6 +19,9 @@ const titleToSlug = new Map([
   ["pcr ritmo nao chocavel aesp assistolia", "pcr-ritmo-nao-chocavel"],
   ["bradicardia sintomatica", "bradicardia"],
   ["taquicardia com pulso", "taquicardia"],
+  ["drogas do acls", "drogas-acls"],
+  ["ritmos cardiacos reconhecimento rapido", "ritmos-cardiacos"],
+  ["cardioversao x desfibrilacao", "cardioversao-vs-desfibrilacao"],
 ]);
 
 function normalizeTitle(value) {
