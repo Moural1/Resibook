@@ -19,6 +19,15 @@ const SOURCE_HASHES = {
   "drogas-acls": "bb8052261831e74aae36a568795aaa5ea7b07ddb0788a92d406925b49c9a6b34",
   "ritmos-cardiacos": "23988e9d83a79fbaadd83d707afae2d81f09a868879cf02460c21e1854987f1b",
   "cardioversao-vs-desfibrilacao": "81b20eb72adde46a4e5aaa3b7e16f413e4b17f9278843e811171af69475d78f7",
+  "iam": "ce71387d62528e8ba075d2b411aff2ba3cd7c83009cec205244ade9c3939027d",
+  "iam-com-supra": "380010d689b1cbbf581142e506ab9442e24653441dac94242d9396146e2a8599",
+  "estrategias-reperfusao-iamcsst": "c684f3e35ba779eb28445667da5c4e8d714d5e308bb0f2889af47079c8a0904b",
+  "trombolise-iam-com-supra": "86b38064344590ccea2bcc3f0dec611903be33d8e7ec270d048c29d9005c0596",
+  "icp-resgate": "14c184506928ebd09c7fb3378c823f00bbc0c841739bada1e8c48e65bf9b328b",
+  "iam-sem-supra": "645a97d7eb7c67737a5fc518db6190361532bd549ccdae6619aa7e55aa2f9db8",
+  "medicamentos-iam": "dee2c364ba2c6e783173b585a29c67b3d7efb6498d68fc2351aef404ea85e17e",
+  "complicacoes-iam": "0d5c578e7036c97a551a1d1a2589bd1fac876e12f0c8db365a799eb05bf78ee4",
+  "via-aerea": "1ff6c51f00b11258ca655583c548b20fafdbd40aaccbf06a2b3ee97eb8e39f21",
 };
 
 function sourceHash(source) {
