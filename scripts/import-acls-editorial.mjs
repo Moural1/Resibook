@@ -19,6 +19,18 @@ const titleToSlug = new Map([
   ["pcr ritmo nao chocavel aesp assistolia", "pcr-ritmo-nao-chocavel"],
   ["bradicardia sintomatica", "bradicardia"],
   ["taquicardia com pulso", "taquicardia"],
+  ["drogas do acls", "drogas-acls"],
+  ["ritmos cardiacos reconhecimento rapido", "ritmos-cardiacos"],
+  ["cardioversao x desfibrilacao", "cardioversao-vs-desfibrilacao"],
+  ["sindrome coronariana aguda sca", "iam"],
+  ["iam com supra iamcsst", "iam-com-supra"],
+  ["estrategias de reperfusao no iamcsst", "estrategias-reperfusao-iamcsst"],
+  ["trombolise no iam com supra", "trombolise-iam-com-supra"],
+  ["icp de resgate", "icp-resgate"],
+  ["iam sem supra iamssst nstemi", "iam-sem-supra"],
+  ["medicamentos do iam", "medicamentos-iam"],
+  ["complicacoes do iam", "complicacoes-iam"],
+  ["via aerea no acls", "via-aerea"],
 ]);
 
 function normalizeTitle(value) {

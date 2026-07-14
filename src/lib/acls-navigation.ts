@@ -17,10 +17,19 @@ export const ACLS_NAVIGATION: AclsNavigationItem[] = [
   { slug: "bradicardia", label: "Bradicardia", available: true },
   { slug: "taquicardia", label: "Taquicardia", available: true },
   { slug: "pos-pcr", label: "Pós-PCR", available: false },
-  { slug: "drogas-acls", label: "Drogas ACLS", available: false },
-  { slug: "iam", label: "IAM", available: false },
+  { slug: "drogas-acls", label: "Drogas ACLS", available: true },
+  { slug: "ritmos-cardiacos", label: "Ritmos Cardíacos", available: true },
+  { slug: "cardioversao-vs-desfibrilacao", label: "Cardioversão x Desfibrilação", available: true },
+  { slug: "iam", label: "SCA / IAM", available: true },
+  { slug: "iam-com-supra", label: "IAM com Supra", available: true },
+  { slug: "estrategias-reperfusao-iamcsst", label: "Estratégias de Reperfusão", available: true },
+  { slug: "trombolise-iam-com-supra", label: "Trombólise no IAM", available: true },
+  { slug: "icp-resgate", label: "ICP de Resgate", available: true },
+  { slug: "iam-sem-supra", label: "IAM sem Supra", available: true },
+  { slug: "medicamentos-iam", label: "Medicamentos do IAM", available: true },
+  { slug: "complicacoes-iam", label: "Complicações do IAM", available: true },
   { slug: "avc", label: "AVC", available: false },
-  { slug: "via-aerea", label: "Via Aérea", available: false },
+  { slug: "via-aerea", label: "Via Aérea", available: true },
 ];
 
 export function getAclsHref(slug: string) {
