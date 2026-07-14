@@ -9,6 +9,7 @@ const LIBRARY_ROUTES = [
   "/cids",
   "/condutas",
   "/calculadoras",
+  "/acls",
 ];
 const WORKFLOW_ROUTES = [
   "/prescricao",

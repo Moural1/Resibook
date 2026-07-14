@@ -9,11 +9,13 @@ import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import { isResibookAdmin } from "@/lib/auth-role";
 import { PRODUCT_CAPABILITIES } from "@/lib/product-config";
+import { ACLS_NAVIGATION, getAclsHref } from "@/lib/acls-navigation";
 import {
   Activity,
   BarChart3,
   Brain,
   Calculator,
+  ChevronRight,
   ClipboardList,
   CreditCard,
   FlaskConical,
@@ -279,6 +281,60 @@ function NavSection({
   );
 }
 
+function AclsNavSection({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <section>
+      <details className="group" open={pathname.startsWith("/acls")}>
+        <summary className="mb-1.5 flex cursor-pointer list-none items-center justify-between rounded-lg px-1 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 transition hover:text-slate-300">
+          <span>ACLS</span>
+          <ChevronRight className="h-3.5 w-3.5 transition group-open:rotate-90" />
+        </summary>
+
+        <div className="ml-3 space-y-0.5 border-l border-white/8 pl-2">
+          {ACLS_NAVIGATION.map((item) => {
+            const href = getAclsHref(item.slug);
+            const active = pathname === href;
+
+            if (!item.available) {
+              return (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-[11px] text-slate-500"
+                  aria-disabled="true"
+                >
+                  <span>{item.label}</span>
+                  <Lock className="h-3 w-3 shrink-0" />
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={item.label}
+                href={href}
+                onClick={onNavigate}
+                className={`block rounded-lg px-2 py-1.5 text-[11px] font-medium transition ${
+                  active
+                    ? "bg-cyan-400/[0.09] text-cyan-100"
+                    : "text-slate-300 hover:bg-white/[0.04] hover:text-white"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </details>
+    </section>
+  );
+}
+
 function SidebarContent({
   pathname,
   counts,
@@ -495,6 +551,10 @@ function SidebarContent({
           pathname={pathname}
           onNavigate={onNavigate}
         />
+
+        {!isGuest ? (
+          <AclsNavSection pathname={pathname} onNavigate={onNavigate} />
+        ) : null}
 
         {visibleSecondaryItems.length > 0 ? (
           <NavSection
