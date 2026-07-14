@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:clinical": "node --no-warnings --experimental-strip-types --test scripts/clinical-regression.test.mjs",
+    "test:acls": "node --no-warnings --experimental-strip-types --test scripts/acls-content-regression.test.mjs",
     "test:security": "node --no-warnings --experimental-strip-types --test scripts/security-regression.test.mjs"
   },
   "dependencies": {
