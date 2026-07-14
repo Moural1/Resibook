@@ -16,7 +16,7 @@ const SOURCE_HASHES = {
   "pcr-ritmo-chocavel": "6433298bc6ca8cf56481a8b1316560be034bd21b1d894af56c8b276fbc80987c",
   "pcr-ritmo-nao-chocavel": "3a35fd34e4e9c1b5fe4c153e989e4719ec9764489ca9d831c50f3d864e282805",
   "taquicardia": "5bd5478f3d438e0c0a6b53065b6520d8e02adad4b09c5184ff26a9b1efc14b52",
-  "pos-pcr": "86242733b7bc0e497daf34ba00715615fd59a184f565a8bdf36a529f6d2294e4",
+  "pos-pcr": "885ef312a21a7ad0944ec38df1e78c75bb69d87de8e3890ee82bf7e03ac785d1",
   "drogas-acls": "bb8052261831e74aae36a568795aaa5ea7b07ddb0788a92d406925b49c9a6b34",
   "ritmos-cardiacos": "23988e9d83a79fbaadd83d707afae2d81f09a868879cf02460c21e1854987f1b",
   "cardioversao-vs-desfibrilacao": "81b20eb72adde46a4e5aaa3b7e16f413e4b17f9278843e811171af69475d78f7",

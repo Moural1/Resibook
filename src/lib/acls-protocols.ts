@@ -2061,7 +2061,7 @@ ABCDE
 
 ↓
 
-SatO₂ 92–98%
+SatO₂ 90–98%
 
 ↓
 
@@ -2094,6 +2094,19 @@ Pesquisar causa da PCR
 ↓
 
 UTI
+
+---
+
+# 📊 METAS ESSENCIAIS
+
+| Parâmetro | Meta |
+|---|---|
+| SatO₂ | 90–98% |
+| PaO₂ | 60–105 mmHg |
+| PaCO₂ | 35–45 mmHg |
+| PAM | ≥65 mmHg |
+| Temperatura | 32–37,5°C por pelo menos 36 horas se não responder a comandos |
+| Glicemia | Evitar <70 mg/dL e >180 mg/dL |
 
 ---
 
@@ -2167,7 +2180,7 @@ Titular
 
 ### SatO₂
 
-**92–98%**
+**90–98%**
 
 Evitar
 
@@ -2179,7 +2192,7 @@ Evitar
 
 Meta de PaO₂
 
-**60–100 mmHg**
+**60–105 mmHg**
 
 ---
 
@@ -2194,12 +2207,6 @@ Evitar hiperventilação.
 ## 🅲 CIRCULAÇÃO
 
 Objetivos
-
-### PAS
-
-≥90 mmHg
-
----
 
 ### PAM
 
@@ -2229,25 +2236,31 @@ Cristaloide
 
 conforme contexto clínico.
 
-Persistindo
+↓
+
+Reavaliar perfusão e PAM
+
+↓
+
+Persistindo hipotensão
 
 ↓
 
 Vasopressor
 
-Preferir
+Escolher conforme o fenótipo do choque e protocolo institucional.
+
+Não há vasopressor específico recomendado pela AHA para o pós-PCR indiferenciado.
+
+Opções
 
 ### Noradrenalina
-
-Titular conforme PAM.
-
-Alternativas
 
 ✔ Epinefrina
 
 ✔ Dopamina
 
-quando indicadas.
+Titular conforme PAM e contexto clínico.
 
 ---
 
@@ -2267,11 +2280,29 @@ Hemodinâmica imediata.
 
 Mesmo sem Supra
 
-Se alta suspeita de causa coronária
+Se choque cardiogênico
+
+ou
+
+arritmias ventriculares recorrentes
+
+ou
+
+isquemia miocárdica significativa persistente
 
 ↓
 
-Considerar coronariografia.
+Considerar coronariografia emergencial.
+
+---
+
+Paciente comatoso estável
+
+Sem supra, choque, instabilidade elétrica ou isquemia persistente
+
+↓
+
+Não realizar coronariografia emergencial de rotina.
 
 ---
 
@@ -2289,6 +2320,12 @@ Meta
 
 (conforme protocolo institucional)
 
+Duração
+
+**Pelo menos 36 horas**
+
+se permanecer sem responder a comandos.
+
 Evitar principalmente
 
 ❌ Febre
@@ -2297,15 +2334,13 @@ Evitar principalmente
 
 # 🍬 GLICEMIA
 
-Meta
+Evitar hipoglicemia
 
-**140–180 mg/dL**
+**<70 mg/dL**
 
-Evitar
+e hiperglicemia
 
-❌ Hipoglicemia
-
-❌ Hiperglicemia importante
+**>180 mg/dL**
 
 ---
 
@@ -2336,6 +2371,34 @@ Se suspeita de crise
 ↓
 
 EEG quando disponível.
+
+---
+
+# 🧠 NEUROPROGNÓSTICO
+
+Não concluir prognóstico neurológico precocemente.
+
+Avaliação multimodal
+
+↓
+
+Exame clínico + EEG + imagem + biomarcadores quando disponíveis
+
+↓
+
+Consolidar prognóstico
+
+**≥72 horas após normotermia**
+
+Considerar confundidores
+
+✔ Sedação
+
+✔ Bloqueio neuromuscular
+
+✔ Distúrbios metabólicos
+
+✔ Disfunção orgânica
 
 ---
 
@@ -2425,6 +2488,8 @@ Monitorização contínua.
 
 ❌ Não esquecer causa da PCR.
 
+❌ Não realizar prognóstico neurológico precoce.
+
 ---
 
 # ❌ ERROS FREQUENTES
@@ -2441,6 +2506,8 @@ Monitorização contínua.
 
 ❌ Não tratar hipotensão.
 
+❌ Realizar coronariografia emergencial de rotina no paciente estável sem supra.
+
 ---
 
 # 💎 PÉROLAS RESIBOOK
@@ -2451,7 +2518,7 @@ Monitorização contínua.
 
 🧠 Hipóxia e hiperóxia são igualmente prejudiciais.
 
-🧠 Muitos pacientes necessitam cateterismo mesmo sem supra de ST.
+🧠 Sem supra de ST, coronariografia emergencial é reservada para pacientes selecionados com choque, instabilidade elétrica ou isquemia persistente.
 
 🧠 O tratamento da causa da PCR é tão importante quanto a própria ressuscitação.
 
@@ -2461,7 +2528,9 @@ Monitorização contínua.
 
 Os cuidados pós-PCR têm como objetivo preservar o cérebro e evitar recorrência da parada.
 
-Após o retorno da circulação espontânea, deve-se realizar nova avaliação ABCDE, otimizar oxigenação (SatO₂ 92–98%), manter normocapnia (PaCO₂ 35–45 mmHg), garantir PAM ≥65 mmHg, realizar ECG de 12 derivações, controlar rigorosamente a temperatura, corrigir distúrbios metabólicos e investigar a causa da PCR.
+Após o retorno da circulação espontânea, deve-se realizar nova avaliação ABCDE, otimizar oxigenação (SatO₂ 90–98% e PaO₂ 60–105 mmHg), manter normocapnia (PaCO₂ 35–45 mmHg), garantir PAM ≥65 mmHg, realizar ECG de 12 derivações, controlar rigorosamente a temperatura por pelo menos 36 horas nos pacientes que não respondem a comandos, evitar glicemia <70 mg/dL ou >180 mg/dL, corrigir distúrbios metabólicos e investigar a causa da PCR.
+
+No paciente sem supra de ST, a coronariografia emergencial deve ser considerada quando houver choque cardiogênico, arritmias ventriculares recorrentes ou isquemia miocárdica significativa persistente. O neuroprognóstico deve ser multimodal e consolidado pelo menos 72 horas após a normotermia, considerando os efeitos de sedativos e outros confundidores.
 
 Todo paciente pós-PCR deve ser encaminhado para monitorização intensiva em UTI.`,
   },
