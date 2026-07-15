@@ -26,6 +26,7 @@ const HIDDEN_PATHS = [
   "/aceite-legal",
   "/termos",
   "/privacidade",
+  "/acls/ebook",
 ];
 
 export default function MobileClinicalNav() {
