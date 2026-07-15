@@ -28,11 +28,11 @@ import type {
 
 const PAGE_WEIGHT = 2400;
 const FONT_CLASSES = [
-  "text-[13px] sm:text-[14px]",
   "text-[14px] sm:text-[15px]",
   "text-[16px] sm:text-[17px]",
-  "text-[18px] sm:text-[19px]",
-  "text-[20px] sm:text-[21px]",
+  "text-[17px] sm:text-[18px]",
+  "text-[19px] sm:text-[20px]",
+  "text-[21px] sm:text-[22px]",
 ] as const;
 const ZOOM_LABELS = ["85%", "95%", "100%", "115%", "130%"] as const;
 
@@ -92,7 +92,7 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
             width={1200}
             height={760}
             sizes="(max-width: 768px) 100vw, 760px"
-            className="mx-auto h-auto max-h-[540px] w-auto max-w-full object-contain"
+            className="mx-auto h-auto max-h-[680px] w-full max-w-5xl object-contain"
           />
         </span>
       );
@@ -108,13 +108,75 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
   });
 }
 
+function splitRichLines(content: AclsEbookRichText[]) {
+  const lines: AclsEbookRichText[][] = [[]];
+
+  for (const segment of content) {
+    if (segment.kind === "image") {
+      if (lines.at(-1)?.length) lines.push([]);
+      lines.at(-1)?.push(segment);
+      lines.push([]);
+      continue;
+    }
+
+    const parts = segment.text.split(/(\s{2,})/);
+    for (const part of parts) {
+      if (/^\s{2,}$/.test(part)) {
+        if (lines.at(-1)?.length) lines.push([]);
+        continue;
+      }
+      if (part) lines.at(-1)?.push({ ...segment, text: part });
+    }
+  }
+
+  const visibleLines = lines.filter((line) => line.some((segment) => segment.kind === "image" || segment.text.trim().length > 0));
+  const mergedLines: AclsEbookRichText[][] = [];
+
+  for (let index = 0; index < visibleLines.length; index += 1) {
+    const line = visibleLines[index];
+    const text = line.filter((segment) => segment.kind === "text").map((segment) => segment.text).join("").trim();
+    const next = visibleLines[index + 1];
+    const wrapsIntoNextLine = Boolean(next && /(?:^|\s)(?:que|de|da|do|das|dos|e|ou|para|com|sem|a|o|à|em|no|na|nos|nas)$/i.test(text));
+
+    if (wrapsIntoNextLine) {
+      mergedLines.push([...line, { kind: "text", text: " ", bold: false, red: false }, ...next]);
+      index += 1;
+    } else {
+      mergedLines.push(line);
+    }
+  }
+
+  return mergedLines;
+}
+
 function SourceTable({ block }: { block: Extract<AclsEbookSourceBlock, { kind: "table" }> }) {
   const columnCount = Math.max(...block.rows.map((row) => row.length));
+  const singleCell = block.rows.length === 1 && columnCount === 1;
+
+  if (singleCell) {
+    const lines = splitRichLines(block.rows[0][0] ?? []);
+    return (
+      <aside className="my-7 overflow-hidden rounded-2xl border border-[#123A6D]/20 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm dark:border-blue-800/50 dark:from-blue-950/35 dark:to-slate-900 sm:p-7">
+        <div className="mb-4 flex items-center gap-3">
+          <span className="h-8 w-1 rounded-full bg-[#123A6D]" />
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Quadro de apoio</p>
+        </div>
+        <div className="space-y-3">
+          {lines.map((line, index) => (
+            <div key={index} className="grid grid-cols-[10px_1fr] gap-3 leading-7 text-slate-700 dark:text-slate-200">
+              <span className="mt-[0.72em] h-1.5 w-1.5 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
+              <p><RichContent content={line} /></p>
+            </div>
+          ))}
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <div className="my-7 overflow-hidden rounded-xl border border-slate-300/80 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[540px] border-collapse text-left text-[0.88em]">
+        <table className="w-full min-w-[540px] border-collapse text-left text-[0.94em]">
           <tbody>
             {block.rows.map((row, rowIndex) => (
               <tr key={rowIndex} className="border-b border-slate-200 last:border-b-0 dark:border-slate-700">
@@ -171,7 +233,7 @@ function SourceBlockContent({ block }: { block: AclsEbookSourceBlock }) {
           width={1400}
           height={900}
           sizes="(max-width: 768px) 100vw, 760px"
-          className="mx-auto h-auto max-h-[590px] w-auto max-w-full object-contain"
+          className="mx-auto h-auto max-h-[760px] w-full max-w-5xl object-contain"
         />
       </figure>
     );
@@ -243,11 +305,12 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   const readerTop = useRef<HTMLDivElement>(null);
   const previousChapter = activeIndex > 0 ? chapters[activeIndex - 1] : null;
   const nextChapter = activeIndex < chapters.length - 1 ? chapters[activeIndex + 1] : null;
-  const chapterProgress = ((pageIndex + 1) / pages.length) * 100;
-  const bookProgress = ((activeIndex + (pageIndex + 1) / pages.length) / chapters.length) * 100;
+  const safePageIndex = Math.min(Math.max(pageIndex, 0), pages.length - 1);
+  const chapterProgress = ((safePageIndex + 1) / pages.length) * 100;
+  const bookProgress = ((activeIndex + (safePageIndex + 1) / pages.length) / chapters.length) * 100;
   const sourcePage = Math.min(
     chapter.sourcePages[1],
-    chapter.sourcePages[0] + Math.floor((pageIndex / pages.length) * (chapter.sourcePages[1] - chapter.sourcePages[0] + 1)),
+    chapter.sourcePages[0] + Math.floor((safePageIndex / pages.length) * (chapter.sourcePages[1] - chapter.sourcePages[0] + 1)),
   );
 
   const toggleHighlight = useCallback((sourceIndex: number) => {
@@ -278,16 +341,16 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   }, [pages.length]);
 
   const goPrevious = useCallback(() => {
-    if (pageIndex > 0) return goToPage(pageIndex - 1);
+    if (safePageIndex > 0) return goToPage(safePageIndex - 1);
     if (previousChapter) router.push(chapterHref(previousChapter, true));
     else router.push(chapterHref());
-  }, [goToPage, pageIndex, previousChapter, router]);
+  }, [goToPage, previousChapter, router, safePageIndex]);
 
   const goNext = useCallback(() => {
-    if (pageIndex < pages.length - 1) return goToPage(pageIndex + 1);
+    if (safePageIndex < pages.length - 1) return goToPage(safePageIndex + 1);
     if (nextChapter) router.push(chapterHref(nextChapter));
     else router.push(chapterHref());
-  }, [goToPage, nextChapter, pageIndex, pages.length, router]);
+  }, [goToPage, nextChapter, pages.length, router, safePageIndex]);
 
   useEffect(() => {
     setPageIndex(initialLastPage ? pages.length - 1 : 0);
@@ -345,6 +408,8 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
       </header>
 
       <main
+        id="conteudo-principal"
+        tabIndex={-1}
         className="mx-auto max-w-6xl"
         onTouchStart={(event) => { touchStart.current = event.changedTouches[0]?.clientX ?? null; }}
         onTouchEnd={(event) => {
@@ -365,11 +430,11 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
             <div className="flex min-h-[72vh] flex-col px-6 py-7 sm:px-12 sm:py-10 lg:px-16">
               <div className="mb-9 flex items-center justify-between gap-4 border-b border-slate-300/70 pb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:border-slate-700">
                 <span className="truncate">Resibook Clinical Editions</span>
-                <span className="shrink-0">{String(pageIndex + 1).padStart(2, "0")} / {String(pages.length).padStart(2, "0")}</span>
+                <span className="shrink-0">{String(safePageIndex + 1).padStart(2, "0")} / {String(pages.length).padStart(2, "0")}</span>
               </div>
 
-              <div className={`mx-auto w-full max-w-3xl flex-1 font-sans transition-[font-size] ${FONT_CLASSES[fontScale]}`}>
-                {pages[pageIndex].map((entry) => (
+              <div className={`mx-auto w-full max-w-5xl flex-1 font-sans transition-[font-size] ${FONT_CLASSES[fontScale]}`}>
+                {pages[safePageIndex].map((entry) => (
                   <SourceBlock
                     key={entry.sourceIndex}
                     entry={entry}
