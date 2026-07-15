@@ -12,30 +12,41 @@ import {
   List,
 } from "lucide-react";
 import { AclsProtocolView } from "@/components/acls-protocol";
+import { AclsEbookSourceView } from "@/components/acls-ebook-source-view";
 import type { AclsProtocol } from "@/lib/acls-protocols";
+import type { AclsEbookSourceChapter } from "@/lib/acls-ebook-source";
 
 export type AclsEbookChapter = {
   slug: string;
   label: string;
   group: string;
+  edition: "protocolos" | "anotacoes";
+  pages?: [number, number];
 };
 
 type Props = {
   chapters: AclsEbookChapter[];
   protocol?: AclsProtocol;
+  sourceChapter?: AclsEbookSourceChapter;
 };
 
-function chapterHref(slug?: string) {
-  return slug ? `/acls/ebook?capitulo=${encodeURIComponent(slug)}` : "/acls/ebook";
+function chapterHref(chapter?: Pick<AclsEbookChapter, "slug" | "edition">) {
+  if (!chapter) return "/acls/ebook";
+  const edition = chapter.edition === "anotacoes" ? "&edicao=anotacoes" : "";
+  return `/acls/ebook?capitulo=${encodeURIComponent(chapter.slug)}${edition}`;
+}
+
+function chapterKey(chapter: Pick<AclsEbookChapter, "slug" | "edition">) {
+  return `${chapter.edition}:${chapter.slug}`;
 }
 
 function EbookContents({
   chapters,
-  activeSlug,
+  activeKey,
   compact = false,
 }: {
   chapters: AclsEbookChapter[];
-  activeSlug?: string;
+  activeKey?: string;
   compact?: boolean;
 }) {
   const groups = useMemo(
@@ -48,7 +59,7 @@ function EbookContents({
       <Link
         href={chapterHref()}
         className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-bold transition ${
-          !activeSlug
+          !activeKey
             ? "border-[#123A6D] bg-[#123A6D] text-white"
             : "border-slate-200 bg-white text-slate-700 hover:border-[#123A6D]/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         }`}
@@ -66,13 +77,13 @@ function EbookContents({
             {chapters
               .filter((chapter) => chapter.group === group)
               .map((chapter) => {
-                const active = chapter.slug === activeSlug;
-                const chapterNumber = chapters.findIndex((item) => item.slug === chapter.slug) + 1;
+                const active = chapterKey(chapter) === activeKey;
+                const chapterNumber = chapters.findIndex((item) => chapterKey(item) === chapterKey(chapter)) + 1;
 
                 return (
                   <Link
-                    key={chapter.slug}
-                    href={chapterHref(chapter.slug)}
+                    key={chapterKey(chapter)}
+                    href={chapterHref(chapter)}
                     prefetch={false}
                     className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${
                       active
@@ -84,6 +95,7 @@ function EbookContents({
                       {chapterNumber}
                     </span>
                     <span className="min-w-0 leading-4">{chapter.label}</span>
+                    {chapter.pages ? <span className="ml-auto shrink-0 text-[9px] opacity-60">p. {chapter.pages[0]}–{chapter.pages[1]}</span> : null}
                   </Link>
                 );
               })}
@@ -96,6 +108,8 @@ function EbookContents({
 
 function EbookCover({ chapters }: { chapters: AclsEbookChapter[] }) {
   const groups = Array.from(new Set(chapters.map((chapter) => chapter.group)));
+  const protocolCount = chapters.filter((chapter) => chapter.edition === "protocolos").length;
+  const sourceCount = chapters.filter((chapter) => chapter.edition === "anotacoes").length;
 
   return (
     <div className="space-y-5">
@@ -118,13 +132,13 @@ function EbookCover({ chapters }: { chapters: AclsEbookChapter[] }) {
             <h1 className="mt-5 text-5xl font-black tracking-[-0.05em] sm:text-7xl">ACLS</h1>
             <div className="mt-5 h-1 w-24 rounded-full bg-white" />
             <p className="mt-6 max-w-xl text-lg font-semibold leading-8 text-blue-50 sm:text-xl">
-              Protocolos organizados para estudo, revisão e consulta rápida durante o plantão.
+              Protocolos rápidos e o conteúdo integral das Anotações ACLS em uma experiência editorial responsiva.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 border-t border-white/20 pt-5 sm:flex sm:items-center sm:gap-6">
-            <div><p className="text-2xl font-black">{chapters.length}</p><p className="text-xs font-semibold text-blue-100">capítulos</p></div>
-            <div><p className="text-2xl font-black">{groups.length}</p><p className="text-xs font-semibold text-blue-100">blocos editoriais</p></div>
+            <div><p className="text-2xl font-black">{protocolCount}</p><p className="text-xs font-semibold text-blue-100">protocolos rápidos</p></div>
+            <div><p className="text-2xl font-black">{sourceCount}</p><p className="text-xs font-semibold text-blue-100">capítulos integrais</p></div>
             <div className="col-span-2 sm:ml-auto"><p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-blue-100">Template mestre editorial</p></div>
           </div>
         </div>
@@ -147,8 +161,8 @@ function EbookCover({ chapters }: { chapters: AclsEbookChapter[] }) {
               <h3 className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#123A6D] dark:text-blue-300">{group}</h3>
               <div className="mt-3 space-y-1.5">
                 {chapters.filter((chapter) => chapter.group === group).map((chapter) => (
-                  <Link key={chapter.slug} href={chapterHref(chapter.slug)} prefetch={false} className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:text-[#123A6D] dark:bg-slate-900 dark:text-slate-200 dark:hover:text-blue-200">
-                    {chapter.label}<ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                  <Link key={chapterKey(chapter)} href={chapterHref(chapter)} prefetch={false} className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:text-[#123A6D] dark:bg-slate-900 dark:text-slate-200 dark:hover:text-blue-200">
+                    <span>{chapter.label}{chapter.pages ? <span className="ml-2 text-[9px] font-medium text-slate-400">p. {chapter.pages[0]}–{chapter.pages[1]}</span> : null}</span><ArrowRight className="h-3.5 w-3.5 shrink-0" />
                   </Link>
                 ))}
               </div>
@@ -160,9 +174,14 @@ function EbookCover({ chapters }: { chapters: AclsEbookChapter[] }) {
   );
 }
 
-export function AclsEbook({ chapters, protocol }: Props) {
+export function AclsEbook({ chapters, protocol, sourceChapter }: Props) {
   const [progress, setProgress] = useState(0);
-  const activeIndex = protocol ? chapters.findIndex((chapter) => chapter.slug === protocol.slug) : -1;
+  const activeKey = sourceChapter
+    ? chapterKey({ slug: sourceChapter.slug, edition: "anotacoes" })
+    : protocol
+      ? chapterKey({ slug: protocol.slug, edition: "protocolos" })
+      : undefined;
+  const activeIndex = activeKey ? chapters.findIndex((chapter) => chapterKey(chapter) === activeKey) : -1;
   const previous = activeIndex > 0 ? chapters[activeIndex - 1] : null;
   const next = activeIndex >= 0 && activeIndex < chapters.length - 1 ? chapters[activeIndex + 1] : null;
 
@@ -179,7 +198,7 @@ export function AclsEbook({ chapters, protocol }: Props) {
       window.removeEventListener("scroll", updateProgress);
       window.removeEventListener("resize", updateProgress);
     };
-  }, [protocol?.slug]);
+  }, [activeKey]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-4">
@@ -207,7 +226,7 @@ export function AclsEbook({ chapters, protocol }: Props) {
             <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
           </summary>
           <div className="mt-3 max-h-[60vh] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
-            <EbookContents chapters={chapters} activeSlug={protocol?.slug} compact />
+            <EbookContents chapters={chapters} activeKey={activeKey} compact />
           </div>
         </details>
       </header>
@@ -218,11 +237,11 @@ export function AclsEbook({ chapters, protocol }: Props) {
             <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#123A6D] dark:text-blue-300">Sumário</p>
             <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{chapters.length} capítulos</p>
           </div>
-          <EbookContents chapters={chapters} activeSlug={protocol?.slug} />
+          <EbookContents chapters={chapters} activeKey={activeKey} />
         </aside>
 
         <main className="min-w-0">
-          {protocol ? (
+          {protocol || sourceChapter ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <div>
@@ -232,17 +251,17 @@ export function AclsEbook({ chapters, protocol }: Props) {
                 <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-extrabold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{Math.round(progress)}%</span>
               </div>
 
-              <AclsProtocolView protocol={protocol} />
+              {sourceChapter ? <AclsEbookSourceView chapter={sourceChapter} /> : <AclsProtocolView protocol={protocol!} />}
 
               <nav aria-label="Navegação entre capítulos" className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-2">
                 {previous ? (
-                  <Link href={chapterHref(previous.slug)} className="flex min-h-14 items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-[#123A6D]/30 dark:border-slate-700">
+                  <Link href={chapterHref(previous)} className="flex min-h-14 items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-[#123A6D]/30 dark:border-slate-700">
                     <ArrowLeft className="h-4 w-4 shrink-0 text-[#123A6D] dark:text-blue-300" />
                     <span><span className="block text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Anterior</span><span className="mt-0.5 block text-xs font-bold text-slate-800 dark:text-slate-100">{previous.label}</span></span>
                   </Link>
                 ) : <Link href={chapterHref()} className="flex min-h-14 items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700"><Home className="h-4 w-4 text-[#123A6D]" /><span className="text-xs font-bold text-slate-800 dark:text-slate-100">Voltar à capa</span></Link>}
                 {next ? (
-                  <Link href={chapterHref(next.slug)} className="flex min-h-14 items-center justify-between gap-3 rounded-xl bg-[#123A6D] px-4 py-3 text-white transition hover:bg-[#0e2f59]">
+                  <Link href={chapterHref(next)} className="flex min-h-14 items-center justify-between gap-3 rounded-xl bg-[#123A6D] px-4 py-3 text-white transition hover:bg-[#0e2f59]">
                     <span><span className="block text-[9px] font-extrabold uppercase tracking-[0.16em] text-blue-100">Próximo</span><span className="mt-0.5 block text-xs font-bold">{next.label}</span></span>
                     <ArrowRight className="h-4 w-4 shrink-0" />
                   </Link>

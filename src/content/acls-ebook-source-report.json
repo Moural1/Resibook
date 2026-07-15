@@ -1,0 +1,17 @@
+{
+  "officialSource": "ANOTAÇÕES ACLS (1).pdf",
+  "pagesReviewed": 124,
+  "responsiveChapters": 12,
+  "uniqueImagesPreserved": 30,
+  "imageOccurrencesInPdf": 32,
+  "facsimilePagesPreserved": 124,
+  "pdfTablesDetected": 76,
+  "semanticTableAndBoxBlocks": 135,
+  "pdfRedRunsDetected": 1053,
+  "uniqueRedPhrases": 1027,
+  "redPhrasesMatchedInResponsiveText": 1024,
+  "redPhraseCoverage": 0.9971,
+  "markdownLinesMappedToPdfPages": 1669,
+  "markdownDefinitionsRemovedFromReading": 30,
+  "integrityFallback": "Cada capítulo inclui fac-símiles das páginas oficiais correspondentes."
+}
