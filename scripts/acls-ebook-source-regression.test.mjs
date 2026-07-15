@@ -6,6 +6,8 @@ const content = JSON.parse(await readFile(new URL("../src/content/acls-ebook-sou
 const report = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source-report.json", import.meta.url), "utf8"));
 const images = await readdir(new URL("../public/acls-ebook/source/images/", import.meta.url));
 const pages = await readdir(new URL("../public/acls-ebook/source/pages/", import.meta.url));
+const visualAtlas = await readdir(new URL("../public/acls-ebook/visuals/", import.meta.url));
+const ebookPage = await readFile(new URL("../src/app/acls/ebook/page.tsx", import.meta.url), "utf8");
 
 test("eBook integral mantém o inventário oficial do ACLS", () => {
   assert.equal(content.chapters.length, 12);
@@ -17,6 +19,7 @@ test("eBook integral mantém o inventário oficial do ACLS", () => {
   assert.equal(report.pdfRedRunsDetected, 1053);
   assert.equal(images.length, 30);
   assert.equal(pages.length, 124);
+  assert.equal(visualAtlas.length, 20);
 });
 
 test("todos os capítulos têm leitura responsiva e páginas oficiais", () => {
@@ -39,4 +42,10 @@ test("a leitura não expõe sintaxe Markdown", () => {
   assert.equal(visibleText.includes("\\"), false);
   assert.equal(visibleText.includes("**"), false);
   assert.equal(visibleText.includes("__"), false);
+});
+
+test("o eBook permanece separado dos protocolos rápidos", () => {
+  assert.equal(ebookPage.includes("ACLS_NAVIGATION"), false);
+  assert.equal(ebookPage.includes("getAclsProtocol"), false);
+  assert.equal(ebookPage.includes("ACLS_EBOOK_SOURCE_CHAPTERS"), true);
 });
