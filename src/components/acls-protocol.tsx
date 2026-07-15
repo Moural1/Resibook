@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   BookOpen,
+  BookMarked,
   CheckCircle2,
   ChevronDown,
   ChevronsUpDown,
@@ -394,14 +396,20 @@ export function AclsShell({ children }: { children: React.ReactNode }) {
     <div className="mx-auto max-w-7xl space-y-4">
       <header className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="border-b border-slate-200 bg-[#081a3a] px-5 py-5 text-white md:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5">
-              <HeartPulse className="h-5 w-5 text-cyan-200" />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                <HeartPulse className="h-5 w-5 text-cyan-200" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200">Protocolos</p>
+                <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">ACLS</h1>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200">Protocolos</p>
-              <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">ACLS</h1>
-            </div>
+            <Link href="/acls/ebook" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-extrabold text-white transition hover:bg-white/15">
+              <BookMarked className="h-4 w-4 text-blue-100" />
+              Abrir eBook ACLS
+            </Link>
           </div>
         </div>
 
@@ -541,6 +549,13 @@ export function AclsOverview() {
       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700">ACLS</p>
       <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">Protocolos ACLS</h2>
       <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">Acesso rápido aos protocolos disponíveis.</p>
+      <Link href="/acls/ebook" className="mt-6 flex min-h-24 items-center justify-between gap-4 overflow-hidden rounded-2xl bg-[#123A6D] px-5 py-4 text-white shadow-lg shadow-[#123A6D]/15 transition hover:bg-[#0e2f59] sm:px-6">
+        <span className="flex items-center gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10"><BookMarked className="h-6 w-6" /></span>
+          <span><span className="block text-[10px] font-extrabold uppercase tracking-[0.2em] text-blue-100">Novo modo de leitura</span><span className="mt-1 block text-lg font-black">eBook interativo ACLS</span><span className="mt-1 hidden text-xs font-medium text-blue-100 sm:block">Capa, sumário, capítulos e progresso de leitura.</span></span>
+        </span>
+        <ArrowRight className="h-5 w-5 shrink-0" />
+      </Link>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {groups.map((group) => {
           const items = availableItems.filter((item) => item.group === group);
