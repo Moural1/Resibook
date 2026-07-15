@@ -11,6 +11,7 @@ import {
   ChevronRight,
   FileSearch,
   Highlighter,
+  Images,
   List,
   Maximize2,
   Minimize2,
@@ -225,9 +226,10 @@ type Props = {
   chapters: AclsEbookChapter[];
   activeIndex: number;
   initialLastPage?: boolean;
+  onOpenAtlas: () => void;
 };
 
-export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLastPage = false }: Props) {
+export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLastPage = false, onOpenAtlas }: Props) {
   const router = useRouter();
   const pages = useMemo(() => paginateBlocks(chapter.blocks), [chapter.blocks]);
   const [pageIndex, setPageIndex] = useState(initialLastPage ? pages.length - 1 : 0);
@@ -402,7 +404,8 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
               <button type="button" aria-label="Aumentar zoom" title="Aumentar zoom" onClick={() => setFontScale((value) => Math.min(FONT_CLASSES.length - 1, value + 1))} className="flex h-11 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><Plus className="h-4 w-4" /></button>
               <button type="button" aria-pressed={highlightMode} aria-label="Ativar marca-texto" title="Marca-texto" onClick={() => setHighlightMode((value) => !value)} className={`flex h-11 w-10 items-center justify-center rounded-xl transition ${highlightMode ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300 dark:bg-amber-400/15 dark:text-amber-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}><Highlighter className="h-4 w-4" /></button>
               <button type="button" aria-label={isFullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"} title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className="flex h-11 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
-              <button type="button" aria-label="Abrir página original" title="Página original" onClick={() => setOriginalOpen(true)} className="flex h-11 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><FileSearch className="h-4 w-4" /></button>
+              <button type="button" aria-label="Abrir página original" title="Página original" onClick={() => setOriginalOpen(true)} className="hidden h-11 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:flex"><FileSearch className="h-4 w-4" /></button>
+              <button type="button" aria-label="Abrir atlas visual" title="Atlas visual" onClick={onOpenAtlas} className="flex h-11 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><Images className="h-4 w-4" /></button>
             </div>
             <button type="button" onClick={goNext} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#123A6D] px-4 text-xs font-bold text-white shadow-md hover:bg-[#0d315d]">
               <span className="hidden sm:inline">Próxima</span><ChevronRight className="h-4 w-4" />

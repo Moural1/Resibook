@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BookOpen, LibraryBig } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, BookOpen, Images, LibraryBig } from "lucide-react";
 import { AclsEbookSourceView } from "@/components/acls-ebook-source-view";
+import { AclsEbookVisualAtlas } from "@/components/acls-ebook-visual-atlas";
 import type { AclsEbookSourceChapter } from "@/lib/acls-ebook-source";
 
 export type AclsEbookChapter = {
@@ -23,7 +25,7 @@ export function ebookChapterHref(chapter?: Pick<AclsEbookChapter, "slug">, lastP
   return `/acls/ebook?capitulo=${encodeURIComponent(chapter.slug)}${lastPage ? "&pagina=ultima" : ""}`;
 }
 
-function EbookCover({ chapters }: { chapters: AclsEbookChapter[] }) {
+function EbookCover({ chapters, onOpenAtlas }: { chapters: AclsEbookChapter[]; onOpenAtlas: () => void }) {
   return (
     <div className="mx-auto max-w-6xl pb-12">
       <header className="mb-5 flex items-center justify-between gap-4 px-1">
@@ -57,8 +59,11 @@ function EbookCover({ chapters }: { chapters: AclsEbookChapter[] }) {
               >
                 <BookOpen className="h-5 w-5" /> Começar a leitura
               </Link>
+              <button type="button" onClick={onOpenAtlas} className="inline-flex min-h-13 items-center gap-3 rounded-full border border-white/20 bg-white/10 px-5 text-sm font-extrabold text-white transition hover:bg-white/15">
+                <Images className="h-5 w-5" /> Atlas visual
+              </button>
               <span className="rounded-full border border-white/15 bg-white/5 px-4 py-3 text-xs font-semibold text-blue-100">
-                124 páginas · 12 capítulos
+                124 páginas · 12 capítulos · 20 pranchas
               </span>
             </div>
           </div>
@@ -109,16 +114,29 @@ function EbookCover({ chapters }: { chapters: AclsEbookChapter[] }) {
 }
 
 export function AclsEbook({ chapters, sourceChapter, initialLastPage = false }: Props) {
-  if (!sourceChapter) return <EbookCover chapters={chapters} />;
+  const [atlasOpen, setAtlasOpen] = useState(false);
+
+  if (!sourceChapter) {
+    return (
+      <>
+        <EbookCover chapters={chapters} onOpenAtlas={() => setAtlasOpen(true)} />
+        <AclsEbookVisualAtlas open={atlasOpen} onClose={() => setAtlasOpen(false)} />
+      </>
+    );
+  }
 
   const activeIndex = chapters.findIndex((chapter) => chapter.slug === sourceChapter.slug);
 
   return (
-    <AclsEbookSourceView
-      chapter={sourceChapter}
-      chapters={chapters}
-      activeIndex={activeIndex}
-      initialLastPage={initialLastPage}
-    />
+    <>
+      <AclsEbookSourceView
+        chapter={sourceChapter}
+        chapters={chapters}
+        activeIndex={activeIndex}
+        initialLastPage={initialLastPage}
+        onOpenAtlas={() => setAtlasOpen(true)}
+      />
+      <AclsEbookVisualAtlas open={atlasOpen} onClose={() => setAtlasOpen(false)} chapterSlug={sourceChapter.slug} />
+    </>
   );
 }
