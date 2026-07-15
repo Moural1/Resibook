@@ -25,6 +25,7 @@ import type {
   AclsEbookSourceBlock,
   AclsEbookSourceChapter,
 } from "@/lib/acls-ebook-source";
+import { removeLeadingListMarker, splitRichSteps } from "@/lib/acls-ebook-layout";
 
 const PAGE_WEIGHT = 2400;
 const FONT_CLASSES = [
@@ -52,7 +53,9 @@ function blockWeight(block: AclsEbookSourceBlock) {
   if (block.kind === "heading") return block.level <= 1 ? 220 : 150;
   if (block.kind === "table") {
     const characters = block.rows.flat(2).reduce((total, segment) => total + segmentLength(segment), 0);
-    return Math.max(720, characters * 1.15 + block.rows.length * 95);
+    const singleCell = block.rows.length === 1 && block.rows[0]?.length === 1;
+    const structuredSteps = singleCell ? splitRichSteps(block.rows[0][0] ?? []).length : 0;
+    return Math.max(720, characters * 1.15 + block.rows.length * 95 + Math.min(structuredSteps, 12) * 120);
   }
   return Math.max(95, block.content.reduce((total, segment) => total + segmentLength(segment), 0) * 1.15);
 }
@@ -108,68 +111,32 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
   });
 }
 
-function splitRichLines(content: AclsEbookRichText[]) {
-  const lines: AclsEbookRichText[][] = [[]];
-
-  for (const segment of content) {
-    if (segment.kind === "image") {
-      if (lines.at(-1)?.length) lines.push([]);
-      lines.at(-1)?.push(segment);
-      lines.push([]);
-      continue;
-    }
-
-    const parts = segment.text.split(/(\s{2,})/);
-    for (const part of parts) {
-      if (/^\s{2,}$/.test(part)) {
-        if (lines.at(-1)?.length) lines.push([]);
-        continue;
-      }
-      if (part) lines.at(-1)?.push({ ...segment, text: part });
-    }
-  }
-
-  const visibleLines = lines.filter((line) => line.some((segment) => segment.kind === "image" || segment.text.trim().length > 0));
-  const mergedLines: AclsEbookRichText[][] = [];
-
-  for (let index = 0; index < visibleLines.length; index += 1) {
-    const line = visibleLines[index];
-    const text = line.filter((segment) => segment.kind === "text").map((segment) => segment.text).join("").trim();
-    const next = visibleLines[index + 1];
-    const wrapsIntoNextLine = Boolean(next && /(?:^|\s)(?:que|de|da|do|das|dos|e|ou|para|com|sem|a|o|à|em|no|na|nos|nas)$/i.test(text));
-
-    if (wrapsIntoNextLine) {
-      mergedLines.push([...line, { kind: "text", text: " ", bold: false, red: false }, ...next]);
-      index += 1;
-    } else {
-      mergedLines.push(line);
-    }
-  }
-
-  return mergedLines;
-}
-
 function SourceTable({ block }: { block: Extract<AclsEbookSourceBlock, { kind: "table" }> }) {
   const columnCount = Math.max(...block.rows.map((row) => row.length));
   const singleCell = block.rows.length === 1 && columnCount === 1;
 
   if (singleCell) {
-    const lines = splitRichLines(block.rows[0][0] ?? []);
+    const steps = splitRichSteps(block.rows[0][0] ?? []);
     return (
-      <aside className="my-7 overflow-hidden rounded-2xl border border-[#123A6D]/20 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm dark:border-blue-800/50 dark:from-blue-950/35 dark:to-slate-900 sm:p-7">
-        <div className="mb-4 flex items-center gap-3">
-          <span className="h-8 w-1 rounded-full bg-[#123A6D]" />
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Quadro de apoio</p>
+      <section className="my-8 rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
+        <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
+          <div className="flex items-center gap-3">
+            <span className="h-8 w-1 rounded-full bg-[#123A6D]" />
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Leitura estruturada</p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-[9px] font-extrabold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">{steps.length} {steps.length === 1 ? "item" : "itens"}</span>
         </div>
-        <div className="space-y-3">
-          {lines.map((line, index) => (
-            <div key={index} className="grid grid-cols-[10px_1fr] gap-3 leading-7 text-slate-700 dark:text-slate-200">
-              <span className="mt-[0.72em] h-1.5 w-1.5 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
-              <p><RichContent content={line} /></p>
+        <div className="relative space-y-3 before:absolute before:bottom-6 before:left-[17px] before:top-6 before:w-px before:bg-[#123A6D]/20 dark:before:bg-blue-300/20">
+          {steps.map((step, index) => (
+            <div key={index} className="relative grid grid-cols-[36px_1fr] items-start gap-3">
+              <span className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border-4 border-slate-100 bg-[#123A6D] text-[10px] font-black text-white dark:border-slate-900">{index + 1}</span>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 leading-7 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 sm:px-5">
+                <p><RichContent content={removeLeadingListMarker(step) as AclsEbookRichText[]} /></p>
+              </div>
             </div>
           ))}
         </div>
-      </aside>
+      </section>
     );
   }
 
