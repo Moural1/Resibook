@@ -25,14 +25,15 @@ import type {
   AclsEbookSourceBlock,
   AclsEbookSourceChapter,
 } from "@/lib/acls-ebook-source";
+import { removeLeadingListMarker, splitRichSteps } from "@/lib/acls-ebook-layout";
 
 const PAGE_WEIGHT = 2400;
 const FONT_CLASSES = [
-  "text-[13px] sm:text-[14px]",
   "text-[14px] sm:text-[15px]",
   "text-[16px] sm:text-[17px]",
-  "text-[18px] sm:text-[19px]",
-  "text-[20px] sm:text-[21px]",
+  "text-[17px] sm:text-[18px]",
+  "text-[19px] sm:text-[20px]",
+  "text-[21px] sm:text-[22px]",
 ] as const;
 const ZOOM_LABELS = ["85%", "95%", "100%", "115%", "130%"] as const;
 
@@ -52,7 +53,9 @@ function blockWeight(block: AclsEbookSourceBlock) {
   if (block.kind === "heading") return block.level <= 1 ? 220 : 150;
   if (block.kind === "table") {
     const characters = block.rows.flat(2).reduce((total, segment) => total + segmentLength(segment), 0);
-    return Math.max(720, characters * 1.15 + block.rows.length * 95);
+    const singleCell = block.rows.length === 1 && block.rows[0]?.length === 1;
+    const structuredSteps = singleCell ? splitRichSteps(block.rows[0][0] ?? []).length : 0;
+    return Math.max(720, characters * 1.15 + block.rows.length * 95 + Math.min(structuredSteps, 12) * 120);
   }
   return Math.max(95, block.content.reduce((total, segment) => total + segmentLength(segment), 0) * 1.15);
 }
@@ -92,7 +95,7 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
             width={1200}
             height={760}
             sizes="(max-width: 768px) 100vw, 760px"
-            className="mx-auto h-auto max-h-[540px] w-auto max-w-full object-contain"
+            className="mx-auto h-auto max-h-[680px] w-full max-w-5xl object-contain"
           />
         </span>
       );
@@ -110,11 +113,37 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
 
 function SourceTable({ block }: { block: Extract<AclsEbookSourceBlock, { kind: "table" }> }) {
   const columnCount = Math.max(...block.rows.map((row) => row.length));
+  const singleCell = block.rows.length === 1 && columnCount === 1;
+
+  if (singleCell) {
+    const steps = splitRichSteps(block.rows[0][0] ?? []);
+    return (
+      <section className="my-8 rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
+        <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
+          <div className="flex items-center gap-3">
+            <span className="h-8 w-1 rounded-full bg-[#123A6D]" />
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Leitura estruturada</p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-[9px] font-extrabold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">{steps.length} {steps.length === 1 ? "item" : "itens"}</span>
+        </div>
+        <div className="relative space-y-3 before:absolute before:bottom-6 before:left-[17px] before:top-6 before:w-px before:bg-[#123A6D]/20 dark:before:bg-blue-300/20">
+          {steps.map((step, index) => (
+            <div key={index} className="relative grid grid-cols-[36px_1fr] items-start gap-3">
+              <span className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border-4 border-slate-100 bg-[#123A6D] text-[10px] font-black text-white dark:border-slate-900">{index + 1}</span>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 leading-7 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 sm:px-5">
+                <p><RichContent content={removeLeadingListMarker(step) as AclsEbookRichText[]} /></p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="my-7 overflow-hidden rounded-xl border border-slate-300/80 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[540px] border-collapse text-left text-[0.88em]">
+        <table className="w-full min-w-[540px] border-collapse text-left text-[0.94em]">
           <tbody>
             {block.rows.map((row, rowIndex) => (
               <tr key={rowIndex} className="border-b border-slate-200 last:border-b-0 dark:border-slate-700">
@@ -171,7 +200,7 @@ function SourceBlockContent({ block }: { block: AclsEbookSourceBlock }) {
           width={1400}
           height={900}
           sizes="(max-width: 768px) 100vw, 760px"
-          className="mx-auto h-auto max-h-[590px] w-auto max-w-full object-contain"
+          className="mx-auto h-auto max-h-[760px] w-full max-w-5xl object-contain"
         />
       </figure>
     );
@@ -243,11 +272,12 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   const readerTop = useRef<HTMLDivElement>(null);
   const previousChapter = activeIndex > 0 ? chapters[activeIndex - 1] : null;
   const nextChapter = activeIndex < chapters.length - 1 ? chapters[activeIndex + 1] : null;
-  const chapterProgress = ((pageIndex + 1) / pages.length) * 100;
-  const bookProgress = ((activeIndex + (pageIndex + 1) / pages.length) / chapters.length) * 100;
+  const safePageIndex = Math.min(Math.max(pageIndex, 0), pages.length - 1);
+  const chapterProgress = ((safePageIndex + 1) / pages.length) * 100;
+  const bookProgress = ((activeIndex + (safePageIndex + 1) / pages.length) / chapters.length) * 100;
   const sourcePage = Math.min(
     chapter.sourcePages[1],
-    chapter.sourcePages[0] + Math.floor((pageIndex / pages.length) * (chapter.sourcePages[1] - chapter.sourcePages[0] + 1)),
+    chapter.sourcePages[0] + Math.floor((safePageIndex / pages.length) * (chapter.sourcePages[1] - chapter.sourcePages[0] + 1)),
   );
 
   const toggleHighlight = useCallback((sourceIndex: number) => {
@@ -278,16 +308,16 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   }, [pages.length]);
 
   const goPrevious = useCallback(() => {
-    if (pageIndex > 0) return goToPage(pageIndex - 1);
+    if (safePageIndex > 0) return goToPage(safePageIndex - 1);
     if (previousChapter) router.push(chapterHref(previousChapter, true));
     else router.push(chapterHref());
-  }, [goToPage, pageIndex, previousChapter, router]);
+  }, [goToPage, previousChapter, router, safePageIndex]);
 
   const goNext = useCallback(() => {
-    if (pageIndex < pages.length - 1) return goToPage(pageIndex + 1);
+    if (safePageIndex < pages.length - 1) return goToPage(safePageIndex + 1);
     if (nextChapter) router.push(chapterHref(nextChapter));
     else router.push(chapterHref());
-  }, [goToPage, nextChapter, pageIndex, pages.length, router]);
+  }, [goToPage, nextChapter, pages.length, router, safePageIndex]);
 
   useEffect(() => {
     setPageIndex(initialLastPage ? pages.length - 1 : 0);
@@ -345,6 +375,8 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
       </header>
 
       <main
+        id="conteudo-principal"
+        tabIndex={-1}
         className="mx-auto max-w-6xl"
         onTouchStart={(event) => { touchStart.current = event.changedTouches[0]?.clientX ?? null; }}
         onTouchEnd={(event) => {
@@ -365,11 +397,11 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
             <div className="flex min-h-[72vh] flex-col px-6 py-7 sm:px-12 sm:py-10 lg:px-16">
               <div className="mb-9 flex items-center justify-between gap-4 border-b border-slate-300/70 pb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:border-slate-700">
                 <span className="truncate">Resibook Clinical Editions</span>
-                <span className="shrink-0">{String(pageIndex + 1).padStart(2, "0")} / {String(pages.length).padStart(2, "0")}</span>
+                <span className="shrink-0">{String(safePageIndex + 1).padStart(2, "0")} / {String(pages.length).padStart(2, "0")}</span>
               </div>
 
-              <div className={`mx-auto w-full max-w-3xl flex-1 font-sans transition-[font-size] ${FONT_CLASSES[fontScale]}`}>
-                {pages[pageIndex].map((entry) => (
+              <div className={`mx-auto w-full max-w-5xl flex-1 font-sans transition-[font-size] ${FONT_CLASSES[fontScale]}`}>
+                {pages[safePageIndex].map((entry) => (
                   <SourceBlock
                     key={entry.sourceIndex}
                     entry={entry}

@@ -130,6 +130,7 @@ export function AclsEbook({ chapters, sourceChapter, initialLastPage = false }: 
   return (
     <>
       <AclsEbookSourceView
+        key={sourceChapter.slug}
         chapter={sourceChapter}
         chapters={chapters}
         activeIndex={activeIndex}

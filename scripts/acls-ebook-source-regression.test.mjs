@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
+import { splitRichSteps } from "../src/lib/acls-ebook-layout.ts";
 
 const content = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source.json", import.meta.url), "utf8"));
 const report = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source-report.json", import.meta.url), "utf8"));
@@ -8,6 +9,8 @@ const images = await readdir(new URL("../public/acls-ebook/source/images/", impo
 const pages = await readdir(new URL("../public/acls-ebook/source/pages/", import.meta.url));
 const visualAtlas = await readdir(new URL("../public/acls-ebook/visuals/", import.meta.url));
 const ebookPage = await readFile(new URL("../src/app/acls/ebook/page.tsx", import.meta.url), "utf8");
+const ebookReader = await readFile(new URL("../src/components/acls-ebook-source-view.tsx", import.meta.url), "utf8");
+const ebookShell = await readFile(new URL("../src/components/acls-ebook.tsx", import.meta.url), "utf8");
 
 test("eBook integral mantém o inventário oficial do ACLS", () => {
   assert.equal(content.chapters.length, 12);
@@ -48,4 +51,31 @@ test("o eBook permanece separado dos protocolos rápidos", () => {
   assert.equal(ebookPage.includes("ACLS_NAVIGATION"), false);
   assert.equal(ebookPage.includes("getAclsProtocol"), false);
   assert.equal(ebookPage.includes("ACLS_EBOOK_SOURCE_CHAPTERS"), true);
+});
+
+test("a troca de capítulos nunca aponta para uma página inexistente", () => {
+  assert.equal(ebookReader.includes("pages[safePageIndex]"), true);
+  assert.equal(ebookShell.includes("key={sourceChapter.slug}"), true);
+});
+
+test("quadros de uma célula recebem diagramação editorial própria", () => {
+  assert.equal(ebookReader.includes("const singleCell = block.rows.length === 1"), true);
+  assert.equal(ebookReader.includes("Leitura estruturada"), true);
+});
+
+test("nenhum quadro longo de uma célula permanece compactado", () => {
+  let audited = 0;
+  for (const chapter of content.chapters) {
+    for (const block of chapter.blocks) {
+      if (block.kind !== "table" || block.rows.length !== 1 || block.rows[0]?.length !== 1) continue;
+      const segments = block.rows[0][0];
+      const visibleLength = segments
+        .filter((segment) => segment.kind === "text")
+        .reduce((total, segment) => total + segment.text.trim().length, 0);
+      if (visibleLength < 280) continue;
+      audited += 1;
+      assert.ok(splitRichSteps(segments).length >= 2, `${chapter.title} contém um quadro longo sem divisão visual.`);
+    }
+  }
+  assert.ok(audited >= 40, "A auditoria encontrou menos quadros longos que o inventário esperado.");
 });
