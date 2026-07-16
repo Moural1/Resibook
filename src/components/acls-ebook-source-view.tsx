@@ -60,33 +60,37 @@ function chapterHref(chapter?: Pick<AclsEbookChapter, "slug">, lastPage = false)
 }
 
 function RichContent({ content, inheritColor = false }: { content: AclsEbookRichText[]; inheritColor?: boolean }) {
-  return content.map((segment, index) => {
-    if (segment.kind === "image") {
-      return (
-        <span key={`${segment.src}-${index}`} className="my-5 block">
-          <Image
-            src={segment.src}
-            alt="Ilustração clínica do material ACLS"
-            width={1200}
-            height={760}
-            loading="eager"
-            sizes="(max-width: 768px) 100vw, 760px"
-            className="mx-auto h-auto max-h-[680px] w-full max-w-5xl object-contain"
-          />
-        </span>
-      );
-    }
+  return (
+    <span className="whitespace-pre-line break-keep [overflow-wrap:normal] [word-break:normal] hyphens-none">
+      {content.map((segment, index) => {
+        if (segment.kind === "image") {
+          return (
+            <span key={`${segment.src}-${index}`} className="my-5 block">
+              <Image
+                src={segment.src}
+                alt="Ilustração clínica do material ACLS"
+                width={1200}
+                height={760}
+                loading="eager"
+                sizes="(max-width: 768px) 100vw, 760px"
+                className="mx-auto h-auto max-h-[680px] w-full max-w-5xl object-contain"
+              />
+            </span>
+          );
+        }
 
-    const className = inheritColor
-      ? segment.bold || segment.red ? "font-bold" : undefined
-      : segment.red
-        ? "font-bold text-[#c62828] dark:text-red-400"
-      : segment.bold
-        ? "font-bold text-slate-950 dark:text-white"
-        : undefined;
+        const className = inheritColor
+          ? segment.bold || segment.red ? "font-bold" : undefined
+          : segment.red
+            ? "font-bold text-[#c62828] dark:text-red-400"
+          : segment.bold
+            ? "font-bold text-slate-950 dark:text-white"
+            : undefined;
 
-    return <span key={`${segment.text}-${index}`} className={className}>{segment.text}</span>;
-  });
+        return <span key={`${segment.text}-${index}`} className={className}>{segment.text}</span>;
+      })}
+    </span>
+  );
 }
 
 function StructuredChildren({ items }: { items: AclsEbookRichText[][] }) {
@@ -312,7 +316,10 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
       </div>
       <div className="my-8 hidden overflow-hidden rounded-2xl border border-slate-300/80 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 md:block">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-left text-[0.94em]">
+        <table
+          className="w-full border-collapse text-left text-[0.94em]"
+          style={{ minWidth: `${Math.max(720, columnCount * 220)}px` }}
+        >
           {columnCount === 2 ? <colgroup><col className="w-[26%]" /><col className="w-[74%]" /></colgroup> : null}
           <tbody>
             {block.rows.map((row, rowIndex) => (

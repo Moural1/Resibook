@@ -97,6 +97,14 @@ test("editor administrativo separa rascunho, prévia e publicação versionada",
   assert.match(ebookMigration, /public\.is_resibook_admin\(\)/);
 });
 
+test("leitor preserva quebras editoriais e nunca parte palavras entre destaques", () => {
+  assert.match(ebookReader, /whitespace-pre-line/);
+  assert.match(ebookReader, /break-keep/);
+  assert.match(ebookReader, /\[overflow-wrap:normal\]/);
+  assert.match(ebookReader, /\[word-break:normal\]/);
+  assert.match(ebookReader, /columnCount \* 220/);
+});
+
 test("a troca de capítulos nunca aponta para uma página inexistente", () => {
   assert.equal(ebookReader.includes("pages[safePageIndex]"), true);
   assert.equal(ebookShell.includes("key={sourceChapter.slug}"), true);
