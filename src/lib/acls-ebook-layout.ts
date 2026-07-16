@@ -149,6 +149,26 @@ function sliceRichContent(content: EbookLayoutSegment[], start: number, end: num
   return result;
 }
 
+export function splitRichExplicitItems(content: EbookLayoutSegment[]) {
+  const source = content
+    .filter((segment): segment is Extract<EbookLayoutSegment, { kind: "text" }> => segment.kind === "text")
+    .map((segment) => segment.text)
+    .join("");
+  const markers = [...source.matchAll(/(^|\s+)-\s*(?=[\p{Lu}0-9<])/gu)];
+  if (!markers.length) return { intro: content, items: [] as EbookLayoutSegment[][] };
+
+  const introEnd = markers[0].index ?? 0;
+  const intro = sliceRichContent(content, 0, introEnd);
+  const items = markers.flatMap((marker, index) => {
+    const start = (marker.index ?? 0) + marker[0].length;
+    const end = markers[index + 1]?.index ?? source.length;
+    const item = sliceRichContent(content, start, end);
+    return hasVisibleRichContent(item) ? [item] : [];
+  });
+
+  return { intro, items };
+}
+
 export function structureRichContent(content: EbookLayoutSegment[], hints: EbookLayoutHint[]) {
   const length = content.reduce((total, segment) => total + (segment.kind === "text" ? segment.text.length : 0), 0);
   const boundaries = hints

@@ -30,6 +30,7 @@ import {
   hasVisibleRichContent,
   removeLeadingListMarker,
   splitRichClauses,
+  splitRichExplicitItems,
   splitRichSteps,
   structureRichContent,
   type EbookLayoutHint,
@@ -57,7 +58,7 @@ function chapterHref(chapter?: Pick<AclsEbookChapter, "slug">, lastPage = false)
   return `/acls/ebook?capitulo=${encodeURIComponent(chapter.slug)}${lastPage ? "&pagina=ultima" : ""}`;
 }
 
-function RichContent({ content }: { content: AclsEbookRichText[] }) {
+function RichContent({ content, inheritColor = false }: { content: AclsEbookRichText[]; inheritColor?: boolean }) {
   return content.map((segment, index) => {
     if (segment.kind === "image") {
       return (
@@ -75,8 +76,10 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
       );
     }
 
-    const className = segment.red
-      ? "font-bold text-[#c62828] dark:text-red-400"
+    const className = inheritColor
+      ? segment.bold || segment.red ? "font-bold" : undefined
+      : segment.red
+        ? "font-bold text-[#c62828] dark:text-red-400"
       : segment.bold
         ? "font-bold text-slate-950 dark:text-white"
         : undefined;
@@ -144,6 +147,35 @@ function StructuredCell({ content, hints }: { content: AclsEbookRichText[]; hint
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function TableCellContent({ content }: { content: AclsEbookRichText[] }) {
+  const explicit = splitRichExplicitItems(content);
+  const intro = explicit.intro;
+  const items: EbookStructuredItem[] = explicit.items.map((item) => ({ content: item, children: [] }));
+
+  if (!items.length) return <p className="leading-7"><RichContent content={content} /></p>;
+
+  return (
+    <div className="space-y-3 text-slate-800 dark:text-slate-100">
+      {hasVisibleRichContent(intro) ? <p className="font-semibold leading-7"><RichContent content={intro as AclsEbookRichText[]} /></p> : null}
+      <ul className="space-y-2.5 border-l-2 border-[#123A6D]/15 pl-4">
+        {items.map((item, index) => (
+          <li key={index} className="leading-7">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-[0.7em] h-1.5 w-1.5 shrink-0 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
+              <span className="min-w-0"><RichContent content={item.content as AclsEbookRichText[]} /></span>
+            </div>
+            {item.children.length ? (
+              <ul className="ml-4 mt-2 space-y-1.5 border-l border-slate-200 pl-4 dark:border-slate-700">
+                {item.children.map((child, childIndex) => <li key={childIndex} className="leading-6"><RichContent content={removeLeadingListMarker(child) as AclsEbookRichText[]} /></li>)}
+              </ul>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -231,24 +263,74 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
     );
   }
 
+  if (block.rows.length === 1) {
+    const panelColumns = columnCount === 2 ? "md:grid-cols-2" : columnCount === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
+    return (
+      <section className="my-8 rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
+        <div className={`grid gap-4 ${panelColumns}`}>
+          {Array.from({ length: columnCount }).map((_, cellIndex) => (
+            <article key={cellIndex} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+              <TableCellContent content={block.rows[0]?.[cellIndex] ?? []} />
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  const firstRowTexts = block.rows[0]?.map((cell) => richTextValue(cell)) ?? [];
+  const hasColumnHeader = Boolean(block.hasHeader && firstRowTexts.length === columnCount && firstRowTexts.every((text) => text.length > 0 && text.length <= 80));
+  const mobileRows = hasColumnHeader ? block.rows.slice(1) : block.rows;
+  const mobileHeaders = hasColumnHeader ? block.rows[0] : [];
+
   return (
-    <div className="my-7 overflow-hidden rounded-xl border border-slate-300/80 bg-white dark:border-slate-700 dark:bg-slate-900">
+    <>
+      <div className="my-8 space-y-4 md:hidden">
+        {mobileRows.map((row, visibleRowIndex) => (
+          <article key={visibleRowIndex} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
+            <h4 className="bg-[#0d315d] px-4 py-3 text-base font-bold leading-6 text-white">
+              <RichContent content={row[0] ?? []} inheritColor />
+            </h4>
+            <div className="space-y-4 px-4 py-4 text-slate-800 dark:text-slate-100">
+              {Array.from({ length: columnCount - 1 }).map((_, offset) => {
+                const cellIndex = offset + 1;
+                return (
+                  <div key={cellIndex}>
+                    {hasVisibleRichContent(mobileHeaders[cellIndex] ?? []) ? (
+                      <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#486a91] dark:text-blue-300">
+                        <RichContent content={mobileHeaders[cellIndex] ?? []} inheritColor />
+                      </p>
+                    ) : null}
+                    <TableCellContent content={row[cellIndex] ?? []} />
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="my-8 hidden overflow-hidden rounded-2xl border border-slate-300/80 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 md:block">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[540px] border-collapse text-left text-[0.94em]">
+        <table className="w-full min-w-[720px] border-collapse text-left text-[0.94em]">
+          {columnCount === 2 ? <colgroup><col className="w-[26%]" /><col className="w-[74%]" /></colgroup> : null}
           <tbody>
             {block.rows.map((row, rowIndex) => (
               <tr key={rowIndex} className="border-b border-slate-200 last:border-b-0 dark:border-slate-700">
                 {Array.from({ length: columnCount }).map((_, cellIndex) => {
-                  const isHeader = block.hasHeader && rowIndex === 0;
+                  const isHeader = hasColumnHeader && rowIndex === 0;
                   const Cell = isHeader ? "th" : "td";
                   return (
                     <Cell
                       key={cellIndex}
                       className={isHeader
-                        ? "bg-[#0d315d] px-4 py-3 font-bold text-white"
-                        : "border-r border-slate-200 px-4 py-3 align-top leading-6 text-slate-700 last:border-r-0 dark:border-slate-700 dark:text-slate-200"}
+                        ? "bg-[#0d315d] px-5 py-4 font-bold text-white"
+                        : cellIndex === 0
+                          ? "border-r border-slate-200 bg-slate-100 px-5 py-4 align-top font-bold leading-7 text-[#0d315d] dark:border-slate-700 dark:bg-slate-800 dark:text-blue-100"
+                          : "border-r border-slate-200 bg-white px-5 py-4 align-top leading-7 text-slate-800 last:border-r-0 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"}
                     >
-                      <StructuredCell content={row[cellIndex] ?? []} hints={hintsFor(rowIndex, cellIndex)} />
+                      {isHeader
+                        ? <RichContent content={row[cellIndex] ?? []} inheritColor />
+                        : <TableCellContent content={row[cellIndex] ?? []} />}
                     </Cell>
                   );
                 })}
@@ -257,7 +339,8 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -268,14 +351,14 @@ function SourceBlockContent({ block, chapterSlug, sourceIndex }: { block: AclsEb
         <header className="mb-8 mt-10 border-b border-[#123A6D]/20 pb-5 first:mt-0 dark:border-blue-300/20">
           <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.28em] text-[#486a91] dark:text-blue-300">Seção</p>
           <h2 className="font-serif text-3xl font-bold leading-tight tracking-[-0.025em] text-[#092a50] dark:text-blue-100">
-            <RichContent content={block.content} />
+            <RichContent content={block.content} inheritColor />
           </h2>
         </header>
       );
     }
     return (
       <h3 className="mb-3 mt-8 font-serif text-xl font-bold leading-snug text-[#123A6D] first:mt-0 dark:text-blue-200">
-        <RichContent content={block.content} />
+        <RichContent content={block.content} inheritColor />
       </h3>
     );
   }
