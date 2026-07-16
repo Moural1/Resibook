@@ -171,8 +171,16 @@ export function splitRichExplicitItems(content: EbookLayoutSegment[]) {
 
 export function structureRichContent(content: EbookLayoutSegment[], hints: EbookLayoutHint[]) {
   const length = content.reduce((total, segment) => total + (segment.kind === "text" ? segment.text.length : 0), 0);
-  const boundaries = hints
-    .filter((hint) => Number.isInteger(hint.offset) && hint.offset >= 0 && hint.offset < length)
+  const sourceText = lineText(content);
+  const candidateBoundaries = hints
+    .filter((hint) => Number.isInteger(hint.offset) && hint.offset >= 0 && hint.offset < length);
+  const splitsInsideToken = candidateBoundaries.some((hint) => {
+    if (hint.offset === 0) return false;
+    return /[\p{L}\p{N}]/u.test(sourceText[hint.offset - 1] ?? "") && /[\p{L}\p{N}]/u.test(sourceText[hint.offset] ?? "");
+  });
+  if (splitsInsideToken) return { intro: [] as EbookLayoutSegment[], items: [] as EbookStructuredItem[] };
+
+  const boundaries = candidateBoundaries
     .sort((left, right) => left.offset - right.offset)
     .filter((hint, index, all) => index === 0 || hint.offset !== all[index - 1].offset);
 

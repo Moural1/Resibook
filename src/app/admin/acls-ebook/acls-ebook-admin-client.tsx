@@ -202,15 +202,16 @@ function BlockEditor({ block, onChange }: { block: AclsEbookSourceBlock; onChang
   );
 
   const columnCount = block.rows[0]?.length ?? 1;
-  const updateCell = (rowIndex: number, columnIndex: number, content: AclsEbookRichText[]) => onChange({ ...block, rows: block.rows.map((row, currentRow) => currentRow === rowIndex ? row.map((cell, currentColumn) => currentColumn === columnIndex ? content : cell) : row) });
+  const updateTable = (next: Extract<AclsEbookSourceBlock, { kind: "table" }>) => onChange({ ...next, layoutHintKey: null });
+  const updateCell = (rowIndex: number, columnIndex: number, content: AclsEbookRichText[]) => updateTable({ ...block, rows: block.rows.map((row, currentRow) => currentRow === rowIndex ? row.map((cell, currentColumn) => currentColumn === columnIndex ? content : cell) : row) });
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={block.hasHeader} onChange={(event) => onChange({ ...block, hasHeader: event.target.checked })} />Primeira linha é cabeçalho</label>
-        <button type="button" disabled={columnCount >= 8} onClick={() => onChange({ ...block, rows: block.rows.map((row) => [...row, plainRichText("Nova coluna")]) })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">+ Coluna</button>
-        <button type="button" disabled={columnCount <= 1} onClick={() => onChange({ ...block, rows: block.rows.map((row) => row.slice(0, -1)) })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">− Coluna</button>
-        <button type="button" disabled={block.rows.length >= 80} onClick={() => onChange({ ...block, rows: [...block.rows, Array.from({ length: columnCount }, () => plainRichText("Conteúdo"))] })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">+ Linha</button>
-        <button type="button" disabled={block.rows.length <= 1} onClick={() => onChange({ ...block, rows: block.rows.slice(0, -1) })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">− Linha</button>
+        <label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={block.hasHeader} onChange={(event) => updateTable({ ...block, hasHeader: event.target.checked })} />Primeira linha é cabeçalho</label>
+        <button type="button" disabled={columnCount >= 8} onClick={() => updateTable({ ...block, rows: block.rows.map((row) => [...row, plainRichText("Nova coluna")]) })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">+ Coluna</button>
+        <button type="button" disabled={columnCount <= 1} onClick={() => updateTable({ ...block, rows: block.rows.map((row) => row.slice(0, -1)) })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">− Coluna</button>
+        <button type="button" disabled={block.rows.length >= 80} onClick={() => updateTable({ ...block, rows: [...block.rows, Array.from({ length: columnCount }, () => plainRichText("Conteúdo"))] })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">+ Linha</button>
+        <button type="button" disabled={block.rows.length <= 1} onClick={() => updateTable({ ...block, rows: block.rows.slice(0, -1) })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">− Linha</button>
       </div>
       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
         <table className="w-full border-collapse" style={{ minWidth: `${Math.max(720, columnCount * 280)}px` }}>

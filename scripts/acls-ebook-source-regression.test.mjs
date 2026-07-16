@@ -105,6 +105,23 @@ test("leitor preserva quebras editoriais e nunca parte palavras entre destaques"
   assert.match(ebookReader, /columnCount \* 220/);
 });
 
+test("marcadores antigos do PDF nunca dividem palavras depois de uma edição", () => {
+  const prevention = content.chapters.find((chapter) => chapter.slug === "prevencao-pcr");
+  const editedCell = prevention.blocks[4].rows[0][0];
+  const cellText = editedCell.filter((segment) => segment.kind === "text").map((segment) => segment.text).join("");
+  const staleHints = ["PAS <", "Hipertensão sintomáti", "Redução inesperada da consciênc", "Convu", "Queda do débito uri"].map((fragment) => ({
+    offset: cellText.indexOf(fragment) + fragment.length,
+    level: 0,
+  }));
+  const structured = structureRichContent(editedCell, [{ offset: 0, level: 0 }, ...staleHints]);
+  assert.deepEqual(structured.items, []);
+  const fallbackText = splitRichSteps(editedCell).map((item) => item.filter((segment) => segment.kind === "text").map((segment) => segment.text).join("").trim());
+  assert.ok(fallbackText.includes("Hipertensão sintomática"));
+  assert.ok(fallbackText.includes("Redução inesperada da consciência"));
+  assert.ok(fallbackText.includes("Convulsão"));
+  assert.match(ebookAdmin, /layoutHintKey: null/);
+});
+
 test("a troca de capítulos nunca aponta para uma página inexistente", () => {
   assert.equal(ebookReader.includes("pages[safePageIndex]"), true);
   assert.equal(ebookShell.includes("key={sourceChapter.slug}"), true);
