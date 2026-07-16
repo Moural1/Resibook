@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 import { hasVisibleRichContent, splitRichClauses, splitRichSteps, structureRichContent } from "../src/lib/acls-ebook-layout.ts";
+import { paginateEbookBlocks } from "../src/lib/acls-ebook-pagination.ts";
 
 const content = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source.json", import.meta.url), "utf8"));
 const report = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source-report.json", import.meta.url), "utf8"));
@@ -102,8 +103,46 @@ test("títulos vazios não são renderizados nem podem ocupar páginas", () => {
   const avc = content.chapters.find((chapter) => chapter.slug === "avc-agudo");
   const emptyHeadings = avc.blocks.filter((block) => block.kind === "heading" && !hasVisibleRichContent(block.content));
   assert.ok(emptyHeadings.length >= 3);
-  assert.equal(ebookReader.includes('if (block.kind === "heading" && !hasVisibleRichContent(block.content)) continue;'), true);
-  assert.equal(ebookReader.includes("pageOnlyHasHeadings"), true);
+  for (const chapter of content.chapters) {
+    const chapterPages = paginateEbookBlocks(chapter.blocks);
+    assert.ok(chapterPages.every((page) => page.some((entry) => entry.block.kind !== "heading")), `${chapter.title} ainda possui página apenas com título.`);
+    assert.ok(chapterPages.slice(0, -1).every((page) => page.at(-1)?.block.kind !== "heading"), `${chapter.title} ainda possui título órfão no fim da página.`);
+  }
+});
+
+test("marcadores numéricos permanecem unidos à respectiva conduta", () => {
+  const airway = content.chapters.find((chapter) => chapter.slug === "parada-respiratoria-via-aerea");
+  const intubation = splitRichSteps(airway.blocks[110].rows[0][0]).map(textOf);
+  assert.ok(intubation.includes("1. Reunir todo o equipamento necessário."));
+  assert.ok(intubation.includes("2. Realizar a intubação endotraqueal."));
+  assert.equal(intubation.some((item) => /^\d+[.)]$/.test(item)), false);
+
+  const arrest = content.chapters.find((chapter) => chapter.slug === "ritmos-de-parada");
+  const afterShock = splitRichSteps(arrest.blocks[11].rows[3][0]).map(textOf);
+  assert.ok(afterShock.includes("2. Realizar RCP por 2 minutos."));
+  assert.ok(afterShock.includes("5. Verificar pulso apenas se houver ritmo organizado."));
+
+  const dave = content.chapters.find((chapter) => chapter.slug === "pcr-dave");
+  const deviceAssessment = splitRichSteps(dave.blocks[3].rows[0][0]).map(textOf);
+  assert.ok(deviceAssessment.some((item) => item.startsWith("1. AUXILIE NA VENTILAÇÃO")));
+  assert.equal(deviceAssessment.some((item) => item === "1."), false);
+});
+
+test("tabelas editoriais achatadas possuem fallback de leitura em itens", () => {
+  const fundamentals = content.chapters.find((chapter) => chapter.slug === "fundamentos-abordagem");
+  const systematic = splitRichSteps(fundamentals.blocks[39].rows[1][0]).map(textOf);
+  const recovery = splitRichSteps(fundamentals.blocks[24].rows[1][0]).map(textOf);
+  const quality = splitRichSteps(fundamentals.blocks[48].rows[1][0]).map(textOf);
+  const reversibleCauses = splitRichSteps(fundamentals.blocks[70].rows[1][0]).map(textOf);
+  const thromboticCauses = splitRichSteps(fundamentals.blocks[71].rows[1][0]).map(textOf);
+
+  assert.equal(systematic.length, 4);
+  assert.equal(recovery.length, 5);
+  assert.ok(quality.length >= 4);
+  assert.ok(reversibleCauses.includes("H+ - Acidose"));
+  assert.deepEqual(thromboticCauses, ["TEP", "Tamponamento cardíaco", "Tóxicos", "Tensão no tórax (Pneumotórax)", "Trombose coronariana"]);
+  assert.equal(ebookReader.includes("structuredCellData"), true);
+  assert.equal(ebookReader.includes("hasTitleRow"), true);
 });
 
 test("nenhum quadro longo de uma célula permanece compactado", () => {

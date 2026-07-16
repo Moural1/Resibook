@@ -22,6 +22,8 @@ function shouldSplitSpacing(left: string, right: string) {
   const normalizedLeft = left.trim();
   const normalizedRight = right.trim();
   if (!normalizedLeft || !normalizedRight || !startsWithUppercase(normalizedRight)) return false;
+  if (/^(?:\d+[.)]|-)$/.test(normalizedLeft)) return false;
+  if (/^[A-Z]\+$/i.test(normalizedLeft)) return false;
   if (/^\d+\s*\/\s*\d+/.test(normalizedRight)) return false;
   return !CONTINUATION_WORDS.test(normalizedLeft);
 }
@@ -61,18 +63,26 @@ export function splitRichSteps(content: EbookLayoutSegment[]) {
     const previous = [...current()].reverse().find((candidate) => candidate.kind === "text" && candidate.text.trim());
 
     if (!trimmed) {
+      const previousIsMarker = /^(?:\d+[.)]|-)$/.test(previousText);
+      const previousIsStandaloneAcronym = /^[A-Z0-9]{2,6}$/.test(previousText);
       const separatesHighlightedItems = segment.text.length >= 2 || Boolean(
         previous?.kind === "text" && previous.red &&
         next?.kind === "text" && next.red && startsWithUppercase(next.text) &&
         !previousText.endsWith("(") && !/^OU\b/i.test(next.text.trim()),
-      );
-      if (separatesHighlightedItems) turn(); else append(segment);
+      ) || Boolean(previousIsStandaloneAcronym && next?.kind === "text" && next.red && startsWithUppercase(next.text));
+      if (separatesHighlightedItems && !previousIsMarker) turn(); else append(segment);
       continue;
     }
 
     const beginsNewMarkedItem = /^\s*-\s*[A-ZÀ-ÖØ-Þ0-9]/.test(segment.text) && previousText.length > 0;
     const followsSentence = /[.!?]$/.test(previousText) && !/^\d+[.)]$/.test(previousText) && startsWithUppercase(segment.text);
-    if (beginsNewMarkedItem || followsSentence) turn();
+    const separatorAfterSegment = content[index + 1];
+    const highlightedAfterSeparator = content[index + 2];
+    const startsHighlightedSequence = /^[A-Z0-9]{2,6}$/.test(previousText) &&
+      previous?.kind === "text" && !previous.red && segment.red && startsWithUppercase(segment.text) &&
+      separatorAfterSegment?.kind === "text" && !separatorAfterSegment.text.trim() &&
+      highlightedAfterSeparator?.kind === "text" && highlightedAfterSeparator.red;
+    if (beginsNewMarkedItem || followsSentence || startsHighlightedSequence) turn();
 
     const boundaryPattern = /\s{2,}|(?<=[.!?])\s+(?=[-A-ZÀ-ÖØ-Þ0-9])|\s+(?=-\s*[A-ZÀ-ÖØ-Þ0-9])/g;
     let cursor = 0;
@@ -82,8 +92,7 @@ export function splitRichSteps(content: EbookLayoutSegment[]) {
       if (before) append({ ...segment, text: before });
       const left = `${lineText(current())}`;
       const right = segment.text.slice(boundaryAt + match[0].length);
-      const isWideSpacing = /^\s{2,}$/.test(match[0]);
-      if (!isWideSpacing || shouldSplitSpacing(left, right)) {
+      if (shouldSplitSpacing(left, right)) {
         turn();
       } else {
         append({ ...segment, text: match[0] });

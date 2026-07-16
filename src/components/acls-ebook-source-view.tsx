@@ -35,66 +35,26 @@ import {
   type EbookLayoutHint,
   type EbookStructuredItem,
 } from "@/lib/acls-ebook-layout";
+import {
+  isMediaFocusedEbookPage,
+  paginateEbookBlocks,
+  type EbookReaderBlock,
+} from "@/lib/acls-ebook-pagination";
 
 const LAYOUT_HINTS = layoutHintsSource as Record<string, EbookLayoutHint[]>;
 
-const PAGE_WEIGHT = 2400;
 const FONT_CLASSES = [
-  "text-[14px] sm:text-[15px]",
-  "text-[16px] sm:text-[17px]",
+  "text-[15px] sm:text-[16px]",
   "text-[17px] sm:text-[18px]",
-  "text-[19px] sm:text-[20px]",
-  "text-[21px] sm:text-[22px]",
+  "text-[18px] sm:text-[19px]",
+  "text-[20px] sm:text-[21px]",
+  "text-[22px] sm:text-[23px]",
 ] as const;
-const ZOOM_LABELS = ["85%", "95%", "100%", "115%", "130%"] as const;
-
-type ReaderBlock = { block: AclsEbookSourceBlock; sourceIndex: number };
+const ZOOM_LABELS = ["90%", "100%", "110%", "120%", "135%"] as const;
 
 function chapterHref(chapter?: Pick<AclsEbookChapter, "slug">, lastPage = false) {
   if (!chapter) return "/acls/ebook";
   return `/acls/ebook?capitulo=${encodeURIComponent(chapter.slug)}${lastPage ? "&pagina=ultima" : ""}`;
-}
-
-function segmentLength(segment: AclsEbookRichText) {
-  return segment.kind === "text" ? segment.text.length : 700;
-}
-
-function blockWeight(block: AclsEbookSourceBlock) {
-  if (block.kind === "image") return 900;
-  if (block.kind === "heading") return block.level <= 1 ? 220 : 150;
-  if (block.kind === "table") {
-    const characters = block.rows.flat(2).reduce((total, segment) => total + segmentLength(segment), 0);
-    const singleCell = block.rows.length === 1 && block.rows[0]?.length === 1;
-    const structuredSteps = singleCell ? splitRichSteps(block.rows[0][0] ?? []).length : 0;
-    return Math.max(720, characters * 1.15 + block.rows.length * 95 + Math.min(structuredSteps, 12) * 120);
-  }
-  return Math.max(95, block.content.reduce((total, segment) => total + segmentLength(segment), 0) * 1.15);
-}
-
-function paginateBlocks(blocks: AclsEbookSourceBlock[]) {
-  const pages: ReaderBlock[][] = [];
-  let page: ReaderBlock[] = [];
-  let weight = 0;
-
-  for (const [sourceIndex, block] of blocks.entries()) {
-    if (block.kind === "heading" && !hasVisibleRichContent(block.content)) continue;
-    const nextWeight = blockWeight(block);
-    const startsSection = block.kind === "heading";
-    const pageOnlyHasHeadings = page.length > 0 && page.every((entry) => entry.block.kind === "heading");
-    const shouldTurn = page.length > 0 && !pageOnlyHasHeadings && (weight + nextWeight > PAGE_WEIGHT || (startsSection && weight > PAGE_WEIGHT * 0.78));
-
-    if (shouldTurn) {
-      pages.push(page);
-      page = [];
-      weight = 0;
-    }
-
-    page.push({ block, sourceIndex });
-    weight += nextWeight;
-  }
-
-  if (page.length) pages.push(page);
-  return pages.length ? pages : [[]];
 }
 
 function RichContent({ content }: { content: AclsEbookRichText[] }) {
@@ -107,6 +67,7 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
             alt="Ilustração clínica do material ACLS"
             width={1200}
             height={760}
+            loading="eager"
             sizes="(max-width: 768px) 100vw, 760px"
             className="mx-auto h-auto max-h-[680px] w-full max-w-5xl object-contain"
           />
@@ -126,8 +87,8 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
 
 function StructuredChildren({ items }: { items: AclsEbookRichText[][] }) {
   const visibleChildren = items.flatMap((child) => {
-    const parts = splitRichSteps(child);
-    return parts.length ? parts : [child];
+    const parts = splitRichSteps(child).map(removeLeadingListMarker);
+    return parts.length ? parts : [removeLeadingListMarker(child)];
   });
   if (!visibleChildren.length) return null;
   return (
@@ -142,18 +103,47 @@ function StructuredChildren({ items }: { items: AclsEbookRichText[][] }) {
   );
 }
 
+function richTextValue(content: AclsEbookRichText[]) {
+  return content
+    .filter((segment): segment is Extract<AclsEbookRichText, { kind: "text" }> => segment.kind === "text")
+    .map((segment) => segment.text)
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function structuredCellData(content: AclsEbookRichText[], hints: EbookLayoutHint[]) {
+  const structured = structureRichContent(content, hints);
+  if (structured.items.length) return structured;
+
+  const fallbackItems = splitRichSteps(content)
+    .map(removeLeadingListMarker)
+    .filter((item) => hasVisibleRichContent(item) && !/^(?:\d+[.)]?|-)$/.test(richTextValue(item)))
+    .map((item) => ({ content: item, children: [] as AclsEbookRichText[][] }));
+
+  return {
+    intro: [] as AclsEbookRichText[],
+    items: fallbackItems.length > 1 ? fallbackItems : [] as EbookStructuredItem[],
+  };
+}
+
 function StructuredCell({ content, hints }: { content: AclsEbookRichText[]; hints: EbookLayoutHint[] }) {
-  const structure = structureRichContent(content, hints);
+  const structure = structuredCellData(content, hints);
   if (!structure.items.length) return <RichContent content={content} />;
   return (
     <div className="space-y-3">
       {hasVisibleRichContent(structure.intro) ? <p><RichContent content={structure.intro as AclsEbookRichText[]} /></p> : null}
-      {structure.items.map((item, index) => (
-        <div key={index} className={index ? "border-t border-slate-200 pt-3 dark:border-slate-700" : undefined}>
-          <p><RichContent content={item.content as AclsEbookRichText[]} /></p>
-          <StructuredChildren items={item.children as AclsEbookRichText[][]} />
-        </div>
-      ))}
+      <div className={structure.items.length >= 3 ? "grid gap-3 sm:grid-cols-2" : "space-y-3"}>
+        {structure.items.map((item, index) => (
+          <div key={index} className="rounded-xl border border-slate-200/80 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-start gap-3">
+              <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
+              <p className="min-w-0"><RichContent content={item.content as AclsEbookRichText[]} /></p>
+            </div>
+            <StructuredChildren items={item.children as AclsEbookRichText[][]} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -214,18 +204,28 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
   }
 
   if (columnCount === 1) {
+    const firstCell = block.rows[0]?.[0] ?? [];
+    const firstCellText = richTextValue(firstCell);
+    const hasTitleRow = block.rows.length >= 2 && firstCellText.length > 0 && firstCellText.length <= 160 && splitRichSteps(firstCell).length === 1;
+    const bodyRows = hasTitleRow ? block.rows.slice(1) : block.rows;
     return (
       <section className="my-8 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
-        <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
-          <span className="h-8 w-1 rounded-full bg-[#123A6D]" />
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Tabela clínica</p>
+        <div className="mb-5 flex items-start gap-4 border-b border-slate-200 pb-4 dark:border-slate-700">
+          <span className="h-10 w-1 shrink-0 rounded-full bg-[#123A6D]" />
+          <div className="min-w-0">
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Tabela clínica</p>
+            {hasTitleRow ? <h4 className="mt-2 font-serif text-[1.15em] font-bold leading-snug text-[#123A6D] dark:text-blue-100"><RichContent content={firstCell} /></h4> : null}
+          </div>
         </div>
         <div className="space-y-3">
-          {block.rows.map((row, rowIndex) => (
-            <div key={rowIndex} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 leading-7 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
-              <StructuredCell content={row[0] ?? []} hints={hintsFor(rowIndex, 0)} />
-            </div>
-          ))}
+          {bodyRows.map((row, visibleRowIndex) => {
+            const rowIndex = hasTitleRow ? visibleRowIndex + 1 : visibleRowIndex;
+            return (
+              <div key={rowIndex} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 leading-7 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                <StructuredCell content={row[0] ?? []} hints={hintsFor(rowIndex, 0)} />
+              </div>
+            );
+          })}
         </div>
       </section>
     );
@@ -290,6 +290,7 @@ function SourceBlockContent({ block, chapterSlug, sourceIndex }: { block: AclsEb
           alt="Ilustração clínica do material ACLS"
           width={1400}
           height={900}
+          loading="eager"
           sizes="(max-width: 768px) 100vw, 760px"
           className="mx-auto h-auto max-h-[760px] w-full max-w-5xl object-contain"
         />
@@ -320,7 +321,7 @@ function SourceBlock({
   highlightMode,
   onToggle,
 }: {
-  entry: ReaderBlock;
+  entry: EbookReaderBlock;
   chapterSlug: string;
   highlighted: boolean;
   highlightMode: boolean;
@@ -353,7 +354,7 @@ type Props = {
 
 export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLastPage = false, onOpenAtlas }: Props) {
   const router = useRouter();
-  const pages = useMemo(() => paginateBlocks(chapter.blocks), [chapter.blocks]);
+  const pages = useMemo(() => paginateEbookBlocks(chapter.blocks), [chapter.blocks]);
   const [pageIndex, setPageIndex] = useState(initialLastPage ? pages.length - 1 : 0);
   const [fontScale, setFontScale] = useState(2);
   const [highlightMode, setHighlightMode] = useState(false);
@@ -366,6 +367,8 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   const previousChapter = activeIndex > 0 ? chapters[activeIndex - 1] : null;
   const nextChapter = activeIndex < chapters.length - 1 ? chapters[activeIndex + 1] : null;
   const safePageIndex = Math.min(Math.max(pageIndex, 0), pages.length - 1);
+  const currentPage = pages[safePageIndex];
+  const mediaFocusedPage = isMediaFocusedEbookPage(currentPage);
   const chapterProgress = ((safePageIndex + 1) / pages.length) * 100;
   const bookProgress = ((activeIndex + (safePageIndex + 1) / pages.length) / chapters.length) * 100;
   const sourcePage = Math.min(
@@ -449,12 +452,12 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   }, [contentsOpen, originalOpen]);
 
   return (
-    <div ref={readerTop} className={`-mx-2 min-h-screen scroll-mt-4 sm:mx-0 ${isFullscreen ? "fixed inset-0 z-[120] m-0 overflow-y-auto bg-slate-100 p-2 dark:bg-slate-950 sm:p-5" : ""}`}>
+    <div ref={readerTop} className={`min-h-screen scroll-mt-4 ${isFullscreen ? "fixed inset-0 z-[120] m-0 overflow-y-auto bg-slate-100 p-2 dark:bg-slate-950 sm:p-5" : ""}`}>
       <div className="fixed inset-x-0 top-0 z-[80] h-1 bg-slate-200 dark:bg-slate-800" aria-hidden="true">
         <div className="h-full bg-[#2d5d8f] transition-[width] duration-300" style={{ width: `${bookProgress}%` }} />
       </div>
 
-      <header className="sticky top-2 z-40 mx-auto mb-5 flex max-w-6xl items-center justify-between gap-2 rounded-2xl border border-white/60 bg-white/90 p-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/90">
+      <header className="sticky top-2 z-40 mx-auto mb-5 flex max-w-[1380px] items-center justify-between gap-2 rounded-2xl border border-white/60 bg-white/90 p-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/90">
         <Link href={chapterHref()} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-[#123A6D] dark:text-slate-200 dark:hover:bg-slate-800">
           <ArrowLeft className="h-4 w-4" /><span className="hidden sm:inline">Biblioteca</span>
         </Link>
@@ -470,7 +473,7 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
       <main
         id="conteudo-principal"
         tabIndex={-1}
-        className="mx-auto max-w-6xl"
+        className="mx-auto max-w-[1380px]"
         onTouchStart={(event) => { touchStart.current = event.changedTouches[0]?.clientX ?? null; }}
         onTouchEnd={(event) => {
           if (touchStart.current === null) return;
@@ -485,16 +488,16 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
             <ChevronLeft className="h-5 w-5" />
           </button>
 
-          <article className="relative min-h-[72vh] overflow-hidden rounded-[8px_28px_28px_8px] border border-[#d8d3c8] bg-[#fffdf8] shadow-[0_28px_70px_-36px_rgba(15,23,42,.55),inset_12px_0_25px_-24px_rgba(15,23,42,.35)] dark:border-slate-700 dark:bg-[#111827]">
+          <article className={`relative overflow-hidden rounded-[8px_28px_28px_8px] border border-[#d8d3c8] bg-[#fffdf8] shadow-[0_28px_70px_-36px_rgba(15,23,42,.55),inset_12px_0_25px_-24px_rgba(15,23,42,.35)] dark:border-slate-700 dark:bg-[#111827] ${mediaFocusedPage ? "min-h-0" : "min-h-[76vh]"}`}>
             <div className="absolute inset-y-0 left-0 w-2 border-r border-black/5 bg-gradient-to-r from-black/10 to-transparent dark:border-white/5" aria-hidden="true" />
-            <div className="flex min-h-[72vh] flex-col px-6 py-7 sm:px-12 sm:py-10 lg:px-16">
-              <div className="mb-9 flex items-center justify-between gap-4 border-b border-slate-300/70 pb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:border-slate-700">
+            <div className={`flex flex-col px-5 py-6 sm:px-9 sm:py-8 lg:px-12 ${mediaFocusedPage ? "min-h-0" : "min-h-[76vh]"}`}>
+              <div className="mb-7 flex items-center justify-between gap-4 border-b border-slate-300/70 pb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:border-slate-700">
                 <span className="truncate">Resibook Clinical Editions</span>
                 <span className="shrink-0">{String(safePageIndex + 1).padStart(2, "0")} / {String(pages.length).padStart(2, "0")}</span>
               </div>
 
-              <div className={`mx-auto w-full max-w-5xl flex-1 font-sans transition-[font-size] ${FONT_CLASSES[fontScale]}`}>
-                {pages[safePageIndex].map((entry) => (
+              <div className={`mx-auto w-full max-w-none flex-1 font-sans transition-[font-size] ${FONT_CLASSES[fontScale]}`}>
+                {currentPage.map((entry) => (
                   <SourceBlock
                     key={entry.sourceIndex}
                     entry={entry}
@@ -506,7 +509,7 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
                 ))}
               </div>
 
-              <footer className="mt-12 flex items-center justify-between gap-4 border-t border-slate-300/70 pt-4 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:border-slate-700">
+              <footer className={`${mediaFocusedPage ? "mt-7" : "mt-10"} flex items-center justify-between gap-4 border-t border-slate-300/70 pt-4 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:border-slate-700`}>
                 <span>Capítulo {activeIndex + 1}</span>
                 <span>Página original aproximada {sourcePage}</span>
               </footer>
