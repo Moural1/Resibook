@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
-import { splitRichSteps } from "../src/lib/acls-ebook-layout.ts";
+import { hasVisibleRichContent, splitRichClauses, splitRichSteps, structureRichContent } from "../src/lib/acls-ebook-layout.ts";
 
 const content = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source.json", import.meta.url), "utf8"));
 const report = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source-report.json", import.meta.url), "utf8"));
+const layoutHints = JSON.parse(await readFile(new URL("../src/content/acls-ebook-layout-hints.json", import.meta.url), "utf8"));
 const images = await readdir(new URL("../public/acls-ebook/source/images/", import.meta.url));
 const pages = await readdir(new URL("../public/acls-ebook/source/pages/", import.meta.url));
 const visualAtlas = await readdir(new URL("../public/acls-ebook/visuals/", import.meta.url));
@@ -60,13 +61,55 @@ test("a troca de capítulos nunca aponta para uma página inexistente", () => {
 
 test("quadros de uma célula recebem diagramação editorial própria", () => {
   assert.equal(ebookReader.includes("const singleCell = block.rows.length === 1"), true);
-  assert.equal(ebookReader.includes("Leitura estruturada"), true);
+  assert.equal(ebookReader.includes("Quadro clínico"), true);
+});
+
+test("a divisão visual preserva agrupamentos clínicos do material editorial", () => {
+  const sca = content.chapters.find((chapter) => chapter.slug === "sindromes-coronarianas");
+  const avc = content.chapters.find((chapter) => chapter.slug === "avc-agudo");
+  const text = (step) => step.filter((segment) => segment.kind === "text").map((segment) => segment.text).join("").replace(/\s+/g, " ").trim();
+  const scaFlow = structureRichContent(sca.blocks[44].rows[0][0], layoutHints["sindromes-coronarianas:44:0:0"]);
+  const avcChecklist = structureRichContent(avc.blocks[41].rows[0][0], layoutHints["avc-agudo:41:0:0"]);
+  const scaChildren = scaFlow.items.flatMap((item) => item.children).flatMap((child) => splitRichSteps(child));
+
+  assert.ok(scaChildren.some((step) => text(step).includes("Sintomas que iniciaram a < 12 HORAS")));
+  assert.equal(scaChildren.some((step) => text(step) === "Sintomas que"), false);
+  assert.equal(avcChecklist.items.length, 11);
+  assert.ok(avcChecklist.items.some((item) => text(item.content).includes("Obter história: início dos sintomas; última vez visto normal; medicamentos; anticoagulantes; comorbidades; procedimentos recentes")));
+});
+
+test("hierarquia das tabelas é recuperada do PDF oficial em todo o eBook", () => {
+  const keys = Object.keys(layoutHints);
+  const representedChapters = new Set(keys.map((key) => key.split(":")[0]));
+  assert.ok(keys.length >= 145);
+  assert.ok(Object.values(layoutHints).reduce((total, hints) => total + hints.length, 0) >= 650);
+  assert.ok(representedChapters.size >= 11, "A recuperação do PDF não alcançou o inventário editorial esperado.");
+
+  const avc = content.chapters.find((chapter) => chapter.slug === "avc-agudo");
+  const firstAssessmentRow = structureRichContent(avc.blocks[42].rows[0][0], layoutHints["avc-agudo:42:0:0"]);
+  assert.ok(firstAssessmentRow.items.length === 1);
+  assert.ok(firstAssessmentRow.items[0].children.length >= 3);
+  assert.ok(firstAssessmentRow.items[0].children.some((child) => textOf(child).includes("Usar escala validada de AVC")));
+
+  const airway = content.chapters.find((chapter) => chapter.slug === "parada-respiratoria-via-aerea");
+  const intubation = structureRichContent(airway.blocks[110].rows[0][0], layoutHints["parada-respiratoria-via-aerea:110:0:0"]);
+  assert.equal(intubation.items.length, 8);
+  assert.ok(intubation.items[4].children.length >= 3);
+  assert.ok(intubation.items[7].children.length >= 3);
+});
+
+test("títulos vazios não são renderizados nem podem ocupar páginas", () => {
+  const avc = content.chapters.find((chapter) => chapter.slug === "avc-agudo");
+  const emptyHeadings = avc.blocks.filter((block) => block.kind === "heading" && !hasVisibleRichContent(block.content));
+  assert.ok(emptyHeadings.length >= 3);
+  assert.equal(ebookReader.includes('if (block.kind === "heading" && !hasVisibleRichContent(block.content)) continue;'), true);
+  assert.equal(ebookReader.includes("pageOnlyHasHeadings"), true);
 });
 
 test("nenhum quadro longo de uma célula permanece compactado", () => {
   let audited = 0;
   for (const chapter of content.chapters) {
-    for (const block of chapter.blocks) {
+    for (const [blockIndex, block] of chapter.blocks.entries()) {
       if (block.kind !== "table" || block.rows.length !== 1 || block.rows[0]?.length !== 1) continue;
       const segments = block.rows[0][0];
       const visibleLength = segments
@@ -74,8 +117,16 @@ test("nenhum quadro longo de uma célula permanece compactado", () => {
         .reduce((total, segment) => total + segment.text.trim().length, 0);
       if (visibleLength < 280) continue;
       audited += 1;
-      assert.ok(splitRichSteps(segments).length >= 2, `${chapter.title} contém um quadro longo sem divisão visual.`);
+      const key = `${chapter.slug}:${blockIndex}:0:0`;
+      const pdfStructure = structureRichContent(segments, layoutHints[key] ?? []);
+      const steps = splitRichSteps(segments);
+      const hasStructuredReading = pdfStructure.items.length >= 2 || pdfStructure.items.some((item) => item.children.length >= 2) || steps.length >= 2 || steps.some((step) => splitRichClauses(step).length >= 3);
+      assert.ok(hasStructuredReading, `${chapter.title}, bloco ${blockIndex}, contém um quadro longo sem divisão visual.`);
     }
   }
   assert.ok(audited >= 40, "A auditoria encontrou menos quadros longos que o inventário esperado.");
 });
+
+function textOf(segments) {
+  return segments.filter((segment) => segment.kind === "text").map((segment) => segment.text).join("").replace(/\s+/g, " ").trim();
+}

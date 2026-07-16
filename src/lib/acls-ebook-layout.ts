@@ -2,6 +2,9 @@ export type EbookLayoutSegment =
   | { kind: "text"; text: string; bold: boolean; red: boolean }
   | { kind: "image"; src: string };
 
+export type EbookLayoutHint = { offset: number; level: number };
+export type EbookStructuredItem = { content: EbookLayoutSegment[]; children: EbookLayoutSegment[][] };
+
 function lineText(line: EbookLayoutSegment[]) {
   return line
     .filter((segment): segment is Extract<EbookLayoutSegment, { kind: "text" }> => segment.kind === "text")
@@ -11,6 +14,20 @@ function lineText(line: EbookLayoutSegment[]) {
 
 function startsWithUppercase(text: string) {
   return /^-?\s*[A-ZÀ-ÖØ-Þ0-9]/.test(text.trim());
+}
+
+const CONTINUATION_WORDS = /(?:^|\s)(?:a|ao|aos|à|às|com|como|da|das|de|do|dos|e|em|entre|na|nas|no|nos|ou|para|pela|pelas|pelo|pelos|por|que|se)$/i;
+
+function shouldSplitSpacing(left: string, right: string) {
+  const normalizedLeft = left.trim();
+  const normalizedRight = right.trim();
+  if (!normalizedLeft || !normalizedRight || !startsWithUppercase(normalizedRight)) return false;
+  if (/^\d+\s*\/\s*\d+/.test(normalizedRight)) return false;
+  return !CONTINUATION_WORDS.test(normalizedLeft);
+}
+
+export function hasVisibleRichContent(content: EbookLayoutSegment[]) {
+  return content.some((segment) => segment.kind === "image" || segment.text.trim().length > 0);
 }
 
 export function splitRichSteps(content: EbookLayoutSegment[]) {
@@ -53,13 +70,8 @@ export function splitRichSteps(content: EbookLayoutSegment[]) {
       continue;
     }
 
-    if (/^;$/.test(trimmed) && previous?.kind === "text" && previous.red && next?.kind === "text" && next.red) {
-      turn();
-      continue;
-    }
-
     const beginsNewMarkedItem = /^\s*-\s*[A-ZÀ-ÖØ-Þ0-9]/.test(segment.text) && previousText.length > 0;
-    const followsSentence = /[.!?]$/.test(previousText) && startsWithUppercase(segment.text);
+    const followsSentence = /[.!?]$/.test(previousText) && !/^\d+[.)]$/.test(previousText) && startsWithUppercase(segment.text);
     if (beginsNewMarkedItem || followsSentence) turn();
 
     const boundaryPattern = /\s{2,}|(?<=[.!?])\s+(?=[-A-ZÀ-ÖØ-Þ0-9])|\s+(?=-\s*[A-ZÀ-ÖØ-Þ0-9])/g;
@@ -68,7 +80,14 @@ export function splitRichSteps(content: EbookLayoutSegment[]) {
       const boundaryAt = match.index ?? 0;
       const before = segment.text.slice(cursor, boundaryAt);
       if (before) append({ ...segment, text: before });
-      turn();
+      const left = `${lineText(current())}`;
+      const right = segment.text.slice(boundaryAt + match[0].length);
+      const isWideSpacing = /^\s{2,}$/.test(match[0]);
+      if (!isWideSpacing || shouldSplitSpacing(left, right)) {
+        turn();
+      } else {
+        append({ ...segment, text: match[0] });
+      }
       cursor = boundaryAt + match[0].length;
     }
     const remainder = segment.text.slice(cursor);
@@ -76,6 +95,75 @@ export function splitRichSteps(content: EbookLayoutSegment[]) {
   }
 
   return steps.filter((step) => step.some((segment) => segment.kind === "image" || segment.text.trim()));
+}
+
+export function splitRichClauses(content: EbookLayoutSegment[]) {
+  const clauses: EbookLayoutSegment[][] = [[]];
+
+  for (const segment of content) {
+    if (segment.kind === "image") {
+      clauses[clauses.length - 1].push(segment);
+      continue;
+    }
+
+    let cursor = 0;
+    for (const match of segment.text.matchAll(/;\s*/g)) {
+      const boundary = (match.index ?? 0) + 1;
+      clauses[clauses.length - 1].push({ ...segment, text: segment.text.slice(cursor, boundary) });
+      clauses.push([]);
+      cursor = (match.index ?? 0) + match[0].length;
+    }
+    const remainder = segment.text.slice(cursor);
+    if (remainder) clauses[clauses.length - 1].push({ ...segment, text: remainder });
+  }
+
+  return clauses.filter(hasVisibleRichContent);
+}
+
+function sliceRichContent(content: EbookLayoutSegment[], start: number, end: number) {
+  const result: EbookLayoutSegment[] = [];
+  let cursor = 0;
+
+  for (const segment of content) {
+    if (segment.kind === "image") {
+      if (cursor >= start && cursor < end) result.push(segment);
+      continue;
+    }
+    const segmentStart = cursor;
+    const segmentEnd = cursor + segment.text.length;
+    const localStart = Math.max(0, start - segmentStart);
+    const localEnd = Math.min(segment.text.length, end - segmentStart);
+    if (localStart < localEnd) result.push({ ...segment, text: segment.text.slice(localStart, localEnd) });
+    cursor = segmentEnd;
+  }
+
+  return result;
+}
+
+export function structureRichContent(content: EbookLayoutSegment[], hints: EbookLayoutHint[]) {
+  const length = content.reduce((total, segment) => total + (segment.kind === "text" ? segment.text.length : 0), 0);
+  const boundaries = hints
+    .filter((hint) => Number.isInteger(hint.offset) && hint.offset >= 0 && hint.offset < length)
+    .sort((left, right) => left.offset - right.offset)
+    .filter((hint, index, all) => index === 0 || hint.offset !== all[index - 1].offset);
+
+  if (!boundaries.length) return { intro: [] as EbookLayoutSegment[], items: [] as EbookStructuredItem[] };
+
+  const intro = sliceRichContent(content, 0, boundaries[0].offset);
+  const items: EbookStructuredItem[] = [];
+  for (let index = 0; index < boundaries.length; index += 1) {
+    const hint = boundaries[index];
+    const nextOffset = boundaries[index + 1]?.offset ?? length;
+    const piece = removeLeadingListMarker(sliceRichContent(content, hint.offset, nextOffset));
+    if (!hasVisibleRichContent(piece)) continue;
+    if (hint.level > 0 && items.length) {
+      items[items.length - 1].children.push(piece);
+    } else {
+      items.push({ content: piece, children: [] });
+    }
+  }
+
+  return { intro, items };
 }
 
 export function removeLeadingListMarker(step: EbookLayoutSegment[]) {
