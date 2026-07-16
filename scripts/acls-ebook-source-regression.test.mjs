@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
-import { hasVisibleRichContent, splitRichClauses, splitRichSteps, structureRichContent } from "../src/lib/acls-ebook-layout.ts";
+import { hasVisibleRichContent, splitRichClauses, splitRichExplicitItems, splitRichSteps, structureRichContent } from "../src/lib/acls-ebook-layout.ts";
 import { paginateEbookBlocks } from "../src/lib/acls-ebook-pagination.ts";
 
 const content = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source.json", import.meta.url), "utf8"));
@@ -143,6 +143,36 @@ test("tabelas editoriais achatadas possuem fallback de leitura em itens", () => 
   assert.deepEqual(thromboticCauses, ["TEP", "Tamponamento cardíaco", "Tóxicos", "Tensão no tórax (Pneumotórax)", "Trombose coronariana"]);
   assert.equal(ebookReader.includes("structuredCellData"), true);
   assert.equal(ebookReader.includes("hasTitleRow"), true);
+});
+
+test("tabelas multidimensionais só separam itens nos marcadores explícitos do conteúdo", () => {
+  const arrest = content.chapters.find((chapter) => chapter.slug === "ritmos-de-parada");
+  const fluids = splitRichExplicitItems(arrest.blocks[18].rows[0][0]);
+  const ultrasound = splitRichExplicitItems(arrest.blocks[18].rows[0][1]);
+  assert.ok(textOf(fluids.intro).includes("FLUIDOS"));
+  assert.ok(fluids.items.some((item) => textOf(item).includes("Hipovolemia")));
+  assert.ok(textOf(ultrasound.intro).includes("ULTRASSOM"));
+  assert.ok(ultrasound.items.some((item) => textOf(item).includes("Não deve atrasar ou interromper a RCP")));
+
+  const dave = content.chapters.find((chapter) => chapter.slug === "pcr-dave");
+  const yes = splitRichExplicitItems(dave.blocks[5].rows[0][0]);
+  const no = splitRichExplicitItems(dave.blocks[5].rows[0][1]);
+  assert.ok(textOf(yes.intro).includes("SE SIM"));
+  assert.ok(textOf(no.intro).includes("SE NÃO"));
+
+  const tachycardia = content.chapters.find((chapter) => chapter.slug === "taquiarritmias");
+  const noPulse = splitRichExplicitItems(tachycardia.blocks[35].rows[0][1]);
+  assert.ok(textOf(noPulse.intro).includes("DESFIBRILADOR EM CARGA MÁXIMA SEM APERTAR O SYNC E COMEÇAR MASSAGEM CARDÍACA"));
+
+  const stroke = content.chapters.find((chapter) => chapter.slug === "avc-agudo");
+  const mimics = splitRichExplicitItems(stroke.blocks[55].rows[0][0]);
+  assert.equal(mimics.items.length, 0, "Uma mudança de cor não pode criar um novo item.");
+});
+
+test("títulos e tabelas multidimensionais usam a identidade editorial estável", () => {
+  assert.equal(ebookReader.includes("<RichContent content={block.content} inheritColor />"), true);
+  assert.equal(ebookReader.includes("function TableCellContent({ content }"), true);
+  assert.equal(ebookReader.includes("const hasColumnHeader"), true);
 });
 
 test("nenhum quadro longo de uma célula permanece compactado", () => {
