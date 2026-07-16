@@ -1,4 +1,4 @@
-import type { AclsEbookRichText, AclsEbookSourceBlock } from "./acls-ebook-source.ts";
+import type { AclsEbookRichText, AclsEbookSourceBlock } from "./acls-ebook-schema.ts";
 import { hasVisibleRichContent, splitRichSteps } from "./acls-ebook-layout.ts";
 
 export const EBOOK_PAGE_WEIGHT = 2700;
@@ -15,6 +15,7 @@ function segmentLength(segment: AclsEbookRichText) {
 export function ebookBlockWeight(block: AclsEbookSourceBlock) {
   if (block.kind === "image") return 760;
   if (block.kind === "heading") return block.level <= 1 ? 190 : 125;
+  if (block.kind === "flow") return Math.max(620, block.nodes.reduce((total, node) => total + node.title.length + node.detail.length + 150, 0));
   if (block.kind === "table") {
     const characters = block.rows.flat(2).reduce((total, segment) => total + segmentLength(segment), 0);
     const structuredSteps = block.rows.reduce(

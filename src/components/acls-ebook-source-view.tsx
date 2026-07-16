@@ -24,7 +24,8 @@ import type {
   AclsEbookRichText,
   AclsEbookSourceBlock,
   AclsEbookSourceChapter,
-} from "@/lib/acls-ebook-source";
+  AclsEbookFlowTone,
+} from "@/lib/acls-ebook-schema";
 import layoutHintsSource from "@/content/acls-ebook-layout-hints.json";
 import {
   hasVisibleRichContent,
@@ -363,7 +364,36 @@ function SourceBlockContent({ block, chapterSlug, sourceIndex }: { block: AclsEb
     );
   }
 
-  if (block.kind === "table") return <SourceTable block={block} chapterSlug={chapterSlug} sourceIndex={sourceIndex} />;
+  const layoutHintKey = block.layoutHintKey === null ? -1 : block.layoutHintKey ?? sourceIndex;
+
+  if (block.kind === "table") return <SourceTable block={block} chapterSlug={chapterSlug} sourceIndex={layoutHintKey} />;
+
+  if (block.kind === "flow") {
+    const toneClasses: Record<AclsEbookFlowTone, string> = {
+      info: "border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100",
+      conduct: "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100",
+      warning: "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100",
+      danger: "border-red-200 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100",
+      pearl: "border-slate-700 bg-slate-950 text-white dark:border-slate-600",
+      medication: "border-violet-200 bg-violet-50 text-violet-950 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100",
+    };
+    return (
+      <section className="my-8">
+        {block.title ? <h3 className="mb-5 font-serif text-xl font-bold text-[#123A6D] dark:text-blue-200">{block.title}</h3> : null}
+        <div className="mx-auto max-w-3xl space-y-0">
+          {block.nodes.map((node, index) => (
+            <div key={node.id} className="flex flex-col items-center">
+              <article className={`w-full rounded-2xl border px-5 py-4 text-center shadow-sm ${toneClasses[node.tone]}`}>
+                <p className="font-bold leading-6">{node.title}</p>
+                {node.detail ? <p className="mt-1 text-sm leading-6 opacity-85">{node.detail}</p> : null}
+              </article>
+              {index < block.nodes.length - 1 ? <span className="flex h-10 items-center text-2xl font-bold text-[#2d5d8f]" aria-hidden="true">↓</span> : null}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   if (block.kind === "image") {
     return (

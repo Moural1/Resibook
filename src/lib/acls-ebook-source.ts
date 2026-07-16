@@ -1,27 +1,21 @@
 import "server-only";
 
 import source from "@/content/acls-ebook-source.json";
+import { createClient } from "@/lib/supabase/server";
+import {
+  validateAclsEbookDocument,
+  type AclsEbookDocument,
+  type AclsEbookSourceChapter,
+} from "@/lib/acls-ebook-schema";
 
-export type AclsEbookRichText =
-  | { kind: "text"; text: string; bold: boolean; red: boolean }
-  | { kind: "image"; src: string };
-
-export type AclsEbookSourceBlock =
-  | { kind: "heading"; level: number; content: AclsEbookRichText[] }
-  | { kind: "paragraph"; listStyle: "bullet" | "number" | null; content: AclsEbookRichText[] }
-  | { kind: "image"; src: string }
-  | { kind: "table"; rows: AclsEbookRichText[][][]; hasHeader: boolean };
-
-export type AclsEbookSourceChapter = {
-  slug: string;
-  title: string;
-  group: string;
-  sourceLines: [number, number];
-  sourcePages: [number, number];
-  blocks: AclsEbookSourceBlock[];
-};
+export type { AclsEbookDocument, AclsEbookRichText, AclsEbookSourceBlock, AclsEbookSourceChapter } from "@/lib/acls-ebook-schema";
 
 const chapters = source.chapters as AclsEbookSourceChapter[];
+
+export const BUNDLED_ACLS_EBOOK_DOCUMENT: AclsEbookDocument = {
+  schemaVersion: 1,
+  chapters,
+};
 
 export const ACLS_EBOOK_SOURCE_CHAPTERS = chapters.map(({ slug, title, group, sourcePages }) => ({
   slug,
@@ -32,4 +26,20 @@ export const ACLS_EBOOK_SOURCE_CHAPTERS = chapters.map(({ slug, title, group, so
 
 export function getAclsEbookSourceChapter(slug: string) {
   return chapters.find((chapter) => chapter.slug === slug);
+}
+
+export async function getPublishedAclsEbookDocument() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("acls_ebook_publications")
+      .select("content")
+      .eq("document_key", "acls")
+      .maybeSingle();
+    if (error || !data?.content) return BUNDLED_ACLS_EBOOK_DOCUMENT;
+    const validation = validateAclsEbookDocument(data.content);
+    return validation.valid ? validation.document : BUNDLED_ACLS_EBOOK_DOCUMENT;
+  } catch {
+    return BUNDLED_ACLS_EBOOK_DOCUMENT;
+  }
 }

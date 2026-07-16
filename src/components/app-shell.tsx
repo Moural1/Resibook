@@ -12,6 +12,7 @@ import { PRODUCT_CAPABILITIES } from "@/lib/product-config";
 import {
   Activity,
   BarChart3,
+  BookOpen,
   Brain,
   Calculator,
   ClipboardList,
@@ -423,6 +424,12 @@ function SidebarContent({
           href: "/admin/pix-manual",
           label: "Aprovar Pix",
           icon: QrCode,
+          badge: null,
+        },
+        {
+          href: "/admin/acls-ebook",
+          label: "Editar eBook ACLS",
+          icon: BookOpen,
           badge: null,
         },
       ]
