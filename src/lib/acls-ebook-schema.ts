@@ -162,3 +162,13 @@ export function prepareAclsEbookDocumentForEditing(document: AclsEbookDocument):
     })),
   };
 }
+
+export function discardLegacyAclsEbookLayoutHints(document: AclsEbookDocument): AclsEbookDocument {
+  return {
+    ...document,
+    chapters: document.chapters.map((chapter) => ({
+      ...chapter,
+      blocks: chapter.blocks.map((block) => ({ ...block, layoutHintKey: null })),
+    })),
+  };
+}

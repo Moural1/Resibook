@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isResibookAdmin } from "@/lib/auth-role";
 import { BUNDLED_ACLS_EBOOK_DOCUMENT } from "@/lib/acls-ebook-source";
 import {
+  discardLegacyAclsEbookLayoutHints,
   prepareAclsEbookDocumentForEditing,
   validateAclsEbookDocument,
   type AclsEbookDocument,
@@ -24,7 +25,7 @@ function validateIncomingDocument(value: unknown) {
   if (serialized.length > MAX_DOCUMENT_BYTES) return { error: "O eBook excedeu o limite seguro de edição.", document: null };
   const validation = validateAclsEbookDocument(value);
   if (!validation.valid) return { error: validation.errors.join(" "), document: null };
-  return { error: null, document: validation.document };
+  return { error: null, document: discardLegacyAclsEbookLayoutHints(validation.document) };
 }
 
 export async function GET() {
@@ -45,7 +46,7 @@ export async function GET() {
   }
 
   const saved = draftResult.data?.content ? validateAclsEbookDocument(draftResult.data.content) : null;
-  const baseDocument = saved?.valid ? saved.document : BUNDLED_ACLS_EBOOK_DOCUMENT;
+  const baseDocument = saved?.valid ? discardLegacyAclsEbookLayoutHints(saved.document) : BUNDLED_ACLS_EBOOK_DOCUMENT;
   return NextResponse.json({
     document: prepareAclsEbookDocumentForEditing(baseDocument),
     revision: draftResult.data?.revision ?? 0,
