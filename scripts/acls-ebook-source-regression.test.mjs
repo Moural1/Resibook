@@ -3,7 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 import { hasVisibleRichContent, splitRichClauses, splitRichExplicitItems, splitRichSteps, structureRichContent } from "../src/lib/acls-ebook-layout.ts";
 import { paginateEbookBlocks } from "../src/lib/acls-ebook-pagination.ts";
-import { prepareAclsEbookDocumentForEditing, validateAclsEbookDocument } from "../src/lib/acls-ebook-schema.ts";
+import { discardLegacyAclsEbookLayoutHints, prepareAclsEbookDocumentForEditing, validateAclsEbookDocument } from "../src/lib/acls-ebook-schema.ts";
 
 const content = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source.json", import.meta.url), "utf8"));
 const report = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source-report.json", import.meta.url), "utf8"));
@@ -12,6 +12,7 @@ const images = await readdir(new URL("../public/acls-ebook/source/images/", impo
 const pages = await readdir(new URL("../public/acls-ebook/source/pages/", import.meta.url));
 const visualAtlas = await readdir(new URL("../public/acls-ebook/visuals/", import.meta.url));
 const ebookPage = await readFile(new URL("../src/app/acls/ebook/page.tsx", import.meta.url), "utf8");
+const ebookSourceModule = await readFile(new URL("../src/lib/acls-ebook-source.ts", import.meta.url), "utf8");
 const ebookReader = await readFile(new URL("../src/components/acls-ebook-source-view.tsx", import.meta.url), "utf8");
 const ebookShell = await readFile(new URL("../src/components/acls-ebook.tsx", import.meta.url), "utf8");
 const ebookAdmin = await readFile(new URL("../src/app/admin/acls-ebook/acls-ebook-admin-client.tsx", import.meta.url), "utf8");
@@ -120,6 +121,15 @@ test("marcadores antigos do PDF nunca dividem palavras depois de uma edição", 
   assert.ok(fallbackText.includes("Redução inesperada da consciência"));
   assert.ok(fallbackText.includes("Convulsão"));
   assert.match(ebookAdmin, /layoutHintKey: null/);
+});
+
+test("conteúdo salvo pelo administrador nunca reutiliza marcadores do PDF", () => {
+  const prepared = prepareAclsEbookDocumentForEditing({ schemaVersion: 1, chapters: content.chapters });
+  assert.ok(prepared.chapters.some((chapter) => chapter.blocks.some((block) => block.layoutHintKey !== null)));
+  const authoritative = discardLegacyAclsEbookLayoutHints(prepared);
+  assert.ok(authoritative.chapters.every((chapter) => chapter.blocks.every((block) => block.layoutHintKey === null)));
+  assert.match(ebookAdminRoute, /discardLegacyAclsEbookLayoutHints\(saved\.document\)/);
+  assert.match(ebookSourceModule, /discardLegacyAclsEbookLayoutHints\(validation\.document\)/);
 });
 
 test("a troca de capítulos nunca aponta para uma página inexistente", () => {

@@ -3,6 +3,7 @@ import "server-only";
 import source from "@/content/acls-ebook-source.json";
 import { createClient } from "@/lib/supabase/server";
 import {
+  discardLegacyAclsEbookLayoutHints,
   validateAclsEbookDocument,
   type AclsEbookDocument,
   type AclsEbookSourceChapter,
@@ -38,7 +39,7 @@ export async function getPublishedAclsEbookDocument() {
       .maybeSingle();
     if (error || !data?.content) return BUNDLED_ACLS_EBOOK_DOCUMENT;
     const validation = validateAclsEbookDocument(data.content);
-    return validation.valid ? validation.document : BUNDLED_ACLS_EBOOK_DOCUMENT;
+    return validation.valid ? discardLegacyAclsEbookLayoutHints(validation.document) : BUNDLED_ACLS_EBOOK_DOCUMENT;
   } catch {
     return BUNDLED_ACLS_EBOOK_DOCUMENT;
   }
