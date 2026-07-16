@@ -129,6 +129,7 @@ function SmartTextField({
         </span>
       </span>
       <textarea value={richTextToPlain(value)} rows={rows} onChange={(event) => onChange(replaceTextPreservingStyles(value, event.target.value))} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 text-slate-900 outline-none transition focus:border-[#2d5d8f] focus:ring-2 focus:ring-[#2d5d8f]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+      <span className="mt-1 block text-[10px] text-slate-500 dark:text-slate-400">As quebras feitas com Enter são preservadas no eBook.</span>
       {value.some((segment) => segment.kind === "image") ? <span className="mt-1 block text-[10px] text-amber-600">A imagem incorporada será preservada.</span> : null}
     </label>
   );
@@ -212,7 +213,7 @@ function BlockEditor({ block, onChange }: { block: AclsEbookSourceBlock; onChang
         <button type="button" disabled={block.rows.length <= 1} onClick={() => onChange({ ...block, rows: block.rows.slice(0, -1) })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-40 dark:border-slate-700">− Linha</button>
       </div>
       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-        <table className="min-w-[720px] w-full border-collapse">
+        <table className="w-full border-collapse" style={{ minWidth: `${Math.max(720, columnCount * 280)}px` }}>
           <tbody>{block.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, columnIndex) => <td key={columnIndex} className="min-w-56 border border-slate-200 p-2 align-top dark:border-slate-700"><SmartTextField label={`L${rowIndex + 1} · C${columnIndex + 1}`} value={cell} rows={3} onChange={(content) => updateCell(rowIndex, columnIndex, content)} /></td>)}</tr>)}</tbody>
         </table>
       </div>
