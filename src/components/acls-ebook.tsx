@@ -63,7 +63,7 @@ function EbookCover({ chapters, onOpenAtlas }: { chapters: AclsEbookChapter[]; o
                 <Images className="h-5 w-5" /> Atlas visual
               </button>
               <span className="rounded-full border border-white/15 bg-white/5 px-4 py-3 text-xs font-semibold text-blue-100">
-                124 páginas · 12 capítulos · 20 pranchas
+                {Math.max(...chapters.map((chapter) => chapter.pages[1]))} páginas · {chapters.length} capítulos · 20 pranchas
               </span>
             </div>
           </div>

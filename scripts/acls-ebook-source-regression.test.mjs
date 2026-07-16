@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 import { hasVisibleRichContent, splitRichClauses, splitRichExplicitItems, splitRichSteps, structureRichContent } from "../src/lib/acls-ebook-layout.ts";
 import { paginateEbookBlocks } from "../src/lib/acls-ebook-pagination.ts";
+import { prepareAclsEbookDocumentForEditing, validateAclsEbookDocument } from "../src/lib/acls-ebook-schema.ts";
 
 const content = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source.json", import.meta.url), "utf8"));
 const report = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source-report.json", import.meta.url), "utf8"));
@@ -13,6 +14,9 @@ const visualAtlas = await readdir(new URL("../public/acls-ebook/visuals/", impor
 const ebookPage = await readFile(new URL("../src/app/acls/ebook/page.tsx", import.meta.url), "utf8");
 const ebookReader = await readFile(new URL("../src/components/acls-ebook-source-view.tsx", import.meta.url), "utf8");
 const ebookShell = await readFile(new URL("../src/components/acls-ebook.tsx", import.meta.url), "utf8");
+const ebookAdmin = await readFile(new URL("../src/app/admin/acls-ebook/acls-ebook-admin-client.tsx", import.meta.url), "utf8");
+const ebookAdminRoute = await readFile(new URL("../src/app/api/admin/acls-ebook/route.ts", import.meta.url), "utf8");
+const ebookMigration = await readFile(new URL("../supabase/migrations/20260716100000_acls_ebook_editor.sql", import.meta.url), "utf8");
 
 test("eBook integral mantém o inventário oficial do ACLS", () => {
   assert.equal(content.chapters.length, 12);
@@ -52,7 +56,45 @@ test("a leitura não expõe sintaxe Markdown", () => {
 test("o eBook permanece separado dos protocolos rápidos", () => {
   assert.equal(ebookPage.includes("ACLS_NAVIGATION"), false);
   assert.equal(ebookPage.includes("getAclsProtocol"), false);
-  assert.equal(ebookPage.includes("ACLS_EBOOK_SOURCE_CHAPTERS"), true);
+  assert.equal(ebookPage.includes("getPublishedAclsEbookDocument"), true);
+});
+
+test("editor ACLS usa blocos validados e mantém referência editorial ao reordenar", () => {
+  const prepared = prepareAclsEbookDocumentForEditing({ schemaVersion: 1, chapters: content.chapters });
+  const validation = validateAclsEbookDocument(prepared);
+  assert.equal(validation.valid, true);
+  assert.equal(prepared.chapters[0].blocks[0].layoutHintKey, 0);
+  assert.ok(prepared.chapters[0].blocks[0].id);
+
+  const withFlow = structuredClone(prepared);
+  withFlow.chapters[0].blocks.push({
+    id: "flow-test",
+    layoutHintKey: null,
+    kind: "flow",
+    title: "Fluxo seguro",
+    nodes: [
+      { id: "step-1", title: "Avaliar", detail: "", tone: "info" },
+      { id: "step-2", title: "Tratar", detail: "", tone: "conduct" },
+    ],
+  });
+  assert.equal(validateAclsEbookDocument(withFlow).valid, true);
+  withFlow.chapters[0].blocks.at(-1).nodes = [];
+  assert.equal(validateAclsEbookDocument(withFlow).valid, false);
+});
+
+test("editor administrativo separa rascunho, prévia e publicação versionada", () => {
+  assert.match(ebookAdmin, /Salvar rascunho/);
+  assert.match(ebookAdmin, /Publicar/);
+  assert.match(ebookAdmin, /AclsEbookSourceView/);
+  assert.match(ebookAdmin, /\["table", Table2, "Tabela"\]/);
+  assert.match(ebookAdmin, /\["flow", GitBranch, "Fluxo"\]/);
+  assert.match(ebookAdminRoute, /isResibookAdmin/);
+  assert.match(ebookAdminRoute, /expectedRevision/);
+  assert.match(ebookAdminRoute, /publish_acls_ebook/);
+  assert.match(ebookMigration, /acls_ebook_drafts/);
+  assert.match(ebookMigration, /acls_ebook_publications/);
+  assert.match(ebookMigration, /acls_ebook_revisions/);
+  assert.match(ebookMigration, /public\.is_resibook_admin\(\)/);
 });
 
 test("a troca de capítulos nunca aponta para uma página inexistente", () => {
