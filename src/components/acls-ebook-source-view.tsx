@@ -25,7 +25,18 @@ import type {
   AclsEbookSourceBlock,
   AclsEbookSourceChapter,
 } from "@/lib/acls-ebook-source";
-import { removeLeadingListMarker, splitRichSteps } from "@/lib/acls-ebook-layout";
+import layoutHintsSource from "@/content/acls-ebook-layout-hints.json";
+import {
+  hasVisibleRichContent,
+  removeLeadingListMarker,
+  splitRichClauses,
+  splitRichSteps,
+  structureRichContent,
+  type EbookLayoutHint,
+  type EbookStructuredItem,
+} from "@/lib/acls-ebook-layout";
+
+const LAYOUT_HINTS = layoutHintsSource as Record<string, EbookLayoutHint[]>;
 
 const PAGE_WEIGHT = 2400;
 const FONT_CLASSES = [
@@ -66,9 +77,11 @@ function paginateBlocks(blocks: AclsEbookSourceBlock[]) {
   let weight = 0;
 
   for (const [sourceIndex, block] of blocks.entries()) {
+    if (block.kind === "heading" && !hasVisibleRichContent(block.content)) continue;
     const nextWeight = blockWeight(block);
     const startsSection = block.kind === "heading";
-    const shouldTurn = page.length > 0 && (weight + nextWeight > PAGE_WEIGHT || (startsSection && weight > PAGE_WEIGHT * 0.78));
+    const pageOnlyHasHeadings = page.length > 0 && page.every((entry) => entry.block.kind === "heading");
+    const shouldTurn = page.length > 0 && !pageOnlyHasHeadings && (weight + nextWeight > PAGE_WEIGHT || (startsSection && weight > PAGE_WEIGHT * 0.78));
 
     if (shouldTurn) {
       pages.push(page);
@@ -111,28 +124,106 @@ function RichContent({ content }: { content: AclsEbookRichText[] }) {
   });
 }
 
-function SourceTable({ block }: { block: Extract<AclsEbookSourceBlock, { kind: "table" }> }) {
+function StructuredChildren({ items }: { items: AclsEbookRichText[][] }) {
+  const visibleChildren = items.flatMap((child) => {
+    const parts = splitRichSteps(child);
+    return parts.length ? parts : [child];
+  });
+  if (!visibleChildren.length) return null;
+  return (
+    <ul className="mt-3 grid gap-2 border-l-2 border-[#123A6D]/15 pl-4 sm:grid-cols-2">
+      {visibleChildren.map((child, index) => (
+        <li key={index} className="flex items-start gap-2 text-[0.94em] leading-6">
+          <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
+          <span><RichContent content={child} /></span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function StructuredCell({ content, hints }: { content: AclsEbookRichText[]; hints: EbookLayoutHint[] }) {
+  const structure = structureRichContent(content, hints);
+  if (!structure.items.length) return <RichContent content={content} />;
+  return (
+    <div className="space-y-3">
+      {hasVisibleRichContent(structure.intro) ? <p><RichContent content={structure.intro as AclsEbookRichText[]} /></p> : null}
+      {structure.items.map((item, index) => (
+        <div key={index} className={index ? "border-t border-slate-200 pt-3 dark:border-slate-700" : undefined}>
+          <p><RichContent content={item.content as AclsEbookRichText[]} /></p>
+          <StructuredChildren items={item.children as AclsEbookRichText[][]} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsEbookSourceBlock, { kind: "table" }>; chapterSlug: string; sourceIndex: number }) {
   const columnCount = Math.max(...block.rows.map((row) => row.length));
   const singleCell = block.rows.length === 1 && columnCount === 1;
+  const hintsFor = (rowIndex: number, cellIndex: number) => LAYOUT_HINTS[`${chapterSlug}:${sourceIndex}:${rowIndex}:${cellIndex}`] ?? [];
 
   if (singleCell) {
-    const steps = splitRichSteps(block.rows[0][0] ?? []);
+    const content = block.rows[0][0] ?? [];
+    const structured = structureRichContent(content, hintsFor(0, 0));
+    const fallbackSteps = splitRichSteps(content);
+    const items: EbookStructuredItem[] = structured.items.length
+      ? structured.items.flatMap((item) => {
+          if (item.children.length) return [item];
+          const parts = splitRichSteps(item.content);
+          return parts.length > 1 ? parts.map((part) => ({ content: part, children: [] })) : [item];
+        })
+      : fallbackSteps.map((step) => ({ content: removeLeadingListMarker(step), children: [] }));
     return (
       <section className="my-8 rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
         <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
           <div className="flex items-center gap-3">
             <span className="h-8 w-1 rounded-full bg-[#123A6D]" />
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Leitura estruturada</p>
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Quadro clínico</p>
           </div>
-          <span className="rounded-full bg-white px-3 py-1 text-[9px] font-extrabold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">{steps.length} {steps.length === 1 ? "item" : "itens"}</span>
+          <span className="rounded-full bg-white px-3 py-1 text-[9px] font-extrabold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">{items.length} {items.length === 1 ? "item" : "itens"}</span>
         </div>
+        {hasVisibleRichContent(structured.intro) ? (
+          <div className="mb-4 rounded-2xl bg-[#123A6D] px-5 py-4 leading-7 text-white shadow-sm">
+            <RichContent content={structured.intro as AclsEbookRichText[]} />
+          </div>
+        ) : null}
         <div className="relative space-y-3 before:absolute before:bottom-6 before:left-[17px] before:top-6 before:w-px before:bg-[#123A6D]/20 dark:before:bg-blue-300/20">
-          {steps.map((step, index) => (
+          {items.map((item, index) => (
             <div key={index} className="relative grid grid-cols-[36px_1fr] items-start gap-3">
               <span className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border-4 border-slate-100 bg-[#123A6D] text-[10px] font-black text-white dark:border-slate-900">{index + 1}</span>
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 leading-7 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 sm:px-5">
-                <p><RichContent content={removeLeadingListMarker(step) as AclsEbookRichText[]} /></p>
+                {(() => {
+                  const clauses = item.children.length ? [] : splitRichClauses(item.content);
+                  const fallbackChildren = clauses.length >= 3 ? clauses.slice(1) : [];
+                  const mainContent = fallbackChildren.length ? clauses[0] : item.content;
+                  const children = item.children.length ? item.children : fallbackChildren;
+                  return (
+                    <>
+                      <p><RichContent content={mainContent as AclsEbookRichText[]} /></p>
+                      <StructuredChildren items={children as AclsEbookRichText[][]} />
+                    </>
+                  );
+                })()}
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (columnCount === 1) {
+    return (
+      <section className="my-8 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
+        <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
+          <span className="h-8 w-1 rounded-full bg-[#123A6D]" />
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Tabela clínica</p>
+        </div>
+        <div className="space-y-3">
+          {block.rows.map((row, rowIndex) => (
+            <div key={rowIndex} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 leading-7 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+              <StructuredCell content={row[0] ?? []} hints={hintsFor(rowIndex, 0)} />
             </div>
           ))}
         </div>
@@ -157,7 +248,7 @@ function SourceTable({ block }: { block: Extract<AclsEbookSourceBlock, { kind: "
                         ? "bg-[#0d315d] px-4 py-3 font-bold text-white"
                         : "border-r border-slate-200 px-4 py-3 align-top leading-6 text-slate-700 last:border-r-0 dark:border-slate-700 dark:text-slate-200"}
                     >
-                      <RichContent content={row[cellIndex] ?? []} />
+                      <StructuredCell content={row[cellIndex] ?? []} hints={hintsFor(rowIndex, cellIndex)} />
                     </Cell>
                   );
                 })}
@@ -170,7 +261,7 @@ function SourceTable({ block }: { block: Extract<AclsEbookSourceBlock, { kind: "
   );
 }
 
-function SourceBlockContent({ block }: { block: AclsEbookSourceBlock }) {
+function SourceBlockContent({ block, chapterSlug, sourceIndex }: { block: AclsEbookSourceBlock; chapterSlug: string; sourceIndex: number }) {
   if (block.kind === "heading") {
     if (block.level <= 1) {
       return (
@@ -189,7 +280,7 @@ function SourceBlockContent({ block }: { block: AclsEbookSourceBlock }) {
     );
   }
 
-  if (block.kind === "table") return <SourceTable block={block} />;
+  if (block.kind === "table") return <SourceTable block={block} chapterSlug={chapterSlug} sourceIndex={sourceIndex} />;
 
   if (block.kind === "image") {
     return (
@@ -224,11 +315,13 @@ function SourceBlockContent({ block }: { block: AclsEbookSourceBlock }) {
 
 function SourceBlock({
   entry,
+  chapterSlug,
   highlighted,
   highlightMode,
   onToggle,
 }: {
   entry: ReaderBlock;
+  chapterSlug: string;
   highlighted: boolean;
   highlightMode: boolean;
   onToggle: () => void;
@@ -245,7 +338,7 @@ function SourceBlock({
             : ""
       }`}
     >
-      <SourceBlockContent block={entry.block} />
+      <SourceBlockContent block={entry.block} chapterSlug={chapterSlug} sourceIndex={entry.sourceIndex} />
     </div>
   );
 }
@@ -405,6 +498,7 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
                   <SourceBlock
                     key={entry.sourceIndex}
                     entry={entry}
+                    chapterSlug={chapter.slug}
                     highlighted={highlights.has(entry.sourceIndex)}
                     highlightMode={highlightMode}
                     onToggle={() => toggleHighlight(entry.sourceIndex)}
