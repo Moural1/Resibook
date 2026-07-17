@@ -172,3 +172,48 @@ export function discardLegacyAclsEbookLayoutHints(document: AclsEbookDocument): 
     })),
   };
 }
+
+const APPROVED_ECG_IMAGE_NUMBERS = [
+  ...Array.from({ length: 12 }, (_, index) => index + 5),
+  25,
+  26,
+  27,
+  28,
+];
+
+const APPROVED_ECG_IMAGE_SOURCES = new Set(
+  APPROVED_ECG_IMAGE_NUMBERS.map((number) => `/acls-ebook/source/images/image-${String(number).padStart(2, "0")}.png`),
+);
+
+function sanitizeRichTextImages(content: AclsEbookRichText[]) {
+  return content.filter((segment) => segment.kind !== "image" || APPROVED_ECG_IMAGE_SOURCES.has(segment.src));
+}
+
+/**
+ * Keeps only the independently sourced ECG strips used in the bradycardia,
+ * tachyarrhythmia and cardiac-arrest chapters. This also protects the public reader from legacy
+ * drafts that still reference removed facsimiles or third-party illustrations.
+ */
+export function sanitizeAclsEbookDocumentImages(document: AclsEbookDocument): AclsEbookDocument {
+  return {
+    ...document,
+    chapters: document.chapters.map((chapter) => ({
+      ...chapter,
+      blocks: chapter.blocks.flatMap<AclsEbookSourceBlock>((block) => {
+        if (block.kind === "image") {
+          return APPROVED_ECG_IMAGE_SOURCES.has(block.src) ? [block] : [];
+        }
+        if (block.kind === "heading" || block.kind === "paragraph") {
+          return [{ ...block, content: sanitizeRichTextImages(block.content) }];
+        }
+        if (block.kind === "table") {
+          return [{
+            ...block,
+            rows: block.rows.map((row) => row.map(sanitizeRichTextImages)),
+          }];
+        }
+        return [block];
+      }),
+    })),
+  };
+}

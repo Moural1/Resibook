@@ -139,7 +139,7 @@ function createBlock(kind: AclsEbookSourceBlock["kind"]): AclsEbookSourceBlock {
   const common = { id: newId("block"), layoutHintKey: null };
   if (kind === "heading") return { ...common, kind, level: 2, content: plainRichText("Novo título") };
   if (kind === "paragraph") return { ...common, kind, listStyle: null, content: plainRichText("Novo conteúdo") };
-  if (kind === "image") return { ...common, kind, src: "/acls-ebook/visuals/visual-01.png" };
+  if (kind === "image") return { ...common, kind, src: "/acls-ebook/source/images/image-05.png" };
   if (kind === "table") return { ...common, kind, hasHeader: true, rows: [[plainRichText("Coluna 1"), plainRichText("Coluna 2")], [plainRichText("Conteúdo"), plainRichText("Conteúdo")]] };
   return {
     ...common,
@@ -354,7 +354,7 @@ export function AclsEbookAdminClient({ initialState = null }: { initialState?: A
         </main>
       </div>
 
-      {preview ? <div className="fixed inset-0 z-[200] overflow-y-auto bg-slate-100 dark:bg-slate-950"><button type="button" onClick={() => setPreview(false)} className="fixed right-4 top-4 z-[220] flex min-h-11 items-center gap-2 rounded-full bg-red-600 px-4 text-sm font-bold text-white shadow-xl"><X className="h-4 w-4" />Fechar prévia</button><div className="p-2 sm:p-5"><AclsEbookSourceView key={`${chapter.slug}-${state.revision}-${dirty}`} chapter={chapter} chapters={readerChapters} activeIndex={selectedChapter} onOpenAtlas={() => undefined} /></div></div> : null}
+      {preview ? <div className="fixed inset-0 z-[200] overflow-y-auto bg-slate-100 dark:bg-slate-950"><button type="button" onClick={() => setPreview(false)} className="fixed right-4 top-4 z-[220] flex min-h-11 items-center gap-2 rounded-full bg-red-600 px-4 text-sm font-bold text-white shadow-xl"><X className="h-4 w-4" />Fechar prévia</button><div className="p-2 sm:p-5"><AclsEbookSourceView key={`${chapter.slug}-${state.revision}-${dirty}`} chapter={chapter} chapters={readerChapters} activeIndex={selectedChapter} /></div></div> : null}
     </div>
   );
 }

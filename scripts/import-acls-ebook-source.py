@@ -1,8 +1,8 @@
 """Importa o PDF/Markdown editorial do ACLS para o eBook virtual do Resibook.
 
-O PDF é a fonte oficial. O Markdown é usado somente para recuperar a estrutura
-textual e as imagens. A saída inclui uma leitura responsiva e fac-símiles das
-páginas oficiais para conferência integral.
+O Markdown é usado para recuperar a estrutura textual. Somente os traçados de
+ECG com origem independente aprovada são exportados; ilustrações, pranchas e
+fac-símiles de publicações de terceiros não fazem parte da saída pública.
 """
 
 from __future__ import annotations
@@ -10,8 +10,6 @@ from __future__ import annotations
 import base64
 import json
 import re
-import shutil
-import subprocess
 from pathlib import Path
 
 import pdfplumber
@@ -22,10 +20,10 @@ ROOT = Path(__file__).resolve().parents[1]
 PDF = Path(r"C:\Users\admin\Downloads\ANOTAÇÕES ACLS (1).pdf")
 MARKDOWN = Path(r"C:\Users\admin\Downloads\ANOTAÇÕES ACLS.md")
 PAGE_DATA = ROOT / "tmp/pdfs/acls-source/pages.json"
-RENDERED_PAGES = ROOT / "tmp/pdfs/acls-source"
 PUBLIC_ROOT = ROOT / "public/acls-ebook/source"
 CONTENT_OUTPUT = ROOT / "src/content/acls-ebook-source.json"
 REPORT_OUTPUT = ROOT / "src/content/acls-ebook-source-report.json"
+APPROVED_ECG_IMAGE_IDS = {*range(5, 17), 25, 26, 27, 28}
 
 
 CHAPTERS = [
@@ -168,7 +166,9 @@ def parse_inline(value: str, red_phrases: list[str]) -> list[dict]:
     for match in token.finditer(value):
         append_text_segments(segments, value[cursor:match.start()], bold, red_phrases)
         if match.group(2):
-            segments.append({"kind": "image", "src": f"/acls-ebook/source/images/image-{int(match.group(2)):02d}.png"})
+            image_id = int(match.group(2))
+            if image_id in APPROVED_ECG_IMAGE_IDS:
+                segments.append({"kind": "image", "src": f"/acls-ebook/source/images/image-{image_id:02d}.png"})
         else:
             bold = not bold
         cursor = match.end()
@@ -234,7 +234,9 @@ def parse_blocks(lines: list[str], red_by_line: list[list[str]]) -> tuple[list[d
         standalone_images = re.fullmatch(r"\*{0,2}((?:!\[\]\[image\d+\])+?)\*{0,2}\s*", raw.strip())
         if standalone_images:
             for image_id in re.findall(r"image(\d+)", standalone_images.group(1)):
-                blocks.append({"kind": "image", "src": f"/acls-ebook/source/images/image-{int(image_id):02d}.png"})
+                image_number = int(image_id)
+                if image_number in APPROVED_ECG_IMAGE_IDS:
+                    blocks.append({"kind": "image", "src": f"/acls-ebook/source/images/image-{image_number:02d}.png"})
             index += 1
             continue
 
@@ -285,6 +287,8 @@ def extract_images(markdown: str) -> int:
         re.MULTILINE,
     )
     for image_id, extension, payload in definitions:
+        if int(image_id) not in APPROVED_ECG_IMAGE_IDS:
+            continue
         extension = "jpg" if extension.lower() == "jpeg" else extension.lower()
         decoded = base64.b64decode(payload)
         source_path = image_dir / f"image-{int(image_id):02d}.{extension}"
@@ -293,7 +297,7 @@ def extract_images(markdown: str) -> int:
             with Image.open(source_path) as image:
                 image.convert("RGBA").save(image_dir / f"image-{int(image_id):02d}.png", "PNG")
             source_path.unlink()
-    return len(definitions)
+    return sum(int(image_id) in APPROVED_ECG_IMAGE_IDS for image_id, _, _ in definitions)
 
 
 def rgb(value):
@@ -351,32 +355,6 @@ def load_page_data() -> list[dict]:
     return pages
 
 
-def ensure_rendered_pages() -> None:
-    if len(list(RENDERED_PAGES.glob("page-*.png"))) == 124:
-        return
-    bundled = Path.home() / ".cache/codex-runtimes/codex-primary-runtime/dependencies/native/poppler/Library/bin/pdftoppm.exe"
-    executable = str(bundled) if bundled.exists() else shutil.which("pdftoppm")
-    if not executable:
-        raise RuntimeError("pdftoppm não encontrado para renderizar as páginas oficiais.")
-    RENDERED_PAGES.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        [executable, "-png", "-r", "110", str(PDF), str(RENDERED_PAGES / "page")],
-        check=True,
-    )
-
-
-def export_facsimiles() -> int:
-    ensure_rendered_pages()
-    page_dir = PUBLIC_ROOT / "pages"
-    page_dir.mkdir(parents=True, exist_ok=True)
-    source_pages = sorted(RENDERED_PAGES.glob("page-*.png"))
-    for source in source_pages:
-        destination = page_dir / f"{source.stem}.webp"
-        with Image.open(source) as image:
-            image.convert("RGB").save(destination, "WEBP", quality=88, method=6)
-    return len(source_pages)
-
-
 def main() -> None:
     markdown = MARKDOWN.read_text(encoding="utf-8")
     source_lines = markdown.splitlines()[:1669]
@@ -395,7 +373,6 @@ def main() -> None:
 
     PUBLIC_ROOT.mkdir(parents=True, exist_ok=True)
     image_count = extract_images(markdown)
-    facsimile_count = export_facsimiles()
 
     chapters = []
     semantic_tables = 0
@@ -426,7 +403,7 @@ def main() -> None:
         "responsiveChapters": len(chapters),
         "uniqueImagesPreserved": image_count,
         "imageOccurrencesInPdf": sum(page["images"] for page in page_data),
-        "facsimilePagesPreserved": facsimile_count,
+        "facsimilePagesPreserved": 0,
         "pdfTablesDetected": sum(page["tables"] for page in page_data),
         "semanticTableAndBoxBlocks": semantic_tables,
         "pdfRedRunsDetected": len(raw_red),
@@ -435,7 +412,7 @@ def main() -> None:
         "redPhraseCoverage": round(len(matched_red) / len(red_phrases), 4) if red_phrases else 1,
         "markdownLinesMappedToPdfPages": len(line_pages),
         "markdownDefinitionsRemovedFromReading": len(re.findall(r"^\[image\d+\]:", markdown, re.MULTILINE)),
-        "integrityFallback": "Cada capítulo inclui fac-símiles das páginas oficiais correspondentes.",
+        "integrityFallback": "Conteúdo responsivo preservado; fac-símiles e ilustrações de terceiros não são publicados.",
     }
     REPORT_OUTPUT.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))

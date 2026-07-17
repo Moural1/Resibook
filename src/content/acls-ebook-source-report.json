@@ -2,9 +2,9 @@
   "officialSource": "ANOTAÇÕES ACLS (1).pdf",
   "pagesReviewed": 124,
   "responsiveChapters": 12,
-  "uniqueImagesPreserved": 30,
+  "uniqueImagesPreserved": 16,
   "imageOccurrencesInPdf": 32,
-  "facsimilePagesPreserved": 124,
+  "facsimilePagesPreserved": 0,
   "pdfTablesDetected": 76,
   "semanticTableAndBoxBlocks": 135,
   "pdfRedRunsDetected": 1053,
@@ -13,5 +13,5 @@
   "redPhraseCoverage": 0.9971,
   "markdownLinesMappedToPdfPages": 1669,
   "markdownDefinitionsRemovedFromReading": 30,
-  "integrityFallback": "Cada capítulo inclui fac-símiles das páginas oficiais correspondentes."
+  "integrityFallback": "Conteúdo responsivo preservado; fac-símiles e ilustrações de terceiros não são publicados."
 }

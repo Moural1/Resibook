@@ -12,20 +12,26 @@ import {
   type ClinicalCaseSession,
 } from "@/lib/clinical-case-session";
 import {
+  Activity,
   ArrowUpRight,
   BarChart3,
   BookOpen,
   Brain,
+  Calculator,
   CheckCircle2,
   CircleAlert,
   Gauge,
   ClipboardList,
   FileText,
   FlaskConical,
+  GraduationCap,
+  HeartPulse,
   Lock,
   LibraryBig,
+  Pill,
   Search,
   Siren,
+  Sparkles,
   Stethoscope,
   Tags,
   Users,
@@ -87,6 +93,24 @@ type DashboardCounts = {
 
 const GUEST_EMAIL = "convidado@resibook.com";
 const ONBOARDING_DISMISSED_KEY = "resibook-dashboard-onboarding-dismissed";
+
+const FEATURED_WORKSPACES = [
+  { eyebrow: "Plantão", title: "Do caso à conduta", description: "Roteiro clínico, risco, prescrição, exames e alta em um fluxo contínuo.", href: "/plantao", icon: Activity, tone: "bg-[#082449] text-white", badge: "Central assistencial" },
+  { eyebrow: "ACLS", title: "Emergência sem perder tempo", description: "Protocolos rápidos, algoritmos e leitura estruturada para consulta sob pressão.", href: "/acls", icon: HeartPulse, tone: "bg-rose-50 text-rose-950", badge: "Protocolos + eBook" },
+  { eyebrow: "Pacientes", title: "Continuidade organizada", description: "Acompanhe retornos, prescrições, exames e registros clínicos privados.", href: "/pacientes", icon: Users, tone: "bg-cyan-50 text-cyan-950", badge: "Workspace privado" },
+  { eyebrow: "Estudo", title: "Revisão que acompanha você", description: "Tópicos, flashcards e seu acervo pessoal reunidos em uma rotina objetiva.", href: "/revisao-topicos", icon: GraduationCap, tone: "bg-violet-50 text-violet-950", badge: "Revisão ativa" },
+] as const;
+
+const CLINICAL_TOOLKIT = [
+  { title: "Caso rápido", href: "/caso-rapido", icon: Gauge },
+  { title: "Prescrição", href: "/prescricao", icon: Pill },
+  { title: "Exames e evolução", href: "/exames-evolucao", icon: FlaskConical },
+  { title: "Condutas", href: "/condutas", icon: Siren },
+  { title: "CIDs", href: "/cids", icon: Tags },
+  { title: "Calculadoras", href: "/calculadoras", icon: Calculator },
+  { title: "ECG guiado", href: "/ecg-guiado", icon: HeartPulse },
+  { title: "Meu Resibook", href: "/meu-resibook", icon: LibraryBig },
+] as const;
 
 const HIGH_VALUE_TOPICS = [
   { title: "Dor torácica", description: "Fluxo inicial, risco e conduta no plantão.", href: "/caso-rapido?q=dor%20tor%C3%A1cica" },
@@ -531,22 +555,22 @@ export default function DashboardPage() {
 
           <div className="mt-5 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
-              <p className="mb-3 inline-flex rounded-full border border-cyan-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-800">
-                Plantão, revisão e conduta em segundos
+              <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-800">
+                <Sparkles className="h-3.5 w-3.5" /> Plataforma clínica completa
               </p>
               <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
-                Dashboard clínico
+                Tudo o que você precisa, antes da próxima decisão.
               </h1>
 
               <p className="mt-3 max-w-3xl text-base font-semibold leading-7 text-slate-800">
-                Resibook economiza tempo no plantão e na revisão médica com
-                condutas, prescrições e flashcards prontos.
+                Plantão, ACLS, pacientes e estudo conectados em uma experiência
+                rápida, privada e preparada para a rotina médica.
               </p>
 
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-                Painel para entrar rápido no fluxo de plantão: buscar conduta,
-                abrir prescrição, consultar CID ou revisar conteúdo sem perder
-                tempo navegando por várias telas.
+                Entre por uma necessidade clínica e encontre imediatamente o
+                próximo passo — sem navegar por telas soltas ou procurar onde
+                cada ferramenta ficou.
               </p>
             </div>
 
@@ -601,6 +625,40 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-5 p-4 md:p-6">
+          <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(145deg,#ffffff_0%,#f7fbff_55%,#eefaff_100%)] p-4 shadow-sm md:p-6">
+            <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-5 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700">Escolha seu fluxo</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">Quatro formas de usar o Resibook</h2>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-slate-600">A página inicial agora apresenta o produto como ele realmente é: uma plataforma clínica, não apenas uma lista de atalhos.</p>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {FEATURED_WORKSPACES.map(({ eyebrow, title, description, href, icon: Icon, tone, badge }) => (
+                <Link key={href} href={href} className={`group flex min-h-64 flex-col rounded-[24px] border border-slate-200/70 p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl ${tone}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 text-[#123A6D] shadow-sm"><Icon className="h-5 w-5" /></span>
+                    <ArrowUpRight className="h-4 w-4 opacity-50 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+                  <p className="mt-7 text-[10px] font-bold uppercase tracking-[0.2em] opacity-65">{eyebrow}</p>
+                  <h3 className="mt-2 text-xl font-semibold leading-7">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 opacity-75">{description}</p>
+                  <span className="mt-auto pt-5 text-[10px] font-bold uppercase tracking-[0.16em] opacity-60">{badge}</span>
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
+              {CLINICAL_TOOLKIT.map(({ title, href, icon: Icon }) => (
+                <Link key={href} href={href} className="group flex min-h-20 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-3 text-slate-700 shadow-sm transition hover:border-cyan-300 hover:text-[#123A6D] hover:shadow-md">
+                  <Icon className="h-4 w-4 text-cyan-700" />
+                  <span className="mt-3 text-xs font-semibold leading-4">{title}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+
           {showOnboarding ? (
             <section className="relative overflow-hidden rounded-[26px] border border-cyan-200 bg-[radial-gradient(circle_at_top_left,#e0faff_0%,#ffffff_42%,#f8fafc_100%)] p-5 shadow-sm">
               <button
