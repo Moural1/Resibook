@@ -440,55 +440,42 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col bg-[#081a3a] text-white">
-      <div className="border-b border-white/7 px-3.5 py-3.5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/8 bg-white/[0.035] p-2">
+      <div className="border-b border-white/7 px-3 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cyan-200/20 bg-white p-0.5 shadow-[0_8px_20px_rgba(0,0,0,0.18)]">
             <Image
-              src="/logo-resibook.png"
+              src="/resibook-icon.svg"
               alt="ResiBook"
-              width={40}
-              height={40}
-              className="h-auto max-h-8 w-auto max-w-8 object-contain"
+              width={32}
+              height={32}
+              className="h-full w-full object-contain"
               priority
             />
           </div>
 
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/85">
-              ResiBook
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-bold uppercase tracking-[0.12em] text-white">
+              Resi<span className="text-cyan-300">Book</span>
             </p>
-            <h1 className="mt-0.5 truncate text-[17px] font-semibold tracking-tight text-white">
-              Sistema clínico
-            </h1>
+            <p className="mt-0.5 truncate text-[9px] font-medium uppercase tracking-[0.16em] text-slate-500">Workspace clínico</p>
           </div>
-        </div>
-
-        <div className={`mt-3.5 rounded-2xl border px-3 py-2.5 ${
-          isGuest
-            ? "border-amber-300/15 bg-amber-400/[0.06]"
-            : isAdmin
-              ? "border-cyan-300/25 bg-cyan-400/[0.08]"
-              : "border-white/8 bg-white/[0.035]"
-        }`}>
-          <p
-            className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${
-              isGuest ? "text-amber-200" : "text-slate-400"
-            }`}
-          >
-            {isGuest ? "Modo" : isAdmin ? "Perfil" : "Ambiente"}
-          </p>
-
-          <p className="mt-1 text-[13px] font-semibold text-white">
-            {isGuest
-              ? "Acesso convidado"
+          <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${
+            isGuest
+              ? "border-amber-300/20 bg-amber-300/10 text-amber-200"
               : isAdmin
-                ? "Administrador"
-                : "Operação clínica"}
-          </p>
+                ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-200"
+                : "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
+          }`}>
+            {isGuest
+              ? "Convidado"
+              : isAdmin
+                ? "Admin"
+                : "Clínico"}
+          </span>
         </div>
 
         {isMobile ? (
-          <p className="mt-3 text-xs leading-5 text-slate-400">
+          <p className="mt-2 text-[11px] leading-4 text-slate-500">
             {isGuest
               ? "Acesso restrito aos módulos liberados."
               : "Navegação compacta para rotina clínica."}
@@ -896,7 +883,7 @@ export default function AppShell({ children }: Props) {
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
       {desktopSidebarOpen ? (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[286px] border-r border-slate-200/80 lg:block print:hidden">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[264px] border-r border-slate-200/80 shadow-[18px_0_50px_rgba(15,23,42,0.06)] lg:block print:hidden">
           <SidebarContent
             pathname={pathname}
             counts={counts}
@@ -910,7 +897,7 @@ export default function AppShell({ children }: Props) {
         type="button"
         onClick={() => setDesktopSidebarOpen((current) => !current)}
         className={`fixed top-1/2 z-[65] hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
-          desktopSidebarOpen ? "left-[264px]" : "left-4"
+          desktopSidebarOpen ? "left-[242px]" : "left-4"
         }`}
         aria-label={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
         title={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
@@ -969,7 +956,7 @@ export default function AppShell({ children }: Props) {
 
       <div
         className={`min-h-screen transition-[padding] duration-200 print:pl-0 ${
-          desktopSidebarOpen ? "lg:pl-[286px]" : "lg:pl-0"
+          desktopSidebarOpen ? "lg:pl-[264px]" : "lg:pl-0"
         }`}
       >
         <div className="print:hidden">

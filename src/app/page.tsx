@@ -21,12 +21,13 @@ import {
   Siren,
   Stethoscope,
   Tags,
+  Users,
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "O seu banco clínico, pronto para o plantão",
+  title: "Sua plataforma clínica para plantão, pacientes e estudo",
   description:
-    "Biblioteca clínica organizada e workspace privado para médicos consultarem, duplicarem e personalizarem seus modelos.",
+    "Plantão, ACLS, pacientes, prescrições, ECG, calculadoras e estudo em uma plataforma clínica organizada para médicos.",
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },
 };
@@ -42,6 +43,26 @@ const FEATURES: Feature[] = [
     title: "Meu Resibook",
     description: "Workspace privado para adaptar modelos e organizar seu acervo clínico.",
     icon: LibraryBig,
+  },
+  {
+    title: "ACLS no plantão",
+    description: "Protocolos rápidos e eBook estruturado para consulta em emergências.",
+    icon: HeartPulse,
+  },
+  {
+    title: "ECG guiado",
+    description: "Leitura estruturada com checklist clínico e registro dos principais achados.",
+    icon: Activity,
+  },
+  {
+    title: "Pacientes",
+    description: "Retornos, exames e registros clínicos organizados em um ambiente privado.",
+    icon: Users,
+  },
+  {
+    title: "Caso rápido",
+    description: "Comece pela queixa e organize avaliação, risco e próximos passos.",
+    icon: Siren,
   },
   {
     title: "Prescrições prontas",
@@ -81,15 +102,24 @@ const FEATURES: Feature[] = [
 ];
 
 const PREVIEW_MODULES = [
+  { label: "Plantão", icon: Activity },
+  { label: "ACLS", icon: HeartPulse },
   { label: "Meu Resibook", icon: LibraryBig },
+  { label: "Pacientes", icon: Users },
   { label: "Prescrição", icon: ClipboardList },
   { label: "Exames / Evolução", icon: FlaskConical },
   { label: "Tópicos", icon: BookOpen },
   { label: "Flashcards", icon: Brain },
-  { label: "Plantão", icon: Activity },
   { label: "CIDs", icon: Tags },
   { label: "Calculadoras", icon: Calculator },
 ];
+
+const PRODUCT_JOURNEYS = [
+  { title: "Plantão", description: "Da queixa à alta segura em um fluxo clínico contínuo.", icon: Siren },
+  { title: "ACLS", description: "Protocolos, algoritmos e leitura rápida para emergências.", icon: HeartPulse },
+  { title: "Pacientes", description: "Continuidade clínica com dados privados por usuário.", icon: Users },
+  { title: "Estudo", description: "Tópicos, flashcards e revisão ativa no mesmo acervo.", icon: Brain },
+] as const;
 
 function Brand({
   compact = false,
@@ -165,18 +195,18 @@ function AppPreview() {
 
           <div className="mt-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-700">
-              Visão geral
+              Seu ambiente clínico
             </p>
             <h2 className="mt-1 text-lg font-semibold tracking-[0] text-slate-950 sm:text-xl">
-              Rotina clínica organizada
+              Tudo pronto para a próxima decisão
             </h2>
             <p className="mt-1 text-[10px] leading-4 text-slate-500 sm:text-xs">
-              Acesso direto aos módulos que apoiam o plantão e o estudo.
+              Plantão, pacientes, protocolos e estudo conectados.
             </p>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">
-            {PREVIEW_MODULES.slice(0, 6).map((item) => {
+                {PREVIEW_MODULES.slice(0, 6).map((item) => {
               const Icon = item.icon;
               return (
                 <div
@@ -198,10 +228,10 @@ function AppPreview() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                  Continuidade clínica
+                  Próximo passo
                 </p>
                 <p className="mt-1 text-[11px] font-semibold text-slate-800">
-                  Próximos passos em um só fluxo
+                  Continue exatamente de onde parou
                 </p>
               </div>
               <span className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 text-slate-500">
@@ -263,23 +293,23 @@ export default function HomePage() {
         <section className="relative overflow-hidden border-b border-slate-200 bg-[#eef4f9]">
           <div className="pointer-events-none absolute -left-32 top-12 h-80 w-80 rounded-full bg-cyan-300/20 blur-3xl" />
           <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-blue-200/25 blur-3xl" />
-          <div className="mx-auto grid max-w-[1440px] gap-10 px-4 pb-12 pt-12 sm:px-6 sm:pt-16 lg:min-h-[650px] lg:grid-cols-[0.78fr_1.22fr] lg:items-center lg:px-10 lg:pb-16 lg:pt-14">
+          <div className="landing-hero-grid mx-auto grid max-w-[1440px] gap-12 px-4 pb-14 pt-12 sm:px-6 sm:pt-16 min-[1180px]:min-h-[700px] min-[1180px]:items-center min-[1180px]:px-10 min-[1180px]:pb-20 min-[1180px]:pt-16">
             <div className="relative z-10 max-w-2xl">
               <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
                 <HeartPulse className="h-4 w-4" />
-                Biblioteca clínica + workspace pessoal
+                Plataforma clínica feita para médicos
               </div>
-              <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-[0] text-[#091a38] sm:text-5xl lg:text-[58px]">
-                O seu banco clínico, pronto para o plantão
+              <h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-[-0.035em] text-[#091a38] sm:text-5xl lg:text-[62px]">
+                Menos tempo procurando. Mais clareza para decidir.
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-                Consulte o Banco Resibook e transforme modelos padronizados em
-                cópias privadas e editáveis no seu próprio acervo clínico.
+                Plantão, ACLS, pacientes, prescrições, ECG, calculadoras e revisão
+                reunidos em um ambiente rápido, privado e organizado para sua rotina.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/cadastro?plano=complete" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(14,116,144,0.2)] transition hover:-translate-y-0.5 hover:bg-cyan-900">
-                  Começar agora
+                  Conhecer o Resibook
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
@@ -292,24 +322,24 @@ export default function HomePage() {
 
               <p className="mt-7 flex items-center gap-2 text-sm text-slate-500">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-cyan-700" />
-                Uso profissional médico • Ferramenta de apoio à decisão clínica
+                Feito para uso profissional médico • Apoio à decisão clínica
               </p>
               <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-slate-700">
-                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-700" />Banco clínico padronizado</span>
-                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-700" />Acervo privado por médico</span>
+                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-700" />Consulta em segundos</span>
+                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-700" />Workspace privado</span>
               </div>
             </div>
 
-            <div className="relative z-10 lg:translate-x-4">
+            <div className="relative z-10 min-[1180px]:translate-x-4">
               <AppPreview />
             </div>
           </div>
           <div className="relative z-10 mx-auto grid max-w-[1320px] grid-cols-2 gap-px border-x border-t border-slate-200 bg-slate-200 sm:grid-cols-4">
             {[
-              [Database, "Banco clínico organizado"],
-              [LibraryBig, "Workspace privado"],
+              [HeartPulse, "Protocolos para o plantão"],
+              [LibraryBig, "Workspace clínico privado"],
               [LockKeyhole, "Dados isolados por usuário"],
-              [Sparkles, "Fluxo pensado para médicos"],
+              [Sparkles, "Tudo conectado em um fluxo"],
             ].map(([Icon, label]) => {
               const TrustIcon = Icon as ComponentType<{ className?: string }>;
               return (
@@ -319,6 +349,32 @@ export default function HomePage() {
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        <section className="bg-white py-16 sm:py-20">
+          <div className="mx-auto max-w-[1320px] px-4 sm:px-6 lg:px-10">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Um Resibook muito maior</p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-[-0.025em] text-[#091a38] sm:text-4xl">Da urgência à revisão, sem trocar de plataforma.</h2>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-slate-600">Escolha o que precisa agora. O restante da sua rotina continua organizado e acessível quando você voltar.</p>
+            </div>
+
+            <div className="mt-9 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {PRODUCT_JOURNEYS.map(({ title, description, icon: Icon }, index) => (
+                <article key={title} className={`group relative min-h-64 overflow-hidden rounded-[26px] border p-6 shadow-[0_18px_55px_rgba(15,23,42,0.08)] ${index === 0 ? "border-[#123A6D] bg-[#091f42] text-white" : "border-slate-200 bg-[linear-gradient(145deg,#ffffff,#f5f9fc)] text-slate-950"}`}>
+                  <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-cyan-300/10 blur-2xl" />
+                  <span className={`relative flex h-12 w-12 items-center justify-center rounded-2xl ${index === 0 ? "bg-cyan-300/15 text-cyan-200" : "border border-cyan-100 bg-cyan-50 text-cyan-800"}`}><Icon className="h-5 w-5" /></span>
+                  <p className={`relative mt-8 text-[10px] font-bold uppercase tracking-[0.2em] ${index === 0 ? "text-cyan-200" : "text-cyan-700"}`}>Fluxo {String(index + 1).padStart(2, "0")}</p>
+                  <h3 className="relative mt-2 text-2xl font-semibold tracking-tight">{title}</h3>
+                  <p className={`relative mt-3 text-sm leading-6 ${index === 0 ? "text-slate-300" : "text-slate-600"}`}>{description}</p>
+                  <div className={`relative mt-7 h-px w-full ${index === 0 ? "bg-white/10" : "bg-slate-200"}`} />
+                  <p className={`relative mt-4 text-xs font-semibold ${index === 0 ? "text-white" : "text-[#123A6D]"}`}>Disponível no ecossistema Resibook</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
