@@ -4,6 +4,7 @@ import source from "@/content/acls-ebook-source.json";
 import { createClient } from "@/lib/supabase/server";
 import {
   discardLegacyAclsEbookLayoutHints,
+  sanitizeAclsEbookDocumentImages,
   validateAclsEbookDocument,
   type AclsEbookDocument,
   type AclsEbookSourceChapter,
@@ -11,12 +12,14 @@ import {
 
 export type { AclsEbookDocument, AclsEbookRichText, AclsEbookSourceBlock, AclsEbookSourceChapter } from "@/lib/acls-ebook-schema";
 
-const chapters = source.chapters as AclsEbookSourceChapter[];
-
-export const BUNDLED_ACLS_EBOOK_DOCUMENT: AclsEbookDocument = {
+const bundledDocument = sanitizeAclsEbookDocumentImages({
   schemaVersion: 1,
-  chapters,
-};
+  chapters: source.chapters as AclsEbookSourceChapter[],
+});
+
+const chapters = bundledDocument.chapters;
+
+export const BUNDLED_ACLS_EBOOK_DOCUMENT: AclsEbookDocument = bundledDocument;
 
 export const ACLS_EBOOK_SOURCE_CHAPTERS = chapters.map(({ slug, title, group, sourcePages }) => ({
   slug,
@@ -39,7 +42,9 @@ export async function getPublishedAclsEbookDocument() {
       .maybeSingle();
     if (error || !data?.content) return BUNDLED_ACLS_EBOOK_DOCUMENT;
     const validation = validateAclsEbookDocument(data.content);
-    return validation.valid ? discardLegacyAclsEbookLayoutHints(validation.document) : BUNDLED_ACLS_EBOOK_DOCUMENT;
+    return validation.valid
+      ? sanitizeAclsEbookDocumentImages(discardLegacyAclsEbookLayoutHints(validation.document))
+      : BUNDLED_ACLS_EBOOK_DOCUMENT;
   } catch {
     return BUNDLED_ACLS_EBOOK_DOCUMENT;
   }

@@ -9,9 +9,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  FileSearch,
   Highlighter,
-  Images,
   List,
   Maximize2,
   Minimize2,
@@ -469,10 +467,9 @@ type Props = {
   chapters: AclsEbookChapter[];
   activeIndex: number;
   initialLastPage?: boolean;
-  onOpenAtlas: () => void;
 };
 
-export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLastPage = false, onOpenAtlas }: Props) {
+export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLastPage = false }: Props) {
   const router = useRouter();
   const pages = useMemo(() => paginateEbookBlocks(chapter.blocks), [chapter.blocks]);
   const [pageIndex, setPageIndex] = useState(initialLastPage ? pages.length - 1 : 0);
@@ -481,7 +478,6 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   const [highlights, setHighlights] = useState<Set<number>>(new Set());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [contentsOpen, setContentsOpen] = useState(false);
-  const [originalOpen, setOriginalOpen] = useState(false);
   const touchStart = useRef<number | null>(null);
   const readerTop = useRef<HTMLDivElement>(null);
   const previousChapter = activeIndex > 0 ? chapters[activeIndex - 1] : null;
@@ -491,10 +487,6 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   const mediaFocusedPage = isMediaFocusedEbookPage(currentPage);
   const chapterProgress = ((safePageIndex + 1) / pages.length) * 100;
   const bookProgress = ((activeIndex + (safePageIndex + 1) / pages.length) / chapters.length) * 100;
-  const sourcePage = Math.min(
-    chapter.sourcePages[1],
-    chapter.sourcePages[0] + Math.floor((safePageIndex / pages.length) * (chapter.sourcePages[1] - chapter.sourcePages[0] + 1)),
-  );
 
   const toggleHighlight = useCallback((sourceIndex: number) => {
     setHighlights((current) => {
@@ -556,20 +548,20 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
-      if (contentsOpen || originalOpen) return;
+      if (contentsOpen) return;
       if (event.key === "ArrowLeft") goPrevious();
       if (event.key === "ArrowRight") goNext();
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [contentsOpen, goNext, goPrevious, originalOpen]);
+  }, [contentsOpen, goNext, goPrevious]);
 
   useEffect(() => {
-    if (!contentsOpen && !originalOpen) return;
+    if (!contentsOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previousOverflow; };
-  }, [contentsOpen, originalOpen]);
+  }, [contentsOpen]);
 
   return (
     <div ref={readerTop} className={`min-h-screen scroll-mt-4 ${isFullscreen ? "fixed inset-0 z-[120] m-0 overflow-y-auto bg-slate-100 p-2 dark:bg-slate-950 sm:p-5" : ""}`}>
@@ -631,7 +623,7 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
 
               <footer className={`${mediaFocusedPage ? "mt-7" : "mt-10"} flex items-center justify-between gap-4 border-t border-slate-300/70 pt-4 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:border-slate-700`}>
                 <span>Capítulo {activeIndex + 1}</span>
-                <span>Página original aproximada {sourcePage}</span>
+                <span>Página {safePageIndex + 1} de {pages.length}</span>
               </footer>
             </div>
           </article>
@@ -653,8 +645,6 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
               <button type="button" aria-label="Aumentar zoom" title="Aumentar zoom" onClick={() => setFontScale((value) => Math.min(FONT_CLASSES.length - 1, value + 1))} className="flex h-11 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><Plus className="h-4 w-4" /></button>
               <button type="button" aria-pressed={highlightMode} aria-label="Ativar marca-texto" title="Marca-texto" onClick={() => setHighlightMode((value) => !value)} className={`flex h-11 w-10 items-center justify-center rounded-xl transition ${highlightMode ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300 dark:bg-amber-400/15 dark:text-amber-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}><Highlighter className="h-4 w-4" /></button>
               <button type="button" aria-label={isFullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"} title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className="flex h-11 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
-              <button type="button" aria-label="Abrir página original" title="Página original" onClick={() => setOriginalOpen(true)} className="hidden h-11 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:flex"><FileSearch className="h-4 w-4" /></button>
-              <button type="button" aria-label="Abrir atlas visual" title="Atlas visual" onClick={onOpenAtlas} className="flex h-11 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><Images className="h-4 w-4" /></button>
             </div>
             <button type="button" onClick={goNext} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#123A6D] px-4 text-xs font-bold text-white shadow-md hover:bg-[#0d315d]">
               <span className="hidden sm:inline">Próxima</span><ChevronRight className="h-4 w-4" />
@@ -685,19 +675,6 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
         </div>
       ) : null}
 
-      {originalOpen ? (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#071a33]/75 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Página original ${sourcePage}`} onClick={() => setOriginalOpen(false)}>
-          <div className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl dark:bg-slate-950" onClick={(event) => event.stopPropagation()}>
-            <header className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-slate-800">
-              <div><p className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-[#486a91]">Conferência editorial</p><p className="mt-1 text-sm font-bold text-slate-900 dark:text-white">Página oficial {sourcePage}</p></div>
-              <button type="button" aria-label="Fechar original" onClick={() => setOriginalOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"><X className="h-5 w-5" /></button>
-            </header>
-            <div className="overflow-y-auto bg-slate-100 p-3 dark:bg-slate-900">
-              <Image src={`/acls-ebook/source/pages/page-${String(sourcePage).padStart(3, "0")}.webp`} alt={`Página ${sourcePage} do PDF oficial Anotações ACLS`} width={911} height={1286} sizes="(max-width: 768px) 100vw, 760px" unoptimized className="mx-auto h-auto w-full max-w-2xl shadow-xl" />
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

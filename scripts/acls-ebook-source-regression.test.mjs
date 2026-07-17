@@ -3,14 +3,12 @@ import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 import { hasVisibleRichContent, splitRichClauses, splitRichExplicitItems, splitRichSteps, structureRichContent } from "../src/lib/acls-ebook-layout.ts";
 import { paginateEbookBlocks } from "../src/lib/acls-ebook-pagination.ts";
-import { discardLegacyAclsEbookLayoutHints, prepareAclsEbookDocumentForEditing, validateAclsEbookDocument } from "../src/lib/acls-ebook-schema.ts";
+import { discardLegacyAclsEbookLayoutHints, prepareAclsEbookDocumentForEditing, sanitizeAclsEbookDocumentImages, validateAclsEbookDocument } from "../src/lib/acls-ebook-schema.ts";
 
 const content = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source.json", import.meta.url), "utf8"));
 const report = JSON.parse(await readFile(new URL("../src/content/acls-ebook-source-report.json", import.meta.url), "utf8"));
 const layoutHints = JSON.parse(await readFile(new URL("../src/content/acls-ebook-layout-hints.json", import.meta.url), "utf8"));
 const images = await readdir(new URL("../public/acls-ebook/source/images/", import.meta.url));
-const pages = await readdir(new URL("../public/acls-ebook/source/pages/", import.meta.url));
-const visualAtlas = await readdir(new URL("../public/acls-ebook/visuals/", import.meta.url));
 const ebookPage = await readFile(new URL("../src/app/acls/ebook/page.tsx", import.meta.url), "utf8");
 const ebookSourceModule = await readFile(new URL("../src/lib/acls-ebook-source.ts", import.meta.url), "utf8");
 const ebookReader = await readFile(new URL("../src/components/acls-ebook-source-view.tsx", import.meta.url), "utf8");
@@ -19,17 +17,22 @@ const ebookAdmin = await readFile(new URL("../src/app/admin/acls-ebook/acls-eboo
 const ebookAdminRoute = await readFile(new URL("../src/app/api/admin/acls-ebook/route.ts", import.meta.url), "utf8");
 const ebookMigration = await readFile(new URL("../supabase/migrations/20260716100000_acls_ebook_editor.sql", import.meta.url), "utf8");
 
-test("eBook integral mantém o inventário oficial do ACLS", () => {
+test("eBook mantém apenas os ECGs aprovados no acervo público", () => {
   assert.equal(content.chapters.length, 12);
   assert.equal(report.pagesReviewed, 124);
-  assert.equal(report.facsimilePagesPreserved, 124);
-  assert.equal(report.uniqueImagesPreserved, 30);
+  assert.equal(report.facsimilePagesPreserved, 0);
+  assert.equal(report.uniqueImagesPreserved, 16);
   assert.equal(report.imageOccurrencesInPdf, 32);
   assert.equal(report.pdfTablesDetected, 76);
   assert.equal(report.pdfRedRunsDetected, 1053);
-  assert.equal(images.length, 30);
-  assert.equal(pages.length, 124);
-  assert.equal(visualAtlas.length, 20);
+  assert.deepEqual(images.sort(), [
+    ...Array.from({ length: 12 }, (_, index) => `image-${String(index + 5).padStart(2, "0")}.png`),
+    "image-25.png", "image-26.png", "image-27.png", "image-28.png",
+  ]);
+
+  const sanitized = sanitizeAclsEbookDocumentImages({ schemaVersion: 1, chapters: content.chapters });
+  const serialized = JSON.stringify(sanitized);
+  assert.doesNotMatch(serialized, /source\/pages|visuals\/visual|image-(?:0[1-4]|1[7-9]|2[0-4]|29|30)\.png/);
 });
 
 test("todos os capítulos têm leitura responsiva e páginas oficiais", () => {
