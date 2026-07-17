@@ -82,6 +82,55 @@ body[data-resibook-surface="shift"] .module-page-header-content > * {
   box-shadow: none;
 }
 
+/* Shared product language for every signed-in module. */
+body:not([data-resibook-surface="public"]) main > div > :is(div, section) {
+  scroll-margin-top: 88px;
+}
+
+.module-page-header-actions a,
+.module-page-header-actions button {
+  min-height: 44px;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(8px);
+}
+
+.module-page-header-actions a:hover,
+.module-page-header-actions button:hover {
+  border-color: rgba(103, 232, 249, 0.45) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+.module-page-header-content > :is(div, section, article) {
+  border-radius: 16px !important;
+}
+
+body[data-resibook-surface="library"] main > div,
+body[data-resibook-surface="workflow"] main > div,
+body[data-resibook-surface="operations"] main > div,
+body[data-resibook-surface="shift"] main > div,
+body[data-resibook-surface="clinical"] main > div {
+  width: 100%;
+}
+
+body[data-resibook-surface="library"] main > div > section,
+body[data-resibook-surface="workflow"] main > div > section,
+body[data-resibook-surface="operations"] main > div > section,
+body[data-resibook-surface="shift"] main > div > section,
+body[data-resibook-surface="clinical"] main > div > section {
+  border-color: rgba(203, 213, 225, 0.82);
+}
+
+body[data-resibook-surface="library"] main h2,
+body[data-resibook-surface="workflow"] main h2,
+body[data-resibook-surface="operations"] main h2,
+body[data-resibook-surface="shift"] main h2,
+body[data-resibook-surface="clinical"] main h2 {
+  letter-spacing: -0.012em;
+}
+
 body[data-resibook-surface="operations"] main h1 {
   font-size: clamp(1.75rem, 3vw, 2.25rem) !important;
   letter-spacing: 0 !important;
@@ -191,6 +240,24 @@ body[data-resibook-surface="public"] button {
   body[data-resibook-surface="shift"] main h1,
   body[data-resibook-surface="public"] main h1 {
     line-height: 1.15 !important;
+  }
+
+  .module-page-header {
+    border-radius: 18px !important;
+  }
+
+  .module-page-header-hero {
+    padding: 20px !important;
+  }
+
+  .module-page-header-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .module-page-header-actions > * {
+    width: 100%;
   }
 }
 

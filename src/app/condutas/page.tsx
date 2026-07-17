@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
+import ModulePageHeader from "@/components/module-page-header";
 import { getSearchScore } from "@/lib/search";
 import {
   getClinicalSearchTerms,
@@ -708,36 +709,31 @@ export default function CondutasPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-7">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Consulta rápida
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-              Condutas médicas
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-              Lista simples, fechada por padrão, feita para abrir só a conduta que você quer revisar sem quebrar o texto em vários blocos coloridos.
-            </p>
-          </div>
-
+      <ModulePageHeader
+        eyebrow="Consulta rápida"
+        title="Condutas médicas"
+        description="Abra apenas a conduta que precisa revisar e encontre o manejo sem perder tempo em blocos extensos."
+        badges={[
+          { label: "Uso no plantão", tone: "cyan" },
+          { label: "Leitura objetiva", tone: "emerald" },
+        ]}
+        metrics={[
+          { label: "Condutas", value: cards.length },
+          { label: "Exibindo", value: filtered.length },
+          { label: "Áreas", value: areas.length },
+        ]}
+        error={error}
+        success={success}
+        actions={
           <Link
             href="/flashcards"
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Flashcards
           </Link>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium text-slate-500">
-          <span>Total: <strong className="text-slate-800">{cards.length}</strong></span>
-          <span>Exibindo: <strong className="text-slate-800">{filtered.length}</strong></span>
-          {success ? <span className="text-emerald-700">{success}</span> : null}
-          {error ? <span className="text-rose-700">Erro: {error}</span> : null}
-        </div>
-      </section>
+        }
+      />
 
       <PlantaoCommandCenter
         query={query}

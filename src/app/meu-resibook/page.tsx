@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import ModulePageHeader from "@/components/module-page-header";
 import {
   PERSONAL_CONTENT_LABELS,
   PERSONAL_CONTENT_TYPES,
@@ -277,42 +278,32 @@ export default function MeuResibookPage() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-[#081a3a] p-6 text-white shadow-sm md:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <span className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
-              Meu Resibook
-            </span>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
-              Seu acervo clínico privado
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
-              Crie modelos autorais e adapte cópias do Banco Resibook sem alterar o conteúdo global.
-            </p>
-          </div>
+      <ModulePageHeader
+        eyebrow="Meu Resibook"
+        title="Seu acervo clínico privado"
+        description="Crie modelos autorais e adapte cópias do Banco Resibook sem alterar o conteúdo global."
+        badges={[
+          { label: "Privado por usuário", tone: "emerald" },
+          { label: "Acervo editável", tone: "cyan" },
+        ]}
+        metrics={[
+          { label: "Total", value: items.length },
+          { label: "Favoritos", value: favoriteCount },
+          { label: "Autorais", value: originalCount },
+        ]}
+        error={error}
+        success={message}
+        actions={
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-5 text-sm font-semibold transition"
           >
             <FilePlus2 className="h-4 w-4" />
             Novo conteúdo
           </button>
-        </div>
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Total", items.length],
-          ["Favoritos", favoriteCount],
-          ["Conteúdos autorais", originalCount],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-950">{value}</p>
-          </div>
-        ))}
-      </section>
+        }
+      />
 
       <section className="rounded-[26px] border border-slate-200 bg-white p-5">
         <div className="grid gap-3 md:grid-cols-[1fr_260px]">
@@ -337,9 +328,6 @@ export default function MeuResibookPage() {
           </select>
         </div>
       </section>
-
-      {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</p> : null}
-      {message ? <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{message}</p> : null}
 
       {loading ? (
         <div className="rounded-[26px] border border-slate-200 bg-white py-16 text-center text-sm text-slate-500">Carregando seu acervo...</div>

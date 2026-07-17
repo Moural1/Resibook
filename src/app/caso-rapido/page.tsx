@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CopyButton from "../../components/copy-button";
+import ModulePageHeader from "@/components/module-page-header";
 import { QUICK_COMPLAINTS, type QuickComplaint } from "@/lib/clinical-quick-complaints";
 import {
   Activity,
@@ -525,30 +526,21 @@ export default function CasoRapidoPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fafc_100%)] p-5 md:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Assistente de plantão
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-                Caso rápido
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-                Estruture a primeira abordagem, destaque gravidade e abra os módulos do ResiBook já filtrados pela queixa.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
-              <Stat label="Queixa" value={workingComplaint ? "Ativa" : "Livre"} />
-              <Stat label="Alertas" value={alerts.length} />
-              <Stat label="Prioridade" value={acuity.label} />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[0.92fr_1.08fr]">
+      <ModulePageHeader
+        eyebrow="Assistente de plantão"
+        title="Caso rápido"
+        description="Estruture a primeira abordagem, destaque gravidade e abra os módulos do ResiBook já filtrados pela queixa."
+        badges={[
+          { label: "Primeira abordagem", tone: "cyan" },
+          { label: "Segurança clínica", tone: "emerald" },
+        ]}
+        metrics={[
+          { label: "Queixa", value: workingComplaint ? "Ativa" : "Livre" },
+          { label: "Alertas", value: alerts.length },
+          { label: "Prioridade", value: acuity.label },
+        ]}
+      >
+        <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
           <section className="space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
               <div className="grid gap-3 md:grid-cols-2">
@@ -805,7 +797,7 @@ export default function CasoRapidoPage() {
             </div>
           </section>
         </div>
-      </section>
+      </ModulePageHeader>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
@@ -848,17 +840,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </span>
       {children}
     </label>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-1 text-base font-semibold text-slate-950">{value}</p>
-    </div>
   );
 }
 

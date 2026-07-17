@@ -47,15 +47,16 @@ export default function ModulePageHeader({
   children,
 }: Props) {
   return (
-    <section className="module-page-header overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.045)]">
-      <div className="relative border-b border-slate-200/80 bg-white p-5 md:p-6">
-        <div className="absolute inset-y-0 left-0 w-1 bg-cyan-600" />
+    <section className="module-page-header overflow-hidden rounded-[22px] border border-slate-200/90 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.07)]">
+      <div className="module-page-header-hero relative overflow-hidden border-b border-slate-200/80 bg-[linear-gradient(135deg,#071a38_0%,#0b2850_58%,#0a4059_100%)] p-5 text-white md:p-7">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-cyan-200/10 bg-cyan-300/[0.04]" />
+        <div className="pointer-events-none absolute bottom-0 right-1/3 h-px w-56 bg-gradient-to-r from-transparent via-cyan-200/35 to-transparent" />
 
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0 max-w-4xl">
             <div className="flex flex-wrap items-center gap-2">
               {eyebrow ? (
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-700">
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200">
                   {eyebrow}
                 </p>
               ) : null}
@@ -72,27 +73,27 @@ export default function ModulePageHeader({
               ))}
             </div>
 
-            <h1 className="mt-2 text-[27px] font-semibold text-slate-950 md:text-[34px]">
+            <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.025em] text-white md:text-[36px]">
               {title}
             </h1>
 
             {description ? (
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 md:text-[15px]">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 md:text-[15px]">
                 {description}
               </p>
             ) : null}
 
             {metrics.length > 0 ? (
-              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+              <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 {metrics.map((metric, index) => (
                   <div
                     key={`${metric.label}-${index}`}
-                    className="border-l-2 border-slate-200 pl-3"
+                    className="min-w-0 rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2.5 backdrop-blur-sm sm:min-w-[118px]"
                   >
-                    <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                    <span className="block truncate text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
                       {metric.label}
                     </span>
-                    <span className="mt-0.5 block text-sm font-semibold text-slate-900">
+                    <span className="mt-1 block truncate text-sm font-semibold text-white">
                       {metric.value}
                     </span>
                   </div>
@@ -102,7 +103,7 @@ export default function ModulePageHeader({
           </div>
 
           {actions ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="module-page-header-actions flex shrink-0 flex-wrap items-center gap-2">
               {actions}
             </div>
           ) : null}
@@ -124,7 +125,7 @@ export default function ModulePageHeader({
       </div>
 
       {children ? (
-        <div className="module-page-header-content bg-slate-50/45 p-4 md:p-5">
+        <div className="module-page-header-content bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-4 md:p-5">
           {children}
         </div>
       ) : null}

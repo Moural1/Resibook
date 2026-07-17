@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ModulePageHeader from "@/components/module-page-header";
 import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import {
   ArrowUpRight,
@@ -106,76 +107,39 @@ function queryHref(path: string, query: string) {
 export default function PlantaoPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fafc_100%)] p-5 md:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Central de plantão
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-                Fluxo rápido por síndrome
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-                Uma tela para começar pela queixa, abrir o módulo certo e não perder os pontos de segurança do atendimento.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
+      <ModulePageHeader
+        eyebrow="Central de plantão"
+        title="Fluxo rápido por síndrome"
+        description="Comece pela queixa, abra o módulo certo e mantenha visíveis os pontos de segurança do atendimento."
+        badges={[
+          { label: "Decisão em segundos", tone: "cyan" },
+          { label: "Checklist de segurança", tone: "emerald" },
+        ]}
+        metrics={[
+          { label: "Atalhos", value: SHIFT_ACTIONS.length },
+          { label: "Síndromes", value: QUICK_COMPLAINTS.length },
+          { label: "Contexto", value: "Plantão" },
+        ]}
+        actions={
+          <>
               <Link
                 href="/plantao/roteiro-caso"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition"
               >
                 <Workflow className="h-4 w-4" />
                 Roteiro
               </Link>
               <Link
                 href="/caso-rapido"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition"
               >
                 <Gauge className="h-4 w-4" />
                 Novo caso rápido
               </Link>
-              <Link
-                href="/plantao/sbar"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                <FileText className="h-4 w-4" />
-                Passagem
-              </Link>
-              <Link
-                href="/plantao/pendencias"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                <ListChecks className="h-4 w-4" />
-                Pendências
-              </Link>
-              <Link
-                href="/plantao/checklist-risco"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Risco
-              </Link>
-              <Link
-                href="/plantao/prescricao-guiada"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                <ClipboardList className="h-4 w-4" />
-                Plano
-              </Link>
-              <Link
-                href="/plantao/alta-segura"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                <LogOut className="h-4 w-4" />
-                Alta
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[1fr_0.82fr]">
+          </>
+        }
+      >
+        <div className="grid gap-5 xl:grid-cols-[1fr_0.82fr]">
           <section className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
             <div className="flex items-end justify-between gap-4">
               <div>
@@ -220,7 +184,7 @@ export default function PlantaoPage() {
             </ul>
           </section>
         </div>
-      </section>
+      </ModulePageHeader>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
