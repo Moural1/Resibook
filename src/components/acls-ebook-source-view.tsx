@@ -42,7 +42,6 @@ import {
 } from "@/lib/acls-ebook-pagination";
 
 const LAYOUT_HINTS = layoutHintsSource as Record<string, EbookLayoutHint[]>;
-
 const FONT_CLASSES = [
   "text-[15px] sm:text-[16px]",
   "text-[17px] sm:text-[18px]",
@@ -59,7 +58,7 @@ function chapterHref(chapter?: Pick<AclsEbookChapter, "slug">, lastPage = false)
 
 function RichContent({ content, inheritColor = false }: { content: AclsEbookRichText[]; inheritColor?: boolean }) {
   return (
-    <span className="whitespace-pre-line break-keep [overflow-wrap:normal] [word-break:normal] hyphens-none">
+    <span className="max-w-full whitespace-pre-line break-keep [overflow-wrap:normal] [text-wrap:pretty] [word-break:normal] hyphens-none">
       {content.map((segment, index) => {
         if (segment.kind === "image") {
           return (
@@ -98,7 +97,7 @@ function StructuredChildren({ items }: { items: AclsEbookRichText[][] }) {
   });
   if (!visibleChildren.length) return null;
   return (
-    <ul className="mt-3 grid gap-2 border-l-2 border-[#123A6D]/15 pl-4 sm:grid-cols-2">
+    <ul className="mt-3 grid gap-2 border-l-2 border-[#123A6D]/15 pl-4">
       {visibleChildren.map((child, index) => (
         <li key={index} className="flex items-start gap-2 text-[0.94em] leading-6">
           <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
@@ -118,7 +117,30 @@ function richTextValue(content: AclsEbookRichText[]) {
     .trim();
 }
 
+function semanticLayoutHints(content: AclsEbookRichText[]) {
+  const source = content
+    .filter((segment): segment is Extract<AclsEbookRichText, { kind: "text" }> => segment.kind === "text")
+    .map((segment) => segment.text)
+    .join("");
+  const anchors = [
+    "Lesão cerebral pós PCR",
+    "Disfunção miocárdica pós PCR",
+    "Isquemia sistêmica e resposta de reperfusão",
+    "Patologia aguda e crônica persistente que pode ter precipitado a PCR",
+  ];
+  if (!anchors.every((anchor) => source.includes(anchor))) return [];
+  return anchors.map((anchor) => ({ offset: source.indexOf(anchor), level: 0 }));
+}
+
 function structuredCellData(content: AclsEbookRichText[], hints: EbookLayoutHint[]) {
+  const explicit = splitRichExplicitItems(content);
+  if (explicit.items.length >= 2) {
+    return {
+      intro: explicit.intro,
+      items: explicit.items.map((item) => ({ content: item, children: [] as AclsEbookRichText[][] })),
+    };
+  }
+
   const structured = structureRichContent(content, hints);
   if (structured.items.length) return structured;
 
@@ -139,7 +161,7 @@ function StructuredCell({ content, hints }: { content: AclsEbookRichText[]; hint
   return (
     <div className="space-y-3">
       {hasVisibleRichContent(structure.intro) ? <p><RichContent content={structure.intro as AclsEbookRichText[]} /></p> : null}
-      <div className={structure.items.length >= 3 ? "grid gap-3 sm:grid-cols-2" : "space-y-3"}>
+      <div className="space-y-3">
         {structure.items.map((item, index) => (
           <div key={index} className="rounded-xl border border-slate-200/80 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-start gap-3">
@@ -186,19 +208,40 @@ function TableCellContent({ content }: { content: AclsEbookRichText[] }) {
 function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsEbookSourceBlock, { kind: "table" }>; chapterSlug: string; sourceIndex: number }) {
   const columnCount = Math.max(...block.rows.map((row) => row.length));
   const singleCell = block.rows.length === 1 && columnCount === 1;
-  const hintsFor = (rowIndex: number, cellIndex: number) => LAYOUT_HINTS[`${chapterSlug}:${sourceIndex}:${rowIndex}:${cellIndex}`] ?? [];
+  const hintsFor = (rowIndex: number, cellIndex: number) => {
+    const key = `${chapterSlug}:${sourceIndex}:${rowIndex}:${cellIndex}`;
+    const semantic = semanticLayoutHints(block.rows[rowIndex]?.[cellIndex] ?? []);
+    return semantic.length ? semantic : LAYOUT_HINTS[key] ?? [];
+  };
 
   if (singleCell) {
     const content = block.rows[0][0] ?? [];
+    const explicit = splitRichExplicitItems(content);
     const structured = structureRichContent(content, hintsFor(0, 0));
     const fallbackSteps = splitRichSteps(content);
-    const items: EbookStructuredItem[] = structured.items.length
+    const items: EbookStructuredItem[] = explicit.items.length >= 2
+      ? explicit.items.map((item) => ({ content: item, children: [] }))
+      : structured.items.length
       ? structured.items.flatMap((item) => {
           if (item.children.length) return [item];
           const parts = splitRichSteps(item.content);
           return parts.length > 1 ? parts.map((part) => ({ content: part, children: [] })) : [item];
         })
       : fallbackSteps.map((step) => ({ content: removeLeadingListMarker(step), children: [] }));
+    const intro = explicit.items.length >= 2 ? explicit.intro : structured.intro;
+    const compactHeading = items.length === 1 && richTextValue(content).length <= 160;
+
+    if (compactHeading) {
+      return (
+        <section className="my-7 rounded-2xl border border-[#123A6D]/15 bg-[#123A6D]/[0.045] px-5 py-4 dark:border-blue-300/20 dark:bg-blue-300/[0.06]">
+          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Seção clínica</p>
+          <h4 className="font-serif text-[1.18em] font-bold leading-snug text-[#a82828] dark:text-red-300">
+            <RichContent content={content} />
+          </h4>
+        </section>
+      );
+    }
+
     return (
       <section className="my-8 rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
         <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
@@ -208,9 +251,9 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
           </div>
           <span className="rounded-full bg-white px-3 py-1 text-[9px] font-extrabold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">{items.length} {items.length === 1 ? "item" : "itens"}</span>
         </div>
-        {hasVisibleRichContent(structured.intro) ? (
+        {hasVisibleRichContent(intro) ? (
           <div className="mb-4 rounded-2xl bg-[#123A6D] px-5 py-4 leading-7 text-white shadow-sm">
-            <RichContent content={structured.intro as AclsEbookRichText[]} />
+            <RichContent content={intro as AclsEbookRichText[]} />
           </div>
         ) : null}
         <div className="relative space-y-3 before:absolute before:bottom-6 before:left-[17px] before:top-6 before:w-px before:bg-[#123A6D]/20 dark:before:bg-blue-300/20">
@@ -313,10 +356,9 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
         ))}
       </div>
       <div className="my-8 hidden overflow-hidden rounded-2xl border border-slate-300/80 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 md:block">
-      <div className="overflow-x-auto">
+      <div className="max-w-full overflow-hidden">
         <table
-          className="w-full border-collapse text-left text-[0.94em]"
-          style={{ minWidth: `${Math.max(720, columnCount * 220)}px` }}
+          className="w-full table-fixed border-collapse text-left text-[0.94em]"
         >
           {columnCount === 2 ? <colgroup><col className="w-[26%]" /><col className="w-[74%]" /></colgroup> : null}
           <tbody>

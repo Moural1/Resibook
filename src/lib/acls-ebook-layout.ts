@@ -68,6 +68,7 @@ export function splitRichSteps(content: EbookLayoutSegment[]) {
       const separatesHighlightedItems = segment.text.length >= 2 || Boolean(
         previous?.kind === "text" && previous.red &&
         next?.kind === "text" && next.red && startsWithUppercase(next.text) &&
+        !CONTINUATION_WORDS.test(previousText) &&
         !previousText.endsWith("(") && !/^OU\b/i.test(next.text.trim()),
       ) || Boolean(previousIsStandaloneAcronym && next?.kind === "text" && next.red && startsWithUppercase(next.text));
       if (separatesHighlightedItems && !previousIsMarker) turn(); else append(segment);
@@ -76,15 +77,16 @@ export function splitRichSteps(content: EbookLayoutSegment[]) {
 
     const beginsNewMarkedItem = /^\s*-\s*[A-ZÀ-ÖØ-Þ0-9]/.test(segment.text) && previousText.length > 0;
     const followsSentence = /[.!?]$/.test(previousText) && !/^\d+[.)]$/.test(previousText) && startsWithUppercase(segment.text);
+    const beginsClinicalThreshold = /^[<>≤≥]\s*\d+/.test(trimmed) && /:$/.test(previousText);
     const separatorAfterSegment = content[index + 1];
     const highlightedAfterSeparator = content[index + 2];
     const startsHighlightedSequence = /^[A-Z0-9]{2,6}$/.test(previousText) &&
       previous?.kind === "text" && !previous.red && segment.red && startsWithUppercase(segment.text) &&
       separatorAfterSegment?.kind === "text" && !separatorAfterSegment.text.trim() &&
       highlightedAfterSeparator?.kind === "text" && highlightedAfterSeparator.red;
-    if (beginsNewMarkedItem || followsSentence || startsHighlightedSequence) turn();
+    if (beginsNewMarkedItem || followsSentence || beginsClinicalThreshold || startsHighlightedSequence) turn();
 
-    const boundaryPattern = /\s{2,}|(?<=[.!?])\s+(?=[-A-ZÀ-ÖØ-Þ0-9])|\s+(?=-\s*[A-ZÀ-ÖØ-Þ0-9])/g;
+    const boundaryPattern = /\s{2,}|(?<=[.!?])\s+(?=[-A-ZÀ-ÖØ-Þ0-9])|\s+(?=-\s*[A-ZÀ-ÖØ-Þ0-9])|\s+(?=(?:[≤≥]\s*\d+|ClCr\s*[<>≤≥]))/g;
     let cursor = 0;
     for (const match of segment.text.matchAll(boundaryPattern)) {
       const boundaryAt = match.index ?? 0;
@@ -92,7 +94,7 @@ export function splitRichSteps(content: EbookLayoutSegment[]) {
       if (before) append({ ...segment, text: before });
       const left = `${lineText(current())}`;
       const right = segment.text.slice(boundaryAt + match[0].length);
-      if (shouldSplitSpacing(left, right)) {
+      if (/^(?:[≤≥]\s*\d+|ClCr\s*[<>≤≥])/.test(right) || shouldSplitSpacing(left, right)) {
         turn();
       } else {
         append({ ...segment, text: match[0] });
