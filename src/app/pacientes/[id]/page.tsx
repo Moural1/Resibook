@@ -10,6 +10,7 @@ import {
   type ClinicalCaseSession,
 } from "@/lib/clinical-case-session";
 import CopyButton from "../../../components/copy-button";
+import PatientBodyMap from "@/components/patient-body-map";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -3087,6 +3088,12 @@ function openPrintHtml(html: string) {
           <InfoBlock title="Observações gerais">{patient.observacoes}</InfoBlock>
         </div>
       </section>
+
+      <PatientBodyMap
+        patient={patient}
+        problems={problems}
+        consultations={consultations}
+      />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
