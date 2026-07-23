@@ -9,6 +9,7 @@ import ClinicalAlerts, {
   type ClinicalAlert,
 } from "../../components/clinical-alerts";
 import ModulePageHeader from "../../components/module-page-header";
+import ResibookGuard from "@/components/resibook-guard";
 import { rankSearchResults } from "@/lib/search";
 import { ClipboardPlus, Edit3, Printer, X } from "lucide-react";
 
@@ -1366,6 +1367,8 @@ export default function PrescricaoPage() {
           </aside>
         </div>
       </ModulePageHeader>
+
+      <ResibookGuard context="prescricao" />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

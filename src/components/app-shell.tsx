@@ -19,6 +19,7 @@ import {
   CreditCard,
   FlaskConical,
   Gauge,
+  GraduationCap,
   HeartPulse,
   Home,
   LifeBuoy,
@@ -28,6 +29,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   QrCode,
+  SearchX,
   Settings,
   ShieldCheck,
   Siren,
@@ -296,7 +298,7 @@ function SidebarContent({
   isAdmin?: boolean;
 }) {
   const fullPrimaryItems = [
-    { href: "/plantao", label: "Plantão", icon: Activity, badge: null },
+    { href: "/plantao", label: "Resibook Shift", icon: Activity, badge: null },
     { href: "/acls", label: "ACLS", icon: HeartPulse, badge: null },
     { href: "/dashboard", label: "Visão geral", icon: Home, badge: null },
     {
@@ -337,6 +339,12 @@ function SidebarContent({
       label: "Flashcards",
       icon: Brain,
       badge: counts.flashcards,
+    },
+    {
+      href: "/nunca-mais-errar",
+      label: "Resibook Learn",
+      icon: GraduationCap,
+      badge: null,
     },
     {
       href: "/condutas",
@@ -430,6 +438,12 @@ function SidebarContent({
           href: "/admin/acls-ebook",
           label: "Editar eBook ACLS",
           icon: BookOpen,
+          badge: null,
+        },
+        {
+          href: "/admin/buscas-sem-resultado",
+          label: "Lacunas da busca",
+          icon: SearchX,
           badge: null,
         },
       ]

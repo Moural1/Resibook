@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
+import ResibookGuard from "@/components/resibook-guard";
 import {
   findQuickComplaint,
   QUICK_COMPLAINTS,
@@ -794,6 +795,8 @@ export default function CasoRapidoPage() {
           </section>
         </div>
       </ModulePageHeader>
+
+      <ResibookGuard context="plantao" />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">

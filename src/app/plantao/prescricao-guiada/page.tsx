@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CopyButton from "../../../components/copy-button";
+import ResibookGuard from "@/components/resibook-guard";
 import {
   ArrowLeft,
   ClipboardCheck,
@@ -214,6 +215,8 @@ export default function GuidedPrescriptionPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
+      <ResibookGuard context="prescricao" />
+
       <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fafc_100%)] p-5 md:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">

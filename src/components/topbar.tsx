@@ -13,6 +13,7 @@ import { buildCaseRouting } from "@/lib/clinical-case-routing";
 import { clinicalCalculators } from "@/lib/clinical-calculators";
 import { getSearchScore, rankSearchResults } from "@/lib/search";
 import { PRODUCT_CAPABILITIES } from "@/lib/product-config";
+import NoResultSearchLogger from "./no-result-search-logger";
 import {
   ArrowRight,
   BookOpen,
@@ -319,6 +320,12 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/88 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl">
+      <NoResultSearchLogger
+        term={query}
+        resultCount={results.length}
+        loading={loading}
+        context="global"
+      />
       <div ref={wrapperRef} className="relative mx-auto flex max-w-[1680px] items-center gap-3 px-4 py-3 md:px-6 lg:px-8">
         <div className="min-w-0 flex-1">
           <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200/90 bg-white px-4 shadow-[0_8px_30px_rgba(15,23,42,0.05)] transition focus-within:border-cyan-300 focus-within:ring-4 focus-within:ring-cyan-100/60">

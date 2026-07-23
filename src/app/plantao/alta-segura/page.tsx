@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CopyButton from "../../../components/copy-button";
+import ResibookGuard from "@/components/resibook-guard";
 import { findBestComplaint } from "@/lib/clinical-case-routing";
 import {
   CLINICAL_CASE_SESSION_EVENT,
@@ -191,6 +192,13 @@ const GUIDES: DischargeGuide[] = [
 
 const DEFAULT_GUIDE = GUIDES[GUIDES.length - 1];
 
+const GENERIC_DISCHARGE_CRITERIA = [
+  "Condição clínica reavaliada e compatível com alta",
+  "Sinais de gravidade pesquisados e conduta de retorno definida",
+  "Resposta às medidas e destino documentados quando aplicável",
+  "Paciente ou acompanhante compreendeu as orientações",
+];
+
 function findGuide(query: string) {
   const canonicalTitle = findBestComplaint(query)?.title.toLowerCase();
   const normalizedQuery = query.trim().toLowerCase();
@@ -312,6 +320,31 @@ function buildDischargeText(
     .join("\n");
 }
 
+function buildPatientDischargeText(
+  guide: DischargeGuide,
+  patient: string,
+  notes: string
+) {
+  return [
+    "ORIENTAÇÕES DE ALTA",
+    patient.trim() ? `Paciente: ${patient.trim()}` : null,
+    `Quadro: ${guide.title}`,
+    "",
+    "Cuidados em casa:",
+    ...guide.homeCare.map((item) => `- ${item}`),
+    "",
+    "Procure atendimento imediatamente se:",
+    ...guide.returnSigns.map((item) => `- ${item}`),
+    "",
+    "Orientação de retorno:",
+    ...guide.followUp.map((item) => `- ${item}`),
+    notes.trim() ? "" : null,
+    notes.trim() ? `Orientações adicionais: ${notes.trim()}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export default function SafeDischargePage() {
   const searchParams = useSearchParams();
   const [selectedTitle, setSelectedTitle] = useState(DEFAULT_GUIDE.title);
@@ -355,9 +388,15 @@ export default function SafeDischargePage() {
     () => buildDischargeText(guide, patient, notes, caseSummary),
     [caseSummary, guide, notes, patient]
   );
+  const patientText = useMemo(
+    () => buildPatientDischargeText(guide, patient, notes),
+    [guide, notes, patient]
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
+      <ResibookGuard context="alta" />
+
       <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fafc_100%)] p-5 md:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -371,22 +410,30 @@ export default function SafeDischargePage() {
               </Link>
 
               <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Alta e retorno
+                Resibook Shift · alta e retorno
               </p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-                Orientações de alta
+                Alta segura
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
                 Gere orientações claras para casa, sinais de retorno e checklist de documentação antes de liberar o paciente.
               </p>
             </div>
 
-            <CopyButton
-              text={text}
-              label="Copiar orientações"
-              copiedLabel="Orientações copiadas"
-              confirmationMessage="Confirme que estabilidade, critérios de alta, entendimento do paciente e sinais de retorno foram revisados. Deseja copiar as orientações?"
-            />
+            <div className="flex flex-wrap gap-2">
+              <CopyButton
+                text={patientText}
+                label="Copiar para paciente"
+                copiedLabel="Texto do paciente copiado"
+                confirmationMessage="Confirme que as orientações foram revisadas para este paciente. Deseja copiar?"
+              />
+              <CopyButton
+                text={text}
+                label="Copiar evolução médica"
+                copiedLabel="Evolução copiada"
+                confirmationMessage="Confirme estabilidade, critérios de alta, entendimento do paciente e sinais de retorno. Deseja copiar a evolução?"
+              />
+            </div>
           </div>
         </div>
 
@@ -498,18 +545,27 @@ export default function SafeDischargePage() {
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{guide.summary}</p>
                 </div>
-                <CopyButton
-                  text={text}
-                  label="Copiar"
-                  copiedLabel="Copiado"
-                  confirmationMessage="Confirme que você revisou estas orientações para o paciente e o contexto atual. Deseja copiar?"
-                />
+                <div className="flex flex-wrap gap-2">
+                  <CopyButton
+                    text={patientText}
+                    label="Texto do paciente"
+                    copiedLabel="Copiado"
+                    confirmationMessage="Confirme que você revisou estas orientações para o contexto atual. Deseja copiar?"
+                  />
+                  <CopyButton
+                    text={text}
+                    label="Evolução médica"
+                    copiedLabel="Copiado"
+                    confirmationMessage="Confirme que você revisou o registro de alta. Deseja copiar?"
+                  />
+                </div>
               </div>
 
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <InfoBlock title="Critérios de alta" items={GENERIC_DISCHARGE_CRITERIA} icon={CheckCircle2} />
                 <InfoBlock title="Cuidados em casa" items={guide.homeCare} icon={HeartPulse} />
-                <InfoBlock title="Retornar se" items={guide.returnSigns} icon={ShieldAlert} />
-                <InfoBlock title="Seguimento" items={guide.followUp} icon={Stethoscope} />
+                <InfoBlock title="Sinais de alarme" items={guide.returnSigns} icon={ShieldAlert} />
+                <InfoBlock title="Orientação de retorno" items={guide.followUp} icon={Stethoscope} />
                 <InfoBlock title="Documentar" items={guide.documentation} icon={FileText} />
               </div>
             </div>
