@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test:clinical": "node --no-warnings --experimental-strip-types --test scripts/clinical-regression.test.mjs",
     "test:acls": "node --no-warnings --experimental-strip-types --test scripts/acls-content-regression.test.mjs scripts/acls-ebook-source-regression.test.mjs",
-    "test:security": "node --no-warnings --experimental-strip-types --test scripts/security-regression.test.mjs"
+    "test:security": "node --no-warnings --experimental-strip-types --test scripts/security-regression.test.mjs",
+    "test:premium-safety": "node --no-warnings --experimental-strip-types --test scripts/premium-safety-regression.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

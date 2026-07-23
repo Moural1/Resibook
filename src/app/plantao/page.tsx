@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ModulePageHeader from "@/components/module-page-header";
+import ResibookGuard from "@/components/resibook-guard";
 import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import {
   ArrowUpRight,
@@ -108,8 +109,8 @@ export default function PlantaoPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-5">
       <ModulePageHeader
-        eyebrow="Central de plantão"
-        title="Fluxo rápido por síndrome"
+        eyebrow="Resibook Shift"
+        title="Central de plantão"
         description="Comece pela queixa, abra o módulo certo e mantenha visíveis os pontos de segurança do atendimento."
         badges={[
           { label: "Decisão em segundos", tone: "cyan" },
@@ -185,6 +186,8 @@ export default function PlantaoPage() {
           </section>
         </div>
       </ModulePageHeader>
+
+      <ResibookGuard context="plantao" />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">

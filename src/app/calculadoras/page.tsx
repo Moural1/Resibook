@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import CopyButton from "@/components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
+import NoResultSearchLogger from "@/components/no-result-search-logger";
+import ResibookGuard from "@/components/resibook-guard";
 import {
   clinicalCalculators,
   getCalculatorInitialValues,
@@ -476,6 +478,13 @@ function CalculadorasContent() {
           </div>
         }
       />
+
+      <NoResultSearchLogger
+        term={query}
+        resultCount={filtered.length}
+        context="calculadoras"
+      />
+      <ResibookGuard context="calculadora" />
 
       <section className="grid gap-5 lg:grid-cols-[310px_minmax(0,1fr)] lg:items-start">
         <aside className="space-y-4 lg:sticky lg:top-24">

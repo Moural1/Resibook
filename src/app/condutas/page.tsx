@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
+import NoResultSearchLogger from "@/components/no-result-search-logger";
+import ResibookGuard from "@/components/resibook-guard";
 import { getSearchScore } from "@/lib/search";
 import {
   findQuickComplaint,
@@ -707,6 +709,14 @@ export default function CondutasPage() {
           </Link>
         }
       />
+
+      <NoResultSearchLogger
+        term={query}
+        resultCount={filtered.length}
+        loading={loading}
+        context="condutas"
+      />
+      <ResibookGuard context="conduta" />
 
       <PlantaoCommandCenter
         query={query}
