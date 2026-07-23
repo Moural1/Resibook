@@ -106,7 +106,8 @@ test("leitor preserva quebras editoriais e nunca parte palavras entre destaques"
   assert.match(ebookReader, /break-keep/);
   assert.match(ebookReader, /\[overflow-wrap:normal\]/);
   assert.match(ebookReader, /\[word-break:normal\]/);
-  assert.match(ebookReader, /columnCount \* 220/);
+  assert.match(ebookReader, /table-fixed/);
+  assert.doesNotMatch(ebookReader, /columnCount \* 220/);
 });
 
 test("marcadores antigos do PDF nunca dividem palavras depois de uma edição", () => {
@@ -223,6 +224,60 @@ test("tabelas editoriais achatadas possuem fallback de leitura em itens", () => 
   assert.deepEqual(thromboticCauses, ["TEP", "Tamponamento cardíaco", "Tóxicos", "Tensão no tórax (Pneumotórax)", "Trombose coronariana"]);
   assert.equal(ebookReader.includes("structuredCellData"), true);
   assert.equal(ebookReader.includes("hasTitleRow"), true);
+});
+
+test("fragmentos do PDF permanecem unidos ao item clínico que os originou", () => {
+  const airway = content.chapters.find((chapter) => chapter.slug === "parada-respiratoria-via-aerea");
+  const airwayItems = splitRichExplicitItems(airway.blocks[51].rows[0][0]);
+  assert.equal(airwayItems.items.length, 4);
+  assert.ok(textOf(airwayItems.items[1]).includes("inserir CNF OU COF para manter via aérea aberta"));
+  assert.ok(textOf(airwayItems.items[2]).includes("agora esta em PR abra a boca"));
+  assert.ok(textOf(airwayItems.items[2]).endsWith("(se ver remover com os dedos)"));
+
+  const tachycardia = content.chapters.find((chapter) => chapter.slug === "taquiarritmias");
+  const pacingItems = splitRichExplicitItems(tachycardia.blocks[0].rows[0][0]);
+  assert.ok(pacingItems.items.some((item) => textOf(item).includes("podem demandar até 180 amperes")));
+  assert.ok(pacingItems.items.some((item) => textOf(item).includes("realmente ficou sincronizado (às vezes o eletro não tem bloqueio mas não tem atividade mecânica)")));
+
+  const connectorFragments = splitRichSteps([
+    { kind: "text", text: "Paciente inconsciente inserir CNF OU", bold: false, red: true },
+    { kind: "text", text: " ", bold: false, red: false },
+    { kind: "text", text: "COF para manter via aérea aberta", bold: false, red: true },
+  ]);
+  assert.deepEqual(connectorFragments.map(textOf), ["Paciente inconsciente inserir CNF OU COF para manter via aérea aberta"]);
+});
+
+test("síndrome pós PCR mantém os quatro elementos em cards independentes", () => {
+  const fundamentals = content.chapters.find((chapter) => chapter.slug === "fundamentos-abordagem");
+  const syndrome = structureRichContent(
+    fundamentals.blocks[12].rows[1][0],
+    [
+      { offset: 0, level: 0 },
+      { offset: 24, level: 0 },
+      { offset: 53, level: 0 },
+      { offset: 97, level: 0 },
+    ],
+  );
+  assert.deepEqual(syndrome.items.map((item) => textOf(item.content)), [
+    "Lesão cerebral pós PCR",
+    "Disfunção miocárdica pós PCR",
+    "Isquemia sistêmica e resposta de reperfusão",
+    "Patologia aguda e crônica persistente que pode ter precipitado a PCR",
+  ]);
+});
+
+test("hierarquias clínicas são verticais e tabelas não forçam rolagem horizontal", () => {
+  assert.doesNotMatch(ebookReader, /sm:grid-cols-2/);
+  assert.match(ebookReader, /max-w-full overflow-hidden/);
+  assert.match(ebookReader, /compactHeading/);
+});
+
+test("limiares de dose permanecem inteiros e recebem leitura vertical", () => {
+  const coronary = content.chapters.find((chapter) => chapter.slug === "sindromes-coronarianas");
+  const thresholds = splitRichSteps(coronary.blocks[82].rows[1][0]).map(textOf);
+  assert.ok(thresholds.some((item) => item.startsWith("<75 anos: 30 mg EV bolus")));
+  assert.ok(thresholds.some((item) => item.startsWith("≥75 anos: sem bolus EV")));
+  assert.ok(thresholds.some((item) => item.startsWith("ClCr <30: 1 mg/kg SC 1x/dia")));
 });
 
 test("tabelas multidimensionais só separam itens nos marcadores explícitos do conteúdo", () => {
