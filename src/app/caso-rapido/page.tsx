@@ -5,7 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
-import { QUICK_COMPLAINTS, type QuickComplaint } from "@/lib/clinical-quick-complaints";
+import {
+  findQuickComplaint,
+  QUICK_COMPLAINTS,
+  type QuickComplaint,
+} from "@/lib/clinical-quick-complaints";
 import {
   Activity,
   ArrowUpRight,
@@ -169,11 +173,6 @@ const CASE_PROFILES: Record<string, CaseProfile> = {
 
 function getProfile(complaintTitle: string) {
   return CASE_PROFILES[complaintTitle] || DEFAULT_PROFILE;
-}
-
-function getComplaintByTitle(title: string) {
-  const normalized = title.trim().toLowerCase();
-  return QUICK_COMPLAINTS.find((item) => item.title.toLowerCase() === normalized) || null;
 }
 
 function buildHref(path: string, query: string) {
@@ -415,10 +414,7 @@ export default function CasoRapidoPage() {
   }, [searchParams]);
 
   const activeComplaint = useMemo(() => {
-    return getComplaintByTitle(complaint) || QUICK_COMPLAINTS.find((item) => {
-      const value = complaint.trim().toLowerCase();
-      return value && item.terms.some((term) => term.toLowerCase().includes(value));
-    }) || null;
+    return findQuickComplaint(complaint);
   }, [complaint]);
 
   const workingComplaint = activeComplaint?.title || complaint.trim();

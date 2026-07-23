@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ModulePageHeader from "@/components/module-page-header";
 import {
   Activity,
   AlertTriangle,
@@ -411,26 +412,20 @@ export default function MetricasPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-            Dashboard clínico
-          </span>
-
-          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-            Atualizado em {formatDate(new Date().toISOString())}
-          </span>
-        </div>
-
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-          Métricas clínicas e de risco
-        </h1>
-
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          Visão rápida dos pacientes, prescrições e fatores clínicos estruturados do seu ResiBook.
-          Esse painel ajuda a identificar grupos de risco, padrões de prescrição e pontos que merecem mais atenção.
-        </p>
-      </section>
+      <ModulePageHeader
+        eyebrow="Inteligência do seu acervo"
+        title="Métricas clínicas e de risco"
+        description="Visão rápida dos pacientes, prescrições e fatores clínicos estruturados para identificar padrões e pontos que pedem atenção."
+        badges={[
+          { label: "Dados privados", tone: "emerald" },
+          { label: `Atualizado em ${formatDate(new Date().toISOString())}`, tone: "slate" },
+        ]}
+        metrics={[
+          { label: "Pacientes", value: metrics.patientCount },
+          { label: "Prescrições", value: metrics.prescriptionCount },
+          { label: "Risco elevado", value: metrics.highRiskPatients.length },
+        ]}
+      />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <Card
