@@ -25,6 +25,7 @@ const OPERATIONS_ROUTES = [
   "/metricas",
   "/dados-da-conta",
   "/acessos",
+  "/suporte",
 ];
 const SHIFT_ROUTES = ["/plantao", "/caso-rapido", "/consulta-audio"];
 const PUBLIC_ROUTES = [
@@ -32,7 +33,6 @@ const PUBLIC_ROUTES = [
   "/login",
   "/redefinir-senha",
   "/aceite-legal",
-  "/suporte",
   "/termos",
   "/privacidade",
 ];

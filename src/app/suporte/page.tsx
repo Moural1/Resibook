@@ -14,33 +14,25 @@ import {
   SUPPORT_PHONE,
   SUPPORT_PHONE_LINK,
 } from "@/lib/support";
+import ModulePageHeader from "@/components/module-page-header";
 
 export default function SuportePage() {
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-              Suporte
-            </span>
-
-            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              Atendimento e ajuda
-            </span>
-          </div>
-
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-            Central de suporte
-          </h1>
-
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Canal oficial para dúvidas, problemas de acesso, correções no sistema
-            e suporte administrativo do ResiBook.
-          </p>
-        </div>
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <ModulePageHeader
+        eyebrow="Atendimento Resibook"
+        title="Central de suporte"
+        description="Canal oficial para dúvidas, problemas de acesso, correções no sistema e suporte administrativo."
+        badges={[
+          { label: "Atendimento direto", tone: "cyan" },
+          { label: "Privacidade protegida", tone: "emerald" },
+        ]}
+        metrics={[
+          { label: "Canais", value: "E-mail e WhatsApp" },
+          { label: "Ajuda", value: "Técnica e administrativa" },
+        ]}
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
@@ -91,7 +83,7 @@ export default function SuportePage() {
             </div>
           </div>
         </div>
-      </section>
+      </ModulePageHeader>
 
       <section className="grid gap-4 xl:grid-cols-3">
         <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">

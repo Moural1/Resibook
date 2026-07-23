@@ -7,14 +7,17 @@ import {
   getCalculatorInitialValues,
   validateCalculatorValues,
 } from "../src/lib/clinical-calculators.ts";
+import { getClinicalSearchTerms } from "../src/lib/clinical-quick-complaints.ts";
 
 const curb65 = clinicalCalculators.find(({ id }) => id === "curb65");
 const ascvdRisk = clinicalCalculators.find(({ id }) => id === "ascvd-risk");
 const centor = clinicalCalculators.find(({ id }) => id === "centor-mcisaac");
+const ckdEpi2021 = clinicalCalculators.find(({ id }) => id === "ckd-epi-2021");
 
 assert.ok(curb65, "A calculadora CURB-65 precisa existir.");
 assert.ok(ascvdRisk, "A calculadora de risco cardiovascular ASCVD precisa existir.");
 assert.ok(centor, "A calculadora Centor/McIsaac precisa existir.");
+assert.ok(ckdEpi2021, "A calculadora CKD-EPI 2021 precisa existir.");
 
 function validCurb(overrides = {}) {
   return {
@@ -150,4 +153,42 @@ test("Centor/McIsaac aplica corretamente o ajuste de idade", () => {
   assert.equal(calculateClinicalScore("centor-mcisaac", { ...base, age: 14 }).value, "1");
   assert.equal(calculateClinicalScore("centor-mcisaac", { ...base, age: 15 }).value, "0");
   assert.equal(calculateClinicalScore("centor-mcisaac", { ...base, age: 45 }).value, "-1");
+});
+
+test("CKD-EPI 2021 reproduz os casos de teste oficiais da NKF", () => {
+  const cases = [
+    { age: 18, sex: "male", creatinine: 0.9, expected: "127" },
+    { age: 18, sex: "male", creatinine: 0.91, expected: "125" },
+    { age: 18, sex: "female", creatinine: 0.7, expected: "128" },
+    { age: 18, sex: "female", creatinine: 0.71, expected: "126" },
+    { age: 90, sex: "male", creatinine: 0.5, expected: "97" },
+    { age: 90, sex: "male", creatinine: 1.5, expected: "44" },
+    { age: 90, sex: "female", creatinine: 0.5, expected: "89" },
+    { age: 90, sex: "female", creatinine: 1.5, expected: "33" },
+  ];
+
+  for (const item of cases) {
+    assert.equal(calculateClinicalScore("ckd-epi-2021", item).value, item.expected);
+  }
+});
+
+test("CKD-EPI 2021 é restrita a adultos e não diagnostica DRC isoladamente", () => {
+  assert.match(
+    validateCalculatorValues(ckdEpi2021, { age: 17, sex: "male", creatinine: 1 }),
+    /18/
+  );
+  const result = calculateClinicalScore("ckd-epi-2021", {
+    age: 30,
+    sex: "female",
+    creatinine: 0.7,
+  });
+  assert.match(result.limitations, /não confirma doença renal crônica/i);
+  assert.match(result.limitations, /lesão renal aguda/i);
+});
+
+test("busca por dor torácica não expande para outras síndromes dolorosas", () => {
+  const terms = getClinicalSearchTerms("Dor torácica");
+  assert.ok(terms.some((term) => /infarto/i.test(term)));
+  assert.ok(!terms.some((term) => /lombalgia/i.test(term)));
+  assert.ok(!terms.some((term) => /apendicite/i.test(term)));
 });

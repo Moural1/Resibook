@@ -8,7 +8,7 @@ import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
 import { getSearchScore } from "@/lib/search";
 import {
-  getClinicalSearchTerms,
+  findQuickComplaint,
   QUICK_COMPLAINTS,
   type QuickComplaint,
 } from "@/lib/clinical-quick-complaints";
@@ -50,10 +50,6 @@ function normalize(value?: string | null) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
-}
-
-function normalizeForMatch(value?: string | null) {
-  return normalize(value).replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function formatLabel(value?: string | null, fallback = "Não informado") {
@@ -113,26 +109,7 @@ function buildPreview(value?: string | null) {
 }
 
 function findComplaintForQuery(query: string) {
-  const normalizedQuery = normalizeForMatch(query);
-
-  if (!normalizedQuery) return null;
-
-  return (
-    QUICK_COMPLAINTS.find((complaint) => {
-      const normalizedTitle = normalizeForMatch(complaint.title);
-      const normalizedTerms = complaint.terms.map(normalizeForMatch);
-
-      return [normalizedTitle, ...normalizedTerms].some((term) => {
-        return (
-          term.includes(normalizedQuery) ||
-          normalizedQuery.includes(term) ||
-          normalizedQuery
-            .split(" ")
-            .some((token) => token.length > 2 && term.includes(token))
-        );
-      });
-    }) || null
-  );
+  return findQuickComplaint(query);
 }
 
 function buildModuleHref(path: string, query: string) {
@@ -142,9 +119,7 @@ function buildModuleHref(path: string, query: string) {
 }
 
 function rankConductsByClinicalSearch(items: Flashcard[], query: string) {
-  const terms = getClinicalSearchTerms(query);
-
-  if (!query.trim() || terms.length === 0) return items;
+  if (!query.trim()) return items;
 
   return items
     .map((item, index) => {
@@ -156,9 +131,7 @@ function rankConductsByClinicalSearch(items: Flashcard[], query: string) {
         { value: item.verso, weight: 2 },
       ];
 
-      const score = Math.max(
-        ...terms.map((term) => getSearchScore(fields, term))
-      );
+      const score = getSearchScore(fields, query);
 
       return { item, index, score };
     })

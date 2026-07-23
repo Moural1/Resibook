@@ -997,6 +997,90 @@ const cockcroftGault: ClinicalCalculator = {
   },
 };
 
+const ckdEpi2021: ClinicalCalculator = {
+  id: "ckd-epi-2021",
+  name: "CKD-EPI 2021 (creatinina)",
+  shortName: "CKD-EPI 2021",
+  category: "Nefrologia e dose",
+  description: "Estimativa da taxa de filtração glomerular em adultos pela equação CKD-EPI 2021 sem coeficiente racial.",
+  fields: [
+    numberField("age", "Idade", "anos", 18, 120),
+    numberField(
+      "creatinine",
+      "Creatinina sérica",
+      "mg/dL",
+      0.1,
+      20,
+      0.01,
+      "Utilize creatinina padronizada por método rastreável ao IDMS."
+    ),
+    selectField(
+      "sex",
+      "Sexo utilizado pela equação",
+      [
+        { value: "male", label: "Masculino" },
+        { value: "female", label: "Feminino" },
+      ],
+      "male",
+      "A equação possui coeficientes distintos para sexo masculino e feminino."
+    ),
+  ],
+  reference: {
+    label: "National Kidney Foundation — CKD-EPI Creatinine Equation (2021)",
+    url: "https://www.kidney.org/ckd-epi-creatinine-equation-2021",
+  },
+  calculate(values) {
+    const age = num(values, "age");
+    const creatinine = num(values, "creatinine");
+    if ([age, creatinine].some((value) => value === null) || creatinine! <= 0) return null;
+
+    const female = selected(values, "sex") === "female";
+    const kappa = female ? 0.7 : 0.9;
+    const alpha = female ? -0.241 : -0.302;
+    const creatinineRatio = creatinine! / kappa;
+    const egfr =
+      142 *
+      Math.pow(Math.min(creatinineRatio, 1), alpha) *
+      Math.pow(Math.max(creatinineRatio, 1), -1.2) *
+      Math.pow(0.9938, age!) *
+      (female ? 1.012 : 1);
+    const rounded = Math.round(egfr);
+
+    const classification =
+      egfr >= 90
+        ? "G1 — TFG normal ou elevada"
+        : egfr >= 60
+          ? "G2 — redução leve da TFG"
+          : egfr >= 45
+            ? "G3a — redução leve a moderada da TFG"
+            : egfr >= 30
+              ? "G3b — redução moderada a grave da TFG"
+              : egfr >= 15
+                ? "G4 — redução grave da TFG"
+                : "G5 — falência renal";
+
+    const recommendation =
+      egfr < 60
+        ? "Confirmar cronicidade, avaliar albuminúria e tendência da função renal e correlacionar com o contexto clínico."
+        : "Interpretar em conjunto com albuminúria, outros marcadores de lesão renal e evolução temporal.";
+
+    return result(
+      String(rounded),
+      "mL/min/1,73 m²",
+      classification,
+      `TFG estimada pela CKD-EPI 2021 baseada em creatinina = ${rounded} mL/min/1,73 m².`,
+      recommendation,
+      "Válida para adultos e creatinina estável. Não usar isoladamente em lesão renal aguda. Extremos de massa muscular, dieta e fármacos que alteram a creatinina podem reduzir a precisão; considerar cistatina C ou medida de TFG quando maior exatidão mudar a conduta. A categoria G1 ou G2 isolada não confirma doença renal crônica.",
+      `CKD-EPI 2021: TFG estimada = ${rounded} mL/min/1,73 m² (${classification}). ${recommendation}`,
+      [
+        `Creatinina: ${creatinine!.toFixed(2)} mg/dL`,
+        `Idade: ${age} anos`,
+        "Equação de 2021 sem coeficiente racial",
+      ]
+    );
+  },
+};
+
 const anionGap: ClinicalCalculator = {
   id: "anion-gap",
   name: "Ânion gap",
@@ -1156,6 +1240,7 @@ export const clinicalCalculators: ClinicalCalculator[] = [
   hasBled,
   glasgow,
   cockcroftGault,
+  ckdEpi2021,
   anionGap,
   centor,
   bmi,

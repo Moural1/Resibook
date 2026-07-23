@@ -286,6 +286,33 @@ function normalize(value: string) {
     .trim();
 }
 
+export function findQuickComplaint(query: string) {
+  const normalizedQuery = normalize(query);
+  if (!normalizedQuery) return null;
+
+  const exactTitle = QUICK_COMPLAINTS.find(
+    (complaint) => normalize(complaint.title) === normalizedQuery
+  );
+  if (exactTitle) return exactTitle;
+
+  const exactAliases = QUICK_COMPLAINTS.filter((complaint) =>
+    complaint.terms.some((term) => normalize(term) === normalizedQuery)
+  );
+  if (exactAliases.length === 1) return exactAliases[0];
+
+  if (normalizedQuery.length < 4) return null;
+
+  const titleMatches = QUICK_COMPLAINTS.filter((complaint) => {
+    const normalizedTitle = normalize(complaint.title);
+    return (
+      normalizedTitle.includes(normalizedQuery) ||
+      normalizedQuery.includes(normalizedTitle)
+    );
+  });
+
+  return titleMatches.length === 1 ? titleMatches[0] : null;
+}
+
 export function getClinicalSearchTerms(query: string) {
   const normalizedQuery = normalize(query);
 
@@ -293,22 +320,10 @@ export function getClinicalSearchTerms(query: string) {
 
   const expanded = new Set<string>([query, normalizedQuery]);
 
-  for (const complaint of QUICK_COMPLAINTS) {
-    const normalizedTitle = normalize(complaint.title);
-    const normalizedTerms = complaint.terms.map(normalize);
-    const searchableTerms = [normalizedTitle, ...normalizedTerms];
-    const matched = searchableTerms.some((term) => {
-      return (
-        term.includes(normalizedQuery) ||
-        normalizedQuery.includes(term) ||
-        normalizedQuery.split(" ").some((token) => token.length > 2 && term.includes(token))
-      );
-    });
-
-    if (matched) {
-      expanded.add(complaint.title);
-      for (const term of complaint.terms) expanded.add(term);
-    }
+  const complaint = findQuickComplaint(query);
+  if (complaint) {
+    expanded.add(complaint.title);
+    for (const term of complaint.terms) expanded.add(term);
   }
 
   return Array.from(expanded).filter(Boolean);
