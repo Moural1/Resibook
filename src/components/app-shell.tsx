@@ -594,6 +594,7 @@ export default function AppShell({ children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const checkedInitialAccessRef = useRef(false);
+  const previousPathnameRef = useRef(pathname);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
@@ -753,7 +754,10 @@ export default function AppShell({ children }: Props) {
   }, [pathname, router, hideShell]);
 
   useEffect(() => {
-    setMobileOpen(false);
+    if (previousPathnameRef.current !== pathname) {
+      setMobileOpen(false);
+      previousPathnameRef.current = pathname;
+    }
   }, [pathname]);
 
   useEffect(() => {
