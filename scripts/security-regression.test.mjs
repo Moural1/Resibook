@@ -452,6 +452,20 @@ test("checkout Pix orienta comprovante, status e renovação manual", () => {
   assert.match(subscription, /Gere um novo pedido Pix para renovar/);
 });
 
+test("contas isentas não permanecem na tela de assinatura", () => {
+  const subscribePage = readFileSync(
+    new URL("../src/app/assinar/page.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(subscribePage, /isSubscriptionExempt\(user\)/);
+  assert.match(subscribePage, /redirect\("\/dashboard"\)/);
+  assert.ok(
+    subscribePage.indexOf("isSubscriptionExempt(user)") <
+      subscribePage.indexOf('.from("manual_pix_orders")')
+  );
+});
+
 test("ECG guiado associa imagem local com checklist sem laudo automático", () => {
   const page = readFileSync(
     new URL("../src/app/ecg-guiado/page.tsx", import.meta.url),
