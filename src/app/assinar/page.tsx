@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isSubscriptionExempt } from "@/lib/auth-role";
 import { getBillingRuntimeConfig } from "@/lib/billing/config";
 import {
   getManualPixConfig,
@@ -12,6 +14,11 @@ export default async function AssinarPage() {
   const pixConfig = getManualPixConfig();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  if (isSubscriptionExempt(user)) {
+    redirect("/dashboard");
+  }
+
   const { data: manualPixOrder } = user ? await supabase
     .from("manual_pix_orders")
     .select("id, plan_id, status, amount, customer_email, customer_name, notes, created_at, approved_at, rejected_at")
