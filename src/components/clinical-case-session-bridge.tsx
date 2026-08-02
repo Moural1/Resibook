@@ -285,8 +285,8 @@ export default function ClinicalCaseSessionBridge() {
     { label: "Conduta", href: `/condutas?busca=${query}`, icon: Search },
     { label: "Risco", href: `/plantao/checklist-risco?q=${query}`, icon: ShieldCheck },
     { label: "Plano", href: `/plantao/prescricao-guiada?q=${query}`, icon: ClipboardCheck },
-    { label: "SBAR", href: "/plantao/sbar", icon: FileText },
-    { label: "Pendências", href: "/plantao/pendencias", icon: ListChecks },
+    { label: "SBAR", href: `/plantao/sbar?q=${query}`, icon: FileText },
+    { label: "Pendências", href: `/plantao/pendencias?q=${query}`, icon: ListChecks },
     { label: "Alta", href: `/plantao/alta-segura?q=${query}`, icon: LogOut },
   ];
 

@@ -8,16 +8,54 @@ import {
   validateCalculatorValues,
 } from "../src/lib/clinical-calculators.ts";
 import { getClinicalSearchTerms } from "../src/lib/clinical-quick-complaints.ts";
+import {
+  buildContextualShiftHref,
+  buildGenericShiftPlanGuide,
+  resolveClinicalShiftContext,
+} from "../src/lib/clinical-shift-context.ts";
 
 const curb65 = clinicalCalculators.find(({ id }) => id === "curb65");
 const ascvdRisk = clinicalCalculators.find(({ id }) => id === "ascvd-risk");
 const centor = clinicalCalculators.find(({ id }) => id === "centor-mcisaac");
 const ckdEpi2021 = clinicalCalculators.find(({ id }) => id === "ckd-epi-2021");
+const preeclampsiaAspirinRisk = clinicalCalculators.find(
+  ({ id }) => id === "preeclampsia-aspirin-risk"
+);
 
 assert.ok(curb65, "A calculadora CURB-65 precisa existir.");
 assert.ok(ascvdRisk, "A calculadora de risco cardiovascular ASCVD precisa existir.");
 assert.ok(centor, "A calculadora Centor/McIsaac precisa existir.");
 assert.ok(ckdEpi2021, "A calculadora CKD-EPI 2021 precisa existir.");
+assert.ok(
+  preeclampsiaAspirinRisk,
+  "A triagem de risco de pré-eclâmpsia para AAS precisa existir."
+);
+
+function validPreeclampsiaRisk(overrides = {}) {
+  return {
+    gestationalAge: 12,
+    maternalAge: 30,
+    prepregnancyBmi: 25,
+    priorPreeclampsia: false,
+    multiplePregnancy: false,
+    chronicHypertension: false,
+    pregestationalDiabetes: false,
+    renalDisease: false,
+    autoimmuneDisease: false,
+    nulliparity: false,
+    familyHistory: false,
+    lowSocioeconomicStatus: false,
+    afrodescendant: false,
+    personalLowBirthWeight: false,
+    priorAdversePregnancy: false,
+    longPregnancyInterval: false,
+    aspirinNsaidAllergy: false,
+    aspirinBronchospasm: false,
+    activeBleedingOrUlcer: false,
+    severeHepaticDisease: false,
+    ...overrides,
+  };
+}
 
 function validCurb(overrides = {}) {
   return {
@@ -29,6 +67,28 @@ function validCurb(overrides = {}) {
     dbp: 80,
     confusion: false,
     ...overrides,
+  };
+}
+
+function clinicalCaseSession(complaint) {
+  return {
+    complaint,
+    age: "42 anos",
+    sex: "Feminino",
+    severity: "Urgência",
+    vitals: {
+      pa: "130x80",
+      fc: "88",
+      fr: "18",
+      temp: "36,7",
+      spo2: "98",
+      glicemia: "96",
+    },
+    redFlags: "",
+    notes: "Caso em acompanhamento",
+    alerts: [],
+    priorities: ["Reavaliar resposta clínica"],
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -184,6 +244,108 @@ test("CKD-EPI 2021 é restrita a adultos e não diagnostica DRC isoladamente", (
   });
   assert.match(result.limitations, /não confirma doença renal crônica/i);
   assert.match(result.limitations, /lesão renal aguda/i);
+});
+
+test("triagem de pré-eclâmpsia indica avaliação para AAS com um fator alto", () => {
+  const result = calculateClinicalScore(
+    "preeclampsia-aspirin-risk",
+    validPreeclampsiaRisk({ chronicHypertension: true })
+  );
+  assert.equal(result.value, "Sim");
+  assert.match(result.classification, /critério clínico.*presente/i);
+  assert.match(result.recommendation, /considerar profilaxia com AAS/i);
+});
+
+test("triagem de pré-eclâmpsia exige dois fatores moderados", () => {
+  const oneModerate = calculateClinicalScore(
+    "preeclampsia-aspirin-risk",
+    validPreeclampsiaRisk({ nulliparity: true })
+  );
+  assert.equal(oneModerate.value, "Não");
+  assert.match(oneModerate.classification, /um fator moderado/i);
+
+  const twoModerate = calculateClinicalScore(
+    "preeclampsia-aspirin-risk",
+    validPreeclampsiaRisk({ nulliparity: true, familyHistory: true })
+  );
+  assert.equal(twoModerate.value, "Sim");
+  assert.match(twoModerate.interpretation, /2 fator\(es\) de risco moderado/i);
+});
+
+test("idade e IMC respeitam os limites do protocolo de pré-eclâmpsia", () => {
+  const ageBoundary = calculateClinicalScore(
+    "preeclampsia-aspirin-risk",
+    validPreeclampsiaRisk({ maternalAge: 35, nulliparity: true })
+  );
+  assert.equal(ageBoundary.value, "Sim");
+
+  const bmiBoundary = calculateClinicalScore(
+    "preeclampsia-aspirin-risk",
+    validPreeclampsiaRisk({ prepregnancyBmi: 30 })
+  );
+  assert.equal(bmiBoundary.value, "Não");
+
+  const bmiAboveBoundary = calculateClinicalScore(
+    "preeclampsia-aspirin-risk",
+    validPreeclampsiaRisk({ prepregnancyBmi: 30.1 })
+  );
+  assert.equal(bmiAboveBoundary.value, "Sim");
+});
+
+test("alerta de segurança impede recomendação automática de AAS", () => {
+  const result = calculateClinicalScore(
+    "preeclampsia-aspirin-risk",
+    validPreeclampsiaRisk({ priorPreeclampsia: true, aspirinNsaidAllergy: true })
+  );
+  assert.equal(result.value, "Sim");
+  assert.match(result.classification, /alerta de segurança/i);
+  assert.match(result.recommendation, /não prescrever automaticamente/i);
+  assert.match(result.limitations, /não é uma prescrição/i);
+});
+
+test("triagem de pré-eclâmpsia exige resposta explícita em todos os critérios", () => {
+  assert.match(
+    validateCalculatorValues(
+      preeclampsiaAspirinRisk,
+      validPreeclampsiaRisk({ renalDisease: "" })
+    ),
+    /Sim.*Não/i
+  );
+});
+
+test("queixa da navegação substitui sessão antiga no fluxo do plantão", () => {
+  const context = resolveClinicalShiftContext(
+    "dor abdominal",
+    clinicalCaseSession("Vertigem")
+  );
+
+  assert.equal(context.complaint, "Dor abdominal");
+  assert.equal(context.session, null);
+  assert.equal(context.source, "query");
+});
+
+test("sessão do mesmo caso acompanha Plano e Pendências", () => {
+  const saved = clinicalCaseSession("Vertigem");
+  const context = resolveClinicalShiftContext("tontura", saved);
+
+  assert.equal(context.complaint, "Vertigem");
+  assert.equal(context.session, saved);
+  assert.match(
+    buildContextualShiftHref("/plantao/pendencias", context.complaint),
+    /pendencias\?q=Vertigem$/
+  );
+});
+
+test("Plano genérico mantém a queixa ativa em vez de cair em outro modelo", () => {
+  const guide = buildGenericShiftPlanGuide("pielonefrite", [
+    "Reavaliar febre e sinais vitais",
+  ]);
+
+  assert.equal(guide.title, "pielonefrite");
+  assert.doesNotMatch(guide.title, /dor torácica/i);
+  assert.deepEqual(guide.reassessment, [
+    "Reavaliar febre e sinais vitais",
+  ]);
 });
 
 test("busca por dor torácica não expande para outras síndromes dolorosas", () => {
