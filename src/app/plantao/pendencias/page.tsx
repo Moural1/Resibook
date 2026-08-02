@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CopyButton from "../../../components/copy-button";
 import { formatCaseContext, formatCaseIdentification, loadClinicalCaseSession } from "@/lib/clinical-case-session";
+import { buildCaseRouting } from "@/lib/clinical-case-routing";
+import { resolveClinicalShiftContext } from "@/lib/clinical-shift-context";
 import { ArrowLeft, ClipboardCheck, Clock3, FileSearch, ListChecks, MessageSquareText, ShieldAlert, Stethoscope } from "lucide-react";
 
 type PendingKey = "exams" | "reassessment" | "medications" | "consults" | "destination" | "alerts";
@@ -34,26 +37,62 @@ function buildPendingText({ patient, priority, owner, values }: { patient: strin
 }
 
 export default function PendingMapPage() {
+  const searchParams = useSearchParams();
   const [patient, setPatient] = useState("");
   const [priority, setPriority] = useState<(typeof PRIORITY_OPTIONS)[number]>("Moderada");
   const [owner, setOwner] = useState("");
   const [values, setValues] = useState<Record<PendingKey, string>>({ exams: "", reassessment: "", medications: "", consults: "", destination: "", alerts: "" });
-  const [hasSessionContext, setHasSessionContext] = useState(false);
+  const [contextLabel, setContextLabel] = useState("");
 
   useEffect(() => {
-    const saved = loadClinicalCaseSession();
-    if (!saved) return;
-    setPatient(formatCaseIdentification(saved));
-    setPriority(saved.severity === "Emergência" ? "Crítica" : saved.severity === "Urgência" ? "Alta" : saved.severity === "Observação" ? "Moderada" : "Baixa");
-    setOwner("Reavaliar evolução, pendências e destino.");
-    setValues((current) => ({
-      ...current,
-      reassessment: saved.priorities.join("\n"),
+    const query = searchParams.get("q") || searchParams.get("busca") || "";
+    const context = resolveClinicalShiftContext(
+      query,
+      loadClinicalCaseSession()
+    );
+    if (!context.complaint) return;
+
+    const saved = context.session;
+    const routing = buildCaseRouting(context.complaint);
+    const priorities = saved?.priorities.length
+      ? saved.priorities
+      : routing.priorities;
+
+    setPatient(
+      saved ? formatCaseIdentification(saved) : context.complaint
+    );
+    setPriority(
+      saved?.severity === "Emergência"
+        ? "Crítica"
+        : saved?.severity === "Urgência"
+          ? "Alta"
+          : saved?.severity === "Observação"
+            ? "Moderada"
+            : saved?.severity === "Baixa complexidade"
+              ? "Baixa"
+              : "Moderada"
+    );
+    setOwner(`Reavaliar ${context.complaint}, pendências e destino.`);
+    setValues({
+      exams: "",
+      medications: "",
+      consults: "",
+      reassessment: priorities.join("\n"),
       destination: "Definir após reavaliação clínica e resultados pendentes.",
-      alerts: [saved.alerts.join("\n"), saved.redFlags.trim(), formatCaseContext(saved)].filter(Boolean).join("\n"),
-    }));
-    setHasSessionContext(true);
-  }, []);
+      alerts: saved
+        ? [
+            saved.alerts.join("\n"),
+            saved.redFlags.trim(),
+            formatCaseContext(saved),
+          ]
+            .filter(Boolean)
+            .join("\n")
+        : `Queixa ativa: ${context.complaint}`,
+    });
+    setContextLabel(
+      saved ? "Caso em andamento aplicado" : "Queixa do fluxo aplicada"
+    );
+  }, [searchParams]);
 
   const pendingCount = PENDING_BLOCKS.filter((block) => values[block.key].trim()).length;
   const text = useMemo(() => buildPendingText({ patient, priority, owner, values }), [patient, priority, owner, values]);
@@ -71,7 +110,7 @@ export default function PendingMapPage() {
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">Organize o que ainda precisa ser visto, reavaliado ou decidido antes de passar o caso.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {hasSessionContext ? <span className="inline-flex h-10 items-center rounded-2xl border border-cyan-200 bg-cyan-50 px-3 text-xs font-semibold text-cyan-800">Caso em andamento aplicado</span> : null}
+              {contextLabel ? <span className="inline-flex h-10 items-center rounded-2xl border border-cyan-200 bg-cyan-50 px-3 text-xs font-semibold text-cyan-800">{contextLabel}</span> : null}
               <CopyButton text={text} label="Copiar pendências" copiedLabel="Pendências copiadas" />
             </div>
           </div>

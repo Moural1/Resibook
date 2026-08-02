@@ -8,6 +8,11 @@ import {
   validateCalculatorValues,
 } from "../src/lib/clinical-calculators.ts";
 import { getClinicalSearchTerms } from "../src/lib/clinical-quick-complaints.ts";
+import {
+  buildContextualShiftHref,
+  buildGenericShiftPlanGuide,
+  resolveClinicalShiftContext,
+} from "../src/lib/clinical-shift-context.ts";
 
 const curb65 = clinicalCalculators.find(({ id }) => id === "curb65");
 const ascvdRisk = clinicalCalculators.find(({ id }) => id === "ascvd-risk");
@@ -62,6 +67,28 @@ function validCurb(overrides = {}) {
     dbp: 80,
     confusion: false,
     ...overrides,
+  };
+}
+
+function clinicalCaseSession(complaint) {
+  return {
+    complaint,
+    age: "42 anos",
+    sex: "Feminino",
+    severity: "Urgência",
+    vitals: {
+      pa: "130x80",
+      fc: "88",
+      fr: "18",
+      temp: "36,7",
+      spo2: "98",
+      glicemia: "96",
+    },
+    redFlags: "",
+    notes: "Caso em acompanhamento",
+    alerts: [],
+    priorities: ["Reavaliar resposta clínica"],
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -284,6 +311,41 @@ test("triagem de pré-eclâmpsia exige resposta explícita em todos os critério
     ),
     /Sim.*Não/i
   );
+});
+
+test("queixa da navegação substitui sessão antiga no fluxo do plantão", () => {
+  const context = resolveClinicalShiftContext(
+    "dor abdominal",
+    clinicalCaseSession("Vertigem")
+  );
+
+  assert.equal(context.complaint, "Dor abdominal");
+  assert.equal(context.session, null);
+  assert.equal(context.source, "query");
+});
+
+test("sessão do mesmo caso acompanha Plano e Pendências", () => {
+  const saved = clinicalCaseSession("Vertigem");
+  const context = resolveClinicalShiftContext("tontura", saved);
+
+  assert.equal(context.complaint, "Vertigem");
+  assert.equal(context.session, saved);
+  assert.match(
+    buildContextualShiftHref("/plantao/pendencias", context.complaint),
+    /pendencias\?q=Vertigem$/
+  );
+});
+
+test("Plano genérico mantém a queixa ativa em vez de cair em outro modelo", () => {
+  const guide = buildGenericShiftPlanGuide("pielonefrite", [
+    "Reavaliar febre e sinais vitais",
+  ]);
+
+  assert.equal(guide.title, "pielonefrite");
+  assert.doesNotMatch(guide.title, /dor torácica/i);
+  assert.deepEqual(guide.reassessment, [
+    "Reavaliar febre e sinais vitais",
+  ]);
 });
 
 test("busca por dor torácica não expande para outras síndromes dolorosas", () => {

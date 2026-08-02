@@ -14,6 +14,11 @@ import {
   ShieldCheck,
   Workflow,
 } from "lucide-react";
+import {
+  CLINICAL_CASE_SESSION_EVENT,
+  loadClinicalCaseSession,
+} from "@/lib/clinical-case-session";
+import { buildContextualShiftHref } from "@/lib/clinical-shift-context";
 
 const SHIFT_TOOLS = [
   { href: "/plantao", label: "Central", icon: Activity },
@@ -30,6 +35,15 @@ const SHIFT_TOOLS = [
   { href: "/plantao/alta-segura", label: "Alta", icon: LogOut },
 ];
 
+const CONTEXTUAL_SHIFT_PATHS = new Set([
+  "/caso-rapido",
+  "/plantao/sbar",
+  "/plantao/pendencias",
+  "/plantao/checklist-risco",
+  "/plantao/prescricao-guiada",
+  "/plantao/alta-segura",
+]);
+
 function isActive(pathname: string, href: string) {
   return pathname === href;
 }
@@ -37,10 +51,28 @@ function isActive(pathname: string, href: string) {
 export default function ShiftToolNavigator() {
   const pathname = usePathname();
   const [mountNode, setMountNode] = useState<HTMLDivElement | null>(null);
+  const [activeComplaint, setActiveComplaint] = useState("");
   const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
   const isShiftTool =
     pathname === "/caso-rapido" ||
     (pathname.startsWith("/plantao/") && pathname !== "/plantao");
+
+  useEffect(() => {
+    function refreshActiveCase() {
+      setActiveComplaint(loadClinicalCaseSession()?.complaint || "");
+    }
+
+    refreshActiveCase();
+    window.addEventListener(
+      CLINICAL_CASE_SESSION_EVENT,
+      refreshActiveCase
+    );
+    return () =>
+      window.removeEventListener(
+        CLINICAL_CASE_SESSION_EVENT,
+        refreshActiveCase
+      );
+  }, []);
 
   useEffect(() => {
     if (!isShiftTool) return;
@@ -80,11 +112,14 @@ export default function ShiftToolNavigator() {
         {SHIFT_TOOLS.map((tool) => {
           const Icon = tool.icon;
           const active = isActive(pathname, tool.href);
+          const href = CONTEXTUAL_SHIFT_PATHS.has(tool.href)
+            ? buildContextualShiftHref(tool.href, activeComplaint)
+            : tool.href;
 
           return (
             <Link
               key={tool.href}
-              href={tool.href}
+              href={href}
               ref={active ? activeLinkRef : undefined}
               aria-current={active ? "page" : undefined}
               style={

@@ -7,6 +7,14 @@ import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
 import ResibookGuard from "@/components/resibook-guard";
 import {
+  clinicalComplaintsMatch,
+  buildContextualShiftHref,
+} from "@/lib/clinical-shift-context";
+import {
+  loadClinicalCaseSession,
+  saveClinicalCaseSession,
+} from "@/lib/clinical-case-session";
+import {
   findQuickComplaint,
   QUICK_COMPLAINTS,
   type QuickComplaint,
@@ -513,6 +521,41 @@ export default function CasoRapidoPage() {
     reassessment,
   });
 
+  useEffect(() => {
+    if (!workingComplaint) return;
+
+    const previous = loadClinicalCaseSession();
+    const sameCase = Boolean(
+      previous &&
+        clinicalComplaintsMatch(previous.complaint, workingComplaint)
+    );
+
+    saveClinicalCaseSession({
+      complaint: workingComplaint,
+      age,
+      sex,
+      severity,
+      vitals,
+      redFlags,
+      notes,
+      alerts: alerts.map((item) => item.label),
+      priorities: firstHourTasks,
+      selectedCid: sameCase ? previous?.selectedCid || null : null,
+      reassessment: sameCase ? previous?.reassessment || null : null,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [
+    age,
+    alerts,
+    firstHourTasks,
+    notes,
+    redFlags,
+    severity,
+    sex,
+    vitals,
+    workingComplaint,
+  ]);
+
   function updateVital(key: keyof typeof vitals, value: string) {
     setVitals((current) => ({ ...current, [key]: value }));
   }
@@ -784,7 +827,9 @@ export default function CasoRapidoPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+              <ModuleLink href={buildContextualShiftHref("/plantao/prescricao-guiada", workingComplaint)} title="Plano guiado" icon={ClipboardCheck} />
+              <ModuleLink href={buildContextualShiftHref("/plantao/pendencias", workingComplaint)} title="Pendências" icon={ClipboardCheck} />
               <ModuleLink href={buildHref("/condutas", workingComplaint)} title="Condutas" icon={ClipboardList} />
               <ModuleLink href={buildHref("/prescricao", workingComplaint)} title="Prescrição" icon={ClipboardList} />
               <ModuleLink href={buildHref("/exames-evolucao", workingComplaint)} title="Exames / evolução" icon={FileText} />

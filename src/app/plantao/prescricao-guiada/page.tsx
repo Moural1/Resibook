@@ -6,6 +6,17 @@ import { useSearchParams } from "next/navigation";
 import CopyButton from "../../../components/copy-button";
 import ResibookGuard from "@/components/resibook-guard";
 import {
+  buildGenericShiftPlanGuide,
+  clinicalComplaintsMatch,
+  resolveClinicalShiftContext,
+  type ShiftPlanGuide,
+} from "@/lib/clinical-shift-context";
+import {
+  formatCaseContext,
+  loadClinicalCaseSession,
+  type ClinicalCaseSession,
+} from "@/lib/clinical-case-session";
+import {
   ArrowLeft,
   ClipboardCheck,
   ClipboardList,
@@ -14,16 +25,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 
-type PrescriptionGuide = {
-  title: string;
-  focus: string;
-  symptomBlocks: string[];
-  exams: string[];
-  safety: string[];
-  reassessment: string[];
-};
-
-const GUIDES: PrescriptionGuide[] = [
+const GUIDES: ShiftPlanGuide[] = [
   {
     title: "Dor torácica",
     focus: "Priorizar risco cardiovascular/respiratório antes de sintomáticos.",
@@ -164,9 +166,13 @@ const GUIDES: PrescriptionGuide[] = [
   },
 ];
 
-const DEFAULT_GUIDE = GUIDES[0];
+function findPrescriptionGuide(complaint: string) {
+  return GUIDES.find((item) =>
+    clinicalComplaintsMatch(item.title, complaint)
+  );
+}
 
-function buildPrescriptionText(guide: PrescriptionGuide, notes: string) {
+function buildPrescriptionText(guide: ShiftPlanGuide, notes: string) {
   return [
     "PRESCRIÇÃO GUIADA - RESIBOOK",
     `Síndrome: ${guide.title}`,
@@ -192,25 +198,49 @@ function buildPrescriptionText(guide: PrescriptionGuide, notes: string) {
 
 export default function GuidedPrescriptionPage() {
   const searchParams = useSearchParams();
-  const [selectedTitle, setSelectedTitle] = useState(DEFAULT_GUIDE.title);
+  const [selectedTitle, setSelectedTitle] = useState("");
+  const [activeComplaint, setActiveComplaint] = useState("");
+  const [activeSession, setActiveSession] =
+    useState<ClinicalCaseSession | null>(null);
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    const query = searchParams.get("q")?.trim().toLowerCase();
-    if (!query) return;
+    const query = searchParams.get("q") || searchParams.get("busca") || "";
+    const context = resolveClinicalShiftContext(
+      query,
+      loadClinicalCaseSession()
+    );
+    const matched = findPrescriptionGuide(context.complaint);
 
-    const matched = GUIDES.find((item) => {
-      const title = item.title.toLowerCase();
-      return title === query || title.includes(query) || query.includes(title);
-    });
-
-    if (matched) {
-      setSelectedTitle(matched.title);
-    }
+    setActiveComplaint(context.complaint);
+    setActiveSession(context.session);
+    setSelectedTitle(matched?.title || context.complaint || "Caso clínico");
+    setNotes(
+      context.session
+        ? formatCaseContext(context.session)
+        : context.complaint
+          ? `Queixa ativa: ${context.complaint}`
+          : ""
+    );
   }, [searchParams]);
 
+  const contextualGuide = useMemo(
+    () =>
+      buildGenericShiftPlanGuide(
+        activeComplaint,
+        activeSession?.priorities || []
+      ),
+    [activeComplaint, activeSession]
+  );
+  const matchedActiveGuide = findPrescriptionGuide(activeComplaint);
+  const guideOptions = matchedActiveGuide
+    ? GUIDES
+    : [contextualGuide, ...GUIDES];
   const guide =
-    GUIDES.find((item) => item.title === selectedTitle) || DEFAULT_GUIDE;
+    GUIDES.find((item) => item.title === selectedTitle) ||
+    (selectedTitle === contextualGuide.title ? contextualGuide : null) ||
+    matchedActiveGuide ||
+    contextualGuide;
   const copyText = useMemo(() => buildPrescriptionText(guide, notes), [guide, notes]);
 
   return (
@@ -238,6 +268,11 @@ export default function GuidedPrescriptionPage() {
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
                 Organize sintomas, exames, pontos de segurança e reavaliação antes de fechar a prescrição do plantão.
               </p>
+              {activeComplaint ? (
+                <span className="mt-3 inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
+                  Caso ativo: {activeComplaint}
+                </span>
+              ) : null}
             </div>
 
             <CopyButton text={copyText} label="Copiar plano" copiedLabel="Plano copiado" />
@@ -251,7 +286,7 @@ export default function GuidedPrescriptionPage() {
                 Síndrome
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {GUIDES.map((item) => (
+                {guideOptions.map((item) => (
                   <button
                     key={item.title}
                     type="button"
