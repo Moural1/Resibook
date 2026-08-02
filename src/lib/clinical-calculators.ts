@@ -16,6 +16,7 @@ export type CalculatorField = {
   max?: number;
   step?: number;
   help?: string;
+  group?: string;
   options?: CalculatorOption[];
   required?: boolean;
   unitByValue?: {
@@ -65,8 +66,13 @@ function selected(values: CalculatorValues, id: string) {
   return String(values[id] ?? "");
 }
 
-function checkbox(id: string, label: string, help?: string): CalculatorField {
-  return { id, label, type: "boolean", defaultValue: "", help, required: true };
+function checkbox(
+  id: string,
+  label: string,
+  help?: string,
+  group?: string
+): CalculatorField {
+  return { id, label, type: "boolean", defaultValue: "", help, group, required: true };
 }
 
 function numberField(
@@ -1187,6 +1193,230 @@ const centor: ClinicalCalculator = {
   },
 };
 
+const preeclampsiaAspirinRisk: ClinicalCalculator = {
+  id: "preeclampsia-aspirin-risk",
+  name: "Risco de pré-eclâmpsia e indicação de AAS",
+  shortName: "Pré-eclâmpsia / AAS",
+  category: "Obstetrícia",
+  description:
+    "Triagem clínica para profilaxia de pré-eclâmpsia: pelo menos 1 fator de alto risco ou 2 fatores de risco moderado.",
+  fields: [
+    numberField(
+      "gestationalAge",
+      "Idade gestacional atual",
+      "semanas",
+      4,
+      42,
+      0.1,
+      "O resultado orienta a avaliação do momento de início, sem gerar prescrição automática."
+    ),
+    numberField(
+      "maternalAge",
+      "Idade materna",
+      "anos",
+      10,
+      60,
+      1,
+      "Idade ≥ 35 anos conta como fator de risco moderado."
+    ),
+    numberField(
+      "prepregnancyBmi",
+      "IMC pré-gestacional ou da primeira consulta",
+      "kg/m²",
+      10,
+      80,
+      0.1,
+      "IMC > 30 kg/m² conta como fator de alto risco neste protocolo."
+    ),
+    checkbox(
+      "priorPreeclampsia",
+      "História de pré-eclâmpsia, sobretudo com desfecho adverso",
+      undefined,
+      "Alto risco — 1 fator já preenche o critério"
+    ),
+    checkbox(
+      "multiplePregnancy",
+      "Gestação múltipla",
+      undefined,
+      "Alto risco — 1 fator já preenche o critério"
+    ),
+    checkbox(
+      "chronicHypertension",
+      "Hipertensão arterial crônica",
+      undefined,
+      "Alto risco — 1 fator já preenche o critério"
+    ),
+    checkbox(
+      "pregestationalDiabetes",
+      "Diabetes tipo 1 ou tipo 2",
+      undefined,
+      "Alto risco — 1 fator já preenche o critério"
+    ),
+    checkbox(
+      "renalDisease",
+      "Doença renal",
+      undefined,
+      "Alto risco — 1 fator já preenche o critério"
+    ),
+    checkbox(
+      "autoimmuneDisease",
+      "Doença autoimune, como lúpus ou síndrome antifosfolípide",
+      undefined,
+      "Alto risco — 1 fator já preenche o critério"
+    ),
+    checkbox(
+      "nulliparity",
+      "Nuliparidade",
+      undefined,
+      "Risco moderado — são necessários 2 ou mais fatores"
+    ),
+    checkbox(
+      "familyHistory",
+      "História familiar de pré-eclâmpsia em mãe ou irmã",
+      undefined,
+      "Risco moderado — são necessários 2 ou mais fatores"
+    ),
+    checkbox(
+      "lowSocioeconomicStatus",
+      "Baixo nível socioeconômico",
+      undefined,
+      "Risco moderado — são necessários 2 ou mais fatores"
+    ),
+    checkbox(
+      "afrodescendant",
+      "Etnia afrodescendente",
+      undefined,
+      "Risco moderado — são necessários 2 ou mais fatores"
+    ),
+    checkbox(
+      "personalLowBirthWeight",
+      "História pessoal de baixo peso ao nascer",
+      undefined,
+      "Risco moderado — são necessários 2 ou mais fatores"
+    ),
+    checkbox(
+      "priorAdversePregnancy",
+      "Gravidez prévia com desfecho adverso",
+      undefined,
+      "Risco moderado — são necessários 2 ou mais fatores"
+    ),
+    checkbox(
+      "longPregnancyInterval",
+      "Intervalo maior que 10 anos desde a última gestação",
+      undefined,
+      "Risco moderado — são necessários 2 ou mais fatores"
+    ),
+    checkbox(
+      "aspirinNsaidAllergy",
+      "Alergia ou hipersensibilidade a AAS, salicilatos ou AINEs",
+      undefined,
+      "Segurança antes de considerar AAS"
+    ),
+    checkbox(
+      "aspirinBronchospasm",
+      "Broncoespasmo ou reação respiratória induzida por AAS/AINE",
+      undefined,
+      "Segurança antes de considerar AAS"
+    ),
+    checkbox(
+      "activeBleedingOrUlcer",
+      "Sangramento ativo ou úlcera péptica ativa",
+      undefined,
+      "Segurança antes de considerar AAS"
+    ),
+    checkbox(
+      "severeHepaticDisease",
+      "Disfunção hepática grave",
+      undefined,
+      "Segurança antes de considerar AAS"
+    ),
+  ],
+  reference: {
+    label: "Ministério da Saúde — Linha de Cuidado do Pré-natal de Baixo Risco",
+    url: "https://linhasdecuidado.saude.gov.br/portal/pre-natal-baixo-risco/unidade-de-atencao-primaria/planejamento-terapeutico/",
+  },
+  calculate(values) {
+    const gestationalAge = num(values, "gestationalAge");
+    const maternalAge = num(values, "maternalAge");
+    const prepregnancyBmi = num(values, "prepregnancyBmi");
+    if ([gestationalAge, maternalAge, prepregnancyBmi].some((value) => value === null)) {
+      return null;
+    }
+
+    const highRiskFactors = [
+      [yes(values, "priorPreeclampsia"), "história de pré-eclâmpsia"],
+      [yes(values, "multiplePregnancy"), "gestação múltipla"],
+      [prepregnancyBmi! > 30, "IMC > 30 kg/m²"],
+      [yes(values, "chronicHypertension"), "hipertensão arterial crônica"],
+      [yes(values, "pregestationalDiabetes"), "diabetes tipo 1 ou 2"],
+      [yes(values, "renalDisease"), "doença renal"],
+      [yes(values, "autoimmuneDisease"), "doença autoimune"],
+    ] as const;
+    const moderateRiskFactors = [
+      [yes(values, "nulliparity"), "nuliparidade"],
+      [yes(values, "familyHistory"), "história familiar de pré-eclâmpsia"],
+      [yes(values, "lowSocioeconomicStatus"), "baixo nível socioeconômico"],
+      [yes(values, "afrodescendant"), "etnia afrodescendente"],
+      [maternalAge! >= 35, "idade materna ≥ 35 anos"],
+      [yes(values, "personalLowBirthWeight"), "história pessoal de baixo peso ao nascer"],
+      [yes(values, "priorAdversePregnancy"), "gravidez prévia com desfecho adverso"],
+      [yes(values, "longPregnancyInterval"), "intervalo > 10 anos desde a última gestação"],
+    ] as const;
+    const safetyAlerts = [
+      [yes(values, "aspirinNsaidAllergy"), "alergia/hipersensibilidade a AAS, salicilatos ou AINEs"],
+      [yes(values, "aspirinBronchospasm"), "reação respiratória induzida por AAS/AINE"],
+      [yes(values, "activeBleedingOrUlcer"), "sangramento ou úlcera péptica ativa"],
+      [yes(values, "severeHepaticDisease"), "disfunção hepática grave"],
+    ] as const;
+
+    const presentHighRisk = highRiskFactors.filter(([active]) => active).map(([, label]) => label);
+    const presentModerateRisk = moderateRiskFactors
+      .filter(([active]) => active)
+      .map(([, label]) => label);
+    const presentSafetyAlerts = safetyAlerts.filter(([active]) => active).map(([, label]) => label);
+    const meetsProphylaxisCriterion =
+      presentHighRisk.length >= 1 || presentModerateRisk.length >= 2;
+    const hasSafetyAlert = presentSafetyAlerts.length > 0;
+
+    const timing =
+      gestationalAge! < 12
+        ? "Se confirmada a indicação, planejar o início em torno de 12 semanas."
+        : gestationalAge! <= 16
+          ? "A paciente está na janela inicial da profilaxia; confirmar a prescrição conforme o protocolo local."
+          : "Como a gestação já ultrapassou 16 semanas, confirmar o benefício do início neste momento com a obstetrícia e o protocolo local.";
+
+    const classification = hasSafetyAlert
+      ? "Alerta de segurança para uso de AAS"
+      : meetsProphylaxisCriterion
+        ? "Critério clínico para profilaxia presente"
+        : presentModerateRisk.length === 1
+          ? "Um fator moderado isolado"
+          : "Critério clínico não identificado";
+    const interpretation = `Identificados ${presentHighRisk.length} fator(es) de alto risco e ${presentModerateRisk.length} fator(es) de risco moderado. Pelo critério do Ministério da Saúde, a profilaxia é indicada com pelo menos 1 fator alto ou 2 fatores moderados.`;
+    const recommendation = hasSafetyAlert
+      ? `Não prescrever automaticamente. Há ${presentSafetyAlerts.length} alerta(s) de segurança que exigem avaliação individual antes de considerar AAS, mesmo quando o critério de risco está presente.`
+      : meetsProphylaxisCriterion
+        ? `Há critério clínico para considerar profilaxia com AAS. Confirmar contraindicações, interações, anticoagulação, risco de sangramento e protocolo institucional. ${timing}`
+        : "A combinação informada não preenche o critério clínico deste protocolo para profilaxia com AAS. Manter avaliação pré-natal e reavaliar se surgirem novos fatores de risco.";
+    const breakdown = [
+      ...presentHighRisk.map((item) => `Alto risco: ${item}`),
+      ...presentModerateRisk.map((item) => `Risco moderado: ${item}`),
+      ...presentSafetyAlerts.map((item) => `Segurança: ${item}`),
+    ];
+
+    return result(
+      meetsProphylaxisCriterion ? "Sim" : "Não",
+      "critério para profilaxia",
+      classification,
+      interpretation,
+      recommendation,
+      "Esta ferramenta não estima uma porcentagem individual de risco, não diagnostica pré-eclâmpsia e não substitui avaliação obstétrica. O resultado não é uma prescrição: dose, início, duração e suspensão do AAS devem seguir avaliação clínica e protocolo local. Sintomas ou hipertensão na gestação exigem avaliação própria, independentemente desta triagem.",
+      `Triagem de risco para pré-eclâmpsia: ${presentHighRisk.length} fator(es) de alto risco e ${presentModerateRisk.length} fator(es) moderado(s). Critério para profilaxia com AAS: ${meetsProphylaxisCriterion ? "presente" : "não identificado"}. ${classification}. ${recommendation}`,
+      breakdown.length ? breakdown : ["Nenhum fator de risco informado"]
+    );
+  },
+};
+
 const bmi: ClinicalCalculator = {
   id: "bmi",
   name: "Índice de Massa Corporal",
@@ -1243,6 +1473,7 @@ export const clinicalCalculators: ClinicalCalculator[] = [
   ckdEpi2021,
   anionGap,
   centor,
+  preeclampsiaAspirinRisk,
   bmi,
 ];
 

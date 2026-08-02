@@ -307,6 +307,15 @@ function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator })
   const booleanFields = calculator.fields.filter(
     (field) => field.type === "boolean"
   );
+  const booleanGroups = Array.from(
+    booleanFields.reduce((groups, field) => {
+      const group = field.group || "Critérios presentes";
+      const current = groups.get(group) || [];
+      current.push(field);
+      groups.set(group, current);
+      return groups;
+    }, new Map<string, CalculatorField[]>())
+  );
 
   return (
     <div className="space-y-5">
@@ -352,21 +361,25 @@ function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator })
           ) : null}
 
           {booleanFields.length ? (
-            <div>
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Critérios presentes
-              </p>
-              <div className="grid gap-3 xl:grid-cols-2">
-                {booleanFields.map((field) => (
-                  <CalculatorFieldControl
-                    key={field.id}
-                    field={field}
-                    value={values[field.id]}
-                    values={values}
-                    onChange={(value) => updateValue(field.id, value)}
-                  />
-                ))}
-              </div>
+            <div className="space-y-5">
+              {booleanGroups.map(([group, fields]) => (
+                <div key={group}>
+                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {group}
+                  </p>
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    {fields.map((field) => (
+                      <CalculatorFieldControl
+                        key={field.id}
+                        field={field}
+                        value={values[field.id]}
+                        values={values}
+                        onChange={(value) => updateValue(field.id, value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : null}
 
