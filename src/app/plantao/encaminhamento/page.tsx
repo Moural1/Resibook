@@ -121,8 +121,8 @@ export default function AssistedReferralPage() {
   const missingCount = result.completeness.filter((item) => !item.complete).length;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
-      <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-5 overflow-x-hidden">
+      <section className="w-full min-w-0 overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
         <header className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_right,rgba(6,182,212,0.10),transparent_36%),linear-gradient(180deg,#fbfdff_0%,#f8fafc_100%)] p-5 md:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -165,7 +165,7 @@ export default function AssistedReferralPage() {
           </div>
         </header>
 
-        <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[0.98fr_1.02fr]">
+        <div className="grid min-w-0 gap-5 p-4 md:p-5 2xl:grid-cols-[0.98fr_1.02fr]">
           <section className="space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 md:p-5">
               <SectionTitle
@@ -175,7 +175,7 @@ export default function AssistedReferralPage() {
                 description="Defina o serviço e o pedido. O sistema não escolhe prioridade nem especialidade por você."
               />
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
                 <Field label="Especialidade ou serviço">
                   <input
                     value={form.specialty}
@@ -220,7 +220,7 @@ export default function AssistedReferralPage() {
                 description="Aceita texto corrido, tópicos e títulos como HDA, exame, conduta e exames."
               />
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
                 <Field label="Identificação breve (opcional)">
                   <input
                     value={form.patient}
@@ -252,7 +252,16 @@ export default function AssistedReferralPage() {
               </Field>
             </div>
 
-            <details className="group rounded-[24px] border border-slate-200 bg-white p-4 md:p-5">
+            <div className="2xl:hidden">
+              <ReferralFinalEditor
+                text={finalText}
+                generatedText={result.text}
+                onChange={setFinalText}
+                rows={12}
+              />
+            </div>
+
+            <details className="group min-w-0 overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 md:p-5">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -297,13 +306,13 @@ export default function AssistedReferralPage() {
                   />
                 </Field>
                 <Field label="Prioridade definida por você">
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-2 2xl:grid-cols-[repeat(4,minmax(0,1fr))]">
                     {PRIORITIES.map((priority) => (
                       <button
                         key={priority || "not-informed"}
                         type="button"
                         onClick={() => update("priority", priority)}
-                        className={`h-10 rounded-xl border px-3 text-xs font-semibold transition ${
+                        className={`h-10 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-xl border px-2 text-xs font-semibold transition ${
                           form.priority === priority
                             ? "border-slate-950 bg-slate-950 text-white"
                             : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -318,7 +327,16 @@ export default function AssistedReferralPage() {
             </details>
           </section>
 
-          <section className="space-y-4 xl:sticky xl:top-[136px] xl:self-start">
+          <section className="min-w-0 space-y-4 2xl:sticky 2xl:top-[136px] 2xl:self-start">
+            <div className="hidden 2xl:block">
+              <ReferralFinalEditor
+                text={finalText}
+                generatedText={result.text}
+                onChange={setFinalText}
+                rows={17}
+              />
+            </div>
+
             <div className="rounded-[24px] border border-slate-200 bg-slate-950 p-4 text-white md:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -357,7 +375,7 @@ export default function AssistedReferralPage() {
                 <ShieldCheck className="h-5 w-5 text-emerald-600" />
               </div>
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <div className="mt-4 grid min-w-0 gap-2 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
                 {result.completeness.map((item) => (
                   <div
                     key={item.id}
@@ -389,49 +407,6 @@ export default function AssistedReferralPage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between md:p-5">
-                <div>
-                  <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
-                    <Sparkles className="h-3.5 w-3.5" /> Texto organizado
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
-                    Encaminhamento final
-                  </h2>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFinalText(result.text)}
-                    className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" /> Restaurar
-                  </button>
-                  <CopyButton
-                    text={finalText}
-                    label="Copiar texto"
-                    copiedLabel="Texto copiado"
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 md:p-5">
-                <textarea
-                  value={finalText}
-                  onChange={(event) => setFinalText(event.target.value)}
-                  rows={17}
-                  aria-label="Texto final editável do encaminhamento"
-                  className="w-full resize-y rounded-[20px] border border-slate-200 bg-[#fcfcfb] px-5 py-4 font-serif text-[15px] leading-7 text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-50"
-                />
-                <div className="mt-3 flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
-                  <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-                  <p>
-                    Revise o texto antes de usar. O organizador preserva o conteúdo informado,
-                    mas não valida indicação, prioridade, critérios do serviço receptor ou protocolo local.
-                  </p>
-                </div>
-              </div>
-            </div>
           </section>
         </div>
       </section>
@@ -449,10 +424,71 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className={`block ${className}`}>
+    <label className={`block min-w-0 ${className}`}>
       <span className="mb-2 block text-xs font-semibold text-slate-600">{label}</span>
       {children}
     </label>
+  );
+}
+
+function ReferralFinalEditor({
+  text,
+  generatedText,
+  onChange,
+  rows,
+}: {
+  text: string;
+  generatedText: string;
+  onChange: (value: string) => void;
+  rows: number;
+}) {
+  return (
+    <div id="texto-final" className="min-w-0 overflow-hidden rounded-[24px] border border-cyan-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-cyan-100 bg-cyan-50/50 p-4 sm:flex-row sm:items-center sm:justify-between md:p-5">
+        <div>
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+            <Sparkles className="h-3.5 w-3.5" /> Prévia atualizada em tempo real
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+            Encaminhamento final
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Você pode editar livremente o texto abaixo antes de copiar.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onChange(generatedText)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Restaurar
+          </button>
+          <CopyButton
+            text={text}
+            label="Copiar texto"
+            copiedLabel="Texto copiado"
+          />
+        </div>
+      </div>
+
+      <div className="p-4 md:p-5">
+        <textarea
+          value={text}
+          onChange={(event) => onChange(event.target.value)}
+          rows={rows}
+          aria-label="Texto final editável do encaminhamento"
+          className="w-full min-w-0 resize-y rounded-[20px] border border-slate-200 bg-[#fcfcfb] px-5 py-4 font-serif text-[15px] leading-7 text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-50"
+        />
+        <div className="mt-3 flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+          <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+          <p>
+            Revise o texto antes de usar. O organizador preserva o conteúdo informado,
+            mas não valida indicação, prioridade, critérios do serviço receptor ou protocolo local.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
