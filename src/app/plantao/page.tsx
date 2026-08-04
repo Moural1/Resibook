@@ -11,6 +11,7 @@ import {
   ListChecks,
   LogOut,
   Search,
+  Send,
   ShieldAlert,
   ShieldCheck,
   Stethoscope,
@@ -42,6 +43,12 @@ const SHIFT_ACTIONS = [
     description: "Organize exames, reavaliações e decisões antes da troca.",
     href: "/plantao/pendencias",
     icon: ListChecks,
+  },
+  {
+    title: "Encaminhamento assistido",
+    description: "Transforme a anamnese em uma narrativa clara para a referência.",
+    href: "/plantao/encaminhamento",
+    icon: Send,
   },
   {
     title: "Checklist de risco",
@@ -265,6 +272,7 @@ function ComplaintHub({
     { label: "Plano", href: queryHref("/plantao/prescricao-guiada", title) },
     { label: "Rx", href: queryHref("/prescricao", title) },
     { label: "Exames", href: queryHref("/exames-evolucao", title) },
+    { label: "Encam.", href: queryHref("/plantao/encaminhamento", title) },
     { label: "Alta", href: queryHref("/plantao/alta-segura", title) },
     { label: "CID", href: queryHref("/cids", title) },
   ];
@@ -281,7 +289,7 @@ function ComplaintHub({
       </div>
       <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500">{description}</p>
 
-      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-7">
+      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-4 xl:grid-cols-8">
         {actions.map((action) => (
           <Link
             key={action.label}
