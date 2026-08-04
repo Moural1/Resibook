@@ -11,6 +11,7 @@ import {
   ListChecks,
   LogOut,
   Search,
+  Send,
   ShieldCheck,
   Stethoscope,
   X,
@@ -287,6 +288,7 @@ export default function ClinicalCaseSessionBridge() {
     { label: "Plano", href: `/plantao/prescricao-guiada?q=${query}`, icon: ClipboardCheck },
     { label: "SBAR", href: `/plantao/sbar?q=${query}`, icon: FileText },
     { label: "Pendências", href: `/plantao/pendencias?q=${query}`, icon: ListChecks },
+    { label: "Encaminhar", href: `/plantao/encaminhamento?q=${query}`, icon: Send },
     { label: "Alta", href: `/plantao/alta-segura?q=${query}`, icon: LogOut },
   ];
 

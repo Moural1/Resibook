@@ -27,6 +27,7 @@ import {
   FileText,
   Gauge,
   Search,
+  Send,
   ShieldAlert,
   Stethoscope,
   Tags,
@@ -830,6 +831,7 @@ export default function CasoRapidoPage() {
             <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
               <ModuleLink href={buildContextualShiftHref("/plantao/prescricao-guiada", workingComplaint)} title="Plano guiado" icon={ClipboardCheck} />
               <ModuleLink href={buildContextualShiftHref("/plantao/pendencias", workingComplaint)} title="Pendências" icon={ClipboardCheck} />
+              <ModuleLink href={buildContextualShiftHref("/plantao/encaminhamento", workingComplaint)} title="Encaminhamento" icon={Send} />
               <ModuleLink href={buildHref("/condutas", workingComplaint)} title="Condutas" icon={ClipboardList} />
               <ModuleLink href={buildHref("/prescricao", workingComplaint)} title="Prescrição" icon={ClipboardList} />
               <ModuleLink href={buildHref("/exames-evolucao", workingComplaint)} title="Exames / evolução" icon={FileText} />

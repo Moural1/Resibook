@@ -9,6 +9,11 @@ import {
 } from "../src/lib/clinical-calculators.ts";
 import { getClinicalSearchTerms } from "../src/lib/clinical-quick-complaints.ts";
 import {
+  assessClinicalReferralCompleteness,
+  buildClinicalReferral,
+  parseClinicalReferralSource,
+} from "../src/lib/clinical-referral.ts";
+import {
   buildContextualShiftHref,
   buildGenericShiftPlanGuide,
   resolveClinicalShiftContext,
@@ -353,4 +358,87 @@ test("busca por dor torácica não expande para outras síndromes dolorosas", ()
   assert.ok(terms.some((term) => /infarto/i.test(term)));
   assert.ok(!terms.some((term) => /lombalgia/i.test(term)));
   assert.ok(!terms.some((term) => /apendicite/i.test(term)));
+});
+
+test("encaminhamento assistido transforma blocos explícitos em narrativa contínua", () => {
+  const result = buildClinicalReferral({
+    patient: "Paciente de 58 anos, hipertenso e diabético",
+    complaint: "dor em joelho direito",
+    specialty: "Ortopedia",
+    request: "avaliação e definição de tratamento especializado",
+    sourceText: [
+      "HDA: dor há oito meses, com piora progressiva aos esforços.",
+      "Exame físico: dor à mobilização e redução da amplitude de movimento.",
+      "Exames: radiografia com sinais de osteoartrose.",
+      "Conduta: analgesia e fisioterapia sem melhora satisfatória.",
+    ].join("\n"),
+    priorCare: "",
+    functionalImpact: "limitação para caminhar e trabalhar",
+    clinicalReason:
+      "a persistência dos sintomas apesar do tratamento e o prejuízo funcional progressivo",
+    priority: "Prioritário",
+  });
+
+  assert.match(result.text, /^Encaminho paciente de 58 anos/i);
+  assert.match(result.text, /equipe de Ortopedia/i);
+  assert.match(result.text, /dor há oito meses/i);
+  assert.match(result.text, /dor à mobilização/i);
+  assert.match(result.text, /radiografia com sinais de osteoartrose/i);
+  assert.match(result.text, /analgesia e fisioterapia/i);
+  assert.match(result.text, /Solicito avaliação e definição/i);
+  assert.ok(!/HDA:|Exame físico:|Conduta:/i.test(result.text));
+});
+
+test("organizador preserva texto não classificado e não inventa dado clínico", () => {
+  const source =
+    "Paciente relata cefaleia intermitente. Nega febre. Sem exames realizados.";
+  const result = buildClinicalReferral({
+    patient: "",
+    complaint: "cefaleia",
+    specialty: "Neurologia",
+    request: "avaliação especializada",
+    sourceText: source,
+    priorCare: "",
+    functionalImpact: "",
+    clinicalReason: "persistência do quadro",
+    priority: "",
+  });
+
+  assert.match(result.text, /Paciente relata cefaleia intermitente/i);
+  assert.match(result.text, /Nega febre/i);
+  assert.match(result.text, /Sem exames realizados/i);
+  assert.ok(!/tomografia|ressonância|déficit neurológico/i.test(result.text));
+});
+
+test("parser reconhece títulos clínicos e mantém cada conteúdo no bloco correto", () => {
+  const sections = parseClinicalReferralSource(
+    "QP: lombalgia\nHDA:\n- início há 3 semanas\nEF: Lasègue negativo\nConduta: analgesia"
+  );
+
+  assert.deepEqual(sections.complaint, ["lombalgia"]);
+  assert.deepEqual(sections.history, ["início há 3 semanas"]);
+  assert.deepEqual(sections.exam, ["Lasègue negativo"]);
+  assert.deepEqual(sections.treatment, ["analgesia"]);
+});
+
+test("checagem do encaminhamento aponta lacunas sem bloquear o texto", () => {
+  const input = {
+    patient: "",
+    complaint: "dor no ombro",
+    specialty: "",
+    request: "",
+    sourceText: "Dor no ombro.",
+    priorCare: "",
+    functionalImpact: "",
+    clinicalReason: "",
+    priority: "",
+  };
+  const items = assessClinicalReferralCompleteness(input);
+  const result = buildClinicalReferral(input);
+
+  assert.equal(items.find(({ id }) => id === "destination").complete, false);
+  assert.equal(items.find(({ id }) => id === "reason").complete, false);
+  assert.equal(items.find(({ id }) => id === "request").complete, false);
+  assert.match(result.text, /Encaminho paciente/i);
+  assert.match(result.text, /Solicito avaliação e definição de conduta/i);
 });

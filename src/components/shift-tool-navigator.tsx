@@ -11,6 +11,7 @@ import {
   Gauge,
   ListChecks,
   LogOut,
+  Send,
   ShieldCheck,
   Workflow,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const SHIFT_TOOLS = [
   { href: "/caso-rapido", label: "Caso rápido", icon: Gauge },
   { href: "/plantao/sbar", label: "SBAR", icon: FileText },
   { href: "/plantao/pendencias", label: "Pendências", icon: ListChecks },
+  { href: "/plantao/encaminhamento", label: "Encaminhar", icon: Send },
   { href: "/plantao/checklist-risco", label: "Risco", icon: ShieldCheck },
   {
     href: "/plantao/prescricao-guiada",
@@ -39,6 +41,7 @@ const CONTEXTUAL_SHIFT_PATHS = new Set([
   "/caso-rapido",
   "/plantao/sbar",
   "/plantao/pendencias",
+  "/plantao/encaminhamento",
   "/plantao/checklist-risco",
   "/plantao/prescricao-guiada",
   "/plantao/alta-segura",
