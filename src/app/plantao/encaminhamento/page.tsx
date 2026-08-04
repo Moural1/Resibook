@@ -165,8 +165,8 @@ export default function AssistedReferralPage() {
           </div>
         </header>
 
-        <div className="grid min-w-0 gap-5 p-4 md:p-5 2xl:grid-cols-[0.98fr_1.02fr]">
-          <section className="space-y-4">
+        <div className="min-w-0 space-y-5 p-4 md:p-5">
+          <section className="min-w-0 space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 md:p-5">
               <SectionTitle
                 icon={Send}
@@ -252,14 +252,12 @@ export default function AssistedReferralPage() {
               </Field>
             </div>
 
-            <div className="2xl:hidden">
-              <ReferralFinalEditor
-                text={finalText}
-                generatedText={result.text}
-                onChange={setFinalText}
-                rows={12}
-              />
-            </div>
+            <ReferralFinalEditor
+              text={finalText}
+              generatedText={result.text}
+              onChange={setFinalText}
+              rows={12}
+            />
 
             <details className="group min-w-0 overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 md:p-5">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
@@ -306,7 +304,7 @@ export default function AssistedReferralPage() {
                   />
                 </Field>
                 <Field label="Prioridade definida por você">
-                  <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-2 2xl:grid-cols-[repeat(4,minmax(0,1fr))]">
+                  <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-2">
                     {PRIORITIES.map((priority) => (
                       <button
                         key={priority || "not-informed"}
@@ -327,16 +325,7 @@ export default function AssistedReferralPage() {
             </details>
           </section>
 
-          <section className="min-w-0 space-y-4 2xl:sticky 2xl:top-[136px] 2xl:self-start">
-            <div className="hidden 2xl:block">
-              <ReferralFinalEditor
-                text={finalText}
-                generatedText={result.text}
-                onChange={setFinalText}
-                rows={17}
-              />
-            </div>
-
+          <section className="min-w-0 space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-slate-950 p-4 text-white md:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
