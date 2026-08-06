@@ -72,6 +72,35 @@ test("contas internas ficam isentas da cobrança sem receber permissão administ
   assert.equal(isSubscriptionExempt({ email: "medico@example.com" }), false);
 });
 
+test("contas internas leem todo o banco de prescrições sem ganhar escrita administrativa", () => {
+  const migration = readFileSync(
+    new URL(
+      "../supabase/migrations/20260806120000_full_clinical_access_prescriptions.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+  for (const email of [
+    "liviarosa@resibook.com",
+    "convidado@resibook.com",
+    "thiagoyan@resibook.com",
+    "isabellaestevo@resibook.com",
+  ]) {
+    assert.match(migration, new RegExp(email.replace(".", "\\.")));
+  }
+
+  assert.match(migration, /create policy prescription_templates_clinical_read/);
+  assert.match(
+    migration,
+    /for select to authenticated[\s\S]*review_status = 'revisado'[\s\S]*public\.has_resibook_full_clinical_access\(\)/
+  );
+  assert.doesNotMatch(
+    migration,
+    /for (insert|update|delete)[\s\S]*has_resibook_full_clinical_access/i
+  );
+});
+
 test("edição biblioteca bloqueia IA clínica e consultas também nas APIs", () => {
   assert.equal(isDisabledCommercialRoute("/consulta-audio"), true);
   assert.equal(isDisabledCommercialRoute("/api/ai/case-review"), true);
