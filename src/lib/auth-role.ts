@@ -1,6 +1,7 @@
 export const LEGACY_ADMIN_EMAIL = "igormoura@resibook.com";
 
 const SUBSCRIPTION_EXEMPT_EMAILS = new Set([
+  "igormouralopes@hotmail.com",
   "liviarosa@resibook.com",
   "convidado@resibook.com",
   "thiagoyan@resibook.com",
