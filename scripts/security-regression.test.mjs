@@ -39,6 +39,33 @@ import {
   verifyMercadoPagoSignature,
 } from "../src/lib/billing/security.ts";
 
+test("full catalog follows the real entitlement without granting admin", () => {
+  const email = "igormouralopes@hotmail.com";
+  const migration = readFileSync(
+    new URL(
+      "../supabase/migrations/20260808120000_prescription_access_by_entitlement.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+  assert.equal(isSubscriptionExempt({ email }), true);
+  assert.equal(isResibookAdmin({ email }), false);
+  assert.match(migration, /igormouralopes@hotmail\.com/);
+  assert.match(migration, /from public\.billing_subscriptions as subscription/);
+  assert.match(migration, /subscription\.user_id = \(select auth\.uid\(\)\)/);
+  assert.match(migration, /subscription\.environment = 'production'/);
+  assert.match(migration, /subscription\.plan_id = 'complete'/);
+  assert.match(migration, /subscription\.status = 'authorized'/);
+  assert.match(migration, /subscription\.status in \('active', 'cancelled'\)/);
+  assert.match(migration, /subscription\.current_period_end > now\(\)/);
+  assert.match(migration, /security invoker/i);
+  assert.doesNotMatch(
+    migration,
+    /for (insert|update|delete)[\s\S]*has_resibook_full_clinical_access/i
+  );
+});
+
 test("carteira de pacientes permanece disponível para usuários autenticados", () => {
   assert.equal(isDisabledCommercialRoute("/pacientes"), false);
   assert.equal(isDisabledCommercialRoute("/pacientes/123"), false);
