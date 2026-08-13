@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import { consumeAiRateLimit } from "@/lib/ai/rate-limit";
+import {
+  detectDirectIdentifier,
+  stringifyClinicalInput,
+} from "@/lib/clinical-privacy";
 import { createClient } from "@/lib/supabase/server";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
@@ -89,6 +94,7 @@ async function callOpenAiVision(input: {
     },
     body: JSON.stringify({
       model: input.model,
+      max_output_tokens: 1_600,
       input: [
         {
           role: "user",
@@ -99,6 +105,7 @@ async function callOpenAiVision(input: {
         },
       ],
     }),
+    signal: AbortSignal.timeout(35_000),
   });
   const payload = await response.json().catch(() => null);
   return { response, payload };
@@ -125,6 +132,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     imageDataUrl?: unknown;
     manualData?: EcgManualData;
+    deidentifiedConfirmed?: unknown;
   } | null;
   if (!validImageDataUrl(body?.imageDataUrl)) {
     return NextResponse.json(
@@ -133,9 +141,57 @@ export async function POST(request: Request) {
     );
   }
 
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > MAX_IMAGE_CHARS + 100_000) {
+    return NextResponse.json(
+      {
+        error: "ecg_payload_too_large",
+        message: "A imagem do ECG ficou grande demais. Recorte ou reduza a foto antes de enviar.",
+      },
+      { status: 413 }
+    );
+  }
+
+  if (body?.deidentifiedConfirmed !== true) {
+    return NextResponse.json(
+      {
+        error: "deidentification_required",
+        message: "Confirme que a imagem e os campos não contêm dados que identifiquem o paciente.",
+      },
+      { status: 400 }
+    );
+  }
+
   const manualData = body?.manualData && typeof body.manualData === "object"
     ? body.manualData
     : {};
+  const serializedManualData = stringifyClinicalInput(manualData, 8_000);
+  if (detectDirectIdentifier(serializedManualData)) {
+    return NextResponse.json(
+      {
+        error: "direct_identifier_detected",
+        message: "Remova nome, documento, telefone, e-mail ou outro identificador direto antes de enviar.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const rateLimit = await consumeAiRateLimit(supabase, "ecg-analyze");
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: rateLimit.unavailable ? "rate_limit_unavailable" : "rate_limit_exceeded",
+        message: rateLimit.unavailable
+          ? "A proteção de uso da IA está temporariamente indisponível. Tente novamente em instantes."
+          : "Limite de análises atingido. Aguarde antes de tentar novamente.",
+      },
+      {
+        status: rateLimit.unavailable ? 503 : 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      }
+    );
+  }
+
   const prompt = [
     "Você é um assistente clínico para leitura estruturada de ECG.",
     "Analise a imagem apenas como apoio visual e cruze com os dados manuais enviados.",
@@ -152,7 +208,7 @@ export async function POST(request: Request) {
     '  "suggestedReview": ["o que o médico deve checar no traçado original"]',
     "}",
     "",
-    `Dados manuais preenchidos: ${JSON.stringify(manualData).slice(0, 8000)}`,
+    `Dados manuais preenchidos: ${serializedManualData}`,
   ].join("\n");
 
   const preferredModel = process.env.RESIBOOK_ECG_AI_MODEL || DEFAULT_ECG_MODEL;

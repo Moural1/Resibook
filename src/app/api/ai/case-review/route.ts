@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { consumeAiRateLimit } from "@/lib/ai/rate-limit";
+import { detectDirectIdentifier } from "@/lib/clinical-privacy";
 import { createClient } from "@/lib/supabase/server";
 
 function publicUrl(request: Request, path: string) {
@@ -15,18 +17,6 @@ type OpenAIResponse = {
   output?: Array<{ content?: Array<{ text?: string }> }>;
   error?: { message?: string };
 };
-
-function detectDirectIdentifier(value: string) {
-  const checks = [
-    { label: "CPF", pattern: /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/ },
-    { label: "CNS", pattern: /\b\d{3}[ .-]?\d{4}[ .-]?\d{4}[ .-]?\d{4}\b/ },
-    { label: "e-mail", pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
-    { label: "telefone", pattern: /(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]\d{4}\b/ },
-    { label: "identificador rotulado", pattern: /\b(?:cpf|cns|telefone|celular|e-?mail)\s*:/i },
-  ];
-
-  return checks.find(({ pattern }) => pattern.test(value))?.label || null;
-}
 
 function extractResponseText(json: OpenAIResponse): string {
   if (typeof json?.output_text === "string" && json.output_text.trim()) {
@@ -56,6 +46,14 @@ function extractResponseText(json: OpenAIResponse): string {
 
 export async function POST(request: Request) {
   try {
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    if (contentLength > 30_000) {
+      return NextResponse.redirect(
+        publicUrl(request, "/consulta-audio?error=length"),
+        { status: 303 }
+      );
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -101,6 +99,19 @@ export async function POST(request: Request) {
     if (identifier) {
       return NextResponse.redirect(
         publicUrl(request, "/consulta-audio?error=identifiers"),
+        { status: 303 }
+      );
+    }
+
+    const rateLimit = await consumeAiRateLimit(supabase, "case-review");
+    if (!rateLimit.allowed) {
+      return NextResponse.redirect(
+        publicUrl(
+          request,
+          rateLimit.unavailable
+            ? "/consulta-audio?error=unavailable"
+            : "/consulta-audio?error=rate-limit"
+        ),
         { status: 303 }
       );
     }
@@ -158,13 +169,18 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           model: "gpt-4.1-mini",
           input: prompt,
+          max_output_tokens: 1_200,
         }),
+        signal: AbortSignal.timeout(30_000),
       });
 
       const json = (await aiResponse.json()) as OpenAIResponse;
 
       if (!aiResponse.ok) {
-        console.error("Falha na análise por IA", aiResponse.status, json?.error?.message);
+        console.error("[ai] case_review_provider_failed", {
+          status: aiResponse.status,
+          providerCode: json?.error ? "provider_error" : "unknown",
+        });
         return NextResponse.redirect(
           publicUrl(request, "/consulta-audio?error=unavailable"),
           { status: 303 }
@@ -203,7 +219,9 @@ export async function POST(request: Request) {
       { status: 303 }
     );
   } catch (error: unknown) {
-    console.error("Falha inesperada ao processar IA", error);
+    console.error("[ai] case_review_unexpected", {
+      errorType: error instanceof Error ? error.name : "unknown",
+    });
 
     return NextResponse.redirect(
       publicUrl(request, "/consulta-audio?error=unexpected"),
