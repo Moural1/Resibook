@@ -8,6 +8,8 @@ import {
   isResibookAdmin,
   isSubscriptionExempt,
 } from "../src/lib/auth-role.ts";
+import { detectDirectIdentifier } from "../src/lib/clinical-privacy.ts";
+import { buildWebhookEventId } from "../src/lib/billing/webhook-event-id.ts";
 import { BILLING_PLANS, MERCADO_PAGO_WEBHOOK_URL } from "../src/lib/billing/plans.ts";
 import {
   getBillingRuntimeConfig,
@@ -38,6 +40,75 @@ import {
   parseExternalReference,
   verifyMercadoPagoSignature,
 } from "../src/lib/billing/security.ts";
+
+test("filtro clínico detecta identificadores diretos sem bloquear dados clínicos comuns", () => {
+  assert.equal(detectDirectIdentifier("CPF: 123.456.789-00"), "cpf");
+  assert.equal(detectDirectIdentifier("nome do paciente: Maria"), "labelled_identifier");
+  assert.equal(detectDirectIdentifier("contato teste@example.com"), "email");
+  assert.equal(detectDirectIdentifier("FC 88 bpm, QRS 90 ms, dor torácica"), null);
+});
+
+test("rotas de IA usam cota atômica sem armazenar conteúdo clínico", () => {
+  const migration = readFileSync(
+    new URL(
+      "../supabase/migrations/20260813120000_critical_security_baseline.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+  const caseRoute = readFileSync(
+    new URL("../src/app/api/ai/case-review/route.ts", import.meta.url),
+    "utf8"
+  );
+  const ecgRoute = readFileSync(
+    new URL("../src/app/api/ecg/analyze/route.ts", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migration, /create table if not exists public\.ai_rate_limit_events/);
+  assert.match(migration, /pg_advisory_xact_lock/);
+  assert.match(migration, /case p_route[\s\S]*case-review[\s\S]*ecg-analyze/);
+  assert.doesNotMatch(migration, /\b(prompt|image|clinical_content)\s+text\b/i);
+  assert.match(caseRoute, /consumeAiRateLimit\(supabase, "case-review"\)/);
+  assert.match(ecgRoute, /consumeAiRateLimit\(supabase, "ecg-analyze"\)/);
+  assert.match(ecgRoute, /deidentifiedConfirmed !== true/);
+});
+
+test("webhook usa identificador do provedor e ledger idempotente", () => {
+  assert.equal(
+    buildWebhookEventId({
+      bodyEventId: 987,
+      requestId: "request-1",
+      notificationType: "payment",
+      dataId: "123",
+    }),
+    "event:987"
+  );
+  assert.equal(
+    buildWebhookEventId({
+      requestId: "request-1",
+      notificationType: "payment",
+      dataId: "123",
+    }),
+    "request:request-1"
+  );
+
+  const migration = readFileSync(
+    new URL(
+      "../supabase/migrations/20260813120000_critical_security_baseline.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+  const route = readFileSync(
+    new URL("../src/app/api/mercado-pago/webhook/route.ts", import.meta.url),
+    "utf8"
+  );
+  assert.match(migration, /unique \(provider, environment, provider_event_id\)/);
+  assert.match(migration, /force row level security/);
+  assert.match(route, /claimWebhookEvent/);
+  assert.match(route, /finishWebhookEvent/);
+});
 
 test("full catalog follows the real entitlement without granting admin", () => {
   const email = "igormouralopes@hotmail.com";

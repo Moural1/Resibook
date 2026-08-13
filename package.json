@@ -7,16 +7,21 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:clinical && npm run test:acls && npm run test:security && npm run test:premium-safety",
     "test:clinical": "node --no-warnings --experimental-strip-types --test scripts/clinical-regression.test.mjs",
     "test:acls": "node --no-warnings --experimental-strip-types --test scripts/acls-content-regression.test.mjs scripts/acls-ebook-source-regression.test.mjs",
     "test:security": "node --no-warnings --experimental-strip-types --test scripts/security-regression.test.mjs",
     "test:premium-safety": "node --no-warnings --experimental-strip-types --test scripts/premium-safety-regression.test.mjs"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "lucide-react": "^1.17.0",
-    "next": "16.2.7",
+    "next": "^16.3.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -26,7 +31,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.7",
+    "eslint-config-next": "^16.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -7,6 +7,12 @@ import {
 import { logBillingError } from "@/lib/billing/logger";
 import { parseExternalReference } from "@/lib/billing/security";
 import {
+  claimWebhookEvent,
+  finishWebhookEvent,
+} from "@/lib/billing/webhook-idempotency";
+import { buildWebhookEventId } from "@/lib/billing/webhook-event-id";
+import {
+  createBillingAdminClient,
   mercadoPagoRequest,
   syncMercadoPagoSubscription,
   verifyMercadoPagoSignature,
@@ -14,6 +20,7 @@ import {
 } from "@/lib/billing/server";
 
 type WebhookBody = {
+  id?: string | number;
   action?: string;
   type?: string;
   data?: { id?: string | number };
@@ -147,11 +154,50 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, ignored: true });
   }
 
+  const admin = createBillingAdminClient();
+  if (!admin) {
+    return NextResponse.json(
+      { error: "Webhook não configurado.", code: "billing_configuration_invalid" },
+      { status: 503 }
+    );
+  }
+
+  const eventId = buildWebhookEventId({
+    bodyEventId: body?.id,
+    requestId: signatureInput.xRequestId,
+    notificationType,
+    dataId,
+    action: body?.action,
+  });
+
   let configurationMissing = false;
+  let ignoredEnvironmentMismatch = false;
   for (const environment of verifiedEnvironments) {
     if (!getMercadoPagoAccessToken(environment)) {
       configurationMissing = true;
       continue;
+    }
+
+    const claim = await claimWebhookEvent({
+      admin,
+      environment,
+      eventId,
+      notificationType,
+      dataId,
+    });
+    if (!claim.claimed) {
+      if ("duplicate" in claim && claim.duplicate) {
+        return NextResponse.json({ received: true, duplicate: true });
+      }
+      logBillingError("webhook_event_claim_failed", {
+        environment,
+        notificationType,
+        databaseCode: "databaseCode" in claim ? claim.databaseCode : "unknown",
+      });
+      return NextResponse.json(
+        { error: "Falha ao registrar evento.", code: "billing_event_ledger_failed" },
+        { status: 503 }
+      );
     }
 
     try {
@@ -163,6 +209,13 @@ export async function POST(request: Request) {
           undefined,
           environment
         );
+        await finishWebhookEvent({
+          admin,
+          environment,
+          eventId,
+          status: "completed",
+          outcome: "ignored_plan_event",
+        });
         return NextResponse.json({ received: true, ignored: true });
       }
 
@@ -174,6 +227,13 @@ export async function POST(request: Request) {
       if (!notification.preapprovalId) {
         // A generic payment may not belong to a Resibook subscription.
         if (notificationType === "payment") {
+          await finishWebhookEvent({
+            admin,
+            environment,
+            eventId,
+            status: "completed",
+            outcome: "ignored_unlinked_payment",
+          });
           return NextResponse.json({ received: true, ignored: true });
         }
         throw new Error("Notificação sem assinatura vinculada.");
@@ -185,20 +245,48 @@ export async function POST(request: Request) {
         environment
       );
       const reference = parseExternalReference(subscription.external_reference);
-      if (!reference || reference.environment !== environment) continue;
+      if (!reference || reference.environment !== environment) {
+        ignoredEnvironmentMismatch = true;
+        await finishWebhookEvent({
+          admin,
+          environment,
+          eventId,
+          status: "completed",
+          outcome: "ignored_environment_mismatch",
+        });
+        continue;
+      }
       await syncMercadoPagoSubscription(subscription, environment, {
         id: notification.paymentId,
         periodStart: notification.periodStart,
         paymentStatus: notification.paymentStatus,
         paymentStatusDetail: notification.paymentStatusDetail,
       });
+      await finishWebhookEvent({
+        admin,
+        environment,
+        eventId,
+        status: "completed",
+        outcome: "subscription_synced",
+      });
       return NextResponse.json({ received: true });
     } catch {
+      await finishWebhookEvent({
+        admin,
+        environment,
+        eventId,
+        status: "failed",
+        outcome: "subscription_sync_failed",
+      });
       logBillingError("webhook_subscription_sync_failed", {
         environment,
         notificationType,
       });
     }
+  }
+
+  if (ignoredEnvironmentMismatch && !configurationMissing) {
+    return NextResponse.json({ received: true, ignored: true });
   }
 
   return NextResponse.json(

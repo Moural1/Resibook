@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useMemo, useState } from "react";
 import { Check, CreditCard, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { BILLING_PLANS, getBillingPlan } from "@/lib/billing/plans";
 
 function CadastroContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const initialPlan = getBillingPlan(searchParams.get("plano")) || BILLING_PLANS.complete;
@@ -47,7 +48,7 @@ function CadastroContent() {
         return;
       }
 
-      if (data.session) window.location.assign(nextPath);
+      if (data.session) router.push(nextPath);
       else setConfirmationSent(true);
     } catch {
       setError("Não foi possível criar a conta agora.");

@@ -257,6 +257,7 @@ export default function EcgGuiadoPage() {
   const [aiAnalysis, setAiAnalysis] = useState<EcgAiAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [deidentifiedConfirmed, setDeidentifiedConfirmed] = useState(false);
   const interpretation = useMemo(() => buildInterpretation(values, aiAnalysis), [values, aiAnalysis]);
   const redFlags = useMemo(() => getRedFlags(values), [values]);
 
@@ -271,6 +272,7 @@ export default function EcgGuiadoPage() {
     setImageDataUrl(null);
     setAiAnalysis(null);
     setAiError("");
+    setDeidentifiedConfirmed(false);
   }
 
   function handleImage(file?: File) {
@@ -279,11 +281,13 @@ export default function EcgGuiadoPage() {
       setImagePreview(null);
       setImageDataUrl(null);
       setAiAnalysis(null);
+      setDeidentifiedConfirmed(false);
       return;
     }
     setImagePreview(URL.createObjectURL(file));
     setAiAnalysis(null);
     setAiError("");
+    setDeidentifiedConfirmed(false);
     const reader = new FileReader();
     reader.onload = () => {
       setImageDataUrl(typeof reader.result === "string" ? reader.result : null);
@@ -296,12 +300,20 @@ export default function EcgGuiadoPage() {
       setAiError("Envie uma imagem do ECG antes de pedir análise visual.");
       return;
     }
+    if (!deidentifiedConfirmed) {
+      setAiError("Confirme que a imagem não mostra nome, documento ou outro identificador do paciente.");
+      return;
+    }
     setAiLoading(true);
     setAiError("");
     const response = await fetch("/api/ecg/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageDataUrl, manualData: values }),
+      body: JSON.stringify({
+        imageDataUrl,
+        manualData: values,
+        deidentifiedConfirmed,
+      }),
     });
     const payload = (await response.json().catch(() => null)) as {
       analysis?: EcgAiAnalysis;
@@ -443,10 +455,22 @@ export default function EcgGuiadoPage() {
                 A imagem ajuda você a conferir o preenchimento, mas o texto é gerado pelos campos estruturados.
               </div>
             )}
+            <label className="mt-4 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-5 text-slate-700">
+              <input
+                type="checkbox"
+                checked={deidentifiedConfirmed}
+                onChange={(event) => setDeidentifiedConfirmed(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-cyan-800"
+              />
+              <span>
+                Confirmo que recortei da imagem e dos campos nome, documento, data de nascimento,
+                telefone e qualquer outro identificador direto do paciente.
+              </span>
+            </label>
             <button
               type="button"
               onClick={() => void analyzeImage()}
-              disabled={!imageDataUrl || aiLoading}
+              disabled={!imageDataUrl || !deidentifiedConfirmed || aiLoading}
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Sparkles className="h-4 w-4" />
