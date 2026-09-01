@@ -130,3 +130,27 @@ test("módulos prioritários compartilham o mesmo cabeçalho clínico", async ()
     assert.match(page, /<ModulePageHeader/);
   }
 });
+
+test("calculadoras funcionam como central clínica com descoberta e continuidade", async () => {
+  const calculators = await source("../src/app/calculadoras/page.tsx");
+
+  for (const area of [
+    "Emergência",
+    "Cardiovascular",
+    "Neuro e trauma",
+    "Rim e metabolismo",
+    "Obstetrícia",
+    "Clínica geral",
+  ]) {
+    assert.match(calculators, new RegExp(area));
+  }
+
+  assert.match(calculators, /Acesso rápido/);
+  assert.match(calculators, /Ferramentas frequentes no atendimento/);
+  assert.match(calculators, /CALCULATOR_FAVORITES_KEY/);
+  assert.match(calculators, /CALCULATOR_RECENTS_KEY/);
+  assert.match(calculators, /calculatorStorageKey\(key, currentUserId\)/);
+  assert.match(calculators, /supabase\.auth\.getSession\(\)/);
+  assert.match(calculators, /role="tablist"/);
+  assert.match(calculators, /router\.replace\(`\/calculadoras\?calculadora=/);
+});
