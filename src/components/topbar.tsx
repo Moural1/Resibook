@@ -23,7 +23,6 @@ import {
   Clock3,
   CornerDownLeft,
   FlaskConical,
-  HeartPulse,
   ListChecks,
   LogOut,
   Search,
@@ -140,21 +139,19 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
   return <Tags className={className} />;
 }
 
+// A busca e a sidebar são as portas universais. O topo mantém apenas ações
+// assistenciais de alta frequência para não competir com o conteúdo da página.
 const fullQuickLinks = [
   ...(PRODUCT_CAPABILITIES.patientRecords
     ? [{ href: "/pacientes", label: "Pacientes", icon: Users }]
     : []),
   { href: "/prescricao", label: "Prescrição", icon: ClipboardList },
-  { href: "/exames-evolucao", label: "Exames", icon: FlaskConical },
-  { href: "/topicos", label: "Tópicos", icon: Stethoscope },
-  { href: "/revisao-topicos", label: "Revisão", icon: BookOpen },
-  { href: "/flashcards", label: "Flashcards", icon: Brain },
   { href: "/condutas", label: "Condutas", icon: Siren },
-  { href: "/cids", label: "CIDs", icon: Tags },
   { href: "/calculadoras", label: "Calculadoras", icon: Calculator },
-  { href: "/ecg-guiado", label: "ECG guiado", icon: HeartPulse },
 ];
-const guestQuickLinks = fullQuickLinks.filter((item) => ["/prescricao", "/exames-evolucao", "/topicos", "/cids"].includes(item.href));
+const guestQuickLinks = fullQuickLinks.filter((item) =>
+  ["/prescricao", "/condutas"].includes(item.href)
+);
 
 export function Topbar() {
   const router = useRouter();
