@@ -1,20 +1,24 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   BookOpen,
   Calculator,
   Check,
   ChevronRight,
+  Clock3,
   RotateCcw,
   Search,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import CopyButton from "@/components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
 import NoResultSearchLogger from "@/components/no-result-search-logger";
 import ResibookGuard from "@/components/resibook-guard";
+import { createClient } from "@/lib/supabase/client";
 import {
   clinicalCalculators,
   getCalculatorInitialValues,
@@ -25,6 +29,54 @@ import {
   type CalculatorValues,
   type ClinicalCalculator,
 } from "@/lib/clinical-calculators";
+
+type CalculatorCollection = "all" | "favorites" | "recent";
+
+const CALCULATOR_FAVORITES_KEY = "resibook-calculator-favorites-v1";
+const CALCULATOR_RECENTS_KEY = "resibook-calculator-recents-v1";
+
+function calculatorStorageKey(key: string, userId: string) {
+  return `${key}:${userId}`;
+}
+
+const calculatorAreas = [
+  "Emergência",
+  "Cardiovascular",
+  "Neuro e trauma",
+  "Rim e metabolismo",
+  "Obstetrícia",
+  "Clínica geral",
+] as const;
+
+const quickAccessIds = [
+  "curb65",
+  "ckd-epi-2021",
+  "glasgow",
+  "preeclampsia-aspirin-risk",
+];
+
+function getCalculatorArea(calculator: ClinicalCalculator) {
+  const category = normalize(calculator.category);
+  if (
+    category.includes("emergencia") ||
+    category.includes("infectologia") ||
+    category.includes("tromboembolismo")
+  ) {
+    return "Emergência";
+  }
+  if (category.includes("cardiologia")) return "Cardiovascular";
+  if (category.includes("neurologia") || category.includes("trauma")) {
+    return "Neuro e trauma";
+  }
+  if (
+    category.includes("nefrologia") ||
+    category.includes("acido-base")
+  ) {
+    return "Rim e metabolismo";
+  }
+  if (category.includes("obstetricia")) return "Obstetrícia";
+  return "Clínica geral";
+}
 
 function normalize(value: string) {
   return value
@@ -265,7 +317,13 @@ function ResultPanel({ result }: { result: CalculatorResult }) {
   );
 }
 
-function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator }) {
+function CalculatorWorkspace({
+  calculator,
+  onUsed,
+}: {
+  calculator: ClinicalCalculator;
+  onUsed: (calculatorId: string) => void;
+}) {
   const [values, setValues] = useState<CalculatorValues>(() =>
     getCalculatorInitialValues(calculator)
   );
@@ -293,6 +351,7 @@ function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator })
     }
     setError("");
     setCalculatedResult(nextResult);
+    onUsed(calculator.id);
   }
 
   function reset() {
@@ -420,43 +479,142 @@ function CalculatorWorkspace({ calculator }: { calculator: ClinicalCalculator })
 }
 
 function CalculadorasContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedCalculator = searchParams.get("calculadora");
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
+  const [area, setArea] = useState("");
+  const [collection, setCollection] = useState<CalculatorCollection>("all");
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
   const [selectedId, setSelectedId] = useState(() =>
     clinicalCalculators.some((item) => item.id === requestedCalculator)
       ? requestedCalculator!
       : clinicalCalculators[0].id
   );
 
-  const categories = useMemo(
+  useEffect(() => {
+    const supabase = createClient();
+
+    void supabase.auth.getSession().then(({ data }) => {
+      setCurrentUserId(data.session?.user.id || "");
+    });
+  }, []);
+
+  useEffect(() => {
+    function readStoredIds(key: string) {
+      try {
+        const parsed = JSON.parse(
+          window.localStorage.getItem(
+            calculatorStorageKey(key, currentUserId)
+          ) || "[]"
+        );
+        return Array.isArray(parsed)
+          ? parsed.filter(
+              (id): id is string =>
+                typeof id === "string" &&
+                clinicalCalculators.some((calculator) => calculator.id === id)
+            )
+          : [];
+      } catch {
+        return [];
+      }
+    }
+
+    if (!currentUserId) {
+      setFavoriteIds([]);
+      setRecentIds([]);
+      return;
+    }
+
+    setFavoriteIds(readStoredIds(CALCULATOR_FAVORITES_KEY));
+    setRecentIds(readStoredIds(CALCULATOR_RECENTS_KEY));
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (
+      requestedCalculator &&
+      clinicalCalculators.some((item) => item.id === requestedCalculator)
+    ) {
+      setSelectedId(requestedCalculator);
+    }
+  }, [requestedCalculator]);
+
+  const quickAccessCalculators = useMemo(
     () =>
-      Array.from(new Set(clinicalCalculators.map((item) => item.category))).sort(
-        (a, b) => a.localeCompare(b, "pt-BR")
-      ),
+      quickAccessIds
+        .map((id) => clinicalCalculators.find((item) => item.id === id))
+        .filter((item): item is ClinicalCalculator => Boolean(item)),
     []
   );
 
   const filtered = useMemo(() => {
     const q = normalize(query);
-    return clinicalCalculators.filter((item) => {
-      const matchesCategory = !category || item.category === category;
+    const nextItems = clinicalCalculators.filter((item) => {
+      const matchesArea = !area || getCalculatorArea(item) === area;
       const matchesQuery =
         !q ||
         normalize(item.name).includes(q) ||
         normalize(item.shortName).includes(q) ||
         normalize(item.category).includes(q) ||
-        normalize(item.description).includes(q);
-      return matchesCategory && matchesQuery;
+        normalize(item.description).includes(q) ||
+        normalize(getCalculatorArea(item)).includes(q);
+      const matchesCollection =
+        collection === "all" ||
+        (collection === "favorites" && favoriteIds.includes(item.id)) ||
+        (collection === "recent" && recentIds.includes(item.id));
+      return matchesArea && matchesQuery && matchesCollection;
     });
-  }, [category, query]);
+
+    if (collection === "recent") {
+      return nextItems.sort(
+        (a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id)
+      );
+    }
+    return nextItems;
+  }, [area, collection, favoriteIds, query, recentIds]);
 
   const selected =
     filtered.find((item) => item.id === selectedId) || filtered[0] || null;
 
-  function chooseCalculator(id: string) {
+  function rememberRecent(id: string) {
+    if (!currentUserId) return;
+    setRecentIds((current) => {
+      const next = [id, ...current.filter((item) => item !== id)].slice(0, 6);
+      window.localStorage.setItem(
+        calculatorStorageKey(CALCULATOR_RECENTS_KEY, currentUserId),
+        JSON.stringify(next)
+      );
+      return next;
+    });
+  }
+
+  function toggleFavorite(id: string) {
+    if (!currentUserId) return;
+    setFavoriteIds((current) => {
+      const next = current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [id, ...current];
+      window.localStorage.setItem(
+        calculatorStorageKey(CALCULATOR_FAVORITES_KEY, currentUserId),
+        JSON.stringify(next)
+      );
+      return next;
+    });
+  }
+
+  function chooseCalculator(id: string, revealFromQuickAccess = false) {
+    if (revealFromQuickAccess) {
+      setQuery("");
+      setArea("");
+      setCollection("all");
+    }
     setSelectedId(id);
+    rememberRecent(id);
+    router.replace(`/calculadoras?calculadora=${encodeURIComponent(id)}`, {
+      scroll: false,
+    });
     if (window.innerWidth < 1024) {
       window.setTimeout(() => {
         document.getElementById("calculator-workspace")?.scrollIntoView({
@@ -466,6 +624,14 @@ function CalculadorasContent() {
       }, 0);
     }
   }
+
+  function clearFilters() {
+    setQuery("");
+    setArea("");
+    setCollection("all");
+  }
+
+  const hasActiveFilters = Boolean(query || area || collection !== "all");
 
   return (
     <div className="space-y-5">
@@ -479,7 +645,7 @@ function CalculadorasContent() {
         ]}
         metrics={[
           { label: "Calculadoras", value: clinicalCalculators.length },
-          { label: "Categorias", value: categories.length },
+          { label: "Áreas clínicas", value: calculatorAreas.length },
         ]}
         notice={
           <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -492,6 +658,133 @@ function CalculadorasContent() {
         }
       />
 
+      <section
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        aria-label="Localizar calculadora"
+      >
+        <div className="border-b border-slate-200 p-4 md:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar por escore, especialidade ou finalidade..."
+                className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-cyan-600 focus:bg-white focus:ring-4 focus:ring-cyan-100"
+              />
+            </div>
+
+            <div
+              className="grid grid-cols-3 rounded-xl border border-slate-200 bg-slate-50 p-1"
+              role="tablist"
+              aria-label="Coleção de calculadoras"
+            >
+              {[
+                { id: "all" as const, label: "Todas", icon: Calculator },
+                { id: "favorites" as const, label: "Favoritas", icon: Star },
+                { id: "recent" as const, label: "Recentes", icon: Clock3 },
+              ].map((option) => {
+                const Icon = option.icon;
+                const active = collection === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setCollection(option.id)}
+                    className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition ${
+                      active
+                        ? "bg-slate-950 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-white hover:text-slate-950"
+                    }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    <span>{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => setArea("")}
+              aria-pressed={!area}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                !area
+                  ? "border-cyan-700 bg-cyan-800 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              Todas as áreas
+            </button>
+            {calculatorAreas.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setArea(item)}
+                aria-pressed={area === item}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  area === item
+                    ? "border-cyan-700 bg-cyan-800 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="shrink-0 px-2 py-1.5 text-xs font-semibold text-slate-500 transition hover:text-slate-900"
+              >
+                Limpar filtros
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {!hasActiveFilters ? (
+          <div className="p-4 md:p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-700">
+                  Acesso rápido
+                </p>
+                <h2 className="mt-1 text-sm font-semibold text-slate-900">
+                  Ferramentas frequentes no atendimento
+                </h2>
+              </div>
+              <Sparkles className="h-4 w-4 text-cyan-700" />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {quickAccessCalculators.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => chooseCalculator(item.id, true)}
+                  className="group flex min-h-20 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-cyan-200 hover:bg-cyan-50/60"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-slate-900">
+                      {item.shortName}
+                    </span>
+                    <span className="mt-1 block truncate text-[11px] text-slate-500">
+                      {getCalculatorArea(item)}
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-cyan-700" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </section>
+
       <NoResultSearchLogger
         term={query}
         resultCount={filtered.length}
@@ -500,32 +793,7 @@ function CalculadorasContent() {
       <ResibookGuard context="calculadora" />
 
       <section className="grid gap-5 lg:grid-cols-[310px_minmax(0,1fr)] lg:items-start">
-        <aside className="space-y-4 lg:sticky lg:top-24">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar calculadora..."
-                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none transition focus:border-cyan-600 focus:bg-white focus:ring-4 focus:ring-cyan-100"
-              />
-            </div>
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className="mt-3 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition focus:border-cyan-600 focus:bg-white"
-            >
-              <option value="">Todas as categorias</option>
-              {categories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </div>
-
+        <aside className="space-y-3 lg:sticky lg:top-24">
           {filtered.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
               <Search className="mx-auto h-5 w-5 text-slate-400" />
@@ -538,41 +806,68 @@ function CalculadorasContent() {
             </div>
           ) : (
             <nav
-              className="max-h-[calc(100vh-250px)] space-y-1.5 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"
+              className="max-h-[360px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm lg:max-h-[calc(100vh-150px)]"
               aria-label="Lista de calculadoras"
             >
+              <div className="flex items-center justify-between px-2 pb-2 pt-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  {filtered.length} ferramentas
+                </p>
+                <span className="text-[10px] font-medium text-slate-400">
+                  {area || "Todas as áreas"}
+                </span>
+              </div>
+              <div className="space-y-1.5">
               {filtered.map((item) => {
                 const active = item.id === selected?.id;
+                const favorite = favoriteIds.includes(item.id);
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    onClick={() => chooseCalculator(item.id)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                    className={`flex items-center rounded-xl border transition ${
                       active
                         ? "border-cyan-200 bg-cyan-50 text-cyan-950"
                         : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50"
                     }`}
                   >
-                    <span className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => chooseCalculator(item.id)}
+                      className="min-w-0 flex-1 px-3 py-3 text-left"
+                    >
                       <span className="block truncate text-sm font-semibold">
                         {item.shortName}
                       </span>
                       <span className="mt-0.5 block truncate text-[11px] text-slate-500">
-                        {item.category}
+                        {getCalculatorArea(item)}
                       </span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-                  </button>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleFavorite(item.id)}
+                      disabled={!currentUserId}
+                      aria-label={favorite ? `Remover ${item.shortName} dos favoritos` : `Favoritar ${item.shortName}`}
+                      aria-pressed={favorite}
+                      className="mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white hover:text-amber-600 disabled:cursor-wait disabled:opacity-40"
+                    >
+                      <Star className={`h-4 w-4 ${favorite ? "fill-amber-400 text-amber-500" : ""}`} />
+                    </button>
+                    <ChevronRight className="mr-2 h-4 w-4 shrink-0 text-slate-300" />
+                  </div>
                 );
               })}
+              </div>
             </nav>
           )}
         </aside>
 
         <main id="calculator-workspace" className="scroll-mt-24">
           {selected ? (
-            <CalculatorWorkspace key={selected.id} calculator={selected} />
+            <CalculatorWorkspace
+              key={selected.id}
+              calculator={selected}
+              onUsed={rememberRecent}
+            />
           ) : (
             <section className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-16 text-center shadow-sm">
               <Search className="mx-auto h-6 w-6 text-slate-400" />
