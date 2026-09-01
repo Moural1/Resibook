@@ -297,16 +297,9 @@ function SidebarContent({
   isGuest?: boolean;
   isAdmin?: boolean;
 }) {
-  const fullPrimaryItems = [
-    { href: "/plantao", label: "Resibook Shift", icon: Activity, badge: null },
-    { href: "/acls", label: "ACLS", icon: HeartPulse, badge: null },
+  const careItems = [
     { href: "/dashboard", label: "Visão geral", icon: Home, badge: null },
-    {
-      href: "/meu-resibook",
-      label: "Meu Resibook",
-      icon: LibraryBig,
-      badge: null,
-    },
+    { href: "/plantao", label: "Resibook Shift", icon: Activity, badge: null },
     { href: "/caso-rapido", label: "Caso rápido", icon: Gauge, badge: null },
     ...(PRODUCT_CAPABILITIES.patientRecords
       ? [{
@@ -329,10 +322,42 @@ function SidebarContent({
       badge: counts.exames,
     },
     {
+      href: "/condutas",
+      label: "Condutas",
+      icon: Siren,
+      badge: counts.flashcardsDificeis,
+    },
+    {
+      href: "/calculadoras",
+      label: "Calculadoras",
+      icon: Calculator,
+      badge: null,
+    },
+  ];
+
+  const referenceItems = [
+    { href: "/acls", label: "ACLS", icon: HeartPulse, badge: null },
+    {
       href: "/topicos",
       label: "Tópicos",
       icon: Stethoscope,
       badge: counts.topicos,
+    },
+    { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
+    {
+      href: "/ecg-guiado",
+      label: "ECG guiado",
+      icon: HeartPulse,
+      badge: null,
+    },
+  ];
+
+  const learningItems = [
+    {
+      href: "/meu-resibook",
+      label: "Meu Resibook",
+      icon: LibraryBig,
+      badge: null,
     },
     {
       href: "/flashcards",
@@ -341,28 +366,15 @@ function SidebarContent({
       badge: counts.flashcards,
     },
     {
+      href: "/revisao-topicos",
+      label: "Revisão por tópicos",
+      icon: BookOpen,
+      badge: null,
+    },
+    {
       href: "/nunca-mais-errar",
       label: "Resibook Learn",
       icon: GraduationCap,
-      badge: null,
-    },
-    {
-      href: "/condutas",
-      label: "Condutas",
-      icon: Siren,
-      badge: counts.flashcardsDificeis,
-    },
-    { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
-    {
-      href: "/calculadoras",
-      label: "Calculadoras",
-      icon: Calculator,
-      badge: null,
-    },
-    {
-      href: "/ecg-guiado",
-      label: "ECG guiado",
-      icon: HeartPulse,
       badge: null,
     },
   ];
@@ -449,7 +461,6 @@ function SidebarContent({
       ]
     : [];
 
-  const primaryItems = isGuest ? guestPrimaryItems : fullPrimaryItems;
   const visibleSecondaryItems = isGuest ? [] : secondaryItems;
 
   return (
@@ -498,12 +509,35 @@ function SidebarContent({
       </div>
 
       <div className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
-        <NavSection
-          title={isGuest ? "Acesso liberado" : "Principal"}
-          items={primaryItems}
-          pathname={pathname}
-          onNavigate={onNavigate}
-        />
+        {isGuest ? (
+          <NavSection
+            title="Acesso liberado"
+            items={guestPrimaryItems}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
+        ) : (
+          <>
+            <NavSection
+              title="Atendimento"
+              items={careItems}
+              pathname={pathname}
+              onNavigate={onNavigate}
+            />
+            <NavSection
+              title="Protocolos e consulta"
+              items={referenceItems}
+              pathname={pathname}
+              onNavigate={onNavigate}
+            />
+            <NavSection
+              title="Estudo e acervo"
+              items={learningItems}
+              pathname={pathname}
+              onNavigate={onNavigate}
+            />
+          </>
+        )}
 
         {visibleSecondaryItems.length > 0 ? (
           <NavSection
@@ -897,7 +931,7 @@ export default function AppShell({ children }: Props) {
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
       {desktopSidebarOpen ? (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[264px] border-r border-slate-200/80 shadow-[18px_0_50px_rgba(15,23,42,0.06)] lg:block print:hidden">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-slate-200/80 shadow-[18px_0_50px_rgba(15,23,42,0.06)] lg:block print:hidden">
           <SidebarContent
             pathname={pathname}
             counts={counts}
@@ -911,7 +945,7 @@ export default function AppShell({ children }: Props) {
         type="button"
         onClick={() => setDesktopSidebarOpen((current) => !current)}
         className={`fixed top-1/2 z-[65] hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-950/10 transition hover:bg-slate-50 lg:inline-flex print:hidden ${
-          desktopSidebarOpen ? "left-[242px]" : "left-4"
+          desktopSidebarOpen ? "left-[226px]" : "left-4"
         }`}
         aria-label={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
         title={desktopSidebarOpen ? "Ocultar menu" : "Mostrar menu"}
@@ -970,7 +1004,7 @@ export default function AppShell({ children }: Props) {
 
       <div
         className={`min-h-screen transition-[padding] duration-200 print:pl-0 ${
-          desktopSidebarOpen ? "lg:pl-[264px]" : "lg:pl-0"
+          desktopSidebarOpen ? "lg:pl-[248px]" : "lg:pl-0"
         }`}
       >
         <div className="print:hidden">

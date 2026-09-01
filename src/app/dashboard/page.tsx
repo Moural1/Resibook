@@ -243,7 +243,14 @@ export default function DashboardPage() {
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">Comece pelo caso, avance para a decisão clínica e mantenha o atendimento conectado — sem perder tempo procurando ferramentas.</p>
             </div>
             <div className="flex flex-wrap gap-2 lg:justify-end">
-              <Link href={activeCase ? "/caso-rapido" : "/plantao/roteiro-caso"} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-50">{activeCase ? "Continuar atendimento" : "Iniciar atendimento"}<ArrowRight className="h-4 w-4" /></Link>
+              <Link
+                href={activeCase ? "/caso-rapido" : "/plantao/roteiro-caso"}
+                style={{ color: "#071a35" }}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-semibold transition hover:bg-cyan-50"
+              >
+                {activeCase ? "Continuar atendimento" : "Iniciar atendimento"}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
               <Link href="/plantao" className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10">Central de plantão</Link>
             </div>
           </div>
