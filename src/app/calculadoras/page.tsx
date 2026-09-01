@@ -646,7 +646,6 @@ function CalculadorasContent() {
         metrics={[
           { label: "Calculadoras", value: clinicalCalculators.length },
           { label: "Áreas clínicas", value: calculatorAreas.length },
-          { label: "Favoritas", value: favoriteIds.length },
         ]}
         notice={
           <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -700,9 +699,9 @@ function CalculadorasContent() {
                         ? "bg-slate-950 text-white shadow-sm"
                         : "text-slate-600 hover:bg-white hover:text-slate-950"
                     }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{option.label}</span>
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    <span>{option.label}</span>
                   </button>
                 );
               })}
@@ -807,7 +806,7 @@ function CalculadorasContent() {
             </div>
           ) : (
             <nav
-              className="max-h-[calc(100vh-150px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"
+              className="max-h-[360px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm lg:max-h-[calc(100vh-150px)]"
               aria-label="Lista de calculadoras"
             >
               <div className="flex items-center justify-between px-2 pb-2 pt-1">
