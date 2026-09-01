@@ -56,4 +56,77 @@ test("topbar mantém a busca como porta principal e reduz atalhos concorrentes",
   for (const label of ["Exames", "Tópicos", "Revisão", "Flashcards", "CIDs", "ECG guiado"]) {
     assert.doesNotMatch(quickLinkBlock, new RegExp(`label: "${label}"`));
   }
+
+  assert.match(topbar, /min-\[1760px\]:flex/);
+});
+
+test("CTA principal mantém contraste e cabeçalhos internos exibem localização", async () => {
+  const [dashboard, header] = await Promise.all([
+    source("../src/app/dashboard/page.tsx"),
+    source("../src/components/module-page-header.tsx"),
+  ]);
+
+  assert.match(dashboard, /style=\{\{ color: "#071a35" \}\}/);
+  assert.match(header, /aria-label="Localização no aplicativo"/);
+  assert.match(header, /href="\/dashboard"/);
+  assert.match(header, /Central clínica/);
+  assert.match(header, /Atendimento/);
+  assert.match(header, /Protocolos e consulta/);
+  assert.match(header, /Estudo e acervo/);
+  assert.match(header, /Conta e acesso/);
+});
+
+test("sidebar é mantida, compacta e agrupada por intenção clínica", async () => {
+  const shell = await source("../src/components/app-shell.tsx");
+
+  for (const section of [
+    "Atendimento",
+    "Protocolos e consulta",
+    "Estudo e acervo",
+    "Conta e acesso",
+  ]) {
+    assert.match(shell, new RegExp(`title="${section}"`));
+  }
+
+  for (const route of [
+    "/dashboard",
+    "/plantao",
+    "/caso-rapido",
+    "/pacientes",
+    "/prescricao",
+    "/exames-evolucao",
+    "/condutas",
+    "/calculadoras",
+    "/acls",
+    "/topicos",
+    "/cids",
+    "/ecg-guiado",
+    "/meu-resibook",
+    "/flashcards",
+    "/revisao-topicos",
+    "/nunca-mais-errar",
+  ]) {
+    assert.match(shell, new RegExp(route.replaceAll("/", "\\/")));
+  }
+
+  assert.match(shell, /w-\[248px\]/);
+  assert.match(shell, /lg:pl-\[248px\]/);
+});
+
+test("módulos prioritários compartilham o mesmo cabeçalho clínico", async () => {
+  const pages = await Promise.all(
+    [
+      "plantao",
+      "prescricao",
+      "condutas",
+      "pacientes",
+      "calculadoras",
+      "metricas",
+      "suporte",
+    ].map((route) => source(`../src/app/${route}/page.tsx`))
+  );
+
+  for (const page of pages) {
+    assert.match(page, /<ModulePageHeader/);
+  }
 });

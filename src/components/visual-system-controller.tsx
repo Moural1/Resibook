@@ -13,6 +13,8 @@ const LIBRARY_ROUTES = [
   "/ecg-guiado",
   "/revisao-topicos",
   "/meu-resibook",
+  "/nunca-mais-errar",
+  "/flashcards-dificeis",
 ];
 const WORKFLOW_ROUTES = [
   "/prescricao",
@@ -26,6 +28,8 @@ const OPERATIONS_ROUTES = [
   "/dados-da-conta",
   "/acessos",
   "/suporte",
+  "/minha-assinatura",
+  "/usuario",
 ];
 const SHIFT_ROUTES = ["/plantao", "/caso-rapido", "/consulta-audio"];
 const PUBLIC_ROUTES = [

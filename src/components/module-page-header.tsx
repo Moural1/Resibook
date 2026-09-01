@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { ChevronRight, LayoutDashboard } from "lucide-react";
 
 type HeaderBadge = {
   label: string;
@@ -34,6 +37,41 @@ function badgeToneClass(tone: HeaderBadge["tone"] = "slate") {
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
+function getModuleArea(pathname: string) {
+  if (
+    pathname.startsWith("/plantao") ||
+    pathname.startsWith("/caso-rapido") ||
+    pathname.startsWith("/prescricao") ||
+    pathname.startsWith("/condutas") ||
+    pathname.startsWith("/calculadoras") ||
+    pathname.startsWith("/pacientes") ||
+    pathname.startsWith("/exames-evolucao") ||
+    pathname.startsWith("/cids") ||
+    pathname.startsWith("/ecg-guiado")
+  ) {
+    return "Atendimento";
+  }
+
+  if (pathname.startsWith("/acls") || pathname.startsWith("/topicos")) {
+    return "Protocolos e consulta";
+  }
+
+  if (
+    pathname.startsWith("/flashcards") ||
+    pathname.startsWith("/revisao-topicos") ||
+    pathname.startsWith("/nunca-mais-errar") ||
+    pathname.startsWith("/meu-resibook")
+  ) {
+    return "Estudo e acervo";
+  }
+
+  if (pathname.startsWith("/admin") || pathname.startsWith("/acessos")) {
+    return "Administração";
+  }
+
+  return "Conta e acesso";
+}
+
 export default function ModulePageHeader({
   eyebrow,
   title,
@@ -46,67 +84,87 @@ export default function ModulePageHeader({
   notice,
   children,
 }: Props) {
+  const pathname = usePathname();
+  const moduleArea = getModuleArea(pathname);
+
   return (
     <section className="module-page-header overflow-hidden rounded-[22px] border border-slate-200/90 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.07)]">
       <div className="module-page-header-hero relative overflow-hidden border-b border-slate-200/80 bg-[linear-gradient(135deg,#071a38_0%,#0b2850_58%,#0a4059_100%)] p-5 text-white md:p-7">
         <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-cyan-200/10 bg-cyan-300/[0.04]" />
         <div className="pointer-events-none absolute bottom-0 right-1/3 h-px w-56 bg-gradient-to-r from-transparent via-cyan-200/35 to-transparent" />
 
-        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div className="min-w-0 max-w-4xl">
-            <div className="flex flex-wrap items-center gap-2">
-              {eyebrow ? (
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200">
-                  {eyebrow}
+        <div className="relative">
+          <nav
+            aria-label="Localização no aplicativo"
+            className="mb-4 flex min-w-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400"
+          >
+            <Link
+              href="/dashboard"
+              className="inline-flex min-w-0 items-center gap-1.5 transition hover:text-cyan-200"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Central clínica</span>
+            </Link>
+            <ChevronRight className="h-3 w-3 shrink-0 text-slate-600" />
+            <span className="truncate text-cyan-200">{moduleArea}</span>
+          </nav>
+
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0 max-w-4xl">
+              <div className="flex flex-wrap items-center gap-2">
+                {eyebrow ? (
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200">
+                    {eyebrow}
+                  </p>
+                ) : null}
+
+                {badges.map((badge) => (
+                  <span
+                    key={`${badge.label}-${badge.tone || "slate"}`}
+                    className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${badgeToneClass(
+                      badge.tone
+                    )}`}
+                  >
+                    {badge.label}
+                  </span>
+                ))}
+              </div>
+
+              <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.025em] text-white md:text-[34px]">
+                {title}
+              </h1>
+
+              {description ? (
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 md:text-[15px]">
+                  {description}
                 </p>
               ) : null}
 
-              {badges.map((badge) => (
-                <span
-                  key={`${badge.label}-${badge.tone || "slate"}`}
-                  className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${badgeToneClass(
-                    badge.tone
-                  )}`}
-                >
-                  {badge.label}
-                </span>
-              ))}
+              {metrics.length > 0 ? (
+                <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                  {metrics.map((metric, index) => (
+                    <div
+                      key={`${metric.label}-${index}`}
+                      className="min-w-0 rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2.5 backdrop-blur-sm sm:min-w-[118px]"
+                    >
+                      <span className="block truncate text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                        {metric.label}
+                      </span>
+                      <span className="mt-1 block truncate text-sm font-semibold text-white">
+                        {metric.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.025em] text-white md:text-[36px]">
-              {title}
-            </h1>
-
-            {description ? (
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 md:text-[15px]">
-                {description}
-              </p>
-            ) : null}
-
-            {metrics.length > 0 ? (
-              <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                {metrics.map((metric, index) => (
-                  <div
-                    key={`${metric.label}-${index}`}
-                    className="min-w-0 rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2.5 backdrop-blur-sm sm:min-w-[118px]"
-                  >
-                    <span className="block truncate text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                      {metric.label}
-                    </span>
-                    <span className="mt-1 block truncate text-sm font-semibold text-white">
-                      {metric.value}
-                    </span>
-                  </div>
-                ))}
+            {actions ? (
+              <div className="module-page-header-actions flex shrink-0 flex-wrap items-center gap-2">
+                {actions}
               </div>
             ) : null}
           </div>
-
-          {actions ? (
-            <div className="module-page-header-actions flex shrink-0 flex-wrap items-center gap-2">
-              {actions}
-            </div>
-          ) : null}
         </div>
 
         {error ? (

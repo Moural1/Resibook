@@ -352,7 +352,7 @@ export function Topbar() {
           ) : null}
         </div>
         {activeCase?.complaint ? <Link href="/plantao/sbar" className="hidden h-10 max-w-[230px] items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 text-xs font-semibold text-cyan-900 transition hover:border-cyan-300 hover:bg-cyan-100/70 lg:inline-flex" title="Abrir caso em andamento na passagem SBAR"><Stethoscope className="h-4 w-4 shrink-0 text-cyan-700" /><span className="truncate">{activeCase.complaint}</span></Link> : null}
-        <div className="hidden items-center gap-2 xl:flex">{quickLinks.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"><Icon className="h-3.5 w-3.5" />{item.label}</Link>; })}</div>
+        <div className="hidden items-center gap-2 min-[1760px]:flex">{quickLinks.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"><Icon className="h-3.5 w-3.5" />{item.label}</Link>; })}</div>
       </div>
     </header>
   );
