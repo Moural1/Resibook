@@ -9,116 +9,93 @@ import {
   Brain,
   Calculator,
   Check,
+  ChevronDown,
+  ClipboardCheck,
   ClipboardList,
-  Database,
+  Copy,
   FlaskConical,
   HeartPulse,
-  LibraryBig,
-  LockKeyhole,
+  MessageSquareText,
   Search,
   ShieldCheck,
-  Sparkles,
-  Siren,
+  Star,
   Stethoscope,
   Tags,
   Users,
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Sua plataforma clínica para plantão, pacientes e estudo",
+  title: "Do primeiro atendimento à passagem de plantão",
   description:
-    "Plantão, ACLS, pacientes, prescrições, ECG, calculadoras e estudo em uma plataforma clínica organizada para médicos.",
+    "Condutas por queixa, prescrições, ACLS, checklist de risco e SBAR para residentes e plantonistas, com um acervo pessoal adaptável ao seu hospital.",
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },
 };
 
-type Feature = {
-  title: string;
-  description: string;
-  icon: ComponentType<{ className?: string }>;
-};
+type IconType = ComponentType<{ className?: string }>;
 
-const FEATURES: Feature[] = [
+const NAV_LINKS = [
+  ["#como-funciona", "Como funciona"],
+  ["#meu-resibook", "Meu Resibook"],
+  ["#recursos", "Recursos"],
+  ["#planos", "Planos"],
+] as const;
+
+const SHIFT_STEPS: { title: string; description: string; icon: IconType }[] = [
   {
-    title: "Meu Resibook",
-    description: "Workspace privado para adaptar modelos e organizar seu acervo clínico.",
-    icon: LibraryBig,
+    title: "Roteiro do caso",
+    description: "Digite a queixa e abra condutas, diagnósticos diferenciais e red flags já contextualizados.",
+    icon: Search,
   },
   {
-    title: "ACLS no plantão",
-    description: "Protocolos rápidos e eBook estruturado para consulta em emergências.",
-    icon: HeartPulse,
-  },
-  {
-    title: "ECG guiado",
-    description: "Leitura estruturada com checklist clínico e registro dos principais achados.",
-    icon: Activity,
-  },
-  {
-    title: "Pacientes",
-    description: "Retornos, exames e registros clínicos organizados em um ambiente privado.",
-    icon: Users,
-  },
-  {
-    title: "Caso rápido",
-    description: "Comece pela queixa e organize avaliação, risco e próximos passos.",
-    icon: Siren,
-  },
-  {
-    title: "Prescrições prontas",
-    description: "Modelos organizados para consulta e adaptação à rotina clínica.",
+    title: "Prescrição guiada",
+    description: "Sintomas, segurança e reavaliação por síndrome, com modelos prontos para copiar.",
     icon: ClipboardList,
   },
   {
-    title: "Plantão rápido",
-    description: "Fluxos práticos para estruturar avaliação, risco e próximos passos.",
-    icon: Siren,
+    title: "Checklist de risco",
+    description: "Revise bloqueios de alta, sinais de alarme e documentação antes de liberar.",
+    icon: ClipboardCheck,
   },
   {
-    title: "Flashcards do banco",
-    description: "Revisões objetivas para manter conteúdos importantes acessíveis.",
-    icon: Brain,
-  },
-  {
-    title: "CIDs",
-    description: "Busca rápida por códigos, descrições e áreas clínicas.",
-    icon: Tags,
-  },
-  {
-    title: "Calculadoras clínicas",
-    description: "Escores com interpretação, limitações e texto para evolução.",
-    icon: Calculator,
-  },
-  {
-    title: "Tópicos médicos",
-    description: "Biblioteca clínica estruturada para consulta durante o atendimento.",
-    icon: Stethoscope,
-  },
-  {
-    title: "Exames e evolução",
-    description: "Modelos para organizar solicitações, registros e reavaliações.",
-    icon: FlaskConical,
+    title: "Passagem SBAR",
+    description: "Pendências e passagem objetiva para a troca de plantão, sem esquecer nada.",
+    icon: MessageSquareText,
   },
 ];
 
-const PREVIEW_MODULES = [
-  { label: "Plantão", icon: Activity },
-  { label: "ACLS", icon: HeartPulse },
-  { label: "Meu Resibook", icon: LibraryBig },
-  { label: "Pacientes", icon: Users },
-  { label: "Prescrição", icon: ClipboardList },
-  { label: "Exames / Evolução", icon: FlaskConical },
-  { label: "Tópicos", icon: BookOpen },
-  { label: "Flashcards", icon: Brain },
-  { label: "CIDs", icon: Tags },
-  { label: "Calculadoras", icon: Calculator },
+const RESOURCE_GROUPS: { title: string; items: { label: string; icon: IconType }[] }[] = [
+  {
+    title: "Emergência",
+    items: [
+      { label: "ACLS com eBook estruturado", icon: HeartPulse },
+      { label: "ECG guiado", icon: Activity },
+      { label: "Calculadoras clínicas", icon: Calculator },
+    ],
+  },
+  {
+    title: "Paciente",
+    items: [
+      { label: "Pacientes e retornos", icon: Users },
+      { label: "Exames e evolução", icon: FlaskConical },
+      { label: "CIDs", icon: Tags },
+    ],
+  },
+  {
+    title: "Estudo",
+    items: [
+      { label: "Tópicos médicos", icon: BookOpen },
+      { label: "Flashcards com revisão", icon: Brain },
+      { label: "Condutas por síndrome", icon: Stethoscope },
+    ],
+  },
 ];
 
-const PRODUCT_JOURNEYS = [
-  { title: "Plantão", description: "Da queixa à alta segura em um fluxo clínico contínuo.", icon: Siren },
-  { title: "ACLS", description: "Protocolos, algoritmos e leitura rápida para emergências.", icon: HeartPulse },
-  { title: "Pacientes", description: "Continuidade clínica com dados privados por usuário.", icon: Users },
-  { title: "Estudo", description: "Tópicos, flashcards e revisão ativa no mesmo acervo.", icon: Brain },
+const FAQ = [
+  ["Funciona no celular durante o plantão?", "Sim. O Resibook roda no navegador do celular, sem instalar nada, e foi desenhado para consulta rápida em tela pequena."],
+  ["Minhas adaptações ficam visíveis para outras pessoas?", "Não. O Meu Resibook é privado e protegido por regras de acesso vinculadas à sua conta."],
+  ["O Banco Resibook pode ser alterado por qualquer médico?", "Não. Médicos consultam e copiam; a edição do conteúdo global fica restrita à equipe autorizada."],
+  ["Posso cancelar quando quiser?", "Sim. Não há fidelidade, e a assinatura é gerenciada na área Minha assinatura."],
 ] as const;
 
 function Brand({
@@ -155,91 +132,94 @@ function Brand({
   );
 }
 
-function AppPreview() {
+function PhonePreview() {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.14)]">
-      <div className="grid min-h-[430px] grid-cols-[150px_minmax(0,1fr)] sm:grid-cols-[175px_minmax(0,1fr)]">
-        <aside className="bg-[#091a38] p-3.5 text-white sm:p-4">
+    <div className="mx-auto w-full max-w-[340px] rounded-[40px] border border-slate-300/70 bg-[#0b1d40] p-2.5 shadow-[0_32px_90px_rgba(9,26,56,0.28)]">
+      <div className="overflow-hidden rounded-[32px] bg-slate-50">
+        <div className="flex items-center justify-between bg-[#091a38] px-5 pb-4 pt-5 text-white">
           <Brand compact inverse />
-          <div className="mt-6 space-y-1">
-            {PREVIEW_MODULES.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.label}
-                  className={`flex items-center gap-2 rounded-md px-2 py-2 text-[10px] font-medium sm:text-[11px] ${
-                    index === 0
-                      ? "bg-white/10 text-white"
-                      : "text-slate-300"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
-                  <span className="truncate">{item.label}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-5 border-t border-white/10 pt-4">
-            <div className="h-2 w-20 rounded-full bg-white/10" />
-            <div className="mt-2 h-2 w-14 rounded-full bg-white/5" />
-          </div>
-        </aside>
+          <span className="rounded-full bg-cyan-300/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100">
+            Plantão
+          </span>
+        </div>
 
-        <div className="min-w-0 bg-slate-50 p-3 sm:p-5">
-          <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm">
-            <Search className="h-3.5 w-3.5 text-slate-400" />
-            <span className="truncate text-[10px] text-slate-400 sm:text-xs">
-              Buscar no ResiBook...
-            </span>
+        <div className="space-y-3 p-4">
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+            <Search className="h-4 w-4 text-slate-400" />
+            <span className="text-xs font-medium text-slate-800">dor torácica</span>
+            <span className="ml-auto h-4 w-px animate-pulse bg-cyan-700" />
           </div>
 
-          <div className="mt-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-700">
-              Seu ambiente clínico
+          <div className="rounded-xl border border-cyan-200 bg-white p-3.5 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-700">
+              Urgência
             </p>
-            <h2 className="mt-1 text-lg font-semibold tracking-[0] text-slate-950 sm:text-xl">
-              Tudo pronto para a próxima decisão
-            </h2>
-            <p className="mt-1 text-[10px] leading-4 text-slate-500 sm:text-xs">
-              Plantão, pacientes, protocolos e estudo conectados.
+            <p className="mt-1 text-sm font-semibold text-slate-950">Dor torácica</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+              SCA, IAM, TEP, dissecção e causas não cardíacas.
             </p>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">
-                {PREVIEW_MODULES.slice(0, 6).map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.label}
-                  className="min-h-[82px] rounded-md border border-slate-200 bg-white p-3 shadow-sm"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-100 bg-cyan-50 text-cyan-800">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <p className="mt-2 truncate text-[10px] font-semibold text-slate-800 sm:text-[11px]">
-                    {item.label}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 rounded-md border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                  Próximo passo
-                </p>
-                <p className="mt-1 text-[11px] font-semibold text-slate-800">
-                  Continue exatamente de onde parou
-                </p>
+          <div className="space-y-1.5">
+            {SHIFT_STEPS.map(({ title, icon: Icon }, index) => (
+              <div
+                key={title}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-800">
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+                <span className="text-xs font-semibold text-slate-800">{title}</span>
+                {index < 2 ? (
+                  <Check className="ml-auto h-4 w-4 text-emerald-600" />
+                ) : (
+                  <ArrowRight className="ml-auto h-3.5 w-3.5 text-slate-400" />
+                )}
               </div>
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 text-slate-500">
-                <ArrowRight className="h-3.5 w-3.5" />
-              </span>
-            </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 rounded-xl bg-[#091a38] px-3 py-2.5 text-white">
+            <HeartPulse className="h-4 w-4 text-cyan-300" />
+            <span className="text-[11px] font-semibold">ACLS a um toque</span>
+            <ArrowRight className="ml-auto h-3.5 w-3.5 text-cyan-300" />
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkspacePreview() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white p-5 text-slate-950 shadow-[0_24px_70px_rgba(0,0,0,0.25)]">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-700">
+            Meu Resibook
+          </p>
+          <p className="mt-1 text-sm font-semibold">Pneumonia comunitária — ambulatorial</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700">
+          Minha versão
+        </span>
+      </div>
+      <ol className="mt-4 space-y-2 text-xs leading-5 text-slate-700">
+        <li className="rounded-lg bg-slate-50 px-3 py-2">1. Antibiótico conforme protocolo do serviço</li>
+        <li className="rounded-lg border border-cyan-200 bg-cyan-50/60 px-3 py-2">
+          <span className="font-semibold text-cyan-900">2. Ajuste do meu hospital:</span> reavaliar em 48 h no ambulatório
+        </li>
+        <li className="rounded-lg bg-slate-50 px-3 py-2">3. Sinais de alarme para retorno imediato</li>
+      </ol>
+      <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold">
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#091a38] px-3 py-2 text-white">
+          <Copy className="h-3.5 w-3.5" />
+          Copiar prescrição
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-slate-600">
+          <Star className="h-3.5 w-3.5" />
+          Favorito
+        </span>
       </div>
     </div>
   );
@@ -249,39 +229,29 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#f7f9fc] text-slate-950">
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-[70px] max-w-[1440px] items-center justify-between gap-5 px-4 sm:px-6 lg:px-10">
-          <Link href="/" aria-label="ResiBook - página inicial">
+        <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 sm:h-[70px] sm:px-6 lg:px-10">
+          <Link href="/" aria-label="ResiBook - página inicial" className="shrink-0">
             <Brand />
           </Link>
 
-          <nav className="hidden items-center gap-1 rounded-xl bg-slate-50/80 p-1 text-sm font-medium text-slate-600 shadow-sm md:flex">
-            <a href="#recursos" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
-              Recursos
-            </a>
-            <a href="#como-funciona" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
-              Como funciona
-            </a>
-            <a href="#planos" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
-              Planos
-            </a>
-            <a href="#seguranca" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
-              Segurança
-            </a>
-            <Link href="/login" className="rounded-lg px-3 py-2 transition hover:bg-white hover:text-slate-950 hover:shadow-sm">
-              Entrar
-            </Link>
+          <nav className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
+            {NAV_LINKS.map(([href, label]) => (
+              <a key={href} href={href} className="rounded-lg px-3 py-2 transition hover:bg-slate-50 hover:text-slate-950">
+                {label}
+              </a>
+            ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <Link
               href="/login"
-              className="inline-flex h-10 items-center justify-center px-3 text-sm font-semibold text-slate-700 md:hidden"
+              className="inline-flex h-10 items-center justify-center whitespace-nowrap px-2 text-sm font-semibold text-slate-700 sm:px-3 transition hover:text-slate-950"
             >
               Entrar
             </Link>
             <Link
               href="/cadastro?plano=complete"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-900"
+              className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg bg-cyan-800 px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-900 sm:px-4"
             >
               Criar conta
             </Link>
@@ -293,186 +263,144 @@ export default function HomePage() {
         <section className="relative overflow-hidden border-b border-slate-200 bg-[#eef4f9]">
           <div className="pointer-events-none absolute -left-32 top-12 h-80 w-80 rounded-full bg-cyan-300/20 blur-3xl" />
           <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-blue-200/25 blur-3xl" />
-          <div className="landing-hero-grid mx-auto grid max-w-[1440px] gap-12 px-4 pb-14 pt-12 sm:px-6 sm:pt-16 min-[1180px]:min-h-[700px] min-[1180px]:items-center min-[1180px]:px-10 min-[1180px]:pb-20 min-[1180px]:pt-16">
-            <div className="relative z-10 max-w-2xl">
-              <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
-                <HeartPulse className="h-4 w-4" />
-                Plataforma clínica feita para médicos
-              </div>
-              <h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-[-0.035em] text-[#091a38] sm:text-5xl lg:text-[62px]">
-                Menos tempo procurando. Mais clareza para decidir.
+          <div className="relative mx-auto grid max-w-[1320px] items-center gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-10 lg:pb-24 lg:pt-20">
+            <div className="max-w-2xl">
+              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-cyan-900">
+                <Stethoscope className="h-3.5 w-3.5" />
+                Para residentes e plantonistas
+              </p>
+              <h1 className="mt-5 text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] text-[#091a38] sm:text-5xl lg:text-[60px]">
+                Do primeiro atendimento à passagem de plantão.
               </h1>
-              <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-                Plantão, ACLS, pacientes, prescrições, ECG, calculadoras e revisão
-                reunidos em um ambiente rápido, privado e organizado para sua rotina.
+              <p className="mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+                Digite a queixa e siga um fluxo pronto: conduta, prescrição,
+                checklist de risco e SBAR. Com ACLS a um toque e um acervo
+                pessoal onde você adapta tudo ao protocolo do seu hospital.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/cadastro?plano=complete" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(14,116,144,0.2)] transition hover:-translate-y-0.5 hover:bg-cyan-900">
-                  Conhecer o Resibook
+                <Link
+                  href="/cadastro?plano=complete"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(14,116,144,0.2)] transition hover:-translate-y-0.5 hover:bg-cyan-900"
+                >
+                  Criar minha conta
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  href="/login"
+                <a
+                  href="#como-funciona"
                   className="inline-flex h-12 items-center justify-center rounded-lg border border-cyan-700 bg-white px-6 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-50"
                 >
-                  Entrar
-                </Link>
+                  Ver como funciona
+                </a>
               </div>
 
-              <p className="mt-7 flex items-center gap-2 text-sm text-slate-500">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-cyan-700" />
-                Feito para uso profissional médico • Apoio à decisão clínica
-              </p>
-              <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-slate-700">
-                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-700" />Consulta em segundos</span>
-                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-700" />Workspace privado</span>
-              </div>
+              <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-slate-700">
+                {["Funciona no celular", "Planos a partir de R$ 30/mês", "Acervo privado por médico"].map((item) => (
+                  <li key={item} className="inline-flex items-center gap-2">
+                    <Check className="h-4 w-4 text-cyan-700" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <div className="relative z-10 min-[1180px]:translate-x-4">
-              <AppPreview />
-            </div>
-          </div>
-          <div className="relative z-10 mx-auto grid max-w-[1320px] grid-cols-2 gap-px border-x border-t border-slate-200 bg-slate-200 sm:grid-cols-4">
-            {[
-              [HeartPulse, "Protocolos para o plantão"],
-              [LibraryBig, "Workspace clínico privado"],
-              [LockKeyhole, "Dados isolados por usuário"],
-              [Sparkles, "Tudo conectado em um fluxo"],
-            ].map(([Icon, label]) => {
-              const TrustIcon = Icon as ComponentType<{ className?: string }>;
-              return (
-                <div key={label as string} className="flex min-h-20 items-center justify-center gap-2 bg-white px-3 text-center text-xs font-semibold text-slate-700 sm:text-sm">
-                  <TrustIcon className="h-4 w-4 shrink-0 text-cyan-700" />
-                  {label as string}
-                </div>
-              );
-            })}
+            <PhonePreview />
           </div>
         </section>
 
-        <section className="bg-white py-16 sm:py-20">
-          <div className="mx-auto max-w-[1320px] px-4 sm:px-6 lg:px-10">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div className="max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Um Resibook muito maior</p>
-                <h2 className="mt-3 text-3xl font-semibold tracking-[-0.025em] text-[#091a38] sm:text-4xl">Da urgência à revisão, sem trocar de plataforma.</h2>
-              </div>
-              <p className="max-w-md text-sm leading-6 text-slate-600">Escolha o que precisa agora. O restante da sua rotina continua organizado e acessível quando você voltar.</p>
-            </div>
-
-            <div className="mt-9 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {PRODUCT_JOURNEYS.map(({ title, description, icon: Icon }, index) => (
-                <article key={title} className={`group relative min-h-64 overflow-hidden rounded-[26px] border p-6 shadow-[0_18px_55px_rgba(15,23,42,0.08)] ${index === 0 ? "border-[#123A6D] bg-[#091f42] text-white" : "border-slate-200 bg-[linear-gradient(145deg,#ffffff,#f5f9fc)] text-slate-950"}`}>
-                  <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-cyan-300/10 blur-2xl" />
-                  <span className={`relative flex h-12 w-12 items-center justify-center rounded-2xl ${index === 0 ? "bg-cyan-300/15 text-cyan-200" : "border border-cyan-100 bg-cyan-50 text-cyan-800"}`}><Icon className="h-5 w-5" /></span>
-                  <p className={`relative mt-8 text-[10px] font-bold uppercase tracking-[0.2em] ${index === 0 ? "text-cyan-200" : "text-cyan-700"}`}>Fluxo {String(index + 1).padStart(2, "0")}</p>
-                  <h3 className="relative mt-2 text-2xl font-semibold tracking-tight">{title}</h3>
-                  <p className={`relative mt-3 text-sm leading-6 ${index === 0 ? "text-slate-300" : "text-slate-600"}`}>{description}</p>
-                  <div className={`relative mt-7 h-px w-full ${index === 0 ? "bg-white/10" : "bg-slate-200"}`} />
-                  <p className={`relative mt-4 text-xs font-semibold ${index === 0 ? "text-white" : "text-[#123A6D]"}`}>Disponível no ecossistema Resibook</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="como-funciona" className="scroll-mt-24 border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
-          <div className="mx-auto max-w-[1120px] px-4 sm:px-6 lg:px-10">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Como funciona</p>
-            <h2 className="mt-3 text-3xl font-semibold text-[#091a38] sm:text-4xl">Do banco clínico ao seu jeito de trabalhar</h2>
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
-              {[
-                ["01", "Consulte", "Encontre conteúdo clínico global, padronizado e revisado no Banco Resibook."],
-                ["02", "Duplique", "Leve prescrições e flashcards para seu workspace privado com um clique."],
-                ["03", "Personalize", "Edite, organize, favorite e marque os modelos principais do seu acervo."],
-              ].map(([number, title, description]) => (
-                <article key={number} className="border-l-2 border-cyan-700 pl-5">
-                  <p className="text-xs font-semibold tracking-[0.18em] text-cyan-700">{number}</p>
-                  <h3 className="mt-3 text-xl font-semibold text-slate-950">{title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-[#091a38] py-16 text-white sm:py-20">
-          <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-10">
-            <div className="max-w-3xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Um produto, duas camadas</p>
-              <h2 className="mt-3 text-3xl font-semibold sm:text-4xl">Conteúdo confiável para começar. Liberdade para adaptar.</h2>
-              <p className="mt-4 text-base leading-7 text-slate-300">O banco global permanece padronizado; cada médico constrói seu próprio acervo sem interferir no trabalho dos demais.</p>
-            </div>
-            <div className="mt-10 grid gap-5 md:grid-cols-2">
-              <article className="rounded-2xl border border-white/10 bg-white/[0.05] p-6">
-                <Database className="h-6 w-6 text-cyan-300" />
-                <h3 className="mt-5 text-2xl font-semibold">Banco Resibook</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-300">Biblioteca clínica global para consultar, buscar, copiar, favoritar e levar modelos para o seu fluxo.</p>
-                <ul className="mt-5 space-y-3 text-sm text-slate-200">
-                  {["Conteúdo centralizado", "Atualização administrativa", "Consulta rápida no plantão"].map((item) => <li key={item} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 text-cyan-300" />{item}</li>)}
-                </ul>
-              </article>
-              <article className="rounded-2xl border border-cyan-300/25 bg-cyan-300/[0.08] p-6">
-                <LibraryBig className="h-6 w-6 text-cyan-300" />
-                <h3 className="mt-5 text-2xl font-semibold">Meu Resibook</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-300">Workspace individual para criar, adaptar, editar e organizar conteúdos que só pertencem ao médico.</p>
-                <ul className="mt-5 space-y-3 text-sm text-slate-200">
-                  {["Cópias privadas editáveis", "Favoritos sincronizados", "Isolamento por conta"].map((item) => <li key={item} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 text-cyan-300" />{item}</li>)}
-                </ul>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section id="recursos" className="scroll-mt-24 bg-white py-16 sm:py-20">
+        <section id="como-funciona" className="scroll-mt-20 bg-white py-16 sm:py-20">
           <div className="mx-auto max-w-[1320px] px-4 sm:px-6 lg:px-10">
             <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">
-                Recursos
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[0] text-[#091a38] sm:text-4xl">
-                Menos navegação. Mais clareza no plantão.
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Como funciona</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.025em] text-[#091a38] sm:text-4xl">
+                Um caso inteiro, sem trocar de app.
               </h2>
               <p className="mt-4 text-base leading-7 text-slate-600">
-                Uma biblioteca clínica organizada para consulta rápida, estudo e
-                documentação, sem misturar dados entre médicos.
+                Cada etapa já chega com o contexto da anterior. Você não recomeça
+                a busca a cada decisão.
               </p>
             </div>
 
-            <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {FEATURES.map((feature) => {
-                const Icon = feature.icon;
-                return (
-                  <article
-                    key={feature.title}
-                    className="rounded-lg border border-slate-200 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.05)]"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-cyan-800">
+            <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {SHIFT_STEPS.map(({ title, description, icon: Icon }, index) => (
+                <li key={title} className="relative rounded-2xl border border-slate-200 bg-[linear-gradient(145deg,#ffffff,#f5f9fc)] p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-800">
                       <Icon className="h-5 w-5" />
                     </span>
-                    <h3 className="mt-4 text-base font-semibold tracking-[0] text-slate-950">
-                      {feature.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {feature.description}
-                    </p>
-                  </article>
-                );
-              })}
+                    <span className="text-xs font-bold tracking-[0.18em] text-cyan-700">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold text-slate-950">{title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-slate-600">{description}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section id="meu-resibook" className="scroll-mt-20 bg-[#091a38] py-16 text-white sm:py-20">
+          <div className="mx-auto grid max-w-[1180px] items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Meu Resibook</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.025em] sm:text-4xl">
+                O conteúdo é nosso. A versão final é sua.
+              </h2>
+              <p className="mt-4 text-base leading-7 text-slate-300">
+                Todo serviço tem seu jeito de fazer. Copie qualquer prescrição ou
+                flashcard do Banco Resibook para o seu acervo, ajuste ao protocolo
+                do seu hospital e tenha a sua versão pronta no próximo plantão.
+              </p>
+              <ul className="mt-6 space-y-3 text-sm text-slate-200">
+                {[
+                  "Banco Resibook padronizado, mantido pela nossa equipe",
+                  "Cópias privadas e editáveis, só você vê",
+                  "Favoritos e modelos principais sempre à mão",
+                ].map((item) => (
+                  <li key={item} className="flex gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <WorkspacePreview />
+          </div>
+        </section>
+
+        <section id="recursos" className="scroll-mt-20 bg-white py-16 sm:py-20">
+          <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Também no Resibook</p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-[-0.025em] text-[#091a38] sm:text-4xl">
+              Para a emergência, para o paciente e para a prova.
+            </h2>
+            <div className="mt-10 grid gap-8 md:grid-cols-3">
+              {RESOURCE_GROUPS.map(({ title, items }) => (
+                <div key={title}>
+                  <h3 className="text-sm font-semibold text-slate-500">{title}</h3>
+                  <ul className="mt-3 space-y-2">
+                    {items.map(({ label, icon: Icon }) => (
+                      <li key={label} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3.5 py-3 text-sm font-semibold text-slate-800">
+                        <Icon className="h-4 w-4 shrink-0 text-cyan-700" />
+                        {label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        <section id="planos" className="scroll-mt-24 border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
+        <section id="planos" className="scroll-mt-20 border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-10">
             <div className="text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">
                 Planos
               </p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[0] text-[#091a38] sm:text-4xl">
-                Escolha o acesso para sua rotina
+                Menos que um lanche de plantão por semana
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
                 Crie sua conta, pague com segurança no Mercado Pago e tenha o
@@ -486,7 +414,7 @@ export default function HomePage() {
                 <p className="mt-3 text-4xl font-semibold tracking-[0] text-[#091a38]">
                   R$ 30<span className="text-base font-medium text-slate-500">/mês</span>
                 </p>
-                <p className="mt-5 min-h-[72px] text-sm leading-6 text-slate-600">
+                <p className="mt-5 text-sm leading-6 text-slate-600 md:min-h-[72px]">
                   Biblioteca clínica para consulta, estudo e apoio durante a
                   rotina médica.
                 </p>
@@ -509,13 +437,13 @@ export default function HomePage() {
 
               <article className="relative rounded-lg border border-cyan-700 bg-[#091a38] p-7 text-white shadow-[0_18px_48px_rgba(9,26,56,0.18)]">
                 <span className="absolute right-5 top-5 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100">
-                  Mais completo
+                  Para o plantão
                 </span>
                 <p className="text-sm font-semibold text-cyan-200">Plano Completo</p>
                 <p className="mt-3 text-4xl font-semibold tracking-[0] text-white">
                   R$ 50<span className="text-base font-medium text-slate-300">/mês</span>
                 </p>
-                <p className="mt-5 min-h-[72px] text-sm leading-6 text-slate-300">
+                <p className="mt-5 text-sm leading-6 text-slate-300 md:min-h-[72px]">
                   Acesso completo ao workspace privado, plantão, prescrições,
                   exames e todos os recursos do Resibook.
                 </p>
@@ -539,43 +467,42 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
+        <section id="seguranca" className="scroll-mt-20 bg-white py-16 sm:py-20">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-10">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Perguntas frequentes</p>
             <h2 className="mt-3 text-3xl font-semibold text-[#091a38]">Antes de começar</h2>
             <div className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
-              {[
-                ["O Banco Resibook pode ser alterado por qualquer médico?", "Não. Médicos consultam e duplicam; a administração do conteúdo global fica restrita a perfis autorizados."],
-                ["Minhas adaptações ficam visíveis para outras pessoas?", "Não. O Meu Resibook é privado e protegido por regras de acesso vinculadas ao usuário autenticado."],
-                ["O sistema substitui decisão ou protocolo clínico?", "Não. O Resibook organiza conteúdo de apoio; revisão profissional, contexto do paciente e protocolos atualizados continuam indispensáveis."],
-              ].map(([question, answer]) => (
-                <article key={question} className="py-5">
-                  <h3 className="text-base font-semibold text-slate-950">{question}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{answer}</p>
-                </article>
+              {FAQ.map(([question, answer]) => (
+                <details key={question} className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-4 text-base font-semibold text-slate-950">
+                    {question}
+                    <ChevronDown className="mt-0.5 h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-180" />
+                  </summary>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{answer}</p>
+                </details>
               ))}
             </div>
+            <p className="mt-8 flex items-start gap-3 rounded-xl border border-cyan-100 bg-cyan-50/60 p-4 text-sm leading-6 text-slate-700">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-cyan-800" />
+              O Resibook é uma ferramenta de apoio para profissionais habilitados.
+              Não substitui julgamento clínico, exame físico, protocolos locais ou
+              diretrizes atualizadas.
+            </p>
           </div>
         </section>
 
-        <section id="seguranca" className="scroll-mt-24 bg-white py-16 sm:py-20">
-          <div className="mx-auto grid max-w-5xl gap-8 px-4 sm:px-6 md:grid-cols-[auto_1fr] md:items-center lg:px-10">
-            <span className="flex h-16 w-16 items-center justify-center rounded-lg border border-cyan-100 bg-cyan-50 text-cyan-800">
-              <ShieldCheck className="h-8 w-8" />
-            </span>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">
-                Segurança e responsabilidade
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-[0] text-[#091a38] sm:text-3xl">
-                Apoio organizado, decisão sempre profissional
-              </h2>
-              <p className="mt-4 text-base leading-7 text-slate-600">
-                O Resibook é uma ferramenta de apoio para profissionais
-                habilitados. Não substitui julgamento clínico, exame físico,
-                protocolos locais ou diretrizes atualizadas.
-              </p>
-            </div>
+        <section className="bg-[#eef4f9] py-14">
+          <div className="mx-auto flex max-w-4xl flex-col items-center px-4 text-center sm:px-6">
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-[#091a38] sm:text-3xl">
+              Seu próximo plantão pode começar mais organizado.
+            </h2>
+            <Link
+              href="/cadastro?plano=complete"
+              className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white transition hover:bg-cyan-900"
+            >
+              Criar minha conta
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </section>
       </main>
@@ -612,4 +539,3 @@ export default function HomePage() {
     </div>
   );
 }
-
