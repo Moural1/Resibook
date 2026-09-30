@@ -76,7 +76,7 @@ function CadastroContent() {
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-8 sm:py-12">
-      <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.1)] lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="mx-auto grid grid-cols-1 max-w-5xl overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.1)] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <aside className="bg-[#091a38] p-7 text-white sm:p-10">
           <Link href="/" className="inline-flex items-center gap-3">
             <Image src="/resibook-icon.svg" alt="" width={40} height={40} className="h-10 w-10 rounded-lg bg-white" />

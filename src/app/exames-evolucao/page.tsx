@@ -436,7 +436,7 @@ export default function ExamesEvolucaoPage() {
         }
       >
         <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+          <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end">
             <div className="min-w-0 flex-1">
               <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Busca clínica
@@ -454,7 +454,7 @@ export default function ExamesEvolucaoPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3 xl:w-[720px]">
+            <div className="grid gap-3 md:grid-cols-3 2xl:w-[680px] 2xl:shrink-0">
               <div>
                 <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Categoria

@@ -171,7 +171,7 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="min-h-screen bg-slate-100 lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
       <aside className="relative hidden overflow-hidden bg-[#081a3a] p-12 text-white lg:flex lg:flex-col lg:justify-between xl:p-16">
         <div className="pointer-events-none absolute -left-24 top-1/3 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="relative">

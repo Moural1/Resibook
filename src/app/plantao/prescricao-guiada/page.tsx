@@ -279,7 +279,7 @@ export default function GuidedPrescriptionPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="grid grid-cols-1 gap-5 p-4 md:p-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <section className="space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">

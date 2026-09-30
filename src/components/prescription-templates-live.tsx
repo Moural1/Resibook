@@ -254,6 +254,13 @@ export default function PrescriptionTemplatesLive({
   const [form, setForm] = useState<TemplateForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [expandedIds, setExpandedIds] = useState<number[]>([]);
+
+  function toggleExpanded(id: number) {
+    setExpandedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    );
+  }
 
   useEffect(() => {
     setItems(templates);
@@ -662,6 +669,9 @@ export default function PrescriptionTemplatesLive({
   function TemplateCard(item: PrescriptionTemplate, compact = false) {
     const isFavorite = favoriteIds.includes(item.id);
     const isDeleting = deletingId === item.id;
+    const isExpanded = expandedIds.includes(item.id);
+    const lineCount = item.conteudo.split("\n").length;
+    const isLong = lineCount > 8 || item.conteudo.length > 600;
 
     return (
       <article
@@ -811,15 +821,30 @@ export default function PrescriptionTemplatesLive({
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl bg-[#07183d] px-4 py-4">
+        <div className="relative mt-4 rounded-2xl bg-[#07183d] px-4 py-4">
           <pre
             className={`whitespace-pre-wrap font-mono leading-7 text-slate-100 ${
               compact ? "text-[14px]" : "text-[15px]"
-            }`}
+            } ${isLong && !isExpanded ? "max-h-[196px] overflow-hidden" : ""}`}
           >
             {item.conteudo}
           </pre>
+
+          {isLong && !isExpanded ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-2xl bg-gradient-to-t from-[#07183d] to-transparent" />
+          ) : null}
         </div>
+
+        {isLong ? (
+          <button
+            type="button"
+            onClick={() => toggleExpanded(item.id)}
+            aria-expanded={isExpanded}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+          >
+            {isExpanded ? "Recolher prescrição" : `Ver prescrição completa (${lineCount} linhas)`}
+          </button>
+        ) : null}
       </article>
     );
   }
@@ -852,13 +877,13 @@ export default function PrescriptionTemplatesLive({
           ) : null}
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px_220px_auto]">
+        <div className="mt-5 grid gap-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar modelo de prescrição..."
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            className="h-12 w-full rounded-2xl lg:col-span-4 border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
           />
 
           <select

@@ -116,7 +116,7 @@ export default function PendingMapPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[0.92fr_1.08fr]">
+        <div className="grid grid-cols-1 gap-5 p-4 md:p-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
               <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600"><ListChecks className="h-4.5 w-4.5" /></div><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Identificação</p><h2 className="text-xl font-semibold tracking-tight text-slate-950">Quem fica no radar?</h2></div></div>

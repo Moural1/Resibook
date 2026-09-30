@@ -147,7 +147,7 @@ export default function PlantaoPage() {
           </>
         }
       >
-        <div className="grid gap-5 xl:grid-cols-[1fr_0.82fr]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)]">
           <section className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
             <div className="flex items-end justify-between gap-4">
               <div>
