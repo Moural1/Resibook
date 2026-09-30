@@ -1,11 +1,18 @@
 import "./globals.css";
 import "./module-surfaces.css";
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import Toaster from "../components/toaster";
 import AppShell from "../components/app-shell";
 import AccessibilityBridge from "../components/accessibility-bridge";
 import ClinicalRuntime from "../components/clinical-runtime";
 import VisualSystemController from "../components/visual-system-controller";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 const productionHost =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -78,7 +85,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={inter.variable}>
       <body>
         <a
           href="#conteudo-principal"

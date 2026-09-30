@@ -69,10 +69,14 @@ export function FeedbackWidget() {
           setState("idle");
           setError("");
         }}
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-[0_18px_50px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 hover:border-cyan-200 hover:text-cyan-900"
+        aria-label="Enviar feedback"
+        title="Enviar feedback"
+        className="group fixed bottom-[92px] right-4 z-40 inline-flex h-11 items-center rounded-full border border-slate-200/90 bg-white/95 px-3 text-sm font-semibold text-slate-800 shadow-[0_12px_32px_rgba(15,23,42,0.14)] backdrop-blur transition-all duration-200 hover:border-cyan-200 hover:text-cyan-900 focus-visible:border-cyan-200 lg:bottom-6 lg:right-6 print:hidden"
       >
-        <MessageSquareHeart className="h-4 w-4 text-cyan-700" />
-        Enviar feedback
+        <MessageSquareHeart className="h-[18px] w-[18px] shrink-0 text-cyan-700" />
+        <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover:ml-2 group-hover:max-w-[140px] group-hover:opacity-100 group-focus-visible:ml-2 group-focus-visible:max-w-[140px] group-focus-visible:opacity-100">
+          Enviar feedback
+        </span>
       </button>
 
       {open ? (
