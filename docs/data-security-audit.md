@@ -91,3 +91,16 @@ O produto ainda contém prontuário e dados identificáveis de pacientes. Eles n
 - As duas capacidades são desativadas por padrão. A consulta por áudio também depende da habilitação do prontuário.
 - A configuração de referência e o checklist de release estão em `.env.example` e `docs/commercial-readiness-checklist.md`.
 
+
+## Módulo de psiquiatria (`/psiquiatria`)
+
+Dados de saúde mental são dados pessoais sensíveis (LGPD, art. 5º, II e art. 11). O módulo aplica minimização e pseudonimização por desenho:
+
+- Tabela própria `psiq_patients` (migration `20261001090000_psiquiatria_longitudinal.sql`), sem relação com a tabela `patients`, que tem nome.
+- O paciente é identificado só por código `PAC-###` (validado no banco por `check`), faixa etária e sexo. O tempo é contado em mês de seguimento; familiares entram só pelo parentesco, escolhido de uma lista fechada.
+- O documento clínico (`jsonb`) é rejeitado pelo banco se tiver campos como `nome`, `cpf`, `cns`, `telefone`, `email`, `endereco` ou `data_nascimento`.
+- Textos livres passam por `src/lib/psiquiatria/privacidade.ts`: CPF, CNS, telefone, e-mail e campos rotulados bloqueiam o salvamento; datas reais e possíveis nomes geram aviso.
+- RLS por `user_id = auth.uid()` em select, insert, update e delete; `anon` sem acesso. Excluir a conta apaga os registros em cascata.
+- O rascunho da consulta fica no mesmo registro protegido, não no `localStorage`.
+- O médico pode exportar (portabilidade) e excluir cada paciente pela própria tela.
+- A cópia do plano de segurança para o paciente deixa nomes e telefones em branco, para preenchimento à mão fora do app.
