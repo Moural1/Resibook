@@ -209,21 +209,19 @@ function LoginContent() {
         </p>
       </aside>
 
-      <main id="conteudo-principal" className="flex min-h-screen items-center justify-center px-4 py-8 sm:px-8">
+      <main id="conteudo-principal" tabIndex={-1} className="flex min-h-screen items-center justify-center px-4 py-8 sm:px-8">
       <div className="w-full max-w-md rounded-[24px] border border-slate-200 bg-white p-7 shadow-[0_20px_60px_rgba(15,23,42,0.09)] sm:p-8">
         <Link href="/" className="mb-6 inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-slate-900 lg:hidden">
           <ArrowLeft className="h-4 w-4" /> Voltar ao site
         </Link>
         <div className="mb-6 flex flex-col items-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
-            <Image
-              src="/logo-resibook.png"
-              alt="ResiBook"
-              width={48}
-              height={48}
-              className="h-12 w-12 object-contain"
-            />
-          </div>
+          <Image
+            src="/resibook-icon.svg"
+            alt="ResiBook"
+            width={56}
+            height={56}
+            className="mb-4 h-14 w-14 rounded-2xl shadow-[0_8px_24px_rgba(8,23,45,0.12)]"
+          />
 
           <h1 className="text-3xl font-semibold tracking-tight">
             <span className="text-slate-950">RESI</span>
@@ -349,7 +347,7 @@ function LoginContent() {
               href="/termos"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-blue-700 underline-offset-4 hover:underline"
+              className="font-semibold text-cyan-800 underline-offset-4 hover:underline"
             >
               Termos de Uso
             </Link>{" "}
@@ -358,7 +356,7 @@ function LoginContent() {
               href="/privacidade"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-blue-700 underline-offset-4 hover:underline"
+              className="font-semibold text-cyan-800 underline-offset-4 hover:underline"
             >
               Política de Privacidade
             </Link>

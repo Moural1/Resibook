@@ -1015,7 +1015,11 @@ export default function AppShell({ children }: Props) {
           <Topbar />
         </div>
 
-        <main className="px-3 pb-24 pt-4 sm:px-4 md:px-6 md:py-6 lg:px-8 print:px-0 print:py-0">
+        <main
+          id="conteudo-principal"
+          tabIndex={-1}
+          className="px-3 pb-24 pt-4 sm:px-4 md:px-6 md:py-6 lg:px-8 print:px-0 print:py-0"
+        >
           <div className="page-enter mx-auto w-full max-w-7xl print:max-w-none">
             {children}
           </div>

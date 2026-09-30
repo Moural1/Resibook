@@ -8,8 +8,10 @@ export default function AccessibilityBridge() {
   useEffect(() => {
     const main = document.querySelector<HTMLElement>("main");
     if (!main) return;
-    main.id = "conteudo-principal";
-    main.tabIndex = -1;
+    // Só completa o que faltar: reescrever atributos já renderizados pelo React
+    // gera aviso de hidratação quando o efeito roda antes do <main> hidratar.
+    if (!main.id) main.id = "conteudo-principal";
+    if (!main.hasAttribute("tabindex")) main.tabIndex = -1;
   }, [pathname]);
   return null;
 }
