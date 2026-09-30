@@ -737,7 +737,7 @@ export default function TopicosPage() {
           ) : null
         }
       >
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
           <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
@@ -770,7 +770,7 @@ export default function TopicosPage() {
             </p>
           </div>
 
-          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="col-span-2 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:col-span-1">
             <div className="flex items-center justify-between gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
                 <Sparkles className="h-5 w-5" />
