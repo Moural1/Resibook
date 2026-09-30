@@ -8,12 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:clinical && npm run test:acls && npm run test:security && npm run test:premium-safety && npm run test:ux",
+    "test": "npm run test:clinical && npm run test:acls && npm run test:security && npm run test:premium-safety && npm run test:ux && npm run test:psiquiatria",
     "test:clinical": "node --no-warnings --experimental-strip-types --test scripts/clinical-regression.test.mjs",
     "test:acls": "node --no-warnings --experimental-strip-types --test scripts/acls-content-regression.test.mjs scripts/acls-ebook-source-regression.test.mjs",
     "test:security": "node --no-warnings --experimental-strip-types --test scripts/security-regression.test.mjs",
     "test:premium-safety": "node --no-warnings --experimental-strip-types --test scripts/premium-safety-regression.test.mjs",
-    "test:ux": "node --no-warnings --experimental-strip-types --test scripts/ux-regression.test.mjs"
+    "test:ux": "node --no-warnings --experimental-strip-types --test scripts/ux-regression.test.mjs",
+    "test:psiquiatria": "node --no-warnings --experimental-strip-types --test scripts/psiquiatria-regression.test.mjs"
   },
   "engines": {
     "node": ">=22.0.0"

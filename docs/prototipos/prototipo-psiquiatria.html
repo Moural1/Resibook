@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Resibook Psiquiatria (protótipo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F3; --surface:#FFFFFF; --sunk:#F5F7F9; --ink:#17222E; --muted:#5A6776; --line:#D3DAE1;
+  --accent:#2B6E72; --accent-soft:#DDECEB; --warn:#9A5F0E; --warn-soft:#FBEFD9; --risk:#AE3342; --risk-soft:#F8E0E3;
+  --m-ad:#7B68C2; --m-est:#C4862A; --m-ap:#3C84C0; --m-bz:#8A96A3; --m-out:#4A9A8F;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#10161D; --surface:#18212B; --sunk:#131B23; --ink:#E4EAF0; --muted:#97A3B0; --line:#2A3642;
+  --accent:#62B4B8; --accent-soft:#1D3537; --warn:#E3AA4E; --warn-soft:#32281A; --risk:#E86F7E; --risk-soft:#3B1E24;
+  --m-ad:#9C8BE0; --m-est:#DDA24A; --m-ap:#62A6E0; --m-bz:#7C8894; --m-out:#5FB5A8;
+}}
+:root[data-theme="dark"]{
+  --bg:#10161D; --surface:#18212B; --sunk:#131B23; --ink:#E4EAF0; --muted:#97A3B0; --line:#2A3642;
+  --accent:#62B4B8; --accent-soft:#1D3537; --warn:#E3AA4E; --warn-soft:#32281A; --risk:#E86F7E; --risk-soft:#3B1E24;
+  --m-ad:#9C8BE0; --m-est:#DDA24A; --m-ap:#62A6E0; --m-bz:#7C8894; --m-out:#5FB5A8;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:268px 1fr;min-height:100vh}
+.side{background:var(--surface);border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-weight:700;font-size:1.15rem;letter-spacing:-.01em}
+.brand small{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
+.privacy{background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:.85rem;line-height:1.4}
+.plist{display:flex;flex-direction:column;gap:4px}
+.pitem{display:grid;grid-template-columns:1fr auto;align-items:center;text-align:left;border:1px solid transparent;background:none;border-radius:8px;padding:9px 10px;cursor:pointer}
+.pitem:hover{background:var(--sunk)}
+.pitem.on{background:var(--sunk);border-color:var(--line)}
+.pcode{font-weight:700}
+.pmeta{grid-column:1;color:var(--muted);font-size:.85rem}
+.dot{grid-row:1/3;grid-column:2;width:10px;height:10px;border-radius:50%;background:var(--risk)}
+.sidefoot{margin-top:auto;display:flex;flex-direction:column;gap:8px;font-size:.8rem;color:var(--muted)}
+main{padding:28px clamp(16px,3vw,40px) 60px;min-width:0}
+.phead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:18px}
+.pcodebig{font-size:clamp(2rem,5vw,2.9rem);font-weight:700;letter-spacing:-.03em;line-height:1}
+.psub{color:var(--muted);margin-top:6px;max-width:62ch}
+.month{display:flex;align-items:center;gap:12px}
+.month .n{font-size:2rem;font-weight:700;line-height:1}
+.month .t{color:var(--muted);font-size:.85rem;line-height:1.2}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:22px;overflow-x:auto;scrollbar-width:thin}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:700}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px;min-width:0}
+.panel h3{margin:0 0 12px;font-size:1.02rem}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+.grid2 .panel{margin-bottom:0}
+.stack{display:flex;flex-direction:column;gap:18px}
+.alert{border-left:4px solid var(--muted);padding:8px 12px;margin-bottom:8px;border-radius:0 6px 6px 0;background:var(--sunk);font-size:.95rem}
+.alert.alto{border-color:var(--risk);background:var(--risk-soft)}
+.alert.atencao{border-color:var(--warn);background:var(--warn-soft)}
+.alert.info{border-color:var(--accent);background:var(--accent-soft)}
+.alert b{display:block;font-size:.78rem;color:var(--muted);font-weight:700}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}
+.kv:last-child{border-bottom:0}
+.kv span:last-child{color:var(--muted);text-align:right}
+.score{display:flex;align-items:baseline;gap:10px;padding:6px 0}
+.score .big{font-size:1.8rem;font-weight:700;line-height:1}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+.scroll{overflow-x:auto}
+svg text{font-family:inherit}
+.tl{display:block;width:100%;min-width:640px;height:auto}
+.tl .grid{stroke:var(--line);stroke-width:1}
+.tl .vgrid{stroke:var(--line);stroke-width:1;opacity:.45}
+.tl .ax{fill:var(--muted);font-size:12px}
+.tl .now{stroke:var(--accent);stroke-width:2;stroke-dasharray:4 4}
+.tl .nowt{fill:var(--accent);font-size:12px;font-weight:700}
+.tl .ln{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round}
+.tl .ln.gad{stroke-dasharray:7 5;stroke-width:2}
+.tl .pt{fill:var(--surface);stroke:var(--ink);stroke-width:2.5}
+.tl .pt.gad{stroke-width:2}
+.tl .pv{fill:var(--ink);font-size:12px;font-weight:700}
+.tl .pv.gad{font-weight:400;fill:var(--muted)}
+.tl .ev{fill:var(--warn)}
+.tl .evt{fill:var(--ink);font-size:12px}
+.tl .ml{fill:var(--ink);font-size:12.5px}
+.tl .ended{opacity:.55}
+.tl .ctick{fill:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.85rem;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:22px;height:0;border-top:2.5px solid var(--ink);vertical-align:middle;margin-right:6px}
+.legend i.dash{border-top-style:dashed;border-top-width:2px}
+.legend i.sw{height:10px;width:16px;border:0;border-radius:5px}
+.legend i.dia{width:10px;height:10px;border:0;background:var(--warn);transform:rotate(45deg)}
+.legend i.circ{width:9px;height:9px;border:0;border-radius:50%;background:var(--accent)}
+.form{display:flex;flex-direction:column;gap:12px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted)}
+input[type=text],input[type=number],input:not([type]),select,textarea{background:var(--sunk);border:1px solid var(--line);border-radius:7px;padding:8px 10px;color:var(--ink);min-width:0;width:100%}
+textarea{resize:vertical;min-height:70px}
+.checks{display:flex;flex-wrap:wrap;gap:6px 14px}
+.checks label{flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-size:.92rem}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 14px;cursor:pointer}
+.btn:hover{background:var(--sunk)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:700}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--risk)}
+.btn.sm{padding:4px 10px;font-size:.85rem}
+.btn.full{width:100%}
+.list{display:flex;flex-direction:column}
+.li{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
+.li:last-child{border-bottom:0}
+.li .t{font-weight:700}
+.li .d{color:var(--muted);font-size:.9rem;grid-column:1}
+.li .a{grid-row:1/3;grid-column:2;display:flex;gap:6px}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:99px;background:var(--sunk);border:1px solid var(--line);margin-right:4px;color:var(--ink)}
+.pill.r{background:var(--risk-soft);border-color:transparent}
+.pill.w{background:var(--warn-soft);border-color:transparent}
+.pill.g{background:var(--accent-soft);border-color:transparent}
+.items{display:flex;flex-direction:column;gap:2px}
+.item{border:0;margin:0;padding:8px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.item legend{float:left;padding:0;font-size:.93rem}
+.opts{display:flex;gap:4px}
+.opt{flex-direction:row;cursor:pointer}
+.opt input{position:absolute;opacity:0;width:1px;height:1px}
+.opt span{display:inline-grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:7px;background:var(--sunk);color:var(--ink);font-weight:700}
+.opt input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.opt input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+.total{position:sticky;bottom:0;background:var(--surface);padding:10px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line)}
+.total .big{font-size:1.6rem;font-weight:700}
+.geno,.eco{display:block;width:100%;height:auto}
+.geno{min-width:560px}
+.eco{max-width:560px;margin:0 auto}
+.nd{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.nd.ph{stroke:var(--muted);stroke-dasharray:4 3;fill:var(--sunk)}
+.pacout{fill:none;stroke:var(--ink);stroke-width:2}
+.st{stroke:var(--ink);stroke-width:1.6;fill:none}
+.x{stroke:var(--ink);stroke-width:2}
+.gl{fill:var(--ink);font-size:13px}
+.gl.ph{fill:var(--muted)}
+.qm{fill:var(--muted);font-size:14px}
+.bd rect{fill:var(--accent-soft)} .bd text{fill:var(--ink);font-size:10.5px;font-weight:700}
+.bd.r rect{fill:var(--risk-soft)} .bd.r text{fill:var(--risk)}
+.em{fill:none;stroke-linecap:round}
+.em-proxima{stroke:var(--accent);stroke-width:3}
+.em-distante{stroke:var(--muted);stroke-width:2;stroke-dasharray:7 6}
+.em-conflituosa{stroke:var(--risk);stroke-width:2}
+.em-rompida{stroke:var(--muted);stroke-width:3;stroke-dasharray:1 7}
+.el{fill:none;stroke-linecap:round}
+.el-forte{stroke:var(--accent);stroke-width:5}
+.el-moderado{stroke:var(--accent);stroke-width:2.2}
+.el-fraco{stroke:var(--muted);stroke-width:2;stroke-dasharray:6 6}
+.el-conflituoso{stroke:var(--risk);stroke-width:2.2}
+.eco-c{fill:var(--accent);} .eco-ct{fill:var(--surface);font-weight:700;font-size:15px} .eco-cs{fill:var(--surface);font-size:13px}
+.eco-n{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.eco-t{fill:var(--ink);font-size:13px}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.empty h2{color:var(--ink);margin:0 0 6px}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:22px;width:min(560px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(10,16,24,.45)}
+dialog h2{margin:0 0 14px;font-size:1.2rem}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-size:.92rem;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+
+.opt.yn span{width:auto;padding:0 14px}
+.pill.o{background:var(--warn);color:var(--surface);border-color:transparent}
+.pill.rr{background:var(--risk);color:var(--surface);border-color:transparent}
+.risk-now{border-left:5px solid var(--line)}
+.rn-alto{border-left-color:var(--risk)}.rn-moderado,.rn-baixo{border-left-color:var(--warn)}.rn-nenhum{border-left-color:var(--accent)}
+.plano{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px 30px;margin-top:12px}
+.psec h4{margin:0 0 4px;font-size:.98rem}
+.psec p{margin:0 0 6px}
+.pl{list-style:none;margin:0 0 8px;padding:0}
+.pl li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+.sugs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chip{border:1px dashed var(--accent);background:none;color:var(--accent);border-radius:99px;padding:3px 10px;font-size:.82rem;cursor:pointer}
+.chip:hover{background:var(--accent-soft)}
+.addrow{display:flex;gap:6px}
+.psec.motivo{grid-column:1/-1}
+.tl .rk{stroke-width:2}.rk-nenhum{fill:var(--surface);stroke:var(--accent)}.rk-baixo{fill:var(--warn-soft);stroke:var(--warn)}.rk-moderado{fill:var(--warn);stroke:var(--warn)}.rk-alto{fill:var(--risk);stroke:var(--risk)}
+.legend i.rkl{width:11px;height:11px;border-radius:50%;border:2px solid var(--warn);background:var(--warn-soft)}
+details.why{margin-top:6px;font-size:.85rem}
+details.why summary{cursor:pointer;color:var(--muted);width:fit-content}
+details.why p{margin:4px 0 0;color:var(--ink)}
+details.why .ref{color:var(--muted);font-style:italic}
+.tgs{display:flex;flex-wrap:wrap;gap:6px}
+.tg{flex-direction:row;cursor:pointer}
+.tg input{position:absolute;opacity:0;width:1px;height:1px}
+.tg span{display:inline-block;border:1px solid var(--line);background:var(--sunk);color:var(--ink);border-radius:99px;padding:4px 12px;font-size:.88rem}
+.tg input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.tg input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+.eem{display:grid;grid-template-columns:170px 1fr;gap:10px 16px;align-items:start}
+.eem .dname{font-weight:700;padding-top:4px}
+.eem .prev{font-size:.8rem;color:var(--muted);margin-top:4px}
+.step{display:flex;gap:10px;align-items:center;margin:0 0 12px}
+.step .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--surface);font-weight:700;font-size:.85rem;flex:none}
+.step h3{margin:0}
+.chk{display:flex;flex-direction:column;gap:8px}
+.chk label{flex-direction:row;align-items:flex-start;gap:10px;color:var(--ink);font-size:.93rem}
+.chk input{margin-top:5px;flex:none}
+.quad{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.quad .panel{margin:0}
+.fi{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line)}
+.fi .src{font-size:.74rem;color:var(--muted);display:block}
+.lc .base{stroke:var(--ink);stroke-width:1.5}
+.lc .up{fill:var(--m-est)}.lc .dn{fill:var(--m-ad)}.lc .eu{fill:var(--muted)}
+.lc .start{stroke:var(--accent);stroke-width:2;stroke-dasharray:4 4}
+.mini{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,340px));gap:18px}
+.mini svg{width:100%;height:auto;display:block;margin-top:4px}
+.mini .ln2{fill:none;stroke:var(--accent);stroke-width:2.5}
+.mini .ref{fill:var(--accent-soft)}
+.mini .ax{fill:var(--muted);font-size:11px}
+.mini .pt2{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+.mini .pv{fill:var(--ink);font-size:11px;font-weight:700}
+.vh{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.month{flex-wrap:wrap}
+@media (max-width:820px){ .eem{grid-template-columns:1fr;gap:4px} .eem .dname{margin-top:8px} 
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:16px}
+  .plist{flex-direction:row;overflow-x:auto;padding-bottom:4px}
+  .pitem{min-width:150px}
+  .sidefoot{flex-direction:row;flex-wrap:wrap;margin-top:0}
+  .grid2{grid-template-columns:1fr}
+  .item{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">Resibook Psiquiatria<small>Acompanhamento longitudinal</small></div>
+    <div class="privacy">Os dados ficam apenas neste navegador. Use só o código do paciente e meses de seguimento. Não registre nomes, datas reais, cidades ou profissões.</div>
+    <button class="btn primary full" data-act="pac-new">Novo paciente</button>
+    <div class="plist" id="plist"></div>
+    <div class="sidefoot">
+      <button class="btn full" data-act="backup">Backup e dados</button>
+      <span>Protótipo. Os intervalos de monitorização são simplificados; ajuste ao protocolo do seu serviço. Não substitui o prontuário oficial nem o julgamento clínico.</span>
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<dialog id="dlgPac">
+  <form data-form="pac" class="form">
+    <h2 id="dlgPacTitle">Novo paciente</h2>
+    <p class="muted small" id="dlgPacCode" style="margin:0"></p>
+    <div class="row">
+      <label>Faixa etária<select name="faixa">
+        <option>Menos de 18</option><option>18–24</option><option>25–34</option><option>35–44</option><option>45–59</option><option>60 ou mais</option>
+      </select></label>
+      <label>Sexo<select name="sexo"><option value="F">Feminino</option><option value="M">Masculino</option><option value="U">Outro / não informado</option></select></label>
+    </div>
+    <label>Hipótese diagnóstica<input name="hip" maxlength="140" placeholder="Ex.: Episódio depressivo moderado"></label>
+    <div class="actions">
+      <button class="btn primary">Salvar paciente</button>
+      <button type="button" class="btn" data-act="dlg-close">Cancelar</button>
+      <button type="button" class="btn danger" data-act="pac-del" id="btnPacDel" hidden>Excluir paciente</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgBackup">
+  <h2>Backup e dados</h2>
+  <p class="small muted" style="margin-top:0">Os dados vivem só neste navegador e somem se o histórico for limpo. Copie o backup e guarde em lugar seguro.</p>
+  <label>Backup atual<textarea id="bkOut" readonly rows="5"></textarea></label>
+  <div class="actions" style="margin:8px 0 16px"><button class="btn" data-act="bk-copy">Copiar backup</button></div>
+  <label>Restaurar de um backup<textarea id="bkIn" rows="4" placeholder="Cole aqui o backup copiado"></textarea></label>
+  <div class="actions" style="margin-top:8px">
+    <button class="btn" data-act="bk-import">Restaurar backup</button>
+    <button class="btn" data-act="bk-demo">Adicionar paciente de exemplo</button>
+    <button class="btn danger" data-act="bk-wipe">Apagar todos os dados</button>
+    <button class="btn" data-act="dlg-close">Fechar</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const KEY='resibook-psiq-v1';
+const u=()=>Math.random().toString(36).slice(2,10);
+const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const trunc=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+const sorted=a=>[...a].sort((x,y)=>x.mes-y.mes);
+
+const REL={
+ avo_pat_m:{l:'Avô paterno',c:'Avô pat.',s:'M'}, avo_pat_f:{l:'Avó paterna',c:'Avó pat.',s:'F'},
+ avo_mat_m:{l:'Avô materno',c:'Avô mat.',s:'M'}, avo_mat_f:{l:'Avó materna',c:'Avó mat.',s:'F'},
+ pai:{l:'Pai',c:'Pai',s:'M',p:1}, mae:{l:'Mãe',c:'Mãe',s:'F',p:1},
+ tio_pat:{l:'Tio paterno',c:'Tio pat.',s:'M'}, tia_pat:{l:'Tia paterna',c:'Tia pat.',s:'F'},
+ tio_mat:{l:'Tio materno',c:'Tio mat.',s:'M'}, tia_mat:{l:'Tia materna',c:'Tia mat.',s:'F'},
+ irmao:{l:'Irmão',c:'Irmão',s:'M',p:1}, irma:{l:'Irmã',c:'Irmã',s:'F',p:1},
+ conjuge_m:{l:'Cônjuge (homem)',c:'Cônjuge',s:'M'}, conjuge_f:{l:'Cônjuge (mulher)',c:'Cônjuge',s:'F'},
+ filho:{l:'Filho',c:'Filho',s:'M',p:1}, filha:{l:'Filha',c:'Filha',s:'F',p:1}
+};
+const UNIQUE={avo_pat_m:1,avo_pat_f:1,avo_mat_m:1,avo_mat_f:1,pai:1,mae:1};
+const COND={dep:{l:'Depressão',a:'DEP'},tab:{l:'Transtorno bipolar',a:'TAB'},psi:{l:'Psicose',a:'PSI'},ans:{l:'Ansiedade',a:'ANS'},spa:{l:'Álcool ou outras substâncias',a:'SPA'},ts:{l:'Tentativa de suicídio',a:'TS',r:1},sui:{l:'Suicídio',a:'SUI',r:1},dem:{l:'Demência',a:'DEM'},vio:{l:'Violência ou abuso',a:'VIO',r:1}};
+const RELA={proxima:'Próxima',distante:'Distante',conflituosa:'Conflituosa',rompida:'Rompida',neutra:'Sem registro'};
+const VINC={forte:'Forte',moderado:'Moderado',fraco:'Fraco',conflituoso:'Conflituoso'};
+const CLS={antidepressivo:{l:'Antidepressivo',c:'var(--m-ad)'},triciclico:{l:'Antidepressivo tricíclico',c:'var(--m-ad)'},litio:{l:'Lítio',c:'var(--m-est)'},valproato:{l:'Valproato',c:'var(--m-est)'},lamotrigina:{l:'Lamotrigina',c:'var(--m-est)'},antipsicotico:{l:'Antipsicótico',c:'var(--m-ap)'},clozapina:{l:'Clozapina',c:'var(--m-ap)'},benzodiazepinico:{l:'Benzodiazepínico',c:'var(--m-bz)'},outro:{l:'Outro',c:'var(--m-out)'}};
+const AD=['antidepressivo','triciclico'];
+const LETAL={litio:1,triciclico:1};
+const CS_Q={q1:'Desejou estar morto(a) ou poder dormir e não acordar mais?',q2:'Teve de fato algum pensamento de se matar?',q3:'Pensou em como poderia fazer isso?',q4:'Teve esses pensamentos com alguma intenção de agir de acordo com eles?',q5:'Começou a elaborar, ou já elaborou, os detalhes de como se matar? Pretende executar esse plano?',q6:'Alguma vez na vida fez, começou a fazer ou se preparou para fazer algo para acabar com a própria vida?',q6r:'Isso aconteceu nos últimos 3 meses?'};
+const NIVEL={
+ nenhum:{l:'Sem ideação no último mês',c:'g',conduta:'Manter o rastreio nas próximas consultas.'},
+ baixo:{l:'Risco baixo',c:'w',conduta:'Revisar o plano de segurança, orientar sobre sinais de alerta e canais de ajuda e reavaliar na próxima consulta.'},
+ moderado:{l:'Risco moderado',c:'o',conduta:'Elaborar ou revisar o plano de segurança nesta consulta, restringir acesso a meios, envolver a rede de apoio e antecipar o retorno.'},
+ alto:{l:'Risco alto',c:'rr',conduta:'Não deixar o paciente sozinho. Avaliação psiquiátrica de emergência e considerar internação. Restringir meios de imediato e acionar a rede de apoio.'}};
+function nivelCS(r){if(r.q4||r.q5||(r.q6&&r.q6r))return 'alto';if(r.q3||r.q6)return 'moderado';if(r.q1||r.q2)return 'baixo';return 'nenhum';}
+const PLANO=[
+ {k:'alerta',t:'1. Sinais de alerta',tp:'1. Sinais de que uma crise pode estar começando:',d:'Pensamentos, humor, situações ou comportamentos que antecedem uma crise.',ph:'Ex.: Ficar isolado no quarto'},
+ {k:'internas',t:'2. O que posso fazer sozinho(a)',tp:'2. O que posso fazer sozinho(a) para me acalmar ou me distrair:',d:'Estratégias sem precisar contatar outra pessoa.',ph:'Ex.: Caminhar, ouvir música'},
+ {k:'distracao',t:'3. Pessoas e lugares que distraem',tp:'3. Pessoas e lugares que me ajudam a mudar o foco:',d:'Convívio social e ambientes que ajudam a mudar o foco.',ph:'Ex.: Casa da irmã'},
+ {k:'ajuda',t:'4. Pessoas a quem pedir ajuda',tp:'4. Pessoas a quem posso pedir ajuda:',d:'Registre só o vínculo. Nome e telefone vão apenas na cópia do paciente.',ph:'Ex.: Mãe'},
+ {k:'profissionais',t:'5. Profissionais e serviços em crise',tp:'5. Profissionais e serviços que posso procurar:',d:'',ph:'Ex.: CAPS de referência'},
+ {k:'meios',t:'6. Ambiente seguro',tp:'6. Como deixar meu ambiente mais seguro:',d:'Restrição de acesso a meios letais.',ph:'Ex.: Objetos cortantes guardados'}];
+const RESP={aguardando:'Aguardando efeito',boa:'Boa resposta',parcial:'Resposta parcial',sem:'Sem resposta',intolerancia:'Intolerância'};
+const MON={
+ litio:[['Litemia',3],['Creatinina',6],['TSH',6]],
+ valproato:[['Hemograma',6],['Função hepática',6]],
+ clozapina:[['Hemograma',1],['Peso / IMC',3],['Glicemia / HbA1c',12],['Perfil lipídico',12]],
+ antipsicotico:[['Peso / IMC',3],['Glicemia / HbA1c',12],['Perfil lipídico',12]]
+};
+const EXAMES=['Litemia','Creatinina','TSH','Hemograma','Função hepática','Glicemia / HbA1c','Perfil lipídico','Peso / IMC','ECG','Outro'];
+const SCALES={
+ 'PHQ-9':{max:27,itens:['Pouco interesse ou prazer em fazer as coisas','Sentir-se para baixo, deprimido(a) ou sem esperança','Dificuldade para dormir, manter o sono, ou dormir demais','Cansaço ou pouca energia','Falta de apetite ou comer demais','Sentir-se mal consigo, como um fracasso ou decepção para a família','Dificuldade de concentração, como para ler ou ver TV','Lentidão perceptível por outros, ou agitação e inquietação','Pensar que seria melhor estar morto(a) ou em se ferir'],
+  sev:t=>t<5?'mínima':t<10?'leve':t<15?'moderada':t<20?'moderadamente grave':'grave'},
+ 'GAD-7':{max:21,itens:['Sentir-se nervoso(a), ansioso(a) ou muito tenso(a)','Não conseguir parar ou controlar as preocupações','Preocupar-se demais com coisas diferentes','Dificuldade para relaxar','Inquietação a ponto de ser difícil ficar parado(a)','Irritar-se ou aborrecer-se com facilidade','Medo de que algo terrível vá acontecer'],
+  sev:t=>t<5?'mínima':t<10?'leve':t<15?'moderada':'grave'}
+};
+
+SCALES['PHQ-9'].inst=SCALES['GAD-7'].inst='Nas últimas 2 semanas, com que frequência? 0 nenhuma vez, 1 vários dias, 2 mais da metade dos dias, 3 quase todos os dias.';
+SCALES['YMRS']={inst:'Avaliação do examinador sobre as últimas 48 horas. Os itens 5, 6, 8 e 9 valem de 0 a 8. Os pontos de corte variam entre estudos.',
+ itens:[['Humor elevado',4],['Atividade motora e energia aumentadas',4],['Interesse sexual',4],['Sono',4],['Irritabilidade',8],['Fala (velocidade e quantidade)',8],['Distúrbio da linguagem e do pensamento',4],['Conteúdo do pensamento',8],['Comportamento disruptivo e agressivo',8],['Aparência',4],['Insight',4]].map(([t,m])=>({t,o:(m===8?[0,2,4,6,8]:[0,1,2,3,4]).map(v=>[v,String(v)])})),
+ sev:t=>t<12?'sem mania significativa':t<20?'sintomas leves':t<26?'moderada':'grave'};
+const SN=[[1,'Sim'],[0,'Não']];
+SCALES['MDQ']={inst:'Autorrelato sobre a vida toda: "Já houve um período em que você não estava como de costume e..."',
+ itens:[...['se sentiu tão bem ou animado(a) que outros acharam que não era o seu normal, ou se meteu em problemas por isso','ficou tão irritado(a) que gritou com pessoas ou começou brigas','se sentiu muito mais autoconfiante que o habitual','dormiu muito menos que o habitual e não sentiu falta do sono','falou muito mais ou mais rápido que o habitual','teve pensamentos acelerados, sem conseguir desacelerar a mente','se distraiu tão facilmente que teve dificuldade de se concentrar','teve muito mais energia que o habitual','esteve muito mais ativo(a) ou fez muito mais coisas que o habitual','esteve muito mais sociável, por exemplo, ligando para amigos de madrugada','teve muito mais interesse em sexo que o habitual','fez coisas incomuns para você, arriscadas ou que outros acharam exageradas','gastou dinheiro a ponto de trazer problemas para você ou sua família'].map(t=>({t:'...'+t,o:SN})),
+  {t:'Várias dessas coisas aconteceram no mesmo período?',o:SN},{t:'Quanto isso causou problemas (trabalho, família, dinheiro, justiça, brigas)?',o:[[0,'Nenhum'],[1,'Pequeno'],[2,'Moderado'],[3,'Sério']]}],
+ total:it=>it.slice(0,13).reduce((a,b)=>a+b,0),
+ sev:(t,it)=>it&&t>=7&&it[13]===1&&it[14]>=2?'rastreio positivo':'rastreio negativo'};
+function scItems(k){return SCALES[k].itens.map(it=>typeof it==='string'?{t:it,o:[0,1,2,3].map(v=>[v,String(v)])}:it);}
+function scTotal(k,it){return SCALES[k].total?SCALES[k].total(it):it.reduce((a,b)=>a+b,0);}
+const DRUGS={
+ 'sertralina':['antidepressivo',50,'Sertralina'],'fluoxetina':['antidepressivo',20,'Fluoxetina'],'paroxetina':['antidepressivo',20,'Paroxetina'],'escitalopram':['antidepressivo',10,'Escitalopram'],'citalopram':['antidepressivo',20,'Citalopram'],'fluvoxamina':['antidepressivo',100,'Fluvoxamina'],
+ 'desvenlafaxina':['antidepressivo',50,'Desvenlafaxina'],'venlafaxina':['antidepressivo',75,'Venlafaxina'],'duloxetina':['antidepressivo',60,'Duloxetina'],'bupropiona':['antidepressivo',150,'Bupropiona'],'mirtazapina':['antidepressivo',15,'Mirtazapina'],'vortioxetina':['antidepressivo',10,'Vortioxetina'],'trazodona':['antidepressivo',150,'Trazodona'],'agomelatina':['antidepressivo',25,'Agomelatina'],
+ 'amitriptilina':['triciclico',75,'Amitriptilina'],'nortriptilina':['triciclico',50,'Nortriptilina'],'clomipramina':['triciclico',75,'Clomipramina'],'imipramina':['triciclico',75,'Imipramina'],
+ 'carbonato de litio':['litio',0,'Carbonato de lítio'],'litio':['litio',0,''],'divalproato':['valproato',0,'Divalproato de sódio'],'valproato':['valproato',0,'Valproato de sódio'],'acido valproico':['valproato',0,'Ácido valproico'],'lamotrigina':['lamotrigina',0,'Lamotrigina'],
+ 'quetiapina':['antipsicotico',0,'Quetiapina'],'olanzapina':['antipsicotico',0,'Olanzapina'],'risperidona':['antipsicotico',0,'Risperidona'],'aripiprazol':['antipsicotico',0,'Aripiprazol'],'lurasidona':['antipsicotico',0,'Lurasidona'],'ziprasidona':['antipsicotico',0,'Ziprasidona'],'paliperidona':['antipsicotico',0,'Paliperidona'],'haloperidol':['antipsicotico',0,'Haloperidol'],'clozapina':['clozapina',0,'Clozapina'],
+ 'clonazepam':['benzodiazepinico',0,'Clonazepam'],'alprazolam':['benzodiazepinico',0,'Alprazolam'],'diazepam':['benzodiazepinico',0,'Diazepam'],'lorazepam':['benzodiazepinico',0,'Lorazepam'],'bromazepam':['benzodiazepinico',0,'Bromazepam']};
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+function drugInfo(nome){const n=norm(nome);let best=null;Object.keys(DRUGS).forEach(k=>{if((n===k||n.startsWith(k+' ')||n.includes(k))&&(!best||k.length>best.length))best=k;});return best?{k:best,classe:DRUGS[best][0],dmin:DRUGS[best][1]}:null;}
+function doseMg(d){const s=String(d||'').replace(',','.');const m=s.match(/(\d+(?:\.\d+)?)\s*mg/i)||s.match(/^\s*(\d+(?:\.\d+)?)/);return m?+m[1]:null;}
+const MIN_MESES=2;
+function adequacy(m,p){if(!AD.includes(m.classe))return null;const inf=drugInfo(m.nome),dose=doseMg(m.dose),dur=(m.fim??p.atual)-m.inicio;
+  const doseOk=inf&&inf.dmin&&dose!=null?dose>=inf.dmin:null,durOk=dur>=MIN_MESES;return {dur,durOk,doseOk,dmin:inf?inf.dmin:null,adequada:durOk&&doseOk===true};}
+function adFailures(p){return p.meds.filter(m=>{const a=adequacy(m,p);return a&&a.adequada&&(m.resposta==='sem'||(m.resposta==='parcial'&&m.fim!=null));});}
+function adInadequate(p){return p.meds.filter(m=>{const a=adequacy(m,p);return a&&m.fim!=null&&!a.adequada&&m.resposta!=='intolerancia'&&m.resposta!=='boa';});}
+const HUMOR={'3':'Mania grave','2':'Mania moderada','1':'Hipomania','0':'Eutimia','-1':'Depressão leve','-2':'Depressão moderada','-3':'Depressão grave'};
+const HKEYS=['3','2','1','0','-1','-2','-3'];
+const EEM=[['apresentacao','Apresentação',['Adequada','Descuidada','Exuberante','Bizarra']],['atitude','Atitude',['Colaborativa','Pouco colaborativa','Desconfiada','Hostil']],['consciencia','Consciência',['Vígil','Sonolenta','Flutuante']],['orientacao','Orientação',['Orientado(a)','Desorientado(a) no tempo','Desorientado(a) no espaço']],['atencao','Atenção',['Preservada','Reduzida','Distraibilidade']],['memoria','Memória',['Preservada','Prejuízo recente','Prejuízo remoto']],['humor','Humor',['Eutímico','Deprimido','Ansioso','Irritável','Eufórico']],['afeto','Afeto',['Congruente e modulado','Embotado','Lábil','Incongruente']],['curso','Curso do pensamento',['Sem alterações','Lentificado','Acelerado','Fuga de ideias','Desagregado']],['conteudo','Conteúdo do pensamento',['Sem alterações','Ideias de culpa ou ruína','Ideação suicida','Ideias de grandeza','Ideias persecutórias','Obsessões']],['senso','Sensopercepção',['Sem alterações','Alucinações auditivas','Alucinações visuais','Atitude alucinatória']],['psicomotricidade','Psicomotricidade',['Sem alterações','Lentificada','Agitada','Inquietação']],['volicao','Volição',['Preservada','Hipobulia','Hiperbulia']],['juizo','Juízo e crítica',['Preservados','Parciais','Prejudicados']]];
+const EEM_OK=Object.fromEntries(EEM.map(([k,,o])=>[k,[o[0]]]));
+const EFEITOS=['Sonolência','Ganho de peso','Disfunção sexual','Náusea','Tremor','Inquietação ou acatisia','Insônia','Cefaleia'];
+const ADESAO={boa:'Boa',parcial:'Parcial',ruim:'Ruim'};
+const EXUNIT={'Litemia':'mEq/L','Creatinina':'mg/dL','TSH':'mUI/L','Hemograma':'neutrófilos/mm³','Função hepática':'TGP em U/L','Glicemia / HbA1c':'glicemia de jejum em mg/dL','Perfil lipídico':'triglicerídeos em mg/dL','Peso / IMC':'peso em kg','ECG':'QTc em ms','Outro':''};
+const RANGES={'Litemia':[0.6,1.0]};
+const REF={cssrs:'Posner K. et al., Am J Psychiatry, 2011 (C-SSRS).',plano:'Stanley B., Brown G., Cogn Behav Pract, 2012 (plano de segurança).',canmatD:'CANMAT 2016, diretrizes para depressão.',canmatB:'CANMAT/ISBD 2018, diretrizes para transtorno bipolar.',meta:'Consenso ADA/APA, Diabetes Care, 2004 (antipsicóticos e metabolismo).',nice:'NICE CG185, transtorno bipolar (monitorização do lítio).',audit:'OMS: AUDIT e ASSIST.',mdq:'Hirschfeld R. et al., Am J Psychiatry, 2000 (MDQ).',ymrs:'Young R. et al., Br J Psychiatry, 1978 (YMRS).',phq:'Kroenke K. et al., J Gen Intern Med, 2001 (PHQ-9).'};
+const relL=g=>REL[g.rel].l.replace(/ \(.*\)/,'').toLowerCase();
+const lastVal=(p,n)=>sorted(p.exames.filter(e=>e.nome===n&&e.valor!=null&&e.valor!=='')).pop();
+const fmtN=v=>String(v).replace('.',',');
+function demo(id,code){
+  const e=(tipo,mes,itens)=>({id:u(),tipo,mes,itens,total:scTotal(tipo,itens)});
+  const eem4={...EEM_OK,apresentacao:['Exuberante'],humor:['Eufórico','Irritável'],afeto:['Lábil'],curso:['Acelerado'],conteudo:['Ideias de grandeza'],psicomotricidade:['Inquietação'],volicao:['Hiperbulia'],juizo:['Parciais']};
+  const eem6={...EEM_OK,humor:['Eutímico','Ansioso']};
+  return {id:id||u(),code:code||'PAC-001',faixa:'35–44',sexo:'F',hip:'Episódio depressivo moderado; investigar espectro bipolar',atual:6,
+  consultas:[
+   {id:u(),mes:0,resumo:'Humor deprimido há 4 meses, após separação. Anedonia, insônia inicial, ideação passiva sem plano.',combinado:'Iniciar sertralina 50 mg. Plano de segurança combinado com a mãe. Retorno em 1 mês.',adesao:'',efeitos:[]},
+   {id:u(),mes:1,resumo:'Suspendeu sertralina após 2 semanas por náusea intensa.',combinado:'Trocar para escitalopram 10 mg. Retorno em 1 mês.',adesao:'boa',efeitos:['Náusea']},
+   {id:u(),mes:2,resumo:'Melhora discreta do sono. Nega ideação.',combinado:'Manter escitalopram. Encaminhar para psicoterapia no CAPS.',adesao:'boa',efeitos:[]},
+   {id:u(),mes:4,resumo:'Perdeu o emprego no mês 3. Relata 4 dias com pouca necessidade de sono, muita energia e gastos acima do habitual.',combinado:'Iniciar lítio 600 mg. Solicitar litemia e creatinina. Manter escitalopram por ora.',adesao:'boa',efeitos:[],eem:eem4,humor:'1'},
+   {id:u(),mes:6,resumo:'Voltou a trabalhar. Humor mais estável, sem novos períodos de elevação. Às vezes esquece a dose da noite.',combinado:'Solicitar TSH. Reavaliar dose do lítio com a próxima litemia. Retorno em 1 mês.',adesao:'parcial',efeitos:['Tremor'],eem:eem6,humor:'0'}],
+  meds:[
+   {id:u(),nome:'Sertralina',classe:'antidepressivo',dose:'50 mg/dia',inicio:0,fim:0,resposta:'intolerancia',motivo:'Náusea intensa'},
+   {id:u(),nome:'Escitalopram',classe:'antidepressivo',dose:'10 mg/dia',inicio:1,fim:null,resposta:'parcial',motivo:''},
+   {id:u(),nome:'Carbonato de lítio',classe:'litio',dose:'600 mg/dia',inicio:4,fim:null,resposta:'aguardando',motivo:''}],
+  escalas:[e('PHQ-9',0,[3,3,2,2,2,3,2,1,1]),e('PHQ-9',2,[2,2,2,2,2,2,2,1,0]),e('PHQ-9',4,[2,2,2,2,1,2,1,1,0]),e('PHQ-9',6,[1,1,1,2,1,1,1,1,0]),
+   e('GAD-7',0,[2,2,2,2,2,2,2]),e('GAD-7',4,[2,2,1,2,1,1,1]),e('GAD-7',6,[1,1,1,2,1,1,1]),
+   e('YMRS',4,[2,2,1,2,4,4,1,2,0,0,1]),e('YMRS',6,[0,1,0,1,2,0,0,0,0,0,0]),
+   e('MDQ',4,[1,1,1,1,1,1,0,1,1,0,0,1,1,1,2])],
+  eventos:[{id:u(),mes:0,desc:'Separação conjugal'},{id:u(),mes:3,desc:'Perda do emprego'},{id:u(),mes:5,desc:'Retorno ao trabalho'}],
+  humor:[{id:u(),ini:-18,fim:-15,v:-2},{id:u(),ini:0,fim:2,v:-2},{id:u(),ini:3,fim:3,v:-1},{id:u(),ini:4,fim:4,v:1},{id:u(),ini:5,fim:6,v:0}],
+  geno:[
+   {id:u(),rel:'pai',morto:false,conds:['tab','spa'],rela:'conflituosa'},
+   {id:u(),rel:'mae',morto:false,conds:['dep'],rela:'proxima'},
+   {id:u(),rel:'avo_pat_m',morto:true,conds:['sui','spa'],rela:'neutra'},
+   {id:u(),rel:'irmao',morto:false,conds:['spa'],rela:'distante'},
+   {id:u(),rel:'irma',morto:false,conds:[],rela:'proxima'},
+   {id:u(),rel:'conjuge_m',morto:false,conds:[],rela:'rompida'},
+   {id:u(),rel:'filho',morto:false,conds:[],rela:'proxima'}],
+  eco:[{id:u(),nome:'Mãe',v:'forte'},{id:u(),nome:'Irmã',v:'forte'},{id:u(),nome:'Filho',v:'forte'},{id:u(),nome:'Ambulatório / CAPS',v:'moderado'},{id:u(),nome:'Trabalho',v:'fraco'},{id:u(),nome:'Igreja',v:'fraco'},{id:u(),nome:'Ex-marido',v:'conflituoso'}],
+  exames:[{id:u(),nome:'Litemia',mes:4,valor:0.4},{id:u(),nome:'Litemia',mes:5,valor:0.7},{id:u(),nome:'Creatinina',mes:4,valor:0.8}],
+  cssrs:[{id:u(),mes:0,r:{q1:true,q2:true,q3:false,q4:false,q5:false,q6:false,q6r:false},nivel:'baixo',obs:'Ideação passiva, sem método'},{id:u(),mes:6,r:{q1:false,q2:false,q3:false,q4:false,q5:false,q6:false,q6r:false},nivel:'nenhum',obs:''}],
+  plano:{mes:0,alerta:['Ficar na cama o dia inteiro','Pensar que sou um peso para a família'],internas:['Caminhar no quarteirão','Banho morno e música'],distracao:['Casa da irmã','Culto de domingo'],ajuda:['Mãe','Irmã'],profissionais:['Ambulatório de psiquiatria','CAPS de referência','CVV 188 (24 horas, gratuito)'],meios:['Objetos cortantes guardados pela mãe'],motivo:'Meu filho'},
+  form:{pre:[],prec:[],perp:[],prot:['Psicoterapia em andamento no CAPS'],sintese:'',off:[]}};
+}
+let S=null;
+try{const r=localStorage.getItem(KEY); if(r) S=JSON.parse(r);}catch(e){}
+if(!S||!Array.isArray(S.patients)) S={patients:[demo('p1')],sel:'p1',tab:'resumo'};
+S.escTipo=S.escTipo||'PHQ-9';
+function migrate(){S.patients.forEach((p,i)=>{
+  if(p.id==='p1'&&!p.humor){S.patients[i]=demo('p1');return;}
+  p.cssrs=p.cssrs||[];if(p.plano===undefined)p.plano=null;p.humor=p.humor||[];p.form=p.form||{pre:[],prec:[],perp:[],prot:[],sintese:'',off:[]};});}
+migrate();S.draft=S.draft||{};
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({patients:S.patients,sel:S.sel,tab:S.tab,escTipo:S.escTipo,draft:S.draft}));}catch(e){}}
+const cur=()=>S.patients.find(p=>p.id===S.sel);
+
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2600);}
+
+/* ---------- lógica clínica ---------- */
+function monitor(p){
+  const need={};
+  p.meds.filter(m=>m.fim==null).forEach(m=>(MON[m.classe]||[]).forEach(([ex,int])=>{ if(!need[ex]||need[ex].int>int) need[ex]={ex,int,med:m}; }));
+  return Object.values(need).map(({ex,int,med})=>{
+    const recs=p.exames.filter(e=>e.nome===ex&&e.mes>=med.inicio-1&&e.mes<=p.atual).map(e=>e.mes);
+    const last=recs.length?Math.max(...recs):null;
+    let due,status;
+    if(last==null){due=med.inicio;status='pendente';}
+    else{due=last+int;status=due<=p.atual?'pendente':(due-p.atual<=1?'proximo':'ok');}
+    return {ex,int,med:med.nome,last,due,status};
+  });
+}
+function alerts(p){
+  const A=[];const add=(n,t,w,act)=>A.push({n,t,w,act});
+  const esc=t=>sorted(p.escalas.filter(e=>e.tipo===t));
+  const phq=esc('PHQ-9'),last=phq[phq.length-1];
+  const cs=sorted(p.cssrs||[]),lcs=cs[cs.length-1];
+  const fam=c=>p.geno.filter(g=>g.conds.includes(c));
+  const lbl=arr=>[...new Set(arr.map(relL))].join(', ');
+  const sui=[...new Set([...fam('sui'),...fam('ts')])];
+  const ativos=p.meds.filter(m=>m.fim==null);
+  const ad=ativos.some(m=>AD.includes(m.classe));
+  const est=ativos.some(m=>['litio','valproato','lamotrigina','antipsicotico','clozapina'].includes(m.classe));
+  const lcons=sorted(p.consultas).filter(c=>c.adesao||(c.efeitos&&c.efeitos.length)).pop();
+  /* risco */
+  if(last&&last.itens[8]>0&&!(lcs&&lcs.mes>=last.mes)) add('alto',`PHQ-9 do mês ${last.mes} com item 9 positivo e nenhum C-SSRS depois disso: aplicar agora.`,['O item 9 do PHQ-9 rastreia pensamentos de morte ou autolesão, mas não mede o risco. Resposta positiva pede avaliação estruturada.','phq'],'risco');
+  if(lcs&&lcs.nivel==='alto') add('alto',`C-SSRS do mês ${lcs.mes}: risco alto. ${NIVEL.alto.conduta}`,['Na triagem do C-SSRS, intenção, plano ou comportamento suicida nos últimos 3 meses indicam risco alto.','cssrs'],'risco');
+  else if(lcs&&lcs.nivel==='moderado') add('atencao',`C-SSRS do mês ${lcs.mes}: risco moderado. ${NIVEL.moderado.conduta}`,['Na triagem do C-SSRS, pensar no método ou comportamento suicida há mais de 3 meses indicam risco moderado.','cssrs'],'risco');
+  if(sui.length) add('atencao',`História familiar de suicídio ou tentativa (${lbl(sui)}): perguntar ativamente sobre ideação em toda consulta.${cs.length?'':' Nenhum C-SSRS aplicado ainda.'}`,['História familiar de suicídio é fator de risco independente para suicídio.',null],cs.length?null:'risco');
+  const lastPos=[...cs].reverse().find(c=>c.nivel!=='nenhum');
+  if((lastPos||phq.some(e=>e.itens[8]>0)||sui.length)&&!p.plano) add('atencao','Há sinais de risco e nenhum plano de segurança registrado.',['O plano de segurança reduz comportamento suicida e é recomendado para todo paciente com sinais de risco.','plano'],'risco');
+  if(p.plano&&lastPos&&lastPos.mes>p.plano.mes) add('atencao',`Plano de segurança revisado no mês ${p.plano.mes}, antes do C-SSRS positivo do mês ${lastPos.mes}: revisar com o paciente.`,['O plano deve ser revisado sempre que o risco muda.','plano'],'risco');
+  if(p.plano) ativos.filter(m=>LETAL[m.classe]).forEach(m=>{
+    const w=['Lítio e tricíclicos têm janela terapêutica estreita e alta letalidade em superdosagem. Restringir o acesso a meios é uma das medidas de maior impacto na prevenção.','plano'];
+    if(!p.plano.meios.some(x=>/medica|rem[eé]dio|receita|fracion/i.test(x))) add('atencao',`${m.nome} tem alta letalidade em superdosagem e o plano de segurança não inclui restrição de acesso às medicações.`,w,'risco');
+    else if(m.inicio>p.plano.mes) add('info',`${m.nome} foi iniciado depois da última revisão do plano de segurança: confirmar a restrição de acesso.`,w,'risco');});
+  /* espectro bipolar */
+  const wB=['Parente de 1º grau com TAB, rastreio positivo ou sintomas maníacos aumentam a chance de a depressão fazer parte do espectro bipolar. Antidepressivo sem estabilizador pode induzir virada.','canmatB'];
+  const tab1=fam('tab').filter(g=>REL[g.rel].p);
+  if(tab1.length){
+    if(ad&&!est) add('alto',`Parente de 1º grau com TAB (${lbl(tab1)}) e antidepressivo sem estabilizador: investigar hipomania prévia e risco de virada.`,wB);
+    else add('atencao',`Parente de 1º grau com TAB (${lbl(tab1)}): rastrear sintomas de hipomania ou mania a cada consulta.`,wB);
+  }
+  const ym=esc('YMRS').pop();
+  if(ym&&ym.total>=12){ if(ad&&!est) add('alto',`YMRS ${ym.total} no mês ${ym.mes} com antidepressivo sem estabilizador: avaliar virada maníaca.`,['YMRS a partir de 12 costuma indicar sintomas maníacos relevantes; os pontos de corte variam.','ymrs']);
+    else add('atencao',`YMRS ${ym.total} no mês ${ym.mes} (${SCALES.YMRS.sev(ym.total)}): acompanhar sintomas maníacos.`,['YMRS a partir de 12 costuma indicar sintomas maníacos relevantes; os pontos de corte variam.','ymrs']);}
+  const md=esc('MDQ').pop();
+  if(md&&SCALES.MDQ.sev(md.total,md.itens)==='rastreio positivo') add(ad&&!est?'alto':'atencao',`MDQ positivo no mês ${md.mes}: rastreio positivo para espectro bipolar. Confirmar com entrevista clínica.${ad&&!est?' Há antidepressivo em uso sem estabilizador.':''}`,['MDQ positivo: 7 ou mais sintomas, no mesmo período, com prejuízo moderado ou sério. É rastreio, não diagnóstico.','mdq']);
+  /* família e rede */
+  const psi=fam('psi'); if(psi.length) add('info',`História familiar de psicose (${lbl(psi)}): atenção a pródromos e ao uso de cannabis e estimulantes.`,['História familiar aumenta o risco; cannabis e estimulantes se associam a início mais precoce de psicose.',null]);
+  const spa=fam('spa'),wS=['Uso de substâncias tem forte agregação familiar e piora o prognóstico de transtornos do humor e de ansiedade.','audit'];
+  if(spa.length>=2) add('atencao',`Uso de substâncias em ${spa.length} familiares: rastrear uso próprio (AUDIT, ASSIST).`,wS);
+  else if(spa.length===1) add('info',`Uso de substâncias na família (${lbl(spa)}): vale rastrear uso próprio.`,wS);
+  const vio=fam('vio'); if(vio.length) add('info',`Violência ou abuso na família (${lbl(vio)}): investigar exposição a trauma.`,['Exposição a violência na família se associa a trauma e a pior evolução de vários transtornos.',null]);
+  const wE=['Isolamento social e baixo suporte são fatores de risco para suicídio e para má adesão.',null];
+  if(p.eco.length){
+    const fortes=p.eco.filter(e=>e.v==='forte').length, conf=p.eco.filter(e=>e.v==='conflituoso').length;
+    if(!fortes) add('atencao','Nenhum vínculo forte no ecomapa: rede de apoio frágil é fator de risco e dificulta a adesão.',wE);
+    else if(conf*2>=p.eco.length) add('atencao','Metade ou mais dos vínculos do ecomapa são conflituosos.',wE);
+  } else add('info','Ecomapa ainda não preenchido.',wE);
+  /* farmacologia */
+  const wT=[`Uma tentativa só conta como falha quando o antidepressivo foi usado em dose mínima eficaz por pelo menos ${MIN_MESES} meses (cerca de 6 a 8 semanas).`,'canmatD'];
+  const fails=adFailures(p);
+  if(fails.length>=2) add('atencao',`Critério de depressão resistente: ${fails.length} antidepressivos em dose e tempo adequados sem resposta (${fails.map(m=>m.nome).join(', ')}).`,['Depressão resistente costuma ser definida como falta de resposta a 2 ou mais antidepressivos em dose e tempo adequados. Isso abre outras estratégias, como potencialização, troca de classe e neuromodulação.','canmatD']);
+  adInadequate(p).forEach(m=>add('info',`${m.nome} foi interrompido sem tentativa adequada: não conta como falha terapêutica.`,wT));
+  ativos.forEach(m=>{const a=adequacy(m,p);if(a&&a.doseOk===false&&a.dur>=1) add('info',`${m.nome} ${m.dose} está abaixo da dose mínima eficaz de referência (${a.dmin} mg/dia).`,wT);});
+  if(lcons&&lcons.adesao&&lcons.adesao!=='boa') add('atencao',`Adesão ${ADESAO[lcons.adesao].toLowerCase()} no mês ${lcons.mes}: confirmar uso antes de concluir que a medicação falhou.`,['Baixa adesão é a causa mais comum de falsa falha terapêutica.','canmatD']);
+  if(lcons&&lcons.efeitos&&lcons.efeitos.length) add('info',`Efeitos adversos relatados no mês ${lcons.mes}: ${lcons.efeitos.join(', ').toLowerCase()}.`,['Efeitos adversos são a principal causa de abandono do tratamento.',null]);
+  ativos.filter(m=>AD.includes(m.classe)&&p.atual-m.inicio>=MIN_MESES).forEach(m=>{
+    const base=[...phq].reverse().find(e=>e.mes<=m.inicio)||phq[0];
+    if(!base||!last||base===last||!base.total) return;
+    const red=(base.total-last.total)/base.total, pct=Math.round(red*100), dur=p.atual-m.inicio;
+    const w=['Resposta: queda de 50% ou mais no PHQ-9. Remissão: PHQ-9 abaixo de 5. O objetivo do tratamento é a remissão.','canmatD'];
+    if(last.total<5) add('info',`${m.nome}: critério de remissão (PHQ-9 ${last.total}).`,w);
+    else if(red>=.5) add('info',`${m.nome}: resposta (queda de ${pct}% no PHQ-9), ainda sem remissão. Considerar otimizar até PHQ-9 abaixo de 5.`,w);
+    else if(red>=.25) add('atencao',`${m.nome}: resposta parcial após ${dur} meses (queda de ${pct}%). Considerar ajuste de dose ou de estratégia.`,w);
+    else add('atencao',`${m.nome}: sem resposta após ${dur} meses (variação de ${pct}%). Revisar dose, adesão e diagnóstico.`,w);
+  });
+  /* exames */
+  const li=lastVal(p,'Litemia'),wL=['Faixa usual de manutenção: 0,6 a 1,0 mEq/L. Acima de 1,5 o risco de toxicidade aumenta muito.','nice'];
+  if(li&&ativos.some(m=>m.classe==='litio')){const v=+li.valor;
+    if(v>1.5) add('alto',`Litemia ${fmtN(v)} mEq/L no mês ${li.mes}: faixa de toxicidade. Avaliar sinais de intoxicação.`,wL);
+    else if(v>1.2) add('atencao',`Litemia ${fmtN(v)} mEq/L no mês ${li.mes}: acima da faixa de manutenção.`,wL);
+    else if(v<0.6) add('info',`Litemia ${fmtN(v)} mEq/L no mês ${li.mes}: abaixo da faixa usual de manutenção.`,wL);}
+  const ts=lastVal(p,'TSH'); if(ts&&+ts.valor>4.5&&ativos.some(m=>m.classe==='litio')) add('atencao',`TSH ${fmtN(ts.valor)} mUI/L no mês ${ts.mes} em uso de lítio: investigar hipotireoidismo.`,['O lítio pode causar hipotireoidismo. O limite de referência depende do laboratório.','nice']);
+  const pesos=sorted(p.exames.filter(e=>e.nome==='Peso / IMC'&&e.valor!=null&&e.valor!==''));
+  if(pesos.length>=2){const g=(pesos[pesos.length-1].valor-pesos[0].valor)/pesos[0].valor;if(g>=0.07) add('atencao',`Ganho de ${Math.round(g*100)}% do peso desde o mês ${pesos[0].mes}: rever medicações e risco metabólico.`,['Ganho de 7% ou mais do peso inicial é considerado clinicamente significativo.','meta']);}
+  const gl=lastVal(p,'Glicemia / HbA1c'); if(gl&&+gl.valor>=100) add(+gl.valor>=126?'atencao':'info',`Glicemia de jejum ${fmtN(gl.valor)} mg/dL no mês ${gl.mes}.`,['Glicemia de jejum a partir de 100 indica pré-diabetes; a partir de 126, possível diabetes. Antipsicóticos pioram o risco.','meta']);
+  const hm=lastVal(p,'Hemograma'); if(hm&&ativos.some(m=>m.classe==='clozapina')&&+hm.valor<1500) add(+hm.valor<1000?'alto':'atencao',`Neutrófilos ${hm.valor}/mm³ no mês ${hm.mes} em uso de clozapina: seguir o protocolo de monitorização.`,['A clozapina pode causar neutropenia e agranulocitose; a conduta segue protocolo específico.',null]);
+  monitor(p).filter(x=>x.status==='pendente').forEach(x=>add('atencao',`Exame pendente: ${x.ex} (${x.med})${x.last==null?', sem registro desde o início':`, previsto para o mês ${x.due}`}.`,['Intervalos simplificados de protótipo, baseados em recomendações usuais. Ajuste ao protocolo do seu serviço.',x.ex==='Litemia'||x.ex==='TSH'||x.ex==='Creatinina'?'nice':'meta']));
+  const o={alto:0,atencao:1,info:2};return A.sort((a,b)=>o[a.n]-o[b.n]);
+}
+function alertHTML(a){
+  return `<div class="alert ${a.n}"><b>${a.n==='alto'?'Prioridade alta':a.n==='atencao'?'Atenção':'Para considerar'}</b>${h(a.t)}${a.act?`<div style="margin-top:6px"><button class="btn sm" data-act="tab" data-tab="${a.act}">Abrir avaliação de risco</button></div>`:''}${a.w?`<details class="why"><summary>Por quê?</summary><p>${h(a.w[0])}${a.w[1]?`<br><span class="ref">${h(REF[a.w[1]])}</span>`:''}</p></details>`:''}</div>`;
+}
+/* ---------- desenhos ---------- */
+function curve(a,c,b,zig){
+  if(!zig) return `M${a.x.toFixed(1)},${a.y.toFixed(1)} Q${c.x.toFixed(1)},${c.y.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)}`;
+  const len=Math.hypot(b.x-a.x,b.y-a.y), N=Math.max(8,Math.round(len/9));let d='';
+  for(let i=0;i<=N;i++){const t=i/N,mt=1-t;
+    const x=mt*mt*a.x+2*mt*t*c.x+t*t*b.x, y=mt*mt*a.y+2*mt*t*c.y+t*t*b.y;
+    const dx=2*mt*(c.x-a.x)+2*t*(b.x-c.x), dy=2*mt*(c.y-a.y)+2*t*(b.y-c.y), l=Math.hypot(dx,dy)||1;
+    const off=(i===0||i===N)?0:(i%2?5:-5);
+    d+=`${i?'L':'M'}${(x-dy/l*off).toFixed(1)},${(y+dx/l*off).toFixed(1)} `;}
+  return d;
+}
+function timeline(p){
+  const ph=sorted(p.escalas.filter(e=>e.tipo==='PHQ-9')), ga=sorted(p.escalas.filter(e=>e.tipo==='GAD-7'));
+  const meds=[...p.meds].sort((a,b)=>a.inicio-b.inicio), evs=sorted(p.eventos.filter(e=>e.mes>=0));
+  const maxM=Math.max(6,p.atual,...p.escalas.map(e=>e.mes),...p.eventos.map(e=>e.mes),...p.consultas.map(c=>c.mes),...p.cssrs.map(c=>c.mes),...p.meds.map(m=>m.fim??m.inicio));
+  const W=900,L=205,R=40,T=30,CH=170,EY=T+CH+44,RY=EY+38,MY=RY+38,RH=28,H=MY+Math.max(1,meds.length)*RH+30;
+  const X=m=>L+(m/maxM)*(W-L-R), Y=v=>T+CH-(v/27)*CH;
+  let s=`<svg class="tl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Linha do tempo com escalas, eventos e medicações">`;
+  [0,5,10,15,20,25].forEach(v=>s+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L-10}" y="${Y(v)+4}" class="ax" text-anchor="end">${v}</text>`);
+  const step=maxM<=18?1:maxM<=36?3:6;
+  for(let m=0;m<=maxM;m+=step) s+=`<line x1="${X(m)}" x2="${X(m)}" y1="${T}" y2="${H-24}" class="vgrid"/><text x="${X(m)}" y="${H-6}" class="ax" text-anchor="middle">M${m}</text>`;
+  s+=`<text x="${L-10}" y="${EY+4}" class="ax" text-anchor="end">Eventos</text>`;
+  p.consultas.forEach(c=>s+=`<circle cx="${X(c.mes)}" cy="${H-24}" r="4" class="ctick"><title>Consulta no mês ${c.mes}</title></circle>`);
+  s+=`<line x1="${X(p.atual)}" x2="${X(p.atual)}" y1="${T-8}" y2="${H-24}" class="now"/><text x="${X(p.atual)}" y="${T-14}" class="nowt" text-anchor="middle">agora</text>`;
+  const ser=(arr,cls,below)=>{ if(!arr.length) return '';
+    let o=`<path d="${arr.map((e,i)=>`${i?'L':'M'}${X(e.mes)},${Y(e.total)}`).join(' ')}" class="ln ${cls}"/>`;
+    arr.forEach(e=>o+=`<circle cx="${X(e.mes)}" cy="${Y(e.total)}" r="5" class="pt ${cls}"><title>${e.tipo} ${e.total} no mês ${e.mes}</title></circle><text x="${X(e.mes)}" y="${Y(e.total)+(below?20:-11)}" class="pv ${cls}" text-anchor="middle">${e.total}</text>`);
+    return o;};
+  s+=ser(ga,'gad',true)+ser(ph,'phq',false);
+  if(!ph.length&&!ga.length) s+=`<text x="${L+12}" y="${T+CH/2}" class="ax">Nenhuma escala aplicada ainda</text>`;
+  evs.forEach((e,i)=>{const x=X(e.mes);
+    s+=`<path d="M${x},${EY-7} L${x+7},${EY} L${x},${EY+7} L${x-7},${EY} Z" class="ev"><title>${h(e.desc)} (mês ${e.mes})</title></path><text x="${x>W-190?x-11:x+11}" y="${EY+(i%2?15:-4)}" class="evt" text-anchor="${x>W-190?'end':'start'}">${h(trunc(e.desc,24))}</text>`;});
+  s+=`<text x="${L-10}" y="${RY+4}" class="ax" text-anchor="end">Risco (C-SSRS)</text>`;
+  sorted(p.cssrs).forEach(c=>s+=`<circle cx="${X(c.mes)}" cy="${RY}" r="7" class="rk rk-${c.nivel}"><title>C-SSRS no mês ${c.mes}: ${NIVEL[c.nivel].l}</title></circle>`);
+  meds.forEach((m,i)=>{const y=MY+i*RH,x1=X(m.inicio),end=m.fim==null?p.atual:m.fim;let x2=X(end);if(x2-x1<10)x2=x1+10;const col=CLS[m.classe]?.c||'var(--m-out)';
+    s+=`<text x="${L-10}" y="${y+4}" class="ml" text-anchor="end">${h(trunc(m.nome+' '+m.dose,27))}</text><rect x="${x1}" y="${y-7}" width="${x2-x1}" height="14" rx="7" style="fill:${col}" class="${m.fim==null?'':'ended'}"><title>${h(m.nome)} ${h(m.dose)}, mês ${m.inicio} a ${m.fim==null?'hoje':'mês '+m.fim}. ${h(RESP[m.resposta]||'')}</title></rect>`;
+    if(m.fim==null) s+=`<path d="M${x2+3},${y-7} L${x2+12},${y} L${x2+3},${y+7} Z" style="fill:${col}"/>`;});
+  if(!meds.length) s+=`<text x="${L+12}" y="${MY+4}" class="ax">Nenhuma medicação registrada</text>`;
+  s+=`</svg>`;
+  const used=[...new Set(p.meds.map(m=>m.classe))];
+  return `<div class="scroll">${s}</div><div class="legend"><span><i></i>PHQ-9 (humor)</span><span><i class="dash"></i>GAD-7 (ansiedade)</span><span><i class="dia"></i>Evento de vida</span><span><i class="circ"></i>Consulta</span><span><i class="rkl"></i>C-SSRS (cor pelo nível de risco)</span>${used.map(c=>`<span><i class="sw" style="background:${CLS[c].c}"></i>${CLS[c].l}</span>`).join('')}</div>`;
+}
+function shape(x,y,s,r,cls){
+  if(s==='M') return `<rect x="${x-r}" y="${y-r}" width="${2*r}" height="${2*r}" class="${cls}"/>`;
+  if(s==='F') return `<circle cx="${x}" cy="${y}" r="${r}" class="${cls}"/>`;
+  return `<path d="M${x},${y-r-3} L${x+r+3},${y} L${x},${y+r+3} L${x-r-3},${y} Z" class="${cls}"/>`;
+}
+function geno(p){
+  const G=r=>p.geno.filter(g=>g.rel===r);const N=[];let st='';
+  const Y={a:70,b:200,c:340,d:480};
+  const mk=(rel,x,y,d)=>{const n={rel,x,y,d,ph:!d&&rel!=='pac',pac:rel==='pac',s:rel==='pac'?p.sexo:REL[rel].s};N.push(n);return n;};
+  const couple=(a,b,broken)=>{const l=Math.min(a.x,b.x),r=Math.max(a.x,b.x);st+=`<line x1="${l+20}" x2="${r-20}" y1="${a.y}" y2="${a.y}" class="st"/>`;
+    if(broken){const m=(l+r)/2;st+=`<line x1="${m-9}" y1="${a.y+9}" x2="${m-1}" y2="${a.y-9}" class="st"/><line x1="${m+1}" y1="${a.y+9}" x2="${m+9}" y2="${a.y-9}" class="st"/>`;}};
+  const family=(a,b,kids)=>{if(!kids.length)return;const mx=b?(a.x+b.x)/2:a.x, y0=b?a.y:a.y+24, bar=kids[0].y-58;
+    const xs=[mx,...kids.map(k=>k.x)];st+=`<line x1="${mx}" x2="${mx}" y1="${y0}" y2="${bar}" class="st"/><line x1="${Math.min(...xs)}" x2="${Math.max(...xs)}" y1="${bar}" y2="${bar}" class="st"/>`;
+    kids.forEach(k=>st+=`<line x1="${k.x}" x2="${k.x}" y1="${bar}" y2="${k.y-(k.pac?26:20)}" class="st"/>`);};
+  const pac=mk('pac',0,Y.c,null);
+  const sibs=[...G('irmao'),...G('irma')].map((g,i)=>mk(g.rel,-120*(i+1),Y.c,g));
+  const spD=G('conjuge_m')[0]||G('conjuge_f')[0];
+  const sp=spD?mk(spD.rel,130,Y.c,spD):null;
+  const kD=[...G('filho'),...G('filha')], km=sp?65:0;
+  const kids=kD.map((g,i)=>mk(g.rel,km+(i-(kD.length-1)/2)*115,Y.d,g));
+  const gm=Math.min(0,...sibs.map(n=>n.x))/2;
+  const pai=mk('pai',gm-120,Y.b,G('pai')[0]||null), mae=mk('mae',gm+120,Y.b,G('mae')[0]||null);
+  const tp=[...G('tio_pat'),...G('tia_pat')].map((g,i)=>mk(g.rel,pai.x-115*(i+1),Y.b,g));
+  const tm=[...G('tio_mat'),...G('tia_mat')].map((g,i)=>mk(g.rel,mae.x+115*(i+1),Y.b,g));
+  couple(pai,mae,false);family(pai,mae,[pac,...sibs]);
+  if(sp){couple(pac,sp,spD.rela==='rompida');}
+  family(pac,sp,kids);
+  const gp=(m,f,ch)=>{const xs=ch.map(n=>n.x),mid=(Math.min(...xs)+Math.max(...xs))/2;
+    const a=mk(m,mid-62,Y.a,G(m)[0]||null),b=mk(f,mid+62,Y.a,G(f)[0]||null);couple(a,b,false);family(a,b,ch);};
+  if(G('avo_pat_m').length||G('avo_pat_f').length||tp.length) gp('avo_pat_m','avo_pat_f',[...tp.reverse(),pai]);
+  if(G('avo_mat_m').length||G('avo_mat_f').length||tm.length) gp('avo_mat_m','avo_mat_f',[mae,...tm]);
+  let em='';
+  N.filter(n=>n.d&&n.d.rela&&n.d.rela!=='neutra').forEach(n=>{
+    const dx=n.x-pac.x,dy=n.y-pac.y,l=Math.hypot(dx,dy)||1,c={x:(pac.x+n.x)/2+(-dy/l)*32,y:(pac.y+n.y)/2+(dx/l)*32};
+    em+=`<path d="${curve(pac,c,n,n.d.rela==='conflituosa')}" class="em em-${n.d.rela}"><title>Relação ${RELA[n.d.rela].toLowerCase()} com ${REL[n.rel].l.toLowerCase()}</title></path>`;});
+  let nd='';
+  N.forEach(n=>{
+    if(n.pac) nd+=shape(n.x,n.y,n.s,26,'pacout');
+    nd+=shape(n.x,n.y,n.s,19,n.ph?'nd ph':'nd');
+    if(n.ph) nd+=`<text x="${n.x}" y="${n.y+5}" class="qm" text-anchor="middle">?</text>`;
+    if(n.d&&n.d.morto) nd+=`<line x1="${n.x-16}" y1="${n.y-16}" x2="${n.x+16}" y2="${n.y+16}" class="x"/><line x1="${n.x+16}" y1="${n.y-16}" x2="${n.x-16}" y2="${n.y+16}" class="x"/>`;
+    nd+=`<text x="${n.x}" y="${n.y+(n.pac?44:38)}" class="gl${n.ph?' ph':''}" text-anchor="middle">${n.pac?'Paciente':REL[n.rel].c}</text>`;
+    const cs=(n.d?n.d.conds:[]).filter(c=>COND[c]);
+    if(cs.length){const ws=cs.map(c=>COND[c].a.length*7+10),tot=ws.reduce((a,b)=>a+b,0)+(cs.length-1)*3;let x=n.x-tot/2;
+      cs.forEach((c,i)=>{nd+=`<g class="bd${COND[c].r?' r':''}"><rect x="${x}" y="${n.y+46}" width="${ws[i]}" height="16" rx="8"/><text x="${x+ws[i]/2}" y="${n.y+58}" text-anchor="middle">${COND[c].a}</text><title>${COND[c].l}</title></g>`;x+=ws[i]+3;});}
+  });
+  const xs=N.map(n=>n.x),ys=N.map(n=>n.y),minX=Math.min(...xs)-80,maxX=Math.max(...xs)+80,minY=Math.min(...ys)-45,maxY=Math.max(...ys)+80;
+  return `<svg class="geno" viewBox="${minX} ${minY} ${maxX-minX} ${maxY-minY}" role="img" aria-label="Genograma">${st}${em}${nd}</svg>`;
+}
+function wrap(t,n){const w=t.split(/\s+/);const L=[''];w.forEach(x=>{if((L[L.length-1]+' '+x).trim().length>n&&L[L.length-1])L.push(x);else L[L.length-1]=(L[L.length-1]+' '+x).trim();});return L.length>2?[L[0],trunc(L.slice(1).join(' '),n)]:L;}
+function eco(p){
+  const n=p.eco.length,R=180;
+  const pts=p.eco.map((e,i)=>{const a=-Math.PI/2+2*Math.PI*i/Math.max(n,1);return{e,x:R*Math.cos(a),y:R*Math.sin(a)};});
+  let s=`<svg class="eco" viewBox="-290 -265 580 530" role="img" aria-label="Ecomapa">`;
+  pts.forEach(q=>{const o={x:0,y:0};s+=`<path d="${curve(o,{x:q.x/2,y:q.y/2},q,q.e.v==='conflituoso')}" class="el el-${q.e.v}"/>`;});
+  s+=`<circle r="54" class="eco-c"/><text y="-2" class="eco-ct" text-anchor="middle">Paciente</text><text y="18" class="eco-cs" text-anchor="middle">${h(p.code)}</text>`;
+  pts.forEach(q=>{const ls=wrap(q.e.nome,12);s+=`<circle cx="${q.x}" cy="${q.y}" r="46" class="eco-n"><title>${h(q.e.nome)}: vínculo ${VINC[q.e.v].toLowerCase()}</title></circle>`;
+    ls.forEach((l,i)=>s+=`<text x="${q.x}" y="${q.y+5+(i-(ls.length-1)/2)*16}" class="eco-t" text-anchor="middle">${h(l)}</text>`);});
+  if(!n) s+=`<text y="110" class="eco-t" text-anchor="middle" style="fill:var(--muted)">Adicione vínculos abaixo</text>`;
+  return s+`</svg><div class="legend" style="justify-content:center"><span><i style="border-top:5px solid var(--accent)"></i>Forte</span><span><i style="border-top:2px solid var(--accent)"></i>Moderado</span><span><i class="dash" style="border-top-color:var(--muted)"></i>Fraco</span><span><i style="border-top:2px solid var(--risk)"></i>Conflituoso (zigue-zague)</span></div>`;
+}
+
+function humorAt(p,m){let v=null;(p.humor||[]).forEach(x=>{if(m>=x.ini&&m<=x.fim)v=+x.v;});return v;}
+function lifeChart(p){
+  const H=p.humor||[],meds=[...p.meds].sort((a,b)=>a.inicio-b.inicio);
+  const minM=Math.min(0,...H.map(x=>x.ini),...p.eventos.map(e=>e.mes));
+  const maxM=Math.max(6,p.atual,...H.map(x=>x.fim),...p.meds.map(m=>m.fim??m.inicio));
+  const W=900,L=168,R=30,T=26,U=22,BY=T+3*U,EY=BY+3*U+30,MY=EY+34,RH=26,HH=MY+Math.max(1,meds.length)*RH+26;
+  const cw=(W-L-R)/(maxM-minM+1),X=m=>L+(m-minM)*cw;
+  let s=`<svg class="tl lc" viewBox="0 0 ${W} ${HH}" role="img" aria-label="Life chart do humor">`;
+  HKEYS.forEach(k=>{const y=BY-(+k)*U;if(k!=='0')s+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" class="vgrid"/>`;s+=`<text x="${L-10}" y="${y+4}" class="ax" text-anchor="end">${HUMOR[k]}</text>`;});
+  const step=maxM-minM<=12?1:maxM-minM<=36?3:6;
+  for(let m=minM;m<=maxM;m++){
+    if(m%step===0) s+=`<text x="${X(m)+cw/2}" y="${HH-6}" class="ax" text-anchor="middle">M${m}</text>`;
+    const v=humorAt(p,m);if(v==null)continue;
+    if(v===0) s+=`<rect x="${X(m)+1}" y="${BY-2}" width="${Math.max(cw-2,2)}" height="4" class="eu"><title>Mês ${m}: eutimia</title></rect>`;
+    else s+=`<rect x="${X(m)+1}" y="${v>0?BY-v*U:BY}" width="${Math.max(cw-2,2)}" height="${Math.abs(v)*U}" class="${v>0?'up':'dn'}"><title>Mês ${m}: ${HUMOR[String(v)]}</title></rect>`;
+  }
+  s+=`<line x1="${L}" x2="${W-R}" y1="${BY}" y2="${BY}" class="base"/>`;
+  s+=`<line x1="${X(0)}" x2="${X(0)}" y1="${T-10}" y2="${HH-22}" class="start"/><text x="${X(0)+5}" y="${T-12}" class="ax">início do seguimento</text>`;
+  s+=`<text x="${L-10}" y="${EY+4}" class="ax" text-anchor="end">Eventos</text>`;
+  sorted(p.eventos).forEach((e,i)=>{const x=X(e.mes)+cw/2,rt=x>W-190;
+    s+=`<path d="M${x},${EY-6} L${x+6},${EY} L${x},${EY+6} L${x-6},${EY} Z" class="ev"><title>${h(e.desc)} (mês ${e.mes})</title></path>${cw>=60?`<text x="${rt?x-10:x+10}" y="${EY+(i%2?14:-3)}" class="evt" text-anchor="${rt?'end':'start'}">${h(trunc(e.desc,22))}</text>`:''}`;});
+  meds.forEach((m,i)=>{const y=MY+i*RH,x1=X(m.inicio),x2=X(m.fim??p.atual)+cw,col=CLS[m.classe]?.c||'var(--m-out)';
+    s+=`<text x="${L-10}" y="${y+4}" class="ml" text-anchor="end">${h(trunc(m.nome+' '+m.dose,22))}</text><rect x="${x1+1}" y="${y-6}" width="${Math.max(x2-x1-2,6)}" height="12" rx="6" style="fill:${col}" class="${m.fim==null?'':'ended'}"><title>${h(m.nome)} ${h(m.dose)}</title></rect>`;});
+  if(!H.length) s+=`<text x="${L+12}" y="${BY-8}" class="ax">Nenhum período de humor registrado</text>`;
+  return `<div class="scroll">${s}</svg></div><div class="legend"><span><i class="sw" style="background:var(--m-est)"></i>Acima da linha: hipomania ou mania</span><span><i class="sw" style="background:var(--m-ad)"></i>Abaixo: depressão</span><span><i class="sw" style="background:var(--muted);height:4px"></i>Eutimia</span><span>Altura: gravidade</span></div>`;
+}
+function miniCharts(p){
+  const names=[...new Set(p.exames.filter(e=>e.valor!=null&&e.valor!=='').map(e=>e.nome))];
+  const out=names.map(n=>{const pts=sorted(p.exames.filter(e=>e.nome===n&&e.valor!=null&&e.valor!==''));if(pts.length<2)return '';
+    const W=300,H=130,L=40,R=14,T=16,B=24,vs=pts.map(e=>+e.valor);let lo=Math.min(...vs),hi=Math.max(...vs);const rg=RANGES[n];
+    if(rg){lo=Math.min(lo,rg[0]);hi=Math.max(hi,rg[1]);}const pad=(hi-lo)*0.2||Math.abs(hi)*0.1||1;lo-=pad;hi+=pad;
+    const m0=pts[0].mes,m1=Math.max(pts[pts.length-1].mes,m0+1),X=m=>L+(m-m0)/(m1-m0)*(W-L-R),Y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
+    let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${h(n)} ao longo do tempo">`;
+    if(rg) s+=`<rect x="${L}" y="${Y(rg[1])}" width="${W-L-R}" height="${Y(rg[0])-Y(rg[1])}" class="ref"><title>Faixa de referência</title></rect>`;
+    s+=`<path d="${pts.map((e,i)=>`${i?'L':'M'}${X(e.mes)},${Y(+e.valor)}`).join(' ')}" class="ln2"/>`;
+    pts.forEach(e=>s+=`<circle cx="${X(e.mes)}" cy="${Y(+e.valor)}" r="4" class="pt2"/><text x="${X(e.mes)}" y="${Y(+e.valor)-9}" class="pv" text-anchor="middle">${fmtN(e.valor)}</text>`);
+    s+=`<text x="${L}" y="${H-6}" class="ax">M${m0}</text><text x="${W-R}" y="${H-6}" class="ax" text-anchor="end">M${pts[pts.length-1].mes}</text></svg>`;
+    return `<div><b>${h(n)}</b> <span class="muted small">${EXUNIT[n]||''}</span>${s}</div>`;}).join('');
+  return out?`<div class="panel"><h3>Evolução dos valores</h3><div class="mini">${out}</div></div>`:'';
+}
+/* ---------- formulação ---------- */
+const QUAD=[['pre','Predisponentes','O que tornou o paciente vulnerável.'],['prec','Precipitantes','O que desencadeou o quadro ou as pioras.'],['perp','Perpetuadores','O que mantém o problema.'],['prot','Protetores','Forças e recursos a favor do paciente.']];
+function worsened(p,m){
+  const hv=(p.humor||[]).filter(x=>x.ini>m&&x.ini<=m+2&&+x.v!==0).map(x=>+x.v);const before=humorAt(p,m);
+  if(hv.length&&(before==null||Math.abs(hv[0])>Math.abs(before)||Math.sign(hv[0])!==Math.sign(before))) return HUMOR[String(hv[0])].toLowerCase();
+  const ph=sorted(p.escalas.filter(e=>e.tipo==='PHQ-9'));const b=[...ph].reverse().find(e=>e.mes<=m),a=ph.find(e=>e.mes>m&&e.mes<=m+2);
+  if(b&&a&&a.total-b.total>=5) return 'piora do PHQ-9';return null;
+}
+function autoForm(p){
+  const P={pre:[],prec:[],perp:[],prot:[]},add=(q,k,t,src)=>P[q].push({k,t,src});
+  Object.keys(COND).forEach(c=>{const g=p.geno.filter(x=>x.conds.includes(c));if(g.length)add('pre','fam_'+c,`História familiar de ${COND[c].l.toLowerCase()} (${[...new Set(g.map(relL))].join(', ')})`,'genograma');});
+  (p.humor||[]).filter(x=>x.fim<0&&+x.v!==0).forEach(x=>add('pre','hum_'+x.id,`Episódio prévio de ${HUMOR[String(x.v)].toLowerCase()} (mês ${x.ini} a ${x.fim})`,'life chart'));
+  p.eventos.filter(e=>e.mes<0).forEach(e=>add('pre','ev_'+e.id,`${e.desc} (mês ${e.mes})`,'registro de eventos'));
+  p.eventos.filter(e=>e.mes>=0).forEach(e=>{const w=worsened(p,e.mes);if(e.mes<=1||w)add('prec','ev_'+e.id,`${e.desc} (mês ${e.mes})${w?', seguido de '+w:''}`,'registro de eventos');});
+  p.eco.filter(e=>e.v==='conflituoso').forEach(e=>add('perp','eco_'+e.id,`Vínculo conflituoso: ${e.nome}`,'ecomapa'));
+  p.geno.filter(g=>g.rela==='conflituosa'||g.rela==='rompida').forEach(g=>add('perp','gen_'+g.id,`Relação ${RELA[g.rela].toLowerCase()} com ${relL(g)}`,'genograma'));
+  if(p.eco.length&&!p.eco.some(e=>e.v==='forte'))add('perp','eco_semforte','Rede de apoio sem vínculos fortes','ecomapa');
+  const lc=sorted(p.consultas).filter(c=>c.adesao).pop();
+  if(lc&&lc.adesao!=='boa')add('perp','adesao',`Adesão ${ADESAO[lc.adesao].toLowerCase()} (mês ${lc.mes})`,'histórico de consultas');
+  const inad=adInadequate(p);if(inad.length)add('perp','inad',`Tentativas terapêuticas interrompidas antes do tempo: ${inad.map(m=>m.nome).join(', ')}`,'histórico farmacológico');
+  const ecoNames=p.eco.map(e=>norm(e.nome));
+  p.eco.filter(e=>e.v==='forte').forEach(e=>add('prot','eco_'+e.id,`Vínculo forte: ${e.nome}`,'ecomapa'));
+  p.geno.filter(g=>g.rela==='proxima'&&!ecoNames.includes(norm(REL[g.rel].c))).forEach(g=>add('prot','gen_'+g.id,`Relação próxima com ${relL(g)}`,'genograma'));
+  if(p.plano&&p.plano.motivo)add('prot','motivo',`Motivo para viver: ${p.plano.motivo}`,'plano de segurança');
+  if(p.plano)add('prot','plano','Plano de segurança construído com o paciente','plano de segurança');
+  if(lc&&lc.adesao==='boa')add('prot','adesao','Boa adesão ao tratamento','histórico de consultas');
+  return P;
+}
+function formTxt(p){const a=autoForm(p),F=p.form,L=[`Formulação de caso (4 Ps), ${p.code}, mês ${p.atual}`,''];
+  QUAD.forEach(([k,t])=>{L.push(t+':');const it=[...a[k].filter(x=>!F.off.includes(x.k)).map(x=>x.t),...F[k]];if(!it.length)L.push('- não identificados');it.forEach(x=>L.push('- '+x));L.push('');});
+  if(F.sintese)L.push('Síntese: '+F.sintese);return L.join('\n');}
+/* ---------- consulta ---------- */
+function draft(p){S.draft=S.draft||{};if(!S.draft[p.id])S.draft[p.id]={mes:p.atual+1,relato:'',combinado:'',adesao:'',efeitos:[],efOutro:'',eem:{},humor:'',roteiro:{},texto:''};return S.draft[p.id];}
+const hasDraft=p=>!!(S.draft&&S.draft[p.id]);
+const defMes=p=>hasDraft(p)?+S.draft[p.id].mes:p.atual;
+const backBtn=p=>hasDraft(p)?`<div class="actions" style="margin-bottom:14px"><button class="btn primary" data-act="tab" data-tab="consulta">Voltar para a consulta de hoje</button></div>`:'';
+function sugHumor(p,m){const ph=p.escalas.filter(e=>e.tipo==='PHQ-9'&&e.mes===m).pop(),ym=p.escalas.filter(e=>e.tipo==='YMRS'&&e.mes===m).pop();
+  if(!ph&&!ym)return null;if(ym&&ym.total>=12)return ym.total>=26?'3':ym.total>=20?'2':'1';if(ph&&ph.total>=10)return ph.total>=20?'-3':ph.total>=15?'-2':'-1';return '0';}
+function evolTxt(p,d){
+  const m=+d.mes,L=[`Evolução psiquiátrica, mês ${m} de seguimento`];
+  if(p.hip)L.push(`Hipótese diagnóstica: ${p.hip}.`);
+  if(d.relato)L.push('',`Relato: ${d.relato}`);
+  const ef=[...d.efeitos,...(d.efOutro?[d.efOutro]:[])];
+  if(d.adesao||ef.length)L.push(`${d.adesao?'Adesão '+ADESAO[d.adesao].toLowerCase()+'. ':''}${ef.length?'Efeitos adversos: '+ef.join(', ').toLowerCase()+'.':'Sem efeitos adversos relatados.'}`);
+  const at=p.meds.filter(x=>x.inicio<=m&&(x.fim==null||x.fim>=m));L.push(`Em uso: ${at.length?at.map(x=>`${x.nome} ${x.dose}`).join('; '):'sem medicações'}.`);
+  const sc=[...p.escalas.filter(e=>e.mes===m).map(e=>e.tipo==='MDQ'?`MDQ ${SCALES.MDQ.sev(e.total,e.itens)}`:`${e.tipo} ${e.total} (${SCALES[e.tipo].sev(e.total,e.itens)})`),...p.cssrs.filter(c=>c.mes===m).map(c=>`C-SSRS: ${NIVEL[c.nivel].l.toLowerCase()}`)];
+  if(sc.length)L.push(`Escalas: ${sc.join('; ')}.`);
+  const pe=EEM.filter(([k])=>d.eem[k]&&d.eem[k].length).map(([k,l])=>`${l}: ${d.eem[k].join(', ').toLowerCase()}`);
+  if(pe.length)L.push('',`Exame do estado mental: ${pe.join('. ')}.`);
+  if(d.humor!=='')L.push(`Humor no período: ${HUMOR[d.humor].toLowerCase()}.`);
+  const ok=Object.entries(d.roteiro).filter(([,v])=>v).map(([k])=>k);if(ok.length)L.push('','Pontos abordados:',...ok.map(x=>'- '+x));
+  if(d.combinado)L.push('',`Conduta: ${d.combinado}`);
+  return L.join('\n');
+}
+/* ---------- telas ---------- */
+const opt=(o,v)=>Object.entries(o).map(([k,l])=>`<option value="${k}"${k===v?' selected':''}>${h(typeof l==='string'?l:l.l)}</option>`).join('');
+
+function riskCard(p){
+  const l=sorted(p.cssrs).pop();
+  return `<div class="panel"><h3>Risco de suicídio</h3>
+   <div class="kv"><span>C-SSRS${l?', mês '+l.mes:''}</span><span>${l?`<span class="pill ${NIVEL[l.nivel].c}">${NIVEL[l.nivel].l}</span>`:'nunca aplicado'}</span></div>
+   <div class="kv"><span>Plano de segurança</span><span>${p.plano?'revisado no mês '+p.plano.mes:'não registrado'}</span></div>
+   <div class="actions" style="margin-top:10px"><button class="btn sm" data-act="tab" data-tab="risco">Abrir avaliação de risco</button></div></div>`;
+}
+function vRisco(p){
+  const cs=sorted(p.cssrs),l=cs[cs.length-1];
+  const yn=(k,txt,req)=>`<fieldset class="item"><legend>${txt}</legend><div class="opts">${[['1','Sim'],['0','Não']].map(([v,t])=>`<label class="opt yn"><input type="radio" name="${k}" value="${v}"${req?' required':''}><span>${t}</span></label>`).join('')}</div></fieldset>`;
+  return `${backBtn(p)}<div class="panel risk-now ${l?'rn-'+l.nivel:''}"><h3>Situação atual</h3>${l?`<p style="margin:0 0 6px"><span class="pill ${NIVEL[l.nivel].c}">${NIVEL[l.nivel].l}</span> <span class="muted small">C-SSRS do mês ${l.mes}${l.obs?'. '+h(l.obs):''}</span></p><p style="margin:0">${NIVEL[l.nivel].conduta}</p>`:'<p style="margin:0" class="muted">Nenhum C-SSRS aplicado ainda.</p>'}
+   <p class="small muted" style="margin:8px 0 0">O C-SSRS é um instrumento de rastreio. A conduta é decisão clínica e segue o protocolo do seu serviço.</p></div>
+  <div class="grid2"><div class="panel"><h3>Aplicar C-SSRS (versão de rastreio)</h3>
+   <form data-form="cssrs" class="form"><div class="row"><label>Mês<input type="number" name="mes" min="0" value="${defMes(p)}" required></label></div>
+    <p class="small muted" style="margin:0">As perguntas 1 a 5 se referem ao último mês. A 3, a 4 e a 5 só aparecem se a 2 for sim.</p>
+    <div class="items">${yn('q1','1. '+CS_Q.q1,1)}${yn('q2','2. '+CS_Q.q2,1)}<div id="cs-sub" hidden>${yn('q3','3. '+CS_Q.q3)}${yn('q4','4. '+CS_Q.q4)}${yn('q5','5. '+CS_Q.q5)}</div>${yn('q6','6. '+CS_Q.q6,1)}<div id="cs-6r" hidden>${yn('q6r',CS_Q.q6r)}</div></div>
+    <label>Observação<input name="obs" maxlength="120" placeholder="Sem nomes ou lugares"></label>
+    <div class="total"><span id="csLvl" class="muted">Responda as perguntas</span><button class="btn primary">Salvar C-SSRS</button></div></form></div>
+   <div class="panel"><h3>Aplicações</h3><div class="list">${[...cs].reverse().map(c=>`<div class="li"><span class="t"><span class="pill ${NIVEL[c.nivel].c}">${NIVEL[c.nivel].l}</span></span><span class="d">Mês ${c.mes}${c.obs?'. '+h(c.obs):''}</span><span class="a"><button class="btn sm danger" data-act="del" data-coll="cssrs" data-id="${c.id}">Remover</button></span></div>`).join('')||'<p class="muted">Nenhuma aplicação ainda.</p>'}</div></div></div>
+  ${vPlano(p)}`;
+}
+function sugs(p,k){
+  const eco=p.eco.filter(e=>e.v==='forte'||e.v==='moderado').map(e=>e.nome), ativos=p.meds.filter(m=>m.fim==null);let s=[];
+  if(k==='distracao'||k==='ajuda') s=eco;
+  if(k==='profissionais') s=['Ambulatório de psiquiatria','CAPS de referência','CVV 188 (24 horas, gratuito)','SAMU 192','UPA ou pronto-socorro mais próximo'];
+  if(k==='meios'){ if(ativos.some(m=>LETAL[m.classe])) s.push('Medicações guardadas por pessoa de confiança','Receita com dispensação fracionada'); else if(ativos.length) s.push('Medicações guardadas por pessoa de confiança'); s.push('Armas de fogo fora de casa','Pesticidas e produtos tóxicos fora de alcance');}
+  return s.filter(x=>!p.plano[k].includes(x));
+}
+function planoTxt(p){
+  const pl=p.plano,L=['Meu plano de segurança','Data: ____/____/______',''];
+  PLANO.forEach(s=>{L.push(s.tp);if(!pl[s.k].length)L.push('- ______________________________');
+    pl[s.k].forEach(x=>L.push('- '+x+((s.k==='ajuda'||(s.k==='profissionais'&&!/\d/.test(x)))?'. Telefone: ____________________':'')));L.push('');});
+  L.push('O motivo mais importante para eu viver: '+(pl.motivo||'______________________________'),'','Em uma emergência: CVV 188 (24 horas, gratuito) ou SAMU 192.');
+  return L.join('\n');
+}
+function vPlano(p){
+  const pl=p.plano;
+  if(!pl) return `<div class="panel"><h3>Plano de segurança</h3><p class="muted" style="margin-top:0">Modelo de Stanley e Brown, construído junto com o paciente. O app sugere vínculos do ecomapa e medidas de restrição conforme a medicação em uso.</p><button class="btn primary" data-act="plano-new">Criar plano de segurança</button></div>`;
+  return `<div class="panel"><div class="phead" style="margin-bottom:0;align-items:center"><h3 style="margin:0">Plano de segurança</h3><span class="actions"><span class="muted small" style="align-self:center">Revisado no mês ${pl.mes}</span><button class="btn sm" data-act="plano-rev">Marcar como revisado no mês ${p.atual}</button></span></div>
+   <div class="plano">${PLANO.map(s=>{const sg=sugs(p,s.k);return `<section class="psec"><h4>${s.t}</h4>${s.d?`<p class="small muted">${s.d}</p>`:''}<ul class="pl">${pl[s.k].map((x,i)=>`<li><span>${h(x)}</span><button class="btn sm danger" data-act="plano-rm" data-sec="${s.k}" data-i="${i}">Remover</button></li>`).join('')}</ul>${sg.length?`<div class="sugs">${sg.map(x=>`<button class="chip" data-act="plano-sug" data-sec="${s.k}" data-val="${h(x)}">+ ${h(x)}</button>`).join('')}</div>`:''}<form data-form="plano-add" data-sec="${s.k}" class="addrow"><input name="v" maxlength="80" required placeholder="${h(s.ph)}" aria-label="Adicionar em ${h(s.t)}"><button class="btn sm">Adicionar</button></form></section>`;}).join('')}
+   <section class="psec motivo"><h4>O motivo mais importante para viver</h4><form data-form="plano-motivo" class="addrow"><input name="v" maxlength="100" value="${h(pl.motivo)}" placeholder="Nas palavras do paciente"><button class="btn sm">Salvar</button></form></section></div></div>
+  <div class="panel"><h3>Cópia para o paciente</h3><p class="small muted" style="margin-top:0">Nomes e telefones ficam em branco para preencher à mão, fora do app.</p><textarea id="plTxt" readonly rows="12">${h(planoTxt(p))}</textarea>
+   <div class="actions" style="margin-top:8px"><button class="btn" data-act="plano-copy">Copiar texto</button><button class="btn danger" data-act="plano-del">Excluir plano</button></div></div>`;
+}
+function vGeno(p){
+  return `<div class="panel"><h3>Genograma</h3><div class="scroll">${geno(p)}</div>
+  <div class="legend"><span>Quadrado homem, círculo mulher, X falecido, contorno duplo paciente, tracejado sem dados, barras duplas separação.</span></div>
+  <div class="legend"><span><i style="border-top:3px solid var(--accent)"></i>Próxima</span><span><i class="dash" style="border-top-color:var(--muted)"></i>Distante</span><span><i style="border-top:2px solid var(--risk)"></i>Conflituosa (zigue-zague)</span><span><i style="border-top:3px dotted var(--muted)"></i>Rompida</span></div>
+  <div class="legend">${Object.values(COND).map(c=>`<span><span class="pill ${c.r?'r':'g'}">${c.a}</span>${c.l}</span>`).join('')}</div></div>
+  <div class="grid2"><div class="panel"><h3>Adicionar familiar</h3>
+   <form data-form="geno" class="form"><p class="small muted" style="margin:0">Use só o parentesco, nunca o nome.</p>
+    <div class="row"><label>Parentesco<select name="rel">${opt(REL,'pai')}</select></label><label>Relação com o paciente<select name="rela">${opt(RELA,'neutra')}</select></label></div>
+    <div class="checks"><label><input type="checkbox" name="morto"> Falecido(a)</label></div>
+    <div class="checks">${Object.entries(COND).map(([k,c])=>`<label><input type="checkbox" name="c_${k}"> ${c.l}</label>`).join('')}</div>
+    <div class="actions"><button class="btn primary">Adicionar familiar</button></div></form></div>
+   <div class="panel"><h3>Familiares registrados</h3><div class="list">${p.geno.map(g=>`<div class="li"><span class="t">${REL[g.rel].l}${g.morto?' (falecido)':''}</span><span class="d">${g.conds.map(c=>`<span class="pill ${COND[c].r?'r':'g'}">${COND[c].a}</span>`).join('')} Relação ${RELA[g.rela].toLowerCase()}</span><span class="a"><button class="btn sm danger" data-act="del" data-coll="geno" data-id="${g.id}">Remover</button></span></div>`).join('')||'<p class="muted">Nenhum familiar ainda.</p>'}</div></div></div>`;
+}
+function vEco(p){
+  return `<div class="panel"><h3>Ecomapa</h3>${eco(p)}</div>
+  <div class="grid2"><div class="panel"><h3>Adicionar vínculo</h3>
+   <form data-form="eco" class="form"><label>Vínculo<input name="nome" maxlength="30" required placeholder="Ex.: Mãe, Trabalho, Igreja, CAPS"></label>
+    <label>Qualidade<select name="v">${opt(VINC,'moderado')}</select></label>
+    <div class="actions"><button class="btn primary">Adicionar vínculo</button></div></form></div>
+   <div class="panel"><h3>Vínculos registrados</h3><div class="list">${p.eco.map(e=>`<div class="li"><span class="t">${h(e.nome)}</span><span class="d">${VINC[e.v]}</span><span class="a"><button class="btn sm danger" data-act="del" data-coll="eco" data-id="${e.id}">Remover</button></span></div>`).join('')||'<p class="muted">Nenhum vínculo ainda.</p>'}</div></div></div>`;
+}
+const TABS={resumo:'Resumo',consulta:'Consulta de hoje',risco:'Risco',tempo:'Linha do tempo',form:'Formulação',meds:'Medicações',escalas:'Escalas',geno:'Genograma',eco:'Ecomapa',consultas:'Histórico e exames'};
+
+function vResumo(p){
+  const A=alerts(p), ativos=p.meds.filter(m=>m.fim==null);
+  const lastOf=t=>sorted(p.escalas.filter(e=>e.tipo===t));
+  const sc=t=>{const a=lastOf(t);if(!a.length)return `<div class="score"><span class="muted">${t}: sem aplicação</span></div>`;
+    const l=a[a.length-1],pr=a[a.length-2];const d=pr?l.total-pr.total:null;
+    return `<div class="score"><span class="big">${l.total}</span><span><b>${t}</b>, ${SCALES[t].sev(l.total,l.itens)}<br><span class="muted small">mês ${l.mes}${d==null?'':`, ${d<0?'caiu '+(-d):d>0?'subiu '+d:'estável'} desde o mês ${pr.mes}`}</span></span></div>`;};
+  const lc=sorted(p.consultas).pop();
+  return `<div class="grid2">
+   <div class="panel"><h3>Onde investigar hoje</h3>${A.length?A.map(alertHTML).join(''):'<p class="muted">Nenhum alerta. Preencha genograma, ecomapa e escalas para o app sugerir caminhos.</p>'}</div>
+   <div class="stack">
+    ${riskCard(p)}
+    <div class="panel"><h3>Medicação atual</h3>${ativos.length?ativos.map(m=>`<div class="kv"><span><b>${h(m.nome)}</b> ${h(m.dose)}</span><span>${p.atual-m.inicio<1?'iniciada neste mês':'há '+(p.atual-m.inicio)+(p.atual-m.inicio===1?' mês':' meses')}</span></div>`).join(''):'<p class="muted">Nenhuma em uso.</p>'}</div>
+    <div class="panel"><h3>Escalas</h3>${sc('PHQ-9')}${sc('GAD-7')}${lastOf('YMRS').length?sc('YMRS'):''}</div>
+    <div class="panel"><h3>Última consulta</h3>${lc?`<p style="margin:0">${h(lc.combinado||'Nada combinado.')}</p><p class="muted small" style="margin:6px 0 0">Mês ${lc.mes}${lc.adesao?`. Adesão ${ADESAO[lc.adesao].toLowerCase()}`:''}${lc.efeitos&&lc.efeitos.length?`. Efeitos: ${lc.efeitos.join(', ').toLowerCase()}`:''}</p>`:'<p class="muted">Nenhuma consulta registrada.</p>'}</div>
+   </div></div>
+   <div class="panel" style="margin-top:18px"><h3>Linha do tempo</h3>${timeline(p)}</div>`;
+}
+function vConsulta(p){
+  const d=draft(p),m=+d.mes,A=alerts(p),lc=sorted(p.consultas).filter(c=>c.mes<m).pop();
+  const rot=[...new Set([...(lc&&lc.combinado?[`Combinado no mês ${lc.mes}: ${lc.combinado}`]:[]),...A.map(a=>a.t),...monitor(p).filter(x=>x.status==='proximo').map(x=>`${x.ex} previsto para o mês ${x.due}`)])];
+  const escM=[...p.escalas.filter(e=>e.mes===m).map(e=>`${e.tipo}: ${e.tipo==='MDQ'?SCALES.MDQ.sev(e.total,e.itens):e.total+' ('+SCALES[e.tipo].sev(e.total,e.itens)+')'}`),...p.cssrs.filter(c=>c.mes===m).map(c=>`C-SSRS: ${NIVEL[c.nivel].l.toLowerCase()}`)];
+  const sug=sugHumor(p,m),prev=[...p.consultas].filter(c=>c.eem&&c.mes<m).sort((a,b)=>b.mes-a.mes)[0];
+  const step=(n,t)=>`<div class="step"><span class="n">${n}</span><h3>${t}</h3></div>`;
+  const eemRows=EEM.map(([k,l,o])=>{const cur=d.eem[k]||[],pv=prev&&prev.eem&&prev.eem[k]||[];const mudou=prev&&cur.length&&pv.join()!==cur.join();
+    return `<div class="dname">${l}</div><div><div class="tgs">${o.map(x=>`<label class="tg"><input type="checkbox" data-eem="${k}" value="${h(x)}"${cur.includes(x)?' checked':''}><span>${h(x)}</span></label>`).join('')}</div>${prev?`<div class="prev">Mês ${prev.mes}: ${pv.length?h(pv.join(', ')):'sem registro'}${mudou?' <span class="pill w">mudou</span>':''}</div>`:''}</div>`;}).join('');
+  return `<div class="panel"><div class="row" style="align-items:end"><label>Mês da consulta<input type="number" data-d="mes" data-rerender="1" min="0" value="${m}"></label><p class="small muted" style="margin:0">O rascunho é salvo sozinho. Você pode ir a outras abas, aplicar escalas e voltar.</p></div></div>
+  <div class="panel">${step(1,'Roteiro de hoje')}<p class="small muted" style="margin-top:-4px">Montado a partir dos alertas, do último combinado e dos exames previstos. Marque o que foi abordado.</p>
+   <div class="chk">${rot.map(t=>`<label><input type="checkbox" data-d="roteiro" value="${h(t)}"${d.roteiro[t]?' checked':''}><span>${h(t)}</span></label>`).join('')||'<p class="muted">Nada pendente.</p>'}</div></div>
+  <div class="panel">${step(2,'Escalas deste mês')}${escM.length?`<p style="margin-top:0">${escM.map(h).join('<br>')}</p>`:'<p class="muted" style="margin-top:0">Nenhuma escala aplicada no mês '+m+'.</p>'}
+   <div class="actions">${['PHQ-9','GAD-7','YMRS','MDQ'].map(t=>`<button class="btn sm" data-act="goesc" data-t="${t}">Aplicar ${t}</button>`).join('')}<button class="btn sm" data-act="tab" data-tab="risco">Aplicar C-SSRS</button></div></div>
+  <div class="panel">${step(3,'Adesão e efeitos adversos')}
+   <div class="tgs" style="margin-bottom:10px">${Object.entries(ADESAO).map(([k,l])=>`<label class="tg"><input type="radio" name="adesao" data-d="adesao" value="${k}"${d.adesao===k?' checked':''}><span>Adesão ${l.toLowerCase()}</span></label>`).join('')}</div>
+   <div class="tgs">${EFEITOS.map(x=>`<label class="tg"><input type="checkbox" data-d="efeitos" value="${h(x)}"${d.efeitos.includes(x)?' checked':''}><span>${h(x)}</span></label>`).join('')}</div>
+   <label style="margin-top:10px">Outro efeito<input data-d="efOutro" maxlength="60" value="${h(d.efOutro)}"></label></div>
+  <div class="panel">${step(4,'Exame do estado mental')}<div class="actions" style="margin:-4px 0 12px"><button class="btn sm" data-act="eem-ok">Marcar exame sem alterações</button>${prev?`<button class="btn sm" data-act="eem-prev">Copiar do mês ${prev.mes}</button>`:''}</div><div class="eem">${eemRows}</div></div>
+  <div class="panel">${step(5,'Humor no período')}<p class="small muted" style="margin-top:-4px">Alimenta o life chart desde a última consulta.${sug!=null?` Sugestão pelas escalas deste mês: ${HUMOR[sug].toLowerCase()}.`:''}</p>
+   <div class="tgs">${HKEYS.map(k=>`<label class="tg"><input type="radio" name="humor" data-d="humor" value="${k}"${d.humor===k?' checked':''}><span>${HUMOR[k]}</span></label>`).join('')}</div></div>
+  <div class="panel">${step(6,'Relato e conduta')}<div class="form"><label>Relato<textarea data-d="relato" maxlength="1200" placeholder="Sem nomes, datas ou lugares">${h(d.relato)}</textarea></label><label>Conduta e combinado para a próxima<textarea data-d="combinado" maxlength="500">${h(d.combinado)}</textarea></label></div></div>
+  <div class="panel">${step(7,'Evolução')}<p class="small muted" style="margin-top:-4px">Gere o texto, ajuste se quiser e copie para o prontuário oficial.</p>
+   <textarea id="evTxt" data-d="texto" rows="14" placeholder="Clique em Gerar evolução">${h(d.texto)}</textarea>
+   <div class="actions" style="margin-top:10px"><button class="btn" data-act="ev-gen">Gerar evolução</button><button class="btn" data-act="ev-copy">Copiar evolução</button><button class="btn primary" data-act="cons-save">Salvar consulta</button><button class="btn danger" data-act="cons-reset">Descartar rascunho</button></div></div>`;
+}
+function vForm(p){
+  const F=p.form,auto=autoForm(p);
+  return `<p class="muted" style="margin-top:0">Rascunho montado a partir do genograma, do ecomapa, dos eventos, do life chart e do plano de segurança. Descarte o que não fizer sentido e complete.</p>
+  <div class="quad">${QUAD.map(([k,t,ds])=>{const au=auto[k].filter(x=>!F.off.includes(x.k)),offN=auto[k].length-au.length;
+    return `<div class="panel"><h3>${t}</h3><p class="small muted" style="margin:-6px 0 8px">${ds}</p>
+    ${au.map(x=>`<div class="fi"><span>${h(x.t)}<span class="src">Do ${x.src}</span></span><button class="btn sm" data-act="f-off" data-k="${h(x.k)}">Descartar</button></div>`).join('')}
+    ${F[k].map((x,i)=>`<div class="fi"><span>${h(x)}<span class="src">Adicionado por você</span></span><button class="btn sm danger" data-act="f-rm" data-q="${k}" data-i="${i}">Remover</button></div>`).join('')}
+    ${!au.length&&!F[k].length?'<p class="muted small">Nada ainda.</p>':''}
+    ${offN?`<button class="btn sm" style="margin-top:8px" data-act="f-restore" data-q="${k}">Restaurar ${offN} descartado${offN>1?'s':''}</button>`:''}
+    <form data-form="f-add" data-q="${k}" class="addrow" style="margin-top:10px"><input name="v" maxlength="120" required placeholder="Adicionar fator" aria-label="Adicionar em ${t}"><button class="btn sm">Adicionar</button></form></div>`;}).join('')}</div>
+  <div class="panel" style="margin-top:18px"><h3>Síntese</h3><form data-form="f-sint" class="form"><textarea name="v" rows="4" maxlength="1000" placeholder="Em poucas linhas, como os fatores se conectam">${h(F.sintese)}</textarea>
+   <div class="actions"><button class="btn primary">Salvar síntese</button><button type="button" class="btn" data-act="f-copy">Copiar formulação</button></div></form><textarea id="fTxt" class="vh" tabindex="-1" aria-hidden="true">${h(formTxt(p))}</textarea></div>`;
+}
+function vTempo(p){
+  return `<div class="panel"><h3>Escalas, eventos e medicações</h3>${timeline(p)}</div>
+  <div class="panel"><h3>Life chart do humor</h3>${lifeChart(p)}</div>
+  <div class="grid2"><div class="stack"><div class="panel"><h3>Registrar período de humor</h3>
+   <form data-form="humor" class="form"><div class="row"><label>Do mês<input type="number" name="ini" required value="${p.atual}"></label><label>Até o mês<input type="number" name="fim" required value="${p.atual}"></label></div>
+   <label>Estado<select name="v">${HKEYS.map(k=>`<option value="${k}"${k==='0'?' selected':''}>${HUMOR[k]}</option>`).join('')}</select></label>
+   <p class="small muted" style="margin:0">Use meses negativos para episódios anteriores ao seguimento (ex.: -18). A consulta de hoje registra o período sozinha.</p>
+   <div class="actions"><button class="btn primary">Adicionar período</button></div></form></div>
+   <div class="panel"><h3>Registrar evento de vida</h3>
+   <form data-form="evento" class="form"><div class="row"><label>Mês<input type="number" name="mes" value="${p.atual}" required></label></div>
+   <label>O que aconteceu<input name="desc" maxlength="60" required placeholder="Ex.: Luto, separação, mudança de casa"></label>
+   <p class="small muted" style="margin:0">Meses negativos entram na formulação como fatores predisponentes.</p>
+   <div class="actions"><button class="btn primary">Adicionar evento</button></div></form></div></div>
+   <div class="stack"><div class="panel"><h3>Períodos de humor</h3><div class="list">${[...(p.humor||[])].sort((a,b)=>a.ini-b.ini).map(x=>`<div class="li"><span class="t">${HUMOR[String(x.v)]}</span><span class="d">Mês ${x.ini}${x.fim!==x.ini?' a '+x.fim:''}</span><span class="a"><button class="btn sm danger" data-act="del" data-coll="humor" data-id="${x.id}">Remover</button></span></div>`).join('')||'<p class="muted">Nenhum período ainda.</p>'}</div></div>
+   <div class="panel"><h3>Eventos registrados</h3><div class="list">${sorted(p.eventos).map(e=>`<div class="li"><span class="t">${h(e.desc)}</span><span class="d">Mês ${e.mes}</span><span class="a"><button class="btn sm danger" data-act="del" data-coll="eventos" data-id="${e.id}">Remover</button></span></div>`).join('')||'<p class="muted">Nenhum evento ainda.</p>'}</div></div></div></div>`;
+}
+function vMeds(p){
+  const ed=S.editMed?p.meds.find(m=>m.id===S.editMed):null, m=ed||{nome:'',dose:'',classe:'antidepressivo',inicio:p.atual,fim:null,resposta:'aguardando',motivo:''};
+  const rows=[...p.meds].sort((a,b)=>(a.fim==null?-1:0)-(b.fim==null?-1:0)||b.inicio-a.inicio);
+  const fails=adFailures(p),inad=adInadequate(p);
+  const adq=x=>{const a=adequacy(x,p);if(!a)return '';if(x.resposta==='intolerancia')return '<span class="pill">Não tolerado</span>';
+    if(a.doseOk===null)return '<span class="pill">Dose de referência desconhecida</span>';if(!a.doseOk)return `<span class="pill w">Abaixo da dose mínima (${a.dmin} mg)</span>`;
+    if(!a.durOk)return `<span class="pill w">${x.fim==null?'Ainda em tempo de avaliação':'Tempo insuficiente'}</span>`;return '<span class="pill g">Tentativa adequada</span>';};
+  return `<div class="grid2"><div class="panel"><h3>${ed?'Editar medicação':'Adicionar medicação'}</h3>
+  <form data-form="med" class="form">
+   <div class="row"><label>Medicação<input name="nome" list="drugs" required maxlength="40" value="${h(m.nome)}" autocomplete="off"></label><label>Dose<input name="dose" maxlength="30" placeholder="Ex.: 10 mg/dia" value="${h(m.dose)}"></label></div>
+   <datalist id="drugs">${Object.values(DRUGS).filter(x=>x[2]).map(x=>`<option value="${x[2]}">`).join('')}</datalist>
+   <div class="row"><label>Classe<select name="classe">${opt(CLS,m.classe)}</select></label><label>Início (mês)<input type="number" name="inicio" required value="${m.inicio}"></label><label>Fim (mês)<input type="number" name="fim" placeholder="Em uso" value="${m.fim??''}"></label></div>
+   <div class="row"><label>Resposta<select name="resposta">${opt(RESP,m.resposta)}</select></label><label>Motivo da troca ou observação<input name="motivo" maxlength="80" value="${h(m.motivo)}"></label></div>
+   <div class="actions"><button class="btn primary">${ed?'Salvar alterações':'Adicionar medicação'}</button>${ed?'<button type="button" class="btn" data-act="med-cancel">Cancelar</button>':''}</div>
+  </form></div>
+  <div class="panel"><h3>Tentativas antidepressivas</h3>
+   <div class="kv"><span>Adequadas e sem resposta</span><span>${fails.length}${fails.length>=2?' <span class="pill o">Critério de resistência</span>':''}</span></div>
+   <div class="kv"><span>Interrompidas sem tentativa adequada</span><span>${inad.length}</span></div>
+   <p class="small muted" style="margin-bottom:0">Tentativa adequada: dose mínima eficaz por pelo menos ${MIN_MESES} meses (cerca de 6 a 8 semanas). As doses mínimas vêm de uma tabela de referência simplificada; confira na bula e nas diretrizes. Ao digitar o nome, a classe é preenchida sozinha.</p></div></div>
+  <div class="panel" style="margin-top:18px"><h3>Histórico farmacológico</h3><div class="list">${rows.map(x=>{const d=(x.fim??p.atual)-x.inicio;
+    return `<div class="li"><span class="t">${h(x.nome)} ${h(x.dose)} <span class="pill ${x.fim==null?'g':''}">${x.fim==null?'Em uso':'Encerrada'}</span>${adq(x)}</span>
+    <span class="d">${CLS[x.classe]?.l||''}. Mês ${x.inicio} ${x.fim==null?'até hoje':'ao mês '+x.fim}, ${d<1?'menos de 1 mês':d+(d===1?' mês':' meses')}. ${h(RESP[x.resposta]||'')}${x.motivo?'. '+h(x.motivo):''}</span>
+    <span class="a"><button class="btn sm" data-act="med-edit" data-id="${x.id}">Editar</button><button class="btn sm danger" data-act="del" data-coll="meds" data-id="${x.id}">Remover</button></span></div>`;}).join('')||'<p class="muted">Nenhuma medicação registrada.</p>'}</div></div>`;
+}
+function vEscalas(p){
+  const t=S.escTipo,sc=SCALES[t],its=scItems(t),hist=sorted(p.escalas).reverse();
+  const res=e=>e.tipo==='MDQ'?`MDQ: ${SCALES.MDQ.sev(e.total,e.itens)} <span class="muted" style="font-weight:400">(${e.total} de 13 sintomas)</span>`:`${e.tipo}: ${e.total} <span class="muted" style="font-weight:400">(${sc2(e)})</span>`;
+  const sc2=e=>SCALES[e.tipo].sev(e.total,e.itens);
+  return `${backBtn(p)}<div class="grid2"><div class="panel"><h3>Aplicar escala</h3>
+  <form data-form="escala" class="form">
+   <div class="row"><label>Escala<select name="tipo" data-change="esc-tipo">${Object.keys(SCALES).map(k=>`<option${k===t?' selected':''}>${k}</option>`).join('')}</select></label><label>Mês<input type="number" name="mes" min="0" value="${defMes(p)}" required></label></div>
+   <p class="small muted" style="margin:0">${h(sc.inst)}</p>
+   <div class="items">${its.map((it,i)=>`<fieldset class="item"><legend>${i+1}. ${h(it.t)}</legend><div class="opts">${it.o.map(([v,l])=>`<label class="opt${l.length>1?' yn':''}"><input type="radio" name="i${i}" value="${v}" required aria-label="${h(l)}"><span>${h(l)}</span></label>`).join('')}</div></fieldset>`).join('')}</div>
+   <div class="total"><span>Total <span class="big" id="escTotal">0</span> <span class="muted" id="escSev"></span></span><button class="btn primary">Salvar ${t}</button></div>
+  </form></div>
+  <div class="panel"><h3>Aplicações</h3><div class="list">${hist.map(e=>`<div class="li"><span class="t">${res(e)}${e.tipo==='PHQ-9'&&e.itens[8]>0?' <span class="pill r">Item 9 positivo</span>':''}</span><span class="d">Mês ${e.mes}</span><span class="a"><button class="btn sm danger" data-act="del" data-coll="escalas" data-id="${e.id}">Remover</button></span></div>`).join('')||'<p class="muted">Nenhuma aplicação ainda.</p>'}</div></div></div>`;
+}
+function vConsultas(p){
+  const mon=monitor(p);
+  const flag=e=>{if(e.valor==null||e.valor==='')return '';const v=+e.valor;if(e.nome==='Litemia'&&(v>1.2||v<0.6))return ' <span class="pill w">fora da faixa</span>';if(e.nome==='TSH'&&v>4.5)return ' <span class="pill w">elevado</span>';if(e.nome==='Glicemia / HbA1c'&&v>=100)return ' <span class="pill w">elevada</span>';return '';};
+  return `<div class="actions" style="margin-bottom:16px"><button class="btn primary" data-act="tab" data-tab="consulta">${hasDraft(p)?'Continuar consulta de hoje':'Iniciar consulta de hoje'}</button></div>
+  <div class="grid2"><div class="panel"><h3>Monitorização laboratorial</h3>${mon.length?mon.map(x=>`<div class="kv"><span><b>${x.ex}</b><br><span class="small muted">${h(x.med)}, a cada ${x.int} ${x.int===1?'mês':'meses'}</span></span><span>${x.status==='pendente'?'<span class="pill w">Pendente</span>':x.status==='proximo'?'<span class="pill g">Próximo mês</span>':'<span class="pill">Em dia</span>'}<br><span class="small">${x.last==null?'sem registro':'último no mês '+x.last}</span></span></div>`).join(''):'<p class="muted">Nenhuma medicação em uso exige monitorização nesta lista.</p>'}
+    <form data-form="exame" class="form" style="margin-top:14px"><div class="row"><label>Exame<select name="nome" data-change="ex-nome">${EXAMES.map(e=>`<option>${e}</option>`).join('')}</select></label><label>Mês<input type="number" name="mes" value="${p.atual}" required></label><label>Valor (opcional)<input name="valor" inputmode="decimal" id="exVal" placeholder="${EXUNIT['Litemia']}"></label></div><div class="actions"><button class="btn">Registrar exame</button></div></form></div>
+   <div class="panel"><h3>Exames registrados</h3><div class="list">${sorted(p.exames).reverse().map(e=>`<div class="li"><span class="t">${h(e.nome)}${e.valor!=null&&e.valor!==''?`: ${fmtN(e.valor)} <span class="muted" style="font-weight:400">${EXUNIT[e.nome]||''}</span>`:''}${flag(e)}</span><span class="d">Mês ${e.mes}</span><span class="a"><button class="btn sm danger" data-act="del" data-coll="exames" data-id="${e.id}">Remover</button></span></div>`).join('')||'<p class="muted">Nenhum exame ainda.</p>'}</div></div></div>
+  <div style="margin-top:18px">${miniCharts(p)}</div>
+  <div class="panel"><h3>Consultas</h3><div class="list">${sorted(p.consultas).reverse().map(c=>`<div class="li"><span class="t">Mês ${c.mes}${c.adesao?` <span class="pill ${c.adesao==='boa'?'g':'w'}">Adesão ${ADESAO[c.adesao].toLowerCase()}</span>`:''}${c.humor!=null&&c.humor!==''?` <span class="pill">${HUMOR[c.humor]}</span>`:''}</span><span class="d">${h(c.resumo)}${c.efeitos&&c.efeitos.length?`<br>Efeitos: ${h(c.efeitos.join(', ').toLowerCase())}`:''}${c.combinado?`<br><b style="color:var(--ink)">Combinado:</b> ${h(c.combinado)}`:''}${c.texto?`<details class="why"><summary>Evolução completa</summary><p style="white-space:pre-wrap">${h(c.texto)}</p></details>`:''}</span><span class="a"><button class="btn sm danger" data-act="del" data-coll="consultas" data-id="${c.id}">Remover</button></span></div>`).join('')||'<p class="muted">Nenhuma consulta ainda.</p>'}</div></div>`;
+}
+function renderSide(){
+  document.getElementById('plist').innerHTML=S.patients.map(p=>`<button class="pitem${p.id===S.sel?' on':''}" data-act="sel" data-id="${p.id}"><span class="pcode">${h(p.code)}</span><span class="pmeta">${h(p.faixa)} anos, mês ${p.atual}</span>${alerts(p).some(a=>a.n==='alto')?'<span class="dot" title="Alerta de prioridade alta"></span>':''}</button>`).join('')||'<p class="muted small">Nenhum paciente ainda.</p>';
+}
+function renderMain(){
+  const p=cur(),M=document.getElementById('main');
+  if(!p){M.innerHTML=`<div class="empty"><h2>Comece cadastrando um paciente</h2><p>O app gera um código automático. Nenhum nome é pedido.</p><button class="btn primary" data-act="pac-new">Novo paciente</button></div>`;return;}
+  const V={resumo:vResumo,consulta:vConsulta,risco:vRisco,tempo:vTempo,form:vForm,meds:vMeds,escalas:vEscalas,geno:vGeno,eco:vEco,consultas:vConsultas};
+  if(!V[S.tab]) S.tab='resumo';
+  M.innerHTML=`<div class="phead"><div><div class="pcodebig">${h(p.code)}</div><div class="psub">${h(p.faixa)} anos, ${p.sexo==='F'?'feminino':p.sexo==='M'?'masculino':'sexo não informado'}. ${h(p.hip||'Sem hipótese registrada.')}</div></div>
+   <div class="month"><span class="n">${p.atual}</span><span class="t">${p.atual===1?'mês':'meses'} de<br>seguimento</span><button class="btn sm" data-act="pac-edit">Editar dados</button>${S.tab!=='consulta'?`<button class="btn sm primary" data-act="tab" data-tab="consulta">${hasDraft(p)?'Continuar consulta':'Iniciar consulta'}</button>`:''}</div></div>
+   <nav class="tabs" role="tablist">${Object.entries(TABS).map(([k,l])=>`<button class="tab${k===S.tab?' on':''}" role="tab" aria-selected="${k===S.tab}" data-act="tab" data-tab="${k}">${l}${k==='consulta'&&hasDraft(p)?' •':''}</button>`).join('')}</nav>
+   <div id="view">${V[S.tab](p)}</div>`;
+}
+function render(){renderSide();renderMain();persist();
+  if(S.focusSec){const i=document.querySelector(`form[data-sec="${S.focusSec}"] input`);S.focusSec=null;if(i)i.focus({preventScroll:true});}}
+
+/* ---------- eventos ---------- */
+const dlgPac=document.getElementById('dlgPac'),dlgBk=document.getElementById('dlgBackup');
+function nextCode(){const n=S.patients.map(p=>parseInt((p.code||'').replace(/\D/g,''))||0);return 'PAC-'+String(Math.max(0,...n)+1).padStart(3,'0');}
+function openPac(edit){
+  const f=dlgPac.querySelector('form'),p=edit?cur():null;f.dataset.mode=edit?'edit':'new';
+  document.getElementById('dlgPacTitle').textContent=edit?'Editar dados do paciente':'Novo paciente';
+  document.getElementById('dlgPacCode').textContent='Código: '+(edit?p.code:nextCode());
+  f.faixa.value=p?p.faixa:'25–34';f.sexo.value=p?p.sexo:'F';f.hip.value=p?p.hip:'';
+  const del=document.getElementById('btnPacDel');del.hidden=!edit;del.textContent='Excluir paciente';delete del.dataset.armed;
+  dlgPac.showModal();
+}
+function arm(btn,msg){if(btn.dataset.armed)return true;btn.dataset.armed='1';const o=btn.textContent;btn.textContent=msg;setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent=o;}},3500);return false;}
+
+function copyFrom(id,msg){const t=document.getElementById(id);const fb=()=>{try{t.select();document.execCommand('copy');toast(msg);}catch(_){toast('Selecione o texto e copie manualmente');}};
+  try{navigator.clipboard.writeText(t.value).then(()=>toast(msg),fb);}catch(e){fb();}}
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,p=cur();
+  if(a==='tab'){S.tab=b.dataset.tab;S.editMed=null;render();window.scrollTo(0,0);}
+  else if(a==='sel'){S.sel=b.dataset.id;S.editMed=null;render();}
+  else if(a==='pac-new') openPac(false);
+  else if(a==='pac-edit') openPac(true);
+  else if(a==='dlg-close') b.closest('dialog').close();
+  else if(a==='pac-del'){ if(!arm(b,'Clique de novo para excluir'))return; if(S.draft)delete S.draft[p.id]; S.patients=S.patients.filter(x=>x.id!==p.id);S.sel=S.patients[0]?.id||null;dlgPac.close();render();toast('Paciente excluído');}
+  else if(a==='del'){p[b.dataset.coll]=p[b.dataset.coll].filter(x=>x.id!==b.dataset.id);if(S.editMed===b.dataset.id)S.editMed=null;render();toast('Removido');}
+  else if(a==='med-edit'){S.editMed=b.dataset.id;render();document.getElementById('view').scrollIntoView({behavior:'smooth'});}
+  else if(a==='med-cancel'){S.editMed=null;render();}
+  else if(a==='plano-new'){p.plano={mes:p.atual,alerta:[],internas:[],distracao:[],ajuda:[],profissionais:[],meios:[],motivo:''};render();toast('Plano de segurança criado');}
+  else if(a==='plano-rev'){p.plano.mes=p.atual;render();toast('Plano marcado como revisado');}
+  else if(a==='plano-rm'){p.plano[b.dataset.sec].splice(+b.dataset.i,1);p.plano.mes=p.atual;render();}
+  else if(a==='plano-sug'){p.plano[b.dataset.sec].push(b.dataset.val);p.plano.mes=p.atual;render();}
+  else if(a==='plano-copy'){copyFrom('plTxt','Texto copiado');}
+  else if(a==='plano-del'){if(!arm(b,'Clique de novo para excluir'))return;p.plano=null;render();toast('Plano excluído');}
+  else if(a==='goesc'){S.escTipo=b.dataset.t;S.tab='escalas';render();window.scrollTo(0,0);}
+  else if(a==='eem-ok'){draft(p).eem=JSON.parse(JSON.stringify(EEM_OK));render();}
+  else if(a==='eem-prev'){const d=draft(p),pv=[...p.consultas].filter(c=>c.eem&&c.mes<+d.mes).sort((x,y)=>y.mes-x.mes)[0];if(pv){d.eem=JSON.parse(JSON.stringify(pv.eem));render();}}
+  else if(a==='ev-gen'){const d=draft(p);d.texto=evolTxt(p,d);render();document.getElementById('evTxt').scrollIntoView({block:'center'});toast('Evolução gerada');}
+  else if(a==='ev-copy'){const d=draft(p);if(!d.texto){d.texto=evolTxt(p,d);render();}copyFrom('evTxt','Evolução copiada');}
+  else if(a==='cons-save'){const d=draft(p),m=+d.mes;if(!d.texto)d.texto=evolTxt(p,d);
+    const prevM=sorted(p.consultas).filter(c=>c.mes<m).map(c=>c.mes).pop();
+    p.consultas.push({id:u(),mes:m,resumo:d.relato.trim(),combinado:d.combinado.trim(),adesao:d.adesao,efeitos:[...d.efeitos,...(d.efOutro?[d.efOutro]:[])],eem:d.eem,humor:d.humor,roteiro:Object.keys(d.roteiro).filter(k=>d.roteiro[k]),texto:d.texto});
+    if(d.humor!==''){p.humor=p.humor||[];p.humor.push({id:u(),ini:prevM!=null?Math.min(prevM+1,m):m,fim:m,v:+d.humor});}
+    p.atual=Math.max(p.atual,m);delete S.draft[p.id];S.tab='resumo';render();window.scrollTo(0,0);toast('Consulta do mês '+m+' salva');}
+  else if(a==='cons-reset'){if(!arm(b,'Clique de novo para descartar'))return;delete S.draft[p.id];S.tab='resumo';render();toast('Rascunho descartado');}
+  else if(a==='f-off'){p.form.off.push(b.dataset.k);render();}
+  else if(a==='f-rm'){p.form[b.dataset.q].splice(+b.dataset.i,1);render();}
+  else if(a==='f-restore'){const au=autoForm(p)[b.dataset.q].map(x=>x.k);p.form.off=p.form.off.filter(k=>!au.includes(k));render();}
+  else if(a==='f-copy'){copyFrom('fTxt','Formulação copiada');}
+  else if(a==='backup'){document.getElementById('bkOut').value=JSON.stringify({patients:S.patients});document.getElementById('bkIn').value='';dlgBk.showModal();}
+  else if(a==='bk-copy'){copyFrom('bkOut','Backup copiado');}
+  else if(a==='bk-import'){try{const d=JSON.parse(document.getElementById('bkIn').value);if(!Array.isArray(d.patients))throw 0;S.patients=d.patients;migrate();S.sel=S.patients[0]?.id||null;dlgBk.close();render();toast('Backup restaurado');}catch(e){toast('Backup inválido: cole o texto completo copiado deste app');}}
+  else if(a==='bk-demo'){const d=demo(u(),nextCode());S.patients.push(d);S.sel=d.id;dlgBk.close();render();toast('Paciente de exemplo adicionado');}
+  else if(a==='bk-wipe'){if(!arm(b,'Clique de novo para apagar tudo'))return;S.patients=[];S.sel=null;S.draft={};dlgBk.close();render();toast('Todos os dados foram apagados');}
+});
+function bindDraft(t){
+  const p=cur();if(!p||!t.dataset.d)return false;const d=draft(p),k=t.dataset.d;
+  if(k==='roteiro')d.roteiro[t.value]=t.checked;
+  else if(k==='efeitos'){d.efeitos=d.efeitos.filter(x=>x!==t.value);if(t.checked)d.efeitos.push(t.value);}
+  else d[k]=t.value;
+  persist();if(t.dataset.rerender)render();return true;
+}
+document.addEventListener('input',ev=>{const t=ev.target;
+  if(t.dataset.d&&t.type!=='checkbox'&&t.type!=='radio'&&!t.dataset.rerender){bindDraft(t);return;}
+  if(t.name==='nome'&&t.closest('form[data-form="med"]')){const inf=drugInfo(t.value);if(inf)t.form.classe.value=inf.classe;}
+});
+document.addEventListener('change',ev=>{
+  const t=ev.target;
+  if(t.dataset.d){bindDraft(t);return;}
+  if(t.dataset.eem){const p=cur(),d=draft(p);d.eem[t.dataset.eem]=[...document.querySelectorAll(`input[data-eem="${t.dataset.eem}"]:checked`)].map(i=>i.value);persist();return;}
+  if(t.dataset.change==='esc-tipo'){S.escTipo=t.value;render();return;}
+  if(t.dataset.change==='ex-nome'){const i=document.getElementById('exVal');if(i)i.placeholder=EXUNIT[t.value]||'';return;}
+  const fc=t.closest('form[data-form="cssrs"]');
+  if(fc){const F=Object.fromEntries(new FormData(fc));const q2=F.q2==='1',q6=F.q6==='1';
+    const sub=document.getElementById('cs-sub');sub.hidden=!q2;sub.querySelectorAll('input').forEach(i=>i.required=q2);
+    const r6=document.getElementById('cs-6r');r6.hidden=!q6;r6.querySelectorAll('input').forEach(i=>i.required=q6);
+    const el=document.getElementById('csLvl');
+    if(F.q1&&F.q2&&F.q6&&(!q2||(F.q3&&F.q4&&F.q5))&&(!q6||F.q6r)){const b=k=>F[k]==='1';const n=nivelCS({q1:b('q1'),q2,q3:q2&&b('q3'),q4:q2&&b('q4'),q5:q2&&b('q5'),q6,q6r:q6&&b('q6r')});
+      el.className='';el.innerHTML=`<span class="pill ${NIVEL[n].c}">${NIVEL[n].l}</span>`;}
+    else{el.className='muted';el.textContent='Responda as perguntas';}
+    return;}
+  const f=t.closest('form[data-form="escala"]');
+  if(f){const its=scItems(S.escTipo),F=Object.fromEntries(new FormData(f)),vals=its.map((_,i)=>F['i'+i]);const n=vals.filter(v=>v!=null).length,arr=vals.map(v=>+(v||0));
+    const tot=scTotal(S.escTipo,arr);document.getElementById('escTotal').textContent=tot;
+    document.getElementById('escSev').textContent=n===its.length?SCALES[S.escTipo].sev(tot,arr):`${n} de ${its.length} itens`;}
+});
+document.addEventListener('submit',ev=>{
+  const f=ev.target.closest('form[data-form]');if(!f)return;ev.preventDefault();
+  const F=Object.fromEntries(new FormData(f)),k=f.dataset.form,p=cur();
+  if(k==='pac'){
+    if(f.dataset.mode==='edit'){Object.assign(p,{faixa:F.faixa,sexo:F.sexo,hip:F.hip.trim()});toast('Dados salvos');}
+    else{const np={id:u(),code:nextCode(),faixa:F.faixa,sexo:F.sexo,hip:F.hip.trim(),atual:0,consultas:[],meds:[],escalas:[],eventos:[],geno:[],eco:[],exames:[],cssrs:[],plano:null,humor:[],form:{pre:[],prec:[],perp:[],prot:[],sintese:'',off:[]}};S.patients.push(np);S.sel=np.id;S.tab='resumo';toast(np.code+' criado');}
+    dlgPac.close();render();return;
+  }
+  if(!p)return;
+  if(k==='evento'){p.eventos.push({id:u(),mes:+F.mes,desc:F.desc.trim()});toast('Evento adicionado');}
+  else if(k==='humor'){const a=+F.ini,b=+F.fim;if(b<a){toast('O mês final não pode ser antes do inicial');return;}p.humor.push({id:u(),ini:a,fim:b,v:+F.v});toast('Período adicionado');}
+  else if(k==='med'){
+    const fim=F.fim===''?null:+F.fim;if(fim!=null&&fim<+F.inicio){toast('O mês de fim não pode ser antes do início');return;}
+    const d={nome:F.nome.trim(),dose:F.dose.trim(),classe:F.classe,inicio:+F.inicio,fim,resposta:F.resposta,motivo:F.motivo.trim()};
+    if(S.editMed){Object.assign(p.meds.find(m=>m.id===S.editMed),d);S.editMed=null;toast('Medicação atualizada');}
+    else{p.meds.push({id:u(),...d});toast('Medicação adicionada');}
+  }
+  else if(k==='escala'){const itens=scItems(S.escTipo).map((_,i)=>+F['i'+i]);p.escalas.push({id:u(),tipo:S.escTipo,mes:+F.mes,itens,total:scTotal(S.escTipo,itens)});toast(S.escTipo+' salvo');}
+  else if(k==='geno'){
+    if(UNIQUE[F.rel]&&p.geno.some(g=>g.rel===F.rel)){toast(REL[F.rel].l+' já está no genograma');return;}
+    if(F.rel.startsWith('conjuge')&&p.geno.some(g=>g.rel.startsWith('conjuge'))){toast('Já existe um cônjuge registrado');return;}
+    p.geno.push({id:u(),rel:F.rel,rela:F.rela,morto:!!F.morto,conds:Object.keys(COND).filter(c=>F['c_'+c])});toast('Familiar adicionado');
+  }
+  else if(k==='cssrs'){const b=x=>F[x]==='1',q2=b('q2'),q6=b('q6');const r={q1:b('q1'),q2,q3:q2&&b('q3'),q4:q2&&b('q4'),q5:q2&&b('q5'),q6,q6r:q6&&b('q6r')};const n=nivelCS(r);
+    p.cssrs.push({id:u(),mes:+F.mes,r,nivel:n,obs:F.obs.trim()});toast('C-SSRS salvo: '+NIVEL[n].l.toLowerCase());}
+  else if(k==='plano-add'){const v=F.v.trim();if(!v)return;p.plano[f.dataset.sec].push(v);p.plano.mes=p.atual;S.focusSec=f.dataset.sec;}
+  else if(k==='plano-motivo'){p.plano.motivo=F.v.trim();p.plano.mes=p.atual;toast('Motivo salvo');}
+  else if(k==='f-add'){const v=F.v.trim();if(!v)return;p.form[f.dataset.q].push(v);}
+  else if(k==='f-sint'){p.form.sintese=F.v.trim();toast('Síntese salva');}
+  else if(k==='eco'){p.eco.push({id:u(),nome:F.nome.trim(),v:F.v});toast('Vínculo adicionado');}
+  else if(k==='exame'){const v=String(F.valor||'').trim().replace(',','.');p.exames.push({id:u(),nome:F.nome,mes:+F.mes,valor:v===''||isNaN(+v)?null:+v});toast('Exame registrado');}
+  render();
+});
+render();
+</script>
+</body>
+</html>
