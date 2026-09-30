@@ -1235,9 +1235,8 @@ export default function PrescricaoPage() {
         notice={
           isGuest ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              Acesso convidado: você pode consultar e copiar modelos de
-              <span className="mx-1">prescription_templates</span>
-              e montar um rascunho local, mas não pode salvar, editar, apagar ou
+              Acesso convidado: você pode consultar e copiar modelos da
+              Biblioteca Resibook e montar um rascunho local, mas não pode salvar, editar, apagar ou
               acessar dados privados de pacientes e prescrições.
             </div>
           ) : null
@@ -1271,28 +1270,27 @@ export default function PrescricaoPage() {
               {!isGuest ? (
                 <a
                   href="#lista-prescricoes"
-                  className="text-sm font-semibold text-blue-700"
+                  className="text-sm font-semibold text-cyan-800 transition hover:text-cyan-950"
                 >
                   Ver histórico salvo
                 </a>
               ) : null}
             </div>
 
-            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+            <div className="mt-5 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
                 Biblioteca compartilhada
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-700">
-                {templates.length} modelos prontos vindos de
-                <span className="mx-1 font-semibold">prescription_templates</span>
-                para consultar, copiar e aplicar no formulário.
+                {templates.length} modelos prontos da Biblioteca Resibook para
+                consultar, copiar e aplicar no formulário.
               </p>
 
               {!isGuest ? (
                 <button
                   type="button"
                   onClick={openCreateDrawer}
-                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl border border-blue-200 bg-white px-5 text-sm font-semibold text-blue-700"
+                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl border border-cyan-200 bg-white px-5 text-sm font-semibold text-cyan-800 transition hover:border-cyan-300 hover:bg-cyan-50"
                 >
                   Abrir cadastro de prescrição
                 </button>

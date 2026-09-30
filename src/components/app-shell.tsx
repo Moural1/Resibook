@@ -465,7 +465,7 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col bg-[#081a3a] text-white">
-      <div className="border-b border-white/7 px-3 py-3">
+      <div className={`border-b border-white/7 py-3 pl-3 ${isMobile ? "pr-14" : "pr-3"}`}>
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cyan-200/20 bg-white p-0.5 shadow-[0_8px_20px_rgba(0,0,0,0.18)]">
             <Image
@@ -617,6 +617,60 @@ function SidebarContent({
 
           <div className="mt-3">
             <LogoutButton />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Esqueleto com a forma do app enquanto a sessão é conferida: a tela não
+   "pisca" entre uma caixa de carregamento e o layout real. */
+function ShellSkeleton({ sidebarOpen }: { sidebarOpen: boolean }) {
+  const bar = "rounded-lg bg-slate-200/70";
+  return (
+    <div
+      className="min-h-screen bg-slate-100"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="sr-only">Carregando acesso.</span>
+      {sidebarOpen ? (
+        <div className="fixed inset-y-0 left-0 hidden w-[248px] bg-[#081a3a] px-3 py-3 lg:block">
+          <div className="flex items-center gap-2.5 border-b border-white/7 pb-3">
+            <div className="h-9 w-9 rounded-xl bg-white/10" />
+            <div className="h-3 w-24 rounded bg-white/10" />
+          </div>
+          <div className="mt-5 space-y-2.5">
+            {Array.from({ length: 9 }, (_, index) => (
+              <div key={index} className="flex items-center gap-3 px-2 py-2">
+                <div className="h-8 w-8 rounded-xl bg-white/[0.07]" />
+                <div className="h-2.5 w-24 rounded bg-white/[0.07]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className={sidebarOpen ? "lg:pl-[248px]" : undefined}>
+        <div className="border-b border-slate-200/80 bg-white/90 px-4 py-3 md:px-6 lg:px-8">
+          <div className="h-11 rounded-2xl border border-slate-200 bg-white" />
+        </div>
+        <div className="mx-auto w-full max-w-7xl animate-pulse px-3 pt-4 sm:px-4 md:px-6 md:py-6 lg:px-8">
+          <div className="rounded-[18px] bg-[#0b2447]/90 p-6 md:p-8">
+            <div className="h-3 w-40 rounded bg-white/15" />
+            <div className="mt-5 h-8 w-2/3 max-w-md rounded-lg bg-white/15" />
+            <div className="mt-4 h-3 w-full max-w-xl rounded bg-white/10" />
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="h-24 rounded-2xl border border-slate-200 bg-white" />
+            ))}
+          </div>
+          <div className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+            <div className={`${bar} h-4 w-48`} />
+            <div className={`${bar} h-3 w-full max-w-2xl`} />
+            <div className={`${bar} h-3 w-4/5 max-w-xl`} />
           </div>
         </div>
       </div>
@@ -892,14 +946,18 @@ export default function AppShell({ children }: Props) {
     return <>{children}</>;
   }
 
-  if (checkingUser || redirectingToLogin || !currentUserId) {
+  if (redirectingToLogin) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-medium text-slate-600 shadow-sm">
-          {redirectingToLogin ? "Encerrando sessão..." : "Carregando acesso."}
+          Encerrando sessão...
         </div>
       </div>
     );
+  }
+
+  if (checkingUser || !currentUserId) {
+    return <ShellSkeleton sidebarOpen={desktopSidebarOpen} />;
   }
 
   if (isGuest && !isGuestAllowedPath(pathname)) {
@@ -961,7 +1019,9 @@ export default function AppShell({ children }: Props) {
         )}
       </button>
 
-      <div className="lg:hidden print:hidden">
+      {/* Gatilho da gaveta no celular: a barra inferior (MobileClinicalNav)
+          aciona este botão pelo aria-label, então ele fica oculto. */}
+      <div className="hidden">
         <button
           type="button"
           onClick={() => setMobileOpen(true)}

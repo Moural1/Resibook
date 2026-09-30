@@ -105,7 +105,7 @@ function riskLevelClasses(value?: PrescriptionTemplate["risk_level"]) {
     return "border-amber-200 bg-amber-50 text-amber-700";
   }
 
-  return "border-blue-200 bg-blue-50 text-blue-700";
+  return "border-emerald-200 bg-emerald-50 text-emerald-700";
 }
 
 function parseSpecialAudiences(value?: string | null) {
@@ -709,7 +709,7 @@ export default function PrescriptionTemplatesLive({
           ) : null}
 
           {item.source_file ? (
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
               {item.source_file}
             </span>
           ) : null}
@@ -778,7 +778,7 @@ export default function PrescriptionTemplatesLive({
               type="button"
               onClick={() => handleUse(item)}
               disabled={isDeleting}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-cyan-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Usar no formulário
             </button>
@@ -840,7 +840,7 @@ export default function PrescriptionTemplatesLive({
             type="button"
             onClick={() => toggleExpanded(item.id)}
             aria-expanded={isExpanded}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-50"
           >
             {isExpanded ? "Recolher prescrição" : `Ver prescrição completa (${lineCount} linhas)`}
           </button>
@@ -854,7 +854,7 @@ export default function PrescriptionTemplatesLive({
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">
               Biblioteca de plantão
             </p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
@@ -883,13 +883,13 @@ export default function PrescriptionTemplatesLive({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar modelo de prescrição..."
-            className="h-12 w-full rounded-2xl lg:col-span-4 border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            className="h-12 w-full rounded-2xl lg:col-span-4 border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
           />
 
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
           >
             <option value="">Todas as categorias</option>
             {categories.map((category) => (
@@ -906,7 +906,7 @@ export default function PrescriptionTemplatesLive({
                 e.target.value as "" | "revisado" | "pendente" | "rascunho"
               )
             }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
           >
             <option value="">Todas as revisões</option>
             <option value="revisado">Só revisados</option>
@@ -921,7 +921,7 @@ export default function PrescriptionTemplatesLive({
                 e.target.value as "" | "alto" | "moderado" | "baixo"
               )
             }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
           >
             <option value="">Todos os riscos</option>
             <option value="alto">Alto risco</option>
@@ -963,7 +963,7 @@ export default function PrescriptionTemplatesLive({
             </span>
 
             {selectedCategory ? (
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+              <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
                 {formatLabel(selectedCategory)}
               </span>
             ) : null}
@@ -1004,7 +1004,7 @@ export default function PrescriptionTemplatesLive({
           <div key={categoria} className="space-y-4">
             <div className="flex flex-col gap-2 px-1 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">
                   {formatLabel(categoria)}
                 </p>
                 <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
@@ -1016,7 +1016,7 @@ export default function PrescriptionTemplatesLive({
                 </p>
               </div>
 
-              <div className="self-start rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+              <div className="self-start rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-800">
                 {categoryItems.length}{" "}
                 {categoryItems.length === 1 ? "item" : "itens"}
               </div>
