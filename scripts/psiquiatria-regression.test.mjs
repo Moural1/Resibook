@@ -529,3 +529,24 @@ test("paridade: mesmos alertas e formulação do protótipo para o paciente de e
     assert.deepEqual(novo[q].map((x) => x.texto), copia(antigo[q].map((x) => x.t)), `quadrante ${q}`);
   }
 });
+
+/* ---------- banco: proteções da migration ---------- */
+
+test("migration: tabela pseudonimizada com RLS por usuário e sem acesso anônimo", () => {
+  const sql = fs.readFileSync(new URL("../supabase/migrations/20261001090000_psiquiatria_longitudinal.sql", import.meta.url), "utf8");
+  assert.match(sql, /alter table public\.psiq_patients enable row level security/);
+  assert.match(sql, /check \(code ~ '\^PAC-\[0-9\]\{3,6\}\$'\)/);
+  for (const acao of ["select", "insert", "update", "delete"]) {
+    assert.match(sql, new RegExp(`create policy psiq_patients_own_${acao}[\\s\\S]*?user_id = \\(select auth\\.uid\\(\\)\\)`), `policy de ${acao} restrita ao dono`);
+  }
+  assert.match(sql, /revoke all on table public\.psiq_patients from anon/);
+  for (const campo of ["nome", "cpf", "cns", "telefone", "email", "endereco", "data_nascimento"]) {
+    assert.match(sql, new RegExp(`'${campo}'`), `rejeita o campo ${campo} no documento`);
+  }
+  assert.doesNotMatch(sql, /\b(drop|alter) table (?!if exists public\.psiq_patients|public\.psiq_patients)/i, "não mexe em outras tabelas");
+});
+
+test("rota /psiquiatria exige o plano Completo", () => {
+  const proxy = fs.readFileSync(new URL("../src/proxy.ts", import.meta.url), "utf8");
+  assert.match(proxy, /COMPLETE_ONLY_PATHS = \[[^\]]*"\/psiquiatria"/);
+});

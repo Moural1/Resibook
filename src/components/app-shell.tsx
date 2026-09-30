@@ -309,6 +309,7 @@ function SidebarContent({
           badge: counts.pacientes,
         }]
       : []),
+    { href: "/psiquiatria", label: "Psiquiatria", icon: Brain, badge: null },
     {
       href: "/prescricao",
       label: "Prescrição",

@@ -10,7 +10,7 @@ const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/aut
 const GUEST_EMAIL = "convidado@resibook.com";
 const GUEST_ALLOWED_PATHS = ["/prescricao", "/caso-rapido", "/topicos", "/cids", "/exames-evolucao", "/termos", "/privacidade", "/aceite-legal", "/suporte"];
 const BILLING_ALLOWED_PATHS = ["/assinar", "/minha-assinatura", "/api/billing", "/dados-da-conta", "/suporte"];
-const COMPLETE_ONLY_PATHS = ["/meu-resibook", "/plantao", "/caso-rapido", "/prescricao", "/modelos-prescricao", "/exames-evolucao", "/condutas", "/flashcards-dificeis"];
+const COMPLETE_ONLY_PATHS = ["/meu-resibook", "/psiquiatria", "/plantao", "/caso-rapido", "/prescricao", "/modelos-prescricao", "/exames-evolucao", "/condutas", "/flashcards-dificeis"];
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.some(
