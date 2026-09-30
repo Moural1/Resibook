@@ -2,6 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ComponentType } from "react";
 import type { Metadata } from "next";
+import LandingGallery from "../components/landing-gallery";
+import modeloCard from "../../public/landing/modelo-card.webp";
+import heroDesktop from "../../public/landing/hero-desktop.webp";
+import heroMobile from "../../public/landing/hero-mobile.webp";
 import {
   Activity,
   ArrowRight,
@@ -12,13 +16,11 @@ import {
   ChevronDown,
   ClipboardCheck,
   ClipboardList,
-  Copy,
   FlaskConical,
   HeartPulse,
   MessageSquareText,
   Search,
   ShieldCheck,
-  Star,
   Stethoscope,
   Tags,
   Users,
@@ -132,94 +134,69 @@ function Brand({
   );
 }
 
-function PhonePreview() {
+const LIBRARY_STATS = [
+  ["200+", "tópicos clínicos"],
+  ["120+", "modelos de prescrição"],
+  ["700+", "flashcards"],
+  ["290+", "CIDs"],
+  ["15", "calculadoras clínicas"],
+] as const;
+
+function BrowserFrame({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="mx-auto w-full max-w-[340px] rounded-[40px] border border-slate-300/70 bg-[#0b1d40] p-2.5 shadow-[0_32px_90px_rgba(9,26,56,0.28)]">
-      <div className="overflow-hidden rounded-[32px] bg-slate-50">
-        <div className="flex items-center justify-between bg-[#091a38] px-5 pb-4 pt-5 text-white">
-          <Brand compact inverse />
-          <span className="rounded-full bg-cyan-300/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100">
-            Plantão
-          </span>
-        </div>
-
-        <div className="space-y-3 p-4">
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-            <Search className="h-4 w-4 text-slate-400" />
-            <span className="text-xs font-medium text-slate-800">dor torácica</span>
-            <span className="ml-auto h-4 w-px animate-pulse bg-cyan-700" />
-          </div>
-
-          <div className="rounded-xl border border-cyan-200 bg-white p-3.5 shadow-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-700">
-              Urgência
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-950">Dor torácica</p>
-            <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
-              SCA, IAM, TEP, dissecção e causas não cardíacas.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            {SHIFT_STEPS.map(({ title, icon: Icon }, index) => (
-              <div
-                key={title}
-                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-800">
-                  <Icon className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-xs font-semibold text-slate-800">{title}</span>
-                {index < 2 ? (
-                  <Check className="ml-auto h-4 w-4 text-emerald-600" />
-                ) : (
-                  <ArrowRight className="ml-auto h-3.5 w-3.5 text-slate-400" />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2 rounded-xl bg-[#091a38] px-3 py-2.5 text-white">
-            <HeartPulse className="h-4 w-4 text-cyan-300" />
-            <span className="text-[11px] font-semibold">ACLS a um toque</span>
-            <ArrowRight className="ml-auto h-3.5 w-3.5 text-cyan-300" />
-          </div>
-        </div>
+    <div
+      className={`overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_32px_80px_rgba(9,26,56,0.18)] ${className}`}
+    >
+      <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+        <span className="ml-3 hidden h-5 flex-1 items-center rounded-md border border-slate-200 bg-white px-2 text-[10px] font-medium text-slate-400 sm:flex">
+          Resibook · Roteiro de caso
+        </span>
       </div>
+      {children}
     </div>
   );
 }
 
-function WorkspacePreview() {
+function HeroVisual() {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white p-5 text-slate-950 shadow-[0_24px_70px_rgba(0,0,0,0.25)]">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-700">
-            Meu Resibook
-          </p>
-          <p className="mt-1 text-sm font-semibold">Pneumonia comunitária — ambulatorial</p>
-        </div>
-        <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700">
-          Minha versão
-        </span>
+    <div className="relative lg:pb-10">
+      <div className="mx-auto w-[244px] rounded-[34px] border border-slate-300/70 bg-[#0b1d40] p-2 shadow-[0_28px_70px_rgba(9,26,56,0.28)] sm:hidden">
+        <Image
+          src={heroMobile}
+          alt="Roteiro de dor torácica do Resibook no celular"
+          placeholder="blur"
+          priority
+          sizes="244px"
+          className="h-auto w-full rounded-[27px]"
+        />
       </div>
-      <ol className="mt-4 space-y-2 text-xs leading-5 text-slate-700">
-        <li className="rounded-lg bg-slate-50 px-3 py-2">1. Antibiótico conforme protocolo do serviço</li>
-        <li className="rounded-lg border border-cyan-200 bg-cyan-50/60 px-3 py-2">
-          <span className="font-semibold text-cyan-900">2. Ajuste do meu hospital:</span> reavaliar em 48 h no ambulatório
-        </li>
-        <li className="rounded-lg bg-slate-50 px-3 py-2">3. Sinais de alarme para retorno imediato</li>
-      </ol>
-      <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold">
-        <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#091a38] px-3 py-2 text-white">
-          <Copy className="h-3.5 w-3.5" />
-          Copiar prescrição
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-slate-600">
-          <Star className="h-3.5 w-3.5" />
-          Favorito
-        </span>
+      <BrowserFrame className="hidden sm:block">
+        <Image
+          src={heroDesktop}
+          alt="Roteiro de caso do Resibook com prioridades e red flags para dor torácica"
+          placeholder="blur"
+          priority
+          sizes="(min-width: 1180px) 720px, 100vw"
+          className="h-auto w-full"
+        />
+      </BrowserFrame>
+      <div className="absolute -bottom-2 -left-6 hidden w-[168px] rounded-[30px] border border-slate-300/70 bg-[#0b1d40] p-1.5 shadow-[0_28px_70px_rgba(9,26,56,0.3)] sm:block xl:-left-10 xl:w-[188px]">
+        <Image
+          src={heroMobile}
+          alt="O mesmo roteiro de dor torácica no celular"
+          placeholder="blur"
+          sizes="190px"
+          className="h-auto w-full rounded-[24px]"
+        />
       </div>
     </div>
   );
@@ -262,8 +239,8 @@ export default function HomePage() {
       <main id="conteudo-principal" tabIndex={-1}>
         <section className="relative overflow-hidden border-b border-slate-200 bg-[#eef4f9]">
           <div className="pointer-events-none absolute -left-32 top-12 h-80 w-80 rounded-full bg-cyan-300/20 blur-3xl" />
-          <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-blue-200/25 blur-3xl" />
-          <div className="relative mx-auto grid max-w-[1320px] items-center gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-10 lg:pb-24 lg:pt-20">
+          <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-cyan-200/25 blur-3xl" />
+          <div className="landing-hero-grid relative mx-auto grid max-w-[1320px] items-center gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-16 lg:px-10 lg:pb-20 lg:pt-20">
             <div className="max-w-2xl">
               <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-cyan-900">
                 <Stethoscope className="h-3.5 w-3.5" />
@@ -304,8 +281,20 @@ export default function HomePage() {
               </ul>
             </div>
 
-            <PhonePreview />
+            <HeroVisual />
           </div>
+        </section>
+
+        <section aria-label="Conteúdo do Banco Resibook" className="border-b border-slate-200 bg-white">
+          <dl className="mx-auto grid max-w-[1320px] grid-cols-2 gap-y-6 px-4 py-8 sm:px-6 md:grid-cols-5 lg:px-10">
+            {LIBRARY_STATS.map(([value, label]) => (
+              <div key={label} className="text-center last:col-span-2 md:border-l md:border-slate-200 md:first:border-l-0 md:last:col-span-1">
+                <dt className="sr-only">{label}</dt>
+                <dd className="text-3xl font-semibold tracking-[-0.03em] text-[#091a38]">{value}</dd>
+                <dd className="mt-1 text-sm font-medium text-slate-500">{label}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
         <section id="como-funciona" className="scroll-mt-20 bg-white py-16 sm:py-20">
@@ -337,6 +326,16 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
+
+            <div className="mt-16 border-t border-slate-200 pt-12">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Veja por dentro</p>
+              <h3 className="mt-3 text-2xl font-semibold tracking-[-0.02em] text-[#091a38] sm:text-3xl">
+                As telas que você vai usar no plantão.
+              </h3>
+              <div className="mt-8">
+                <LandingGallery />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -365,7 +364,15 @@ export default function HomePage() {
                 ))}
               </ul>
             </div>
-            <WorkspacePreview />
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white shadow-[0_24px_70px_rgba(0,0,0,0.3)]">
+              <Image
+                src={modeloCard}
+                alt="Modelo de prescrição do Banco Resibook com os botões Favoritar, Copiar e Duplicar para Meu Resibook"
+                placeholder="blur"
+                sizes="(min-width: 1024px) 540px, 100vw"
+                className="h-auto w-full"
+              />
+            </div>
           </div>
         </section>
 
@@ -464,6 +471,15 @@ export default function HomePage() {
                 </Link>
               </article>
             </div>
+
+            <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-slate-600">
+              {["Pagamento seguro via Mercado Pago", "Acesso liberado na hora", "Sem fidelidade: cancele quando quiser"].map((item) => (
+                <li key={item} className="inline-flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-cyan-700" />
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
