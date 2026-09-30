@@ -781,7 +781,7 @@ export default function FlashcardsPage() {
           ) : null
         }
       >
-        <div className="grid gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
           <StatCard
             icon={<BookOpen className="h-5 w-5" />}
             label="Total"

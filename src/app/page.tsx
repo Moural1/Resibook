@@ -259,7 +259,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main id="conteudo-principal">
+      <main id="conteudo-principal" tabIndex={-1}>
         <section className="relative overflow-hidden border-b border-slate-200 bg-[#eef4f9]">
           <div className="pointer-events-none absolute -left-32 top-12 h-80 w-80 rounded-full bg-cyan-300/20 blur-3xl" />
           <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-blue-200/25 blur-3xl" />

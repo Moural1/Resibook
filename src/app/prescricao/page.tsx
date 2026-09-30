@@ -1271,15 +1271,15 @@ export default function PrescricaoPage() {
               {!isGuest ? (
                 <a
                   href="#lista-prescricoes"
-                  className="text-sm font-semibold text-blue-700"
+                  className="text-sm font-semibold text-cyan-800 transition hover:text-cyan-950"
                 >
                   Ver histórico salvo
                 </a>
               ) : null}
             </div>
 
-            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+            <div className="mt-5 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
                 Biblioteca compartilhada
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-700">
@@ -1291,7 +1291,7 @@ export default function PrescricaoPage() {
                 <button
                   type="button"
                   onClick={openCreateDrawer}
-                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl border border-blue-200 bg-white px-5 text-sm font-semibold text-blue-700"
+                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl border border-cyan-200 bg-white px-5 text-sm font-semibold text-cyan-800 transition hover:border-cyan-300 hover:bg-cyan-50"
                 >
                   Abrir cadastro de prescrição
                 </button>

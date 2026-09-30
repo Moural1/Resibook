@@ -160,7 +160,7 @@ export default function PlantaoPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {SHIFT_ACTIONS.map((item) => (
                 <ActionCard key={item.title} {...item} />
               ))}
