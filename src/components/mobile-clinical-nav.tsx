@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   Activity,
@@ -31,7 +31,6 @@ const HIDDEN_PATHS = [
 
 export default function MobileClinicalNav() {
   const pathname = usePathname();
-  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const hidden = HIDDEN_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
@@ -62,23 +61,13 @@ export default function MobileClinicalNav() {
     };
   }, []);
 
-  useEffect(() => {
-    if (hidden) return;
-
-    const trigger = document.querySelector<HTMLButtonElement>(
-      'button[aria-label="Abrir menu"]'
-    );
-    if (!trigger) return;
-
-    menuTriggerRef.current = trigger;
-    const previousDisplay = trigger.style.display;
-    trigger.style.display = "none";
-
-    return () => {
-      trigger.style.display = previousDisplay;
-      menuTriggerRef.current = null;
-    };
-  }, [hidden, pathname]);
+  // O gatilho da gaveta vive no AppShell e só existe depois que a sessão
+  // carrega, então é buscado na hora do toque.
+  function openMenu() {
+    document
+      .querySelector<HTMLButtonElement>('button[aria-label="Abrir menu"]')
+      ?.click();
+  }
 
   function openGlobalSearch() {
     const search = document.querySelector<HTMLInputElement>(
@@ -93,7 +82,7 @@ export default function MobileClinicalNav() {
 
   return (
     <nav
-      className="fixed inset-x-3 z-50 grid h-[66px] grid-cols-6 rounded-2xl border border-slate-200/90 bg-white/95 p-1.5 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl lg:hidden print:hidden"
+      className="fixed inset-x-3 z-50 grid h-[66px] grid-cols-6 gap-0.5 rounded-2xl border border-slate-200/90 bg-white/95 p-1 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl lg:hidden print:hidden"
       style={{ bottom: "max(12px, env(safe-area-inset-bottom))" }}
       aria-label="Navegação clínica rápida"
     >
@@ -113,7 +102,7 @@ export default function MobileClinicalNav() {
             }`}
           >
             <Icon className="h-[18px] w-[18px]" />
-            <span className="max-w-full truncate px-1 text-[10px] font-semibold">
+            <span className="max-w-full truncate text-[10px] font-semibold tracking-[-0.01em]">
               {item.label}
             </span>
           </Link>
@@ -123,7 +112,7 @@ export default function MobileClinicalNav() {
       <button
         type="button"
         onClick={openGlobalSearch}
-        className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-cyan-700 transition hover:bg-cyan-50"
+        className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
         aria-label="Abrir busca clínica"
       >
         <Search className="h-[18px] w-[18px]" />
@@ -132,7 +121,7 @@ export default function MobileClinicalNav() {
 
       <button
         type="button"
-        onClick={() => menuTriggerRef.current?.click()}
+        onClick={openMenu}
         className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
         aria-label="Abrir menu completo"
       >
