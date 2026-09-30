@@ -1001,7 +1001,7 @@ export default function FlashcardsPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr_auto]">
+        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -1016,7 +1016,7 @@ export default function FlashcardsPage() {
           <select
             value={area}
             onChange={(event) => setArea(event.target.value)}
-            className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+            className="h-12 w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
           >
             <option value="">Todas as áreas</option>
             {areas.map((item) => (
@@ -1029,7 +1029,7 @@ export default function FlashcardsPage() {
           <select
             value={materia}
             onChange={(event) => setMateria(event.target.value)}
-            className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+            className="h-12 w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
           >
             <option value="">Todas as matérias</option>
             {materias.map((item) => (

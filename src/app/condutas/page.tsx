@@ -270,7 +270,7 @@ function PlantaoCommandCenter({
         </div>
       </div>
 
-      <div className="grid gap-4 p-4 md:p-5 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid grid-cols-1 gap-4 p-4 md:p-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -359,7 +359,7 @@ function PlantaoCommandCenter({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2">
+          <div className="mt-4 grid grid-cols-1 gap-2">
             {QUICK_COMPLAINTS.slice(0, 6).map((complaint) => (
               <button
                 key={complaint.title}
@@ -808,11 +808,21 @@ export default function CondutasPage() {
       ) : filtered.length === 0 ? (
         <section className="rounded-[24px] border border-dashed border-slate-300 bg-white px-4 py-12 text-center shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">
-            Nenhuma conduta encontrada
+            {cards.length === 0 ? "Sua lista de condutas está vazia" : "Nenhuma conduta encontrada"}
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Marque flashcards importantes como difíceis para eles aparecerem aqui.
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
+            {cards.length === 0
+              ? "As condutas vêm dos flashcards que você marca como difíceis. Abra os Flashcards, marque os temas que quer ter à mão no plantão e eles aparecem aqui."
+              : "Nenhuma conduta corresponde a essa busca. Tente outro termo ou limpe os filtros."}
           </p>
+          {cards.length === 0 ? (
+            <Link
+              href="/flashcards"
+              className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Abrir Flashcards
+            </Link>
+          ) : null}
         </section>
       ) : (
         <section className="space-y-3">

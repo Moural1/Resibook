@@ -124,7 +124,7 @@ export default async function ConsultaAudioPage({
         <form
           action="/api/ai/case-review"
           method="POST"
-          className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]"
+          className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]"
         >
           <div className="space-y-6">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-5">

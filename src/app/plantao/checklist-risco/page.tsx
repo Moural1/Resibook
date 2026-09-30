@@ -249,7 +249,7 @@ export default function RiskChecklistPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 p-4 md:p-5 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="grid grid-cols-1 gap-5 p-4 md:p-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <aside className="space-y-4">
             <section className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
               <div className="flex items-center gap-3">

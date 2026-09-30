@@ -552,7 +552,7 @@ function StatCard({
         </span>
       </div>
 
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 md:tracking-[0.18em]">
         {label}
       </p>
     </div>
@@ -1055,7 +1055,7 @@ export default function PacientesPage() {
           </button>
         }
       >
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           <StatCard
             icon={<UserRound className="h-5 w-5" />}
             label="Pacientes"
@@ -1082,7 +1082,7 @@ export default function PacientesPage() {
         </div>
 
         <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+          <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end">
             <div className="min-w-0 flex-1">
               <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Busca no prontuário
@@ -1100,7 +1100,7 @@ export default function PacientesPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:w-[900px] xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:w-[860px] 2xl:shrink-0">
               <div>
                 <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Sexo
@@ -1907,7 +1907,7 @@ export default function PacientesPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-[1fr_1.15fr]">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
                   <TextAreaField
                     label="Comorbidades relevantes"
                     value={form.comorbidades}

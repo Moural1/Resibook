@@ -1236,9 +1236,8 @@ export default function PrescricaoPage() {
         notice={
           isGuest ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              Acesso convidado: você pode consultar e copiar modelos de
-              <span className="mx-1">prescription_templates</span>
-              e montar um rascunho local, mas não pode salvar, editar, apagar ou
+              Acesso convidado: você pode consultar e copiar modelos da
+              Biblioteca Resibook e montar um rascunho local, mas não pode salvar, editar, apagar ou
               acessar dados privados de pacientes e prescrições.
             </div>
           ) : null
@@ -1284,8 +1283,7 @@ export default function PrescricaoPage() {
                 Biblioteca compartilhada
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-700">
-                {templates.length} modelos prontos vindos de
-                <span className="mx-1 font-semibold">prescription_templates</span>
+                {templates.length} modelos prontos da Biblioteca Resibook
                 para consultar, copiar e aplicar no formulário.
               </p>
 

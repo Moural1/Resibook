@@ -482,7 +482,7 @@ function SidebarContent({
             <p className="truncate text-[13px] font-bold uppercase tracking-[0.12em] text-white">
               Resi<span className="text-cyan-300">Book</span>
             </p>
-            <p className="mt-0.5 truncate text-[9px] font-medium uppercase tracking-[0.16em] text-slate-500">Workspace clínico</p>
+            <p className="mt-0.5 truncate text-[9px] font-medium uppercase tracking-[0.08em] text-slate-400">Workspace clínico</p>
           </div>
           <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${
             isGuest

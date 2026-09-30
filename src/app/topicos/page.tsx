@@ -935,9 +935,20 @@ export default function TopicosPage() {
                         </h3>
 
                         {item.tags ? (
-                          <p className="mt-2 text-sm leading-6 text-slate-500">
-                            Tags: {item.tags}
-                          </p>
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {item.tags
+                              .split(",")
+                              .map((tag) => tag.trim())
+                              .filter(Boolean)
+                              .map((tag, index) => (
+                                <span
+                                  key={`${item.id}-${index}-${tag}`}
+                                  className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                          </div>
                         ) : null}
                       </div>
 

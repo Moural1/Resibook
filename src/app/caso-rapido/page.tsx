@@ -581,11 +581,11 @@ export default function CasoRapidoPage() {
           { label: "Prioridade", value: acuity.label },
         ]}
       >
-        <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
               <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Queixa principal">
+                <Field label="Queixa principal" className="md:col-span-2">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
@@ -597,7 +597,7 @@ export default function CasoRapidoPage() {
                   </div>
                 </Field>
 
-                <Field label="Gravidade inicial">
+                <Field label="Gravidade inicial" className="md:col-span-2">
                   <select
                     value={severity}
                     onChange={(event) => setSeverity(event.target.value)}
@@ -828,7 +828,7 @@ export default function CasoRapidoPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
               <ModuleLink href={buildContextualShiftHref("/plantao/prescricao-guiada", workingComplaint)} title="Plano guiado" icon={ClipboardCheck} />
               <ModuleLink href={buildContextualShiftHref("/plantao/pendencias", workingComplaint)} title="Pendências" icon={ClipboardCheck} />
               <ModuleLink href={buildContextualShiftHref("/plantao/encaminhamento", workingComplaint)} title="Encaminhamento" icon={Send} />
@@ -878,9 +878,9 @@ export default function CasoRapidoPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className="block">
+    <label className={`block ${className}`}>
       <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </span>
