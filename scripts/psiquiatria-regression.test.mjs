@@ -550,3 +550,14 @@ test("rota /psiquiatria exige o plano Completo", () => {
   const proxy = fs.readFileSync(new URL("../src/proxy.ts", import.meta.url), "utf8");
   assert.match(proxy, /COMPLETE_ONLY_PATHS = \[[^\]]*"\/psiquiatria"/);
 });
+
+test("LGPD: apagar todos os pacientes filtra pelo médico logado e informa a retenção", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const dados = await readFile(new URL("../src/components/psiquiatria/dados.ts", import.meta.url), "utf8");
+  const app = await readFile(new URL("../src/components/psiquiatria/psiquiatria-app.tsx", import.meta.url), "utf8");
+  const bloco = dados.slice(dados.indexOf("export async function excluirTodosPacientes"));
+  assert.match(bloco, /auth\.getUser\(\)/);
+  assert.match(bloco, /\.delete\(\)\.eq\("user_id", userId\)/);
+  assert.match(app, /Apagar todos os pacientes/);
+  assert.match(app, /apagados automaticamente se a conta for excluída/);
+});

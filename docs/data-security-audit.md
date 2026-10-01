@@ -102,5 +102,6 @@ Dados de saúde mental são dados pessoais sensíveis (LGPD, art. 5º, II e art.
 - Textos livres passam por `src/lib/psiquiatria/privacidade.ts`: CPF, CNS, telefone, e-mail e campos rotulados bloqueiam o salvamento; datas reais e possíveis nomes geram aviso.
 - RLS por `user_id = auth.uid()` em select, insert, update e delete; `anon` sem acesso. Excluir a conta apaga os registros em cascata.
 - O rascunho da consulta fica no mesmo registro protegido, não no `localStorage`.
-- O médico pode exportar (portabilidade) e excluir cada paciente pela própria tela.
+- O médico pode exportar (portabilidade) e excluir cada paciente pela própria tela, ou apagar todos de uma vez ("Apagar todos os pacientes", em Privacidade e backup), com confirmação em dois toques. A exclusão em lote filtra por `user_id` e é reforçada pelo RLS.
+- Retenção: os registros ficam guardados enquanto a conta existir e são apagados em cascata quando a conta é excluída (`on delete cascade` em `auth.users`). A política é exibida ao médico na própria tela do módulo.
 - A cópia do plano de segurança para o paciente deixa nomes e telefones em branco, para preenchimento à mão fora do app.

@@ -98,3 +98,15 @@ export async function excluirPaciente(supabase: SupabaseClient, id: string) {
   const { error } = await supabase.from(TABELA).delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+/** Direito de eliminação (LGPD art. 18, VI): apaga todos os pacientes de
+ *  psiquiatria do médico logado. O filtro por user_id é explícito e o RLS
+ *  garante, de qualquer forma, que só as linhas dele sejam atingidas. */
+export async function excluirTodosPacientes(supabase: SupabaseClient) {
+  const { data, error: erroSessao } = await supabase.auth.getUser();
+  const userId = data.user?.id;
+  if (erroSessao || !userId) throw new Error("Sessão expirada. Entre novamente.");
+  const { error } = await supabase.from(TABELA).delete().eq("user_id", userId);
+  if (tabelaAusente(error)) throw new TabelaAusenteError();
+  if (error) throw new Error(error.message);
+}

@@ -24,6 +24,7 @@ import {
   TabelaAusenteError,
   criarPaciente,
   excluirPaciente,
+  excluirTodosPacientes,
   listarPacientes,
   salvarPaciente,
   type Registro,
@@ -284,6 +285,18 @@ export default function PsiquiatriaApp() {
         }
       : null;
 
+  async function excluirTudo() {
+    try {
+      await excluirTodosPacientes(supabase);
+      pendentes.current.clear();
+      setRegistros([]);
+      setSelId(null);
+      avisar("Todos os pacientes foram apagados");
+    } catch {
+      showToast({ title: "Não foi possível apagar os pacientes.", variant: "error" });
+    }
+  }
+
   const ferramentas = (
     <>
         <div className="flex items-start gap-2 rounded-lg bg-cyan-50/70 p-3 text-xs leading-5 text-cyan-950">
@@ -308,6 +321,19 @@ export default function PsiquiatriaApp() {
           >
             <Plus className="h-3.5 w-3.5" /> Paciente de exemplo
           </Botao>
+        </div>
+        <div className="space-y-2 border-t border-slate-100 pt-3">
+          <p className="text-[11px] leading-5 text-slate-500">
+            Os dados ficam guardados enquanto sua conta existir e são apagados automaticamente se a conta for excluída. Você pode apagar tudo a qualquer momento; exporte o backup antes, se quiser guardar uma cópia.
+          </p>
+          {registros.length ? (
+            <BotaoConfirmar
+              confirmar={`Toque de novo para apagar ${registros.length} paciente${registros.length === 1 ? "" : "s"}`}
+              onConfirmar={excluirTudo}
+            >
+              Apagar todos os pacientes
+            </BotaoConfirmar>
+          ) : null}
         </div>
         <p className="text-[11px] leading-5 text-slate-400">
           Intervalos de monitorização simplificados; ajuste ao protocolo do seu serviço. Não substitui o prontuário oficial nem o julgamento clínico.
