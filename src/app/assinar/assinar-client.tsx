@@ -15,6 +15,7 @@ import {
   QrCode,
   RefreshCw,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import {
   BILLING_PLANS,
@@ -22,6 +23,19 @@ import {
   type BillingPlanId,
 } from "@/lib/billing/plans";
 import type { ManualPixOrder } from "@/lib/billing/manual-pix";
+
+// Origem do bloqueio de plano (proxy → /assinar?upgrade=1&de=/rota). Só rotas
+// conhecidas viram texto; qualquer outro valor cai no rótulo genérico.
+const UPGRADE_SOURCES: Record<string, string> = {
+  "/meu-resibook": "Meu Resibook",
+  "/plantao": "Central de plantão",
+  "/caso-rapido": "Caso rápido",
+  "/prescricao": "Prescrição clínica",
+  "/modelos-prescricao": "Modelos de prescrição",
+  "/exames-evolucao": "Exames e evolução",
+  "/condutas": "Condutas",
+  "/flashcards-dificeis": "Flashcards difíceis",
+};
 
 type PixConfig = {
   configured: boolean;
@@ -90,6 +104,10 @@ function AssinarContent({
   const [copied, setCopied] = useState(false);
   const [manualPixOrder, setManualPixOrder] = useState(initialManualPixOrder);
   const retry = searchParams.get("retry") === "1";
+  const upgradeSource = searchParams.get("de") ?? "";
+  const upgradeFrom = searchParams.get("upgrade") === "1"
+    ? Object.hasOwn(UPGRADE_SOURCES, upgradeSource) ? `O módulo ${UPGRADE_SOURCES[upgradeSource]}` : "Este recurso"
+    : null;
   const pixAvailable = pixConfig.configured && !testMode;
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billingEmail.trim());
   const pixStatus = manualPixOrder?.status;
@@ -183,13 +201,25 @@ function AssinarContent({
         <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600"><ArrowLeft className="h-4 w-4" />Voltar</Link>
         <div className="mt-5 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-9">
           {testMode ? <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-semibold">Modo de teste do Mercado Pago</p><p className="mt-1 text-sm">Use somente comprador e cartão de teste. Esta assinatura não libera nem bloqueia acessos reais.</p></div></div> : null}
+          {upgradeFrom ? (
+            <div className="mb-7 flex flex-col gap-3 rounded-xl border border-cyan-100 border-t-[3px] border-t-cyan-700 bg-[linear-gradient(115deg,#ecfeff_0%,#ffffff_70%)] p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-cyan-800" />
+                <div>
+                  <p className="font-semibold text-slate-950">{upgradeFrom} faz parte do plano Completo</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">Seu plano atual continua ativo. Faça o upgrade para liberar este e todos os recursos de plantão, prescrição e condutas.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => { setSelected("complete"); document.getElementById("formas-de-pagamento")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-cyan-800 px-4 text-sm font-medium text-white transition hover:bg-cyan-900">Fazer upgrade</button>
+            </div>
+          ) : null}
           <div className="text-center"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">Assinatura mensal</p><h1 className="mt-3 text-3xl font-semibold text-slate-950">Escolha seu acesso ao Resibook</h1><p className="mt-3 text-sm text-slate-600">Cartão recorrente pelo Mercado Pago ou Pix com liberação manual por 30 dias.</p></div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {Object.values(BILLING_PLANS).map((plan) => <button key={plan.id} type="button" onClick={() => setSelected(plan.id)} className={`rounded-2xl border p-6 text-left ${selected === plan.id ? "border-cyan-700 bg-cyan-50 ring-2 ring-cyan-100" : "border-slate-200 bg-white"}`}><span className="text-sm font-semibold text-cyan-700">Plano {plan.name}</span><span className="mt-2 block text-4xl font-semibold text-slate-950">R$ {plan.price}<small className="text-base font-medium text-slate-500">/mês</small></span><span className="mt-3 block text-sm leading-6 text-slate-600">{plan.description}</span><span className="mt-5 block space-y-2">{plan.features.map((feature) => <span key={feature} className="flex gap-2 text-sm text-slate-700"><Check className="h-4 w-4 text-cyan-700" />{feature}</span>)}</span></button>)}
           </div>
 
-          <div className="mt-7 grid gap-4 md:grid-cols-2">
+          <div id="formas-de-pagamento" className="mt-7 grid scroll-mt-6 gap-4 md:grid-cols-2">
             <button type="button" onClick={() => setMethod("card")} className={`rounded-2xl border p-5 text-left ${method === "card" ? "border-slate-900 bg-slate-50 ring-2 ring-slate-100" : "border-slate-200"}`}><CreditCard className="h-6 w-6 text-cyan-700" /><p className="mt-3 font-semibold text-slate-950">Assinatura automática</p><p className="mt-1 text-sm leading-6 text-slate-600">Cartão pelo Mercado Pago, com cobrança mensal automática.</p></button>
             <button type="button" onClick={() => setMethod("pix")} disabled={!pixAvailable} className={`rounded-2xl border p-5 text-left disabled:cursor-not-allowed disabled:opacity-50 ${method === "pix" ? "border-emerald-700 bg-emerald-50 ring-2 ring-emerald-100" : "border-slate-200"}`}><QrCode className="h-6 w-6 text-emerald-700" /><p className="mt-3 font-semibold text-slate-950">Pix manual</p><p className="mt-1 text-sm leading-6 text-slate-600">Pagamento de 30 dias, liberado após conferência do comprovante.</p></button>
           </div>

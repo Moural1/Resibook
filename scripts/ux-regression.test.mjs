@@ -162,3 +162,14 @@ test("animação de entrada não prende modais fixos dentro da página", async (
   assert.match(css, /\.page-enter > \* \{ animation: page-enter [^;]*backwards; \}/);
   assert.doesNotMatch(css, /\.page-enter > \* \{ animation:[^;]*\b(both|forwards)\b/);
 });
+
+test("bloqueio do plano Completo leva o contexto do módulo para /assinar sem refletir texto livre", async () => {
+  const [proxy, assinar] = await Promise.all([
+    source("../src/proxy.ts"),
+    source("../src/app/assinar/assinar-client.tsx"),
+  ]);
+  assert.match(proxy, /searchParams\.set\("de", COMPLETE_ONLY_PATHS\.find/);
+  assert.match(assinar, /Object\.hasOwn\(UPGRADE_SOURCES, upgradeSource\)/);
+  assert.match(assinar, /faz parte do plano Completo/);
+  assert.doesNotMatch(assinar, /"\/psiquiatria":/);
+});

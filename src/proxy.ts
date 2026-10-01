@@ -227,6 +227,7 @@ export async function proxy(request: NextRequest) {
         redirectUrl.search = "";
         redirectUrl.searchParams.set("plano", "complete");
         redirectUrl.searchParams.set("upgrade", "1");
+        redirectUrl.searchParams.set("de", COMPLETE_ONLY_PATHS.find((route) => isInside(pathname, [route])) ?? "");
         return applyCookies(NextResponse.redirect(redirectUrl), pendingCookies);
       }
     }
