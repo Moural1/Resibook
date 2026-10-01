@@ -665,3 +665,16 @@ test("service worker não guarda APIs nem páginas com dados pessoais", () => {
   const logout = readFileSync(new URL("../src/components/logout-button.tsx", import.meta.url), "utf8");
   assert.match(logout, /clearOfflinePages\(\)/);
 });
+
+test("migration de revisão espaçada isola cada usuário e não toca tabelas existentes", () => {
+  const migration = readFileSync(
+    new URL("../supabase/migrations/20261001150000_flashcard_spaced_repetition.sql", import.meta.url),
+    "utf8"
+  );
+  assert.match(migration, /array\['flashcard_schedule', 'flashcard_study_days'\]/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /using \(user_id = \(select auth\.uid\(\)\)\) with check \(user_id = \(select auth\.uid\(\)\)\)/);
+  assert.match(migration, /revoke all on table public\.%I from anon/);
+  assert.match(migration, /on delete cascade/);
+  assert.doesNotMatch(migration, /\b(drop table|alter table public\.flashcards|delete from|truncate)\b/i);
+});
