@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
+import ClinicalText from "@/components/clinical-text";
+import { canonicalArea, formatClinicalTitle, isTechnicalSourceLabel } from "@/lib/clinical-text";
 import NoResultSearchLogger from "@/components/no-result-search-logger";
 import ResibookGuard from "@/components/resibook-guard";
 import { getSearchScore } from "@/lib/search";
@@ -59,7 +61,7 @@ function formatLabel(value?: string | null, fallback = "Não informado") {
 
   if (!clean) return fallback;
 
-  return clean.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  return formatClinicalTitle(clean.replace(/[_]+/g, " "));
 }
 
 function cleanLine(value: string) {
@@ -90,7 +92,7 @@ function formatConductTitle(value?: string | null) {
     .replace(/^conduta\s+(em|para|no|na)\s+/i, "")
     .trim();
 
-  const title = withoutQuestionIntro || clean;
+  const title = formatClinicalTitle(withoutQuestionIntro || clean);
 
   return title.charAt(0).toUpperCase() + title.slice(1);
 }
@@ -157,45 +159,7 @@ function looksLikeHeading(line: string) {
 }
 
 function renderConductBody(value?: string | null) {
-  const lines = getContentLines(value);
-
-  if (lines.length === 0) {
-    return (
-      <p className="text-sm leading-7 text-slate-500">
-        Sem conduta preenchida.
-      </p>
-    );
-  }
-
-  return lines.map((line, index) => {
-    const bullet = line.match(/^[-•]\s+(.+)/);
-
-    if (looksLikeHeading(line)) {
-      return (
-        <h4
-          key={`heading-${index}`}
-          className="mt-5 first:mt-0 text-[12px] font-bold uppercase tracking-[0.18em] text-slate-500"
-        >
-          {line.replace(/[:.]+$/g, "")}
-        </h4>
-      );
-    }
-
-    if (bullet) {
-      return (
-        <div key={`bullet-${index}`} className="flex gap-2 text-[15px] leading-8 text-slate-700">
-          <span className="mt-[13px] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
-          <span>{bullet[1]}</span>
-        </div>
-      );
-    }
-
-    return (
-      <p key={`line-${index}`} className="text-[15px] leading-8 text-slate-700">
-        {line}
-      </p>
-    );
-  });
+  return <ClinicalText value={value} emptyText="Sem conduta preenchida." size="lg" />;
 }
 
 function PlantaoCommandCenter({
@@ -431,13 +395,13 @@ function ConductItem({
       >
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap gap-2 text-[11px] font-medium text-slate-500">
-            {item.area ? (
+            {item.area && !isTechnicalSourceLabel(item.area) ? (
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
-                {formatLabel(item.area)}
+                {canonicalArea(item.area)}
               </span>
             ) : null}
 
-            {item.materia ? (
+            {item.materia && !isTechnicalSourceLabel(item.materia) ? (
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
                 {formatLabel(item.materia)}
               </span>
@@ -596,14 +560,14 @@ export default function CondutasPage() {
 
   const areas = useMemo(() => {
     return Array.from(
-      new Set(cards.map((item) => item.area).filter(Boolean) as string[])
-    ).sort((a, b) => formatLabel(a).localeCompare(formatLabel(b)));
+      new Set(cards.map((item) => canonicalArea(item.area)).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [cards]);
 
   const filtered = useMemo(() => {
     const normalizedArea = normalize(selectedArea);
     const filteredByArea = cards.filter((item) => {
-      return !normalizedArea || normalize(item.area) === normalizedArea;
+      return !normalizedArea || normalize(item.area) === normalizedArea || normalize(canonicalArea(item.area)) === normalizedArea;
     });
 
     return rankConductsByClinicalSearch(filteredByArea, query);

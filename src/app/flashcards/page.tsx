@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "../../components/module-page-header";
+import ClinicalText from "@/components/clinical-text";
+import { canonicalArea, formatClinicalTitle, isTechnicalSourceLabel } from "@/lib/clinical-text";
 import { rankSearchResults } from "@/lib/search";
 import { isResibookAdmin } from "@/lib/auth-role";
 import {
@@ -63,99 +65,11 @@ function formatLabel(value?: string | null, fallback = "Não informado") {
 
   if (!clean) return fallback;
 
-  return clean.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function buildParagraphs(value?: string | null) {
-  return (value || "")
-    .replace(/\r\n/g, "\n")
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
+  return formatClinicalTitle(clean.replace(/[_]+/g, " "));
 }
 
 function renderRichText(value?: string | null, emptyText = "Sem conteúdo") {
-  const blocks = buildParagraphs(value);
-
-  if (blocks.length === 0) {
-    return <p className="text-sm leading-7 text-slate-400">{emptyText}</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      {blocks.map((block, index) => {
-        const lines = block
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean);
-
-        const isBulletList =
-          lines.length > 1 &&
-          lines.every((line) => /^[-•]/.test(line) || /^\d+[\.\)]/.test(line));
-
-        if (isBulletList) {
-          const ordered = lines.every((line) => /^\d+[\.\)]/.test(line));
-
-          if (ordered) {
-            return (
-              <ol
-                key={index}
-                className="ml-5 list-decimal space-y-2 text-sm leading-7 text-slate-700"
-              >
-                {lines.map((line, lineIndex) => (
-                  <li key={lineIndex}>
-                    {line.replace(/^\d+[\.\)]\s*/, "")}
-                  </li>
-                ))}
-              </ol>
-            );
-          }
-
-          return (
-            <ul
-              key={index}
-              className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700"
-            >
-              {lines.map((line, lineIndex) => (
-                <li key={lineIndex}>{line.replace(/^[-•]\s*/, "")}</li>
-              ))}
-            </ul>
-          );
-        }
-
-        if (lines.length === 1) {
-          const line = lines[0];
-          const labelMatch = line.match(/^([^:]{2,40}):\s*(.+)$/);
-
-          if (labelMatch) {
-            return (
-              <div
-                key={index}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {labelMatch[1]}
-                </p>
-
-                <p className="mt-2 text-sm leading-7 text-slate-700">
-                  {labelMatch[2]}
-                </p>
-              </div>
-            );
-          }
-        }
-
-        return (
-          <p
-            key={index}
-            className="whitespace-pre-wrap text-sm leading-7 text-slate-700"
-          >
-            {block}
-          </p>
-        );
-      })}
-    </div>
-  );
+  return <ClinicalText value={value} emptyText={emptyText} />;
 }
 
 function DrawerInput({
@@ -346,7 +260,7 @@ export default function FlashcardsPage() {
   const areas = useMemo(
     () =>
       Array.from(
-        new Set(cards.map((item) => item.area).filter(Boolean) as string[])
+        new Set(cards.map((item) => canonicalArea(item.area)).filter(Boolean))
       ).sort((a, b) => a.localeCompare(b, "pt-BR")),
     [cards]
   );
@@ -361,7 +275,7 @@ export default function FlashcardsPage() {
 
   const filtered = useMemo(() => {
     const filteredBySelects = cards.filter((item) => {
-      const matchesArea = !area || item.area === area;
+      const matchesArea = !area || item.area === area || canonicalArea(item.area) === area;
       const matchesMateria = !materia || item.materia === materia;
       const matchesMode =
         mode === "todos"
@@ -384,7 +298,7 @@ export default function FlashcardsPage() {
 
   const revealedCount = revealedIds.length;
   const difficultCount = cards.filter((item) => item.dificil).length;
-  const visibleAreas = new Set(filtered.map((item) => item.area).filter(Boolean))
+  const visibleAreas = new Set(filtered.map((item) => canonicalArea(item.area)).filter(Boolean))
     .size;
   const hasFilters = Boolean(query || area || materia || mode !== "todos");
   const reviewCard = reviewQueue.length
@@ -1056,14 +970,14 @@ export default function FlashcardsPage() {
                     <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
                       Banco Resibook
                     </span>
-                    {item.area ? (
+                    {item.area && !isTechnicalSourceLabel(item.area) ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
                         <Layers3 className="h-3.5 w-3.5 text-slate-500" />
-                        {formatLabel(item.area)}
+                        {canonicalArea(item.area)}
                       </span>
                     ) : null}
 
-                    {item.materia ? (
+                    {item.materia && !isTechnicalSourceLabel(item.materia) ? (
                       <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                         {formatLabel(item.materia)}
                       </span>
