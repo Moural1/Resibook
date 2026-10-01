@@ -1,5 +1,7 @@
 import "./globals.css";
 import "./module-surfaces.css";
+import "./dark-theme.css";
+import "./dark-overrides.css";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import Toaster from "../components/toaster";
@@ -8,6 +10,7 @@ import AccessibilityBridge from "../components/accessibility-bridge";
 import ClinicalRuntime from "../components/clinical-runtime";
 import ServiceWorkerRegister from "../components/service-worker-register";
 import ClientErrorReporter from "../components/client-error-reporter";
+import { THEME_BOOT_SCRIPT } from "../lib/theme";
 import VisualSystemController from "../components/visual-system-controller";
 
 const inter = Inter({
@@ -87,7 +90,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={inter.variable}>
+    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body>
         <a
           href="#conteudo-principal"

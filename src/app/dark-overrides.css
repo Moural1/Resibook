@@ -1,0 +1,83 @@
+/* Ajustes manuais do tema escuro para o que não usa a paleta do Tailwind
+   (cores fixas, gradientes e regras globais). A paleta fica em dark-theme.css. */
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) {
+  --rb-surface: #111c2e;
+  --rb-surface-muted: #0d1726;
+  --rb-border: rgba(148, 163, 184, 0.18);
+  --rb-text: #e2e8f0;
+  --rb-text-muted: #94a3b8;
+}
+
+/* Fundos claros fixos e gradientes claros viram superfície escura. */
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) :is(
+  [class*="bg-[linear-gradient"], [class*="bg-[radial-gradient"][class*="#f"],
+  [class*="bg-[#f"], [class*="bg-[#e"]
+) {
+  background: var(--rb-surface) !important;
+}
+
+/* Textos em hex escuro (títulos antigos) ficam claros. */
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) :is(
+  [class*="text-[#091a38]"], [class*="text-[#0b1d40]"], [class*="text-[#123A6D]"], [class*="text-[#071a35]"]
+) {
+  color: var(--rb-text) !important;
+}
+
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) :is(
+  [class*="border-[#d8d3c8]"], [class*="border-[#123A6D]"]
+) {
+  border-color: var(--rb-border) !important;
+}
+
+/* Bordas fixas das regras globais. */
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) main :is(section, article),
+html[data-theme="dark"] body[data-resibook-surface]:not([data-resibook-surface="public"]) main > div > section {
+  border-color: var(--rb-border);
+}
+
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) main :is(input, select, textarea) {
+  border-color: var(--rb-border);
+}
+
+/* Ações do cabeçalho de módulo (module-surfaces.css usa cores fixas). */
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) .module-page-header-actions :is(a, button) {
+  border-color: var(--rb-border) !important;
+  background: var(--rb-surface) !important;
+  color: var(--rb-text) !important;
+}
+
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) .module-page-header-actions :is(a, button):hover {
+  background: var(--rb-surface-muted) !important;
+}
+
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) .module-page-header-actions > :is(a, button):first-child {
+  border-color: var(--rb-accent) !important;
+  background: var(--rb-accent) !important;
+  color: #fff !important;
+}
+
+/* Topo, sombras e seleção. */
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) header.sticky {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) ::selection {
+  background: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) * {
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+/* Impressão sempre em claro. */
+@media print {
+  html[data-theme="dark"] body { background: #fff !important; color: #0f172a !important; }
+}
+
+/* Véus atrás de gavetas e modais continuam escurecendo a página. */
+html[data-theme="dark"] body:not([data-resibook-surface="public"]) :is(
+  [class*="bg-slate-950/"], [class*="bg-slate-900/"]
+):is(.fixed, .absolute) {
+  background-color: rgba(2, 6, 23, 0.68);
+}

@@ -187,3 +187,18 @@ test("primeiros passos marcam a página visitada e terminam com a instalação",
   assert.equal(onboardingProgress({ ...state, installed: true }).finished, true);
   assert.deepEqual(parseOnboardingState("{quebrado"), EMPTY_ONBOARDING);
 });
+
+test("tema escuro é opcional, poupa a área pública e mantém botões sólidos legíveis", async () => {
+  const dark = await source("../src/app/dark-theme.css");
+  const overrides = await source("../src/app/dark-overrides.css");
+  const layout = await source("../src/app/layout.tsx");
+  const surfaces = await source("../src/app/module-surfaces.css");
+  assert.match(dark, /^\/\* GERADO por scripts\/generate-dark-theme\.mjs/);
+  assert.match(dark, /html\[data-theme="dark"\] body:not\(\[data-resibook-surface="public"\]\) \{/);
+  assert.match(dark, /\.app-sidebar-panel \{/);
+  assert.match(dark, /\.bg-cyan-800, .*\{ background-color: oklch/);
+  assert.match(overrides, /@media print/);
+  assert.match(layout, /THEME_BOOT_SCRIPT/);
+  assert.match(layout, /import "\.\/dark-theme\.css";/);
+  assert.doesNotMatch(surfaces, /background-color: var\(--color-cyan-800\);/);
+});

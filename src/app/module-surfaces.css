@@ -287,14 +287,14 @@ body[data-resibook-surface]:not([data-resibook-surface="public"]) main [class*="
 /* One accent colour: solid dark action buttons inside signed-in modules use
    the cyan primary, matching the header actions and the psychiatry module. */
 body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(button, a):is(.bg-slate-900, .bg-slate-950):not(:disabled) {
-  border-color: var(--color-cyan-800);
-  background-color: var(--color-cyan-800);
+  border-color: var(--rb-accent, var(--color-cyan-800));
+  background-color: var(--rb-accent, var(--color-cyan-800));
   color: #ffffff;
 }
 
 body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(button, a):is(.bg-slate-900, .bg-slate-950):not(:disabled):hover {
-  border-color: var(--color-cyan-900);
-  background-color: var(--color-cyan-900);
+  border-color: var(--rb-accent, var(--color-cyan-900));
+  background-color: var(--rb-accent, var(--color-cyan-900));
 }
 
 /* Legacy surfaces: oversized radii and soft card shadows from the previous
@@ -315,11 +315,11 @@ body[data-resibook-surface]:not([data-resibook-surface="public"]) main .shadow-s
 
 /* Solid blue actions follow the single cyan primary as well. */
 body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(button, a):is(.bg-blue-600, .bg-blue-700, [class*="bg-[#2563eb]"]):not(:disabled) {
-  border-color: var(--color-cyan-800);
-  background-color: var(--color-cyan-800);
+  border-color: var(--rb-accent, var(--color-cyan-800));
+  background-color: var(--rb-accent, var(--color-cyan-800));
   color: #ffffff;
 }
 
 body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(button, a):is(.bg-blue-600, .bg-blue-700, [class*="bg-[#2563eb]"]):not(:disabled):hover {
-  background-color: var(--color-cyan-900);
+  background-color: var(--rb-accent, var(--color-cyan-900));
 }
