@@ -28,7 +28,6 @@ import {
   Search,
   ShieldCheck,
   Siren,
-  Sparkles,
   Stethoscope,
   Tags,
   Users,
@@ -61,9 +60,9 @@ type SearchAction = {
 
 type PatientRow = { id: string; nome: string | null; especialidade: string | null; queixa: string | null; diagnostico_principal?: string | null };
 type PrescriptionRow = { id: number; paciente_nome: string | null; medicamento: string | null; posologia?: string | null };
-type PrescriptionTemplateRow = { id: number; categoria: string | null; titulo: string | null; conteudo: string | null; observacoes?: string | null };
+type PrescriptionTemplateRow = { id: number; categoria: string | null; titulo: string | null; conteudo?: string | null; observacoes?: string | null };
 type ExamRow = { id: number; titulo: string | null; categoria: string | null; conteudo?: string | null };
-type TopicoRow = { id: number; area: string | null; titulo: string | null; resumo: string | null; diagnostico: string | null; exames: string | null; tratamento: string | null; pegadinhas: string | null };
+type TopicoRow = { id: number; area: string | null; titulo: string | null; resumo: string | null; diagnostico: string | null; exames?: string | null; tratamento?: string | null; pegadinhas?: string | null };
 type CidRow = { id: number; codigo: string | null; descricao: string | null; grupo?: string | null };
 type FlashcardRow = { id: string; area: string | null; materia: string | null; frente: string | null; verso?: string | null };
 type MarkRow = { flashcard_id: string; dificil: boolean | null };
@@ -91,6 +90,61 @@ function loadRecentSearches(userId: string | null) {
   }
 }
 
+type SearchIndex = {
+  patients: PatientRow[];
+  prescriptions: PrescriptionRow[];
+  prescriptionTemplates: PrescriptionTemplateRow[];
+  exams: ExamRow[];
+  topicos: TopicoRow[];
+  cids: CidRow[];
+  flashcards: FlashcardRow[];
+  marks: MarkRow[];
+};
+
+// Índice da busca carregado uma vez por usuário e reaproveitado por alguns
+// minutos: a busca passa a cobrir o acervo inteiro (não só as primeiras
+// linhas de cada tabela) e responde sem ir ao banco a cada tecla.
+const SEARCH_INDEX_TTL_MS = 3 * 60 * 1000;
+let searchIndexCache: { key: string; loadedAt: number; promise: Promise<SearchIndex> } | null = null;
+
+function emptyRows<T>() {
+  return Promise.resolve({ data: [] as T[], error: null });
+}
+
+function loadSearchIndex(userId: string, guest: boolean) {
+  const key = `${userId}:${guest ? "guest" : "full"}`;
+  if (searchIndexCache && searchIndexCache.key === key && Date.now() - searchIndexCache.loadedAt < SEARCH_INDEX_TTL_MS) {
+    return searchIndexCache.promise;
+  }
+
+  const supabase = createClient();
+  const promise = Promise.all([
+    guest || !PRODUCT_CAPABILITIES.patientRecords ? emptyRows<PatientRow>() : supabase.from("patients").select("id, nome, especialidade, queixa, diagnostico_principal").eq("user_id", userId).limit(500),
+    guest ? emptyRows<PrescriptionRow>() : supabase.from("prescriptions").select("id, paciente_nome, medicamento, posologia").eq("user_id", userId).limit(500),
+    supabase.from("prescription_templates").select("id, categoria, titulo, observacoes").limit(2000),
+    supabase.from("exam_templates").select("id, titulo, categoria").limit(2000),
+    supabase.from("topicos_medicos").select("id, area, titulo, resumo, diagnostico").limit(2000),
+    supabase.from("cids").select("id, codigo, descricao, grupo").limit(5000),
+    guest ? emptyRows<FlashcardRow>() : supabase.from("flashcards").select("id, area, materia, frente").limit(5000),
+    guest ? emptyRows<MarkRow>() : supabase.from("flashcard_user_marks").select("flashcard_id, dificil").eq("user_id", userId).eq("dificil", true).limit(5000),
+  ]).then(([patients, prescriptions, prescriptionTemplates, exams, topicos, cids, flashcards, marks]) => ({
+    patients: (patients.data || []) as PatientRow[],
+    prescriptions: (prescriptions.data || []) as PrescriptionRow[],
+    prescriptionTemplates: (prescriptionTemplates.data || []) as PrescriptionTemplateRow[],
+    exams: (exams.data || []) as ExamRow[],
+    topicos: (topicos.data || []) as TopicoRow[],
+    cids: (cids.data || []) as CidRow[],
+    flashcards: (flashcards.data || []) as FlashcardRow[],
+    marks: (marks.data || []) as MarkRow[],
+  }));
+
+  searchIndexCache = { key, loadedAt: Date.now(), promise };
+  promise.catch(() => {
+    if (searchIndexCache?.promise === promise) searchIndexCache = null;
+  });
+  return promise;
+}
+
 async function getSessionInfo(): Promise<SessionInfo> {
   const supabase = createClient();
   const { data } = await supabase.auth.getSession();
@@ -113,18 +167,6 @@ function badgeLabel(type: SearchResult["type"]) {
   if (type === "conduta") return "Conduta";
   if (type === "calculadora") return "Calculadora";
   return "CID";
-}
-
-function badgeClass(type: SearchResult["type"]) {
-  if (type === "paciente") return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
-  if (type === "prescricao") return "border-blue-200/80 bg-blue-50 text-blue-700";
-  if (type === "modelo_prescricao") return "border-indigo-200/80 bg-indigo-50 text-indigo-700";
-  if (type === "exame") return "border-fuchsia-200/80 bg-fuchsia-50 text-fuchsia-700";
-  if (type === "topico") return "border-cyan-200/80 bg-cyan-50 text-cyan-700";
-  if (type === "flashcard") return "border-pink-200/80 bg-pink-50 text-pink-700";
-  if (type === "conduta") return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
-  if (type === "calculadora") return "border-slate-200 bg-slate-50 text-slate-700";
-  return "border-amber-200/80 bg-amber-50 text-amber-700";
 }
 
 function ResultIcon({ type }: { type: SearchResult["type"] }) {
@@ -256,23 +298,21 @@ export function Topbar() {
       if (!q) { setResults([]); setLoading(false); return; }
       const requestId = ++searchRequestRef.current;
       setLoading(true);
-      const supabase = createClient();
       const sessionInfo = await getSessionInfo();
       if (requestId !== searchRequestRef.current) return;
       setIsGuest(sessionInfo.isGuest);
       if (!sessionInfo.userId) { setResults([]); setLoading(false); return; }
       const userId = sessionInfo.userId;
       const guest = sessionInfo.isGuest;
-      const [patientsRes, prescriptionsRes, prescriptionTemplatesRes, examsRes, topicosRes, cidsRes, flashcardsRes, condutasMarksRes] = await Promise.all([
-        guest || !PRODUCT_CAPABILITIES.patientRecords ? Promise.resolve({ data: [], error: null }) : supabase.from("patients").select("id, nome, especialidade, queixa, diagnostico_principal").eq("user_id", userId).limit(40),
-        guest ? Promise.resolve({ data: [], error: null }) : supabase.from("prescriptions").select("id, paciente_nome, medicamento, posologia").eq("user_id", userId).limit(40),
-        supabase.from("prescription_templates").select("id, categoria, titulo, conteudo, observacoes").limit(60),
-        supabase.from("exam_templates").select("id, titulo, categoria, conteudo").limit(40),
-        supabase.from("topicos_medicos").select("id, area, titulo, resumo, diagnostico, exames, tratamento, pegadinhas").limit(60),
-        supabase.from("cids").select("id, codigo, descricao, grupo").limit(60),
-        guest ? Promise.resolve({ data: [], error: null }) : supabase.from("flashcards").select("id, area, materia, frente, verso").limit(60),
-        guest ? Promise.resolve({ data: [], error: null }) : supabase.from("flashcard_user_marks").select("flashcard_id, dificil").eq("user_id", userId).eq("dificil", true).limit(200),
-      ]);
+      const index = await loadSearchIndex(userId, guest);
+      const patientsRes = { data: index.patients };
+      const prescriptionsRes = { data: index.prescriptions };
+      const prescriptionTemplatesRes = { data: index.prescriptionTemplates };
+      const examsRes = { data: index.exams };
+      const topicosRes = { data: index.topicos };
+      const cidsRes = { data: index.cids };
+      const flashcardsRes = { data: index.flashcards };
+      const condutasMarksRes = { data: index.marks };
       if (requestId !== searchRequestRef.current) return;
       const patientResults: SearchResult[] = rankSearchResults((patientsRes.data || []) as PatientRow[], q, (item) => [{ value: item.nome, weight: 12 }, { value: item.queixa, weight: 7 }, { value: item.diagnostico_principal, weight: 7 }, { value: item.especialidade, weight: 5 }]).map((item) => ({ id: `paciente-${item.id}`, title: item.nome || "Paciente sem nome", subtitle: item.especialidade || item.queixa || item.diagnostico_principal || "Cadastro de paciente", href: `/pacientes?q=${encodeURIComponent(item.nome || q)}`, type: "paciente" }));
       const prescriptionResults: SearchResult[] = rankSearchResults((prescriptionsRes.data || []) as PrescriptionRow[], q, (item) => [{ value: item.medicamento, weight: 10 }, { value: item.paciente_nome, weight: 7 }, { value: item.posologia, weight: 5 }]).map((item) => ({ id: `prescricao-${item.id}`, title: item.medicamento || "Prescrição sem medicamento", subtitle: item.paciente_nome || item.posologia || "Prescrição clínica", href: `/prescricao?q=${encodeURIComponent(item.medicamento || q)}`, type: "prescricao" }));
@@ -325,27 +365,28 @@ export function Topbar() {
       />
       <div ref={wrapperRef} className="relative mx-auto flex max-w-[1680px] items-center gap-3 px-4 py-3 md:px-6 lg:px-8">
         <div className="min-w-0 flex-1">
-          <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200/90 bg-white px-4 shadow-[0_8px_30px_rgba(15,23,42,0.05)] transition focus-within:border-cyan-300 focus-within:ring-4 focus-within:ring-cyan-100/60">
+          <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 transition focus-within:border-cyan-300 focus-within:ring-4 focus-within:ring-cyan-100/60">
             <Search className="h-4 w-4 text-slate-400" />
-            <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={(event) => {
+            <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0); setOpen(true); }} onFocus={() => { setOpen(true); if (currentUserId) void loadSearchIndex(currentUserId, isGuest).catch(() => undefined); }} onKeyDown={(event) => {
               if (event.key === "Escape") setOpen(false);
               if (event.key === "ArrowDown" && navigableItems.length) { event.preventDefault(); setSelectedIndex((current) => (current + 1) % navigableItems.length); }
               if (event.key === "ArrowUp" && navigableItems.length) { event.preventDefault(); setSelectedIndex((current) => (current - 1 + navigableItems.length) % navigableItems.length); }
               if (event.key === "Enter") { event.preventDefault(); handleSubmitSearch(); }
             }} placeholder={isGuest ? "Buscar prescrições, tópicos, exames e CIDs..." : PRODUCT_CAPABILITIES.patientRecords ? "Buscar pacientes, condutas, tópicos, prescrições, exames, CIDs e flashcards..." : "Buscar condutas, tópicos, prescrições, exames, CIDs e flashcards..."} className="h-full w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" />
+            {!query ? <kbd className="hidden shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans text-[11px] text-slate-400 md:inline">Ctrl K</kbd> : null}
             {query ? <button type="button" onClick={() => { setQuery(""); setResults([]); setOpen(false); }} className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700" aria-label="Limpar busca"><X className="h-4 w-4" /></button> : null}
           </div>
 
           {open ? (
-            <div className="absolute left-4 right-4 top-[68px] z-50 overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.14)] md:left-6 md:right-6 lg:left-8 lg:right-8">
-              <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500"><Sparkles className="h-3.5 w-3.5" />Busca clínica universal</div>{query.trim() ? <span className="hidden items-center gap-1.5 text-[11px] text-slate-400 sm:flex"><CornerDownLeft className="h-3.5 w-3.5" />Enter para abrir</span> : null}</div></div>
+            <div className="absolute left-4 right-4 top-[68px] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.14)] md:left-6 md:right-6 lg:left-8 lg:right-8">
+              <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-xs font-medium text-slate-500"><Search className="h-3.5 w-3.5" />Busca em todo o Resibook</div>{query.trim() ? <span className="hidden items-center gap-1.5 text-[11px] text-slate-400 sm:flex"><kbd className="rounded border border-slate-200 bg-white px-1 font-sans">↑↓</kbd> navegar <kbd className="rounded border border-slate-200 bg-white px-1 font-sans"><CornerDownLeft className="inline h-3 w-3" /></kbd> abrir <kbd className="rounded border border-slate-200 bg-white px-1 font-sans">Esc</kbd> fechar</span> : null}</div></div>
               {!query.trim() ? (
-                <div className="p-4"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Buscas recentes</p>{recentSearches.length ? <div className="mt-3 flex flex-wrap gap-2">{recentSearches.map((item) => <button key={item} type="button" onClick={() => { setQuery(item); setSelectedIndex(0); setOpen(true); }} className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"><Clock3 className="h-3.5 w-3.5 text-slate-400" />{item}</button>)}</div> : <p className="mt-2 text-sm text-slate-500">Digite uma queixa, diagnóstico, medicamento, exame ou CID.</p>}</div>
+                <div className="p-4"><p className="text-xs font-medium text-slate-500">Buscas recentes</p>{recentSearches.length ? <div className="mt-3 flex flex-wrap gap-2">{recentSearches.map((item) => <button key={item} type="button" onClick={() => { setQuery(item); setSelectedIndex(0); setOpen(true); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"><Clock3 className="h-3.5 w-3.5 text-slate-400" />{item}</button>)}</div> : <p className="mt-2 text-sm text-slate-500">Digite uma queixa, diagnóstico, medicamento, exame ou CID.</p>}</div>
               ) : loading ? <div className="px-4 py-6 text-sm text-slate-500">Buscando...</div> : (
                 <div className="max-h-[min(620px,70vh)] overflow-y-auto p-3">
-                  <section className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-800">Ações para “{query.trim()}”</p><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{clinicalActions.map((action, index) => <button key={action.label} type="button" onClick={() => navigateSearch(action.href)} className={`flex min-w-0 items-center gap-2 rounded-xl border bg-white p-2.5 text-left transition ${selectedIndex === index ? "border-cyan-400 ring-2 ring-cyan-100" : "border-cyan-100 hover:border-cyan-300"}`}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700"><action.icon className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold text-slate-900">{action.label}</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">{action.description}</span></span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" /></button>)}</div></section>
-                  {groupedResults.length ? <div className="mt-3 space-y-4">{groupedResults.map((group) => <section key={group.label}><p className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{group.label}</p><div className="mt-2 grid gap-2 lg:grid-cols-2">{group.items.map((item) => { const flatIndex = clinicalActions.length + results.findIndex((result) => result.id === item.id); return <button key={item.id} type="button" onClick={() => navigateSearch(item.href)} className={`block w-full rounded-2xl border bg-slate-50/70 px-3 py-2.5 text-left transition ${selectedIndex === flatIndex ? "border-cyan-400 bg-white ring-2 ring-cyan-100" : "border-slate-200/90 hover:border-slate-300 hover:bg-white"}`}><div className="flex items-center gap-3"><div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${badgeClass(item.type)}`}><ResultIcon type={item.type} /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-900">{item.title}</p><p className="mt-0.5 truncate text-xs text-slate-500">{item.subtitle}</p></div><span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">{badgeLabel(item.type)}</span></div></button>; })}</div></section>)}</div> : <div className="mt-3 rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-sm text-slate-500">Nenhum item cadastrado corresponde exatamente. As ações clínicas acima continuam disponíveis.</div>}
-                  {activeCase?.complaint ? <button type="button" onClick={() => navigateSearch(`/plantao/pendencias?q=${encodeURIComponent(activeCase.complaint)}`)} className="mt-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-950 px-4 py-3 text-left text-white transition hover:bg-slate-800"><span className="flex min-w-0 items-center gap-3"><ListChecks className="h-4 w-4 shrink-0 text-cyan-300" /><span className="min-w-0"><span className="block text-xs font-semibold">Aplicar ao caso ativo</span><span className="mt-0.5 block truncate text-[11px] text-slate-300">{activeCase.complaint}</span></span></span><ArrowRight className="h-4 w-4 shrink-0 text-slate-400" /></button> : null}
+                  <section className="rounded-lg border border-cyan-100 bg-cyan-50/50 p-3"><p className="text-xs font-medium text-cyan-900">Ações para “{query.trim()}”</p><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{clinicalActions.map((action, index) => <button key={action.label} type="button" onClick={() => navigateSearch(action.href)} className={`flex min-w-0 items-center gap-2 rounded-lg border bg-white p-2.5 text-left transition ${selectedIndex === index ? "border-cyan-400 ring-2 ring-cyan-100" : "border-cyan-100 hover:border-cyan-300"}`}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700"><action.icon className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold text-slate-900">{action.label}</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">{action.description}</span></span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" /></button>)}</div></section>
+                  {groupedResults.length ? <div className="mt-3 space-y-4">{groupedResults.map((group) => <section key={group.label}><p className="px-1 text-xs font-medium text-slate-500">{group.label}</p><div className="mt-2 grid gap-2 lg:grid-cols-2">{group.items.map((item) => { const flatIndex = clinicalActions.length + results.findIndex((result) => result.id === item.id); return <button key={item.id} type="button" onClick={() => navigateSearch(item.href)} className={`block w-full rounded-lg border bg-white px-3 py-2.5 text-left transition ${selectedIndex === flatIndex ? "border-cyan-400 bg-white ring-2 ring-cyan-100" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}><div className="flex items-center gap-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-cyan-800"><ResultIcon type={item.type} /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-900">{item.title}</p><p className="mt-0.5 truncate text-xs text-slate-500">{item.subtitle}</p></div><span className="shrink-0 text-[11px] font-medium text-slate-400">{badgeLabel(item.type)}</span></div></button>; })}</div></section>)}</div> : <div className="mt-3 rounded-lg border border-dashed border-slate-200 px-4 py-5 text-sm text-slate-500">Nenhum item cadastrado corresponde exatamente. As ações clínicas acima continuam disponíveis.</div>}
+                  {activeCase?.complaint ? <button type="button" onClick={() => navigateSearch(`/plantao/pendencias?q=${encodeURIComponent(activeCase.complaint)}`)} className="mt-3 flex w-full items-center justify-between gap-3 rounded-lg border border-cyan-800 bg-cyan-800 px-4 py-3 text-left text-white transition hover:bg-cyan-900"><span className="flex min-w-0 items-center gap-3"><ListChecks className="h-4 w-4 shrink-0 text-cyan-300" /><span className="min-w-0"><span className="block text-xs font-semibold">Aplicar ao caso ativo</span><span className="mt-0.5 block truncate text-[11px] text-slate-300">{activeCase.complaint}</span></span></span><ArrowRight className="h-4 w-4 shrink-0 text-slate-400" /></button> : null}
                 </div>
               )}
             </div>

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
+import { reportClientError } from "@/components/client-error-reporter";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => { console.error(error); }, [error]);
+  useEffect(() => { console.error(error); reportClientError(error, "boundary", error.digest); }, [error]);
   return (
     <section className="mx-auto flex min-h-[60vh] max-w-2xl items-center justify-center px-4">
       <div className="w-full rounded-2xl border border-rose-200 bg-white p-6 text-center shadow-sm md:p-8">

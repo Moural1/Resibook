@@ -10,11 +10,21 @@ import { canonicalArea, formatClinicalTitle, isTechnicalSourceLabel } from "@/li
 import { rankSearchResults } from "@/lib/search";
 import { isResibookAdmin } from "@/lib/auth-role";
 import {
+  buildDailyQueue,
+  intervalLabel,
+  localDay,
+  nextSchedule,
+  studyStreak,
+  type CardSchedule,
+  type ReviewGrade,
+} from "@/lib/spaced-repetition";
+import {
   ArrowRight,
   BookCopy,
   Brain,
   CheckCircle2,
   Edit3,
+  Flame,
   Layers3,
   Lock,
   Plus,
@@ -43,6 +53,14 @@ type FlashcardForm = {
   verso: string;
   dificil: boolean;
 };
+
+const GRADE_OPTIONS: { grade: ReviewGrade; label: string; className: string }[] = [
+  { grade: "again", label: "Errei", className: "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100" },
+  { grade: "good", label: "Acertei", className: "border-cyan-800 bg-cyan-800 text-white hover:bg-cyan-900" },
+  { grade: "easy", label: "Fácil", className: "border-slate-200 bg-white text-slate-700 hover:bg-slate-50" },
+];
+
+type StudyDay = { day: string; reviews: number; new_cards: number };
 
 type MarkRow = {
   flashcard_id: string;
@@ -147,6 +165,11 @@ export default function FlashcardsPage() {
   const [reviewIndex, setReviewIndex] = useState(0);
   const [reviewRevealed, setReviewRevealed] = useState(false);
   const [reviewFinished, setReviewFinished] = useState(false);
+  const [reviewMode, setReviewMode] = useState<"daily" | "quick">("quick");
+  const [requeuedIds, setRequeuedIds] = useState<string[]>([]);
+  const [srsReady, setSrsReady] = useState(false);
+  const [schedules, setSchedules] = useState<Map<string, CardSchedule>>(() => new Map());
+  const [studyDays, setStudyDays] = useState<StudyDay[]>([]);
 
   async function loadCards() {
     setLoading(true);
@@ -180,7 +203,7 @@ export default function FlashcardsPage() {
       return;
     }
 
-    const [cardsRes, marksRes] = await Promise.all([
+    const [cardsRes, marksRes, schedulesRes, daysRes] = await Promise.all([
       supabase
         .from("flashcards")
         .select("id, area, materia, tipo, frente, verso")
@@ -192,7 +215,36 @@ export default function FlashcardsPage() {
         .select("flashcard_id, dificil")
         .eq("user_id", userId)
         .eq("dificil", true),
+
+      supabase
+        .from("flashcard_schedule")
+        .select("flashcard_id, ease, interval_days, repetitions, lapses, due_on")
+        .eq("user_id", userId)
+        .limit(5000),
+
+      supabase
+        .from("flashcard_study_days")
+        .select("day, reviews, new_cards")
+        .eq("user_id", userId)
+        .order("day", { ascending: false })
+        .limit(400),
     ]);
+
+    // As tabelas de revisão espaçada são opcionais: sem elas, a tela segue
+    // com a revisão rápida de sempre.
+    const srsAvailable = !schedulesRes.error && !daysRes.error;
+    setSrsReady(srsAvailable);
+    if (srsAvailable) {
+      setSchedules(
+        new Map(
+          ((schedulesRes.data || []) as CardSchedule[]).map((row) => [
+            String(row.flashcard_id),
+            { ...row, flashcard_id: String(row.flashcard_id), ease: Number(row.ease) },
+          ])
+        )
+      );
+      setStudyDays((daysRes.data || []) as StudyDay[]);
+    }
 
     if (cardsRes.error) {
       setError(cardsRes.error.message);
@@ -305,6 +357,71 @@ export default function FlashcardsPage() {
     ? cards.find((item) => item.id === reviewQueue[reviewIndex]) || null
     : null;
 
+  const today = localDay();
+  const todayStudy = studyDays.find((item) => item.day === today);
+  const daily = useMemo(
+    () => buildDailyQueue(cards.map((item) => item.id), schedules, today, todayStudy?.new_cards ?? 0),
+    [cards, schedules, today, todayStudy?.new_cards]
+  );
+  const streak = studyStreak(
+    studyDays.filter((item) => item.reviews > 0).map((item) => item.day),
+    today
+  );
+
+  function startDailyReview() {
+    if (daily.queue.length === 0) {
+      setSuccess("Tudo em dia por hoje. Volte amanhã para a próxima revisão.");
+      return;
+    }
+
+    setReviewMode("daily");
+    setRequeuedIds([]);
+    setReviewQueue(daily.queue);
+    setReviewIndex(0);
+    setReviewRevealed(false);
+    setReviewFinished(false);
+    setError("");
+    setSuccess("");
+  }
+
+  async function gradeCard(grade: ReviewGrade) {
+    if (!reviewCard || !currentUserId) return;
+    const cardId = reviewCard.id;
+    const previous = schedules.get(cardId);
+    const next = nextSchedule(cardId, previous, grade, today);
+    const dayRow = todayStudy || { day: today, reviews: 0, new_cards: 0 };
+    const nextDay = {
+      day: today,
+      reviews: dayRow.reviews + 1,
+      new_cards: dayRow.new_cards + (previous ? 0 : 1),
+    };
+
+    setSchedules((current) => new Map(current).set(cardId, next));
+    setStudyDays((current) => [nextDay, ...current.filter((item) => item.day !== today)]);
+
+    const requeue = grade === "again" && !requeuedIds.includes(cardId);
+    const nextQueue = requeue ? [...reviewQueue, cardId] : reviewQueue;
+    if (requeue) setRequeuedIds((current) => [...current, cardId]);
+    setReviewQueue(nextQueue);
+    if (reviewIndex >= nextQueue.length - 1) {
+      setReviewFinished(true);
+    } else {
+      setReviewIndex((current) => current + 1);
+    }
+    setReviewRevealed(false);
+
+    const [scheduleRes, dayRes] = await Promise.all([
+      supabase
+        .from("flashcard_schedule")
+        .upsert({ ...next, user_id: currentUserId, last_reviewed_at: new Date().toISOString() }),
+      supabase.from("flashcard_study_days").upsert({ ...nextDay, user_id: currentUserId }),
+    ]);
+
+    if (scheduleRes.error || dayRes.error) {
+      setError("Não foi possível salvar o progresso da revisão. Verifique a conexão.");
+    }
+  }
+
   function startQuickReview(onlyDifficult = false) {
     const candidates = filtered.filter(
       (item) => !onlyDifficult || item.dificil
@@ -324,6 +441,7 @@ export default function FlashcardsPage() {
       .slice(0, 10)
       .map((item) => item.id);
 
+    setReviewMode("quick");
     setReviewQueue(queue);
     setReviewIndex(0);
     setReviewRevealed(false);
@@ -666,28 +784,65 @@ export default function FlashcardsPage() {
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Sessão rápida
-            </p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
-              Revisão focada em 10 cartões
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-              Use os filtros abaixo para definir o conteúdo e revise um cartão
-              por vez, sem distrações.
-            </p>
-          </div>
+          {srsReady ? (
+            <div>
+              <p className="text-sm font-medium text-cyan-800">Revisão do dia</p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+                {loading
+                  ? "Preparando sua revisão..."
+                  : daily.queue.length
+                  ? `${daily.due.length} para revisar · ${daily.fresh.length} novos`
+                  : "Tudo em dia por hoje"}
+              </h2>
+              <p className="mt-1 flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-6 text-slate-500">
+                <span className="inline-flex items-center gap-1.5">
+                  <Flame className={`h-4 w-4 ${streak > 0 ? "text-amber-500" : "text-slate-300"}`} />
+                  {streak > 0
+                    ? `${streak} ${streak === 1 ? "dia seguido" : "dias seguidos"}`
+                    : "Comece hoje a sua sequência"}
+                </span>
+                <span>Cada cartão volta no momento certo: o que você erra aparece antes, o que domina espaça.</span>
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Sessão rápida
+              </p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+                Revisão focada em 10 cartões
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+                Use os filtros abaixo para definir o conteúdo e revise um cartão
+                por vez, sem distrações.
+              </p>
+            </div>
+          )}
 
           {reviewQueue.length === 0 ? (
             <div className="flex flex-wrap gap-3">
+              {srsReady ? (
+                <button
+                  type="button"
+                  onClick={startDailyReview}
+                  disabled={loading || daily.queue.length === 0}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Play className="h-4 w-4" />
+                  Começar revisão
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => startQuickReview(false)}
                 disabled={loading || filtered.length === 0}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className={
+                  srsReady
+                    ? "inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    : "inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                }
               >
-                <Play className="h-4 w-4" />
+                {srsReady ? <Layers3 className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 Revisar 10
               </button>
               <button
@@ -717,11 +872,12 @@ export default function FlashcardsPage() {
               <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-6 text-center">
                 <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-700" />
                 <h3 className="mt-3 text-xl font-semibold text-slate-900">
-                  Sessão concluída
+                  {reviewMode === "daily" ? "Revisão do dia concluída" : "Sessão concluída"}
                 </h3>
                 <p className="mt-2 text-sm text-slate-600">
-                  Você revisou {reviewQueue.length} flashcard
-                  {reviewQueue.length > 1 ? "s" : ""} nesta rodada.
+                  {reviewMode === "daily"
+                    ? `Os próximos cartões já estão agendados.${streak > 0 ? ` Sequência: ${streak} ${streak === 1 ? "dia" : "dias"}.` : ""}`
+                    : `Você revisou ${reviewQueue.length} flashcard${reviewQueue.length > 1 ? "s" : ""} nesta rodada.`}
                 </p>
                 <button
                   type="button"
@@ -729,7 +885,7 @@ export default function FlashcardsPage() {
                   className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  Nova sessão
+                  {reviewMode === "daily" ? "Revisar mais 10" : "Nova sessão"}
                 </button>
               </div>
             ) : reviewCard ? (
@@ -780,6 +936,22 @@ export default function FlashcardsPage() {
                     >
                       Revelar resposta
                     </button>
+                  ) : reviewMode === "daily" ? (
+                    <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:min-w-[420px]">
+                      {GRADE_OPTIONS.map((option) => (
+                        <button
+                          key={option.grade}
+                          type="button"
+                          onClick={() => gradeCard(option.grade)}
+                          className={`inline-flex h-14 flex-col items-center justify-center rounded-2xl border px-3 text-sm font-semibold transition ${option.className}`}
+                        >
+                          {option.label}
+                          <span className="text-[11px] font-medium opacity-75">
+                            {intervalLabel(nextSchedule(reviewCard.id, schedules.get(reviewCard.id), option.grade, today).interval_days)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   ) : (
                     <>
                       <button
@@ -801,14 +973,16 @@ export default function FlashcardsPage() {
                       </button>
                     </>
                   )}
-                  <button
-                    type="button"
-                    onClick={advanceReview}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600"
-                  >
-                    Pular
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
+                  {reviewMode === "daily" && reviewRevealed ? null : (
+                    <button
+                      type="button"
+                      onClick={advanceReview}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600"
+                    >
+                      Pular
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ) : null}

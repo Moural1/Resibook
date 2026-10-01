@@ -652,3 +652,38 @@ test("nova tentativa de pagamento não libera acesso pelo botão", () => {
   assert.match(actions, /retry=1/);
   assert.doesNotMatch(actions, /status:\s*["']authorized["']/);
 });
+
+test("service worker não guarda APIs nem páginas com dados pessoais", () => {
+  const sw = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return;/);
+  assert.match(sw, /request\.method !== "GET"/);
+  const pages = sw.match(/const OFFLINE_PAGES = \[([^\]]*)\]/)?.[1] || "";
+  assert.deepEqual(
+    pages.split(",").map((item) => item.trim().replace(/"/g, "")),
+    ["/acls", "/calculadoras", "/ecg-guiado"]
+  );
+  const logout = readFileSync(new URL("../src/components/logout-button.tsx", import.meta.url), "utf8");
+  assert.match(logout, /clearOfflinePages\(\)/);
+});
+
+test("migration de revisão espaçada isola cada usuário e não toca tabelas existentes", () => {
+  const migration = readFileSync(
+    new URL("../supabase/migrations/20261001150000_flashcard_spaced_repetition.sql", import.meta.url),
+    "utf8"
+  );
+  assert.match(migration, /array\['flashcard_schedule', 'flashcard_study_days'\]/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /using \(user_id = \(select auth\.uid\(\)\)\) with check \(user_id = \(select auth\.uid\(\)\)\)/);
+  assert.match(migration, /revoke all on table public\.%I from anon/);
+  assert.match(migration, /on delete cascade/);
+  assert.doesNotMatch(migration, /\b(drop table|alter table public\.flashcards|delete from|truncate)\b/i);
+});
+
+test("relatos de erro e analytics não carregam dados pessoais nem parâmetros de URL", async () => {
+  const { redactErrorText, sanitizePath, sanitizeAnalyticsUrl } = await import("../src/lib/client-error-report.ts");
+  const text = redactErrorText("Falha para joao@x.com cpf 123.456.789-00 id 3f2b8c1e-1a2b-4c3d-8e9f-0a1b2c3d4e5f", 300);
+  assert.doesNotMatch(text, /joao@x\.com|123\.456|3f2b8c1e/);
+  assert.equal(sanitizePath("/pacientes/3f2b8c1e-1a2b-4c3d-8e9f-0a1b2c3d4e5f?q=Maria#x"), "/pacientes/[id]");
+  assert.equal(sanitizePath("/prescricao/42/editar"), "/prescricao/[id]/editar");
+  assert.equal(sanitizeAnalyticsUrl("https://www.resibook.com.br/pacientes?q=Maria%20Silva"), "https://www.resibook.com.br/pacientes");
+});
