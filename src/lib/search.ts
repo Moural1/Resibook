@@ -86,7 +86,11 @@ function getLiteralSearchScore(fields: SearchField[], query: string) {
 
   // Para busca com mais de uma palavra, evita resultado frouxo: todas as
   // palavras relevantes precisam aparecer em algum campo do item.
-  const allTokensWereFound = tokens.every((token) => haystack.includes(token));
+  // Siglas e termos curtos (até 3 letras, como IAM, SCA, AVC) só valem no
+  // início de uma palavra: "iam" não deve achar "financiamento".
+  const allTokensWereFound = tokens.every((token) =>
+    token.length <= 3 ? hasWordStartingWith(haystack, token) : haystack.includes(token)
+  );
   if (!allTokensWereFound) return 0;
 
   let score = 0;
