@@ -124,11 +124,11 @@ function SmartTextField({
       <span className="mb-1.5 flex items-center justify-between gap-3 text-xs font-bold text-slate-600 dark:text-slate-300">
         {label}
         <span className="flex gap-1">
-          <button type="button" aria-pressed={allBold} onClick={() => toggle("bold")} className={`rounded-lg border px-2 py-1 font-black ${allBold ? "border-[#123A6D] bg-[#123A6D] text-white" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"}`}>B</button>
+          <button type="button" aria-pressed={allBold} onClick={() => toggle("bold")} className={`rounded-lg border px-2 py-1 font-black ${allBold ? "border-cyan-800 bg-cyan-800 text-white" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"}`}>B</button>
           <button type="button" aria-pressed={allRed} onClick={() => toggle("red")} className={`rounded-lg border px-2 py-1 font-black ${allRed ? "border-red-600 bg-red-600 text-white" : "border-slate-200 bg-white text-red-600 dark:border-slate-700 dark:bg-slate-900"}`}>A</button>
         </span>
       </span>
-      <textarea value={richTextToPlain(value)} rows={rows} onChange={(event) => onChange(replaceTextPreservingStyles(value, event.target.value))} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 text-slate-900 outline-none transition focus:border-[#2d5d8f] focus:ring-2 focus:ring-[#2d5d8f]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+      <textarea value={richTextToPlain(value)} rows={rows} onChange={(event) => onChange(replaceTextPreservingStyles(value, event.target.value))} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 text-slate-900 outline-none transition focus:border-cyan-700 focus:ring-2 focus:ring-cyan-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
       <span className="mt-1 block text-[10px] text-slate-500 dark:text-slate-400">As quebras feitas com Enter são preservadas no eBook.</span>
       {value.some((segment) => segment.kind === "image") ? <span className="mt-1 block text-[10px] text-amber-600">A imagem incorporada será preservada.</span> : null}
     </label>
@@ -197,7 +197,7 @@ function BlockEditor({ block, onChange }: { block: AclsEbookSourceBlock; onChang
           </div>
         ))}
       </div>
-      <button type="button" onClick={() => onChange({ ...block, nodes: [...block.nodes, { id: newId("step"), title: "Nova etapa", detail: "", tone: "info" }] })} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-dashed border-[#2d5d8f]/40 px-3 text-xs font-bold text-[#123A6D]"><Plus className="h-4 w-4" />Adicionar etapa</button>
+      <button type="button" onClick={() => onChange({ ...block, nodes: [...block.nodes, { id: newId("step"), title: "Nova etapa", detail: "", tone: "info" }] })} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-dashed border-cyan-700/40 px-3 text-xs font-bold text-cyan-900"><Plus className="h-4 w-4" />Adicionar etapa</button>
     </div>
   );
 
@@ -288,18 +288,18 @@ export function AclsEbookAdminClient({ initialState = null }: { initialState?: A
     setMessage({ type: "success", text: `Revisão ${revision} publicada com sucesso.` });
   };
 
-  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#123A6D]" /></div>;
+  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-cyan-900" /></div>;
   if (!state || !chapter) return <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">{message?.text || "Editor indisponível."}<button type="button" onClick={() => void load()} className="mt-4 block rounded-xl bg-red-900 px-4 py-2 text-sm font-bold text-white">Tentar novamente</button></div>;
 
   return (
     <div className="mx-auto max-w-[1600px] pb-20">
       <header className="sticky top-2 z-30 mb-5 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div><p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-[#486a91]">Administração editorial</p><h1 className="mt-1 font-serif text-2xl font-bold text-slate-950 dark:text-white">Editor inteligente do eBook ACLS</h1><p className="mt-1 text-xs text-slate-500">Rascunho {state.revision || "inicial"} · Publicado {state.publishedRevision || "conteúdo original"}</p></div>
+          <div><p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-cyan-800">Administração editorial</p><h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">Editor inteligente do eBook ACLS</h1><p className="mt-1 text-xs text-slate-500">Rascunho {state.revision || "inicial"} · Publicado {state.publishedRevision || "conteúdo original"}</p></div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setPreview(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold dark:border-slate-700"><BookOpen className="h-4 w-4" />Prévia</button>
-            <button type="button" disabled={!dirty || saving} onClick={() => void save()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#123A6D]/20 bg-blue-50 px-4 text-sm font-bold text-[#123A6D] disabled:opacity-40 dark:bg-blue-950/30 dark:text-blue-200">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar rascunho</button>
-            <button type="button" disabled={saving} onClick={() => void publish()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#123A6D] px-5 text-sm font-bold text-white shadow-md disabled:opacity-40"><Send className="h-4 w-4" />Publicar</button>
+            <button type="button" disabled={!dirty || saving} onClick={() => void save()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-cyan-800/20 bg-cyan-50 px-4 text-sm font-bold text-cyan-900 disabled:opacity-40 dark:bg-blue-950/30 dark:text-blue-200">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar rascunho</button>
+            <button type="button" disabled={saving} onClick={() => void publish()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-cyan-800 px-5 text-sm font-bold text-white shadow-md disabled:opacity-40"><Send className="h-4 w-4" />Publicar</button>
           </div>
         </div>
         {message ? <div className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ${message.type === "error" ? "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200" : "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"}`}>{message.type === "error" ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}{message.text}</div> : null}
@@ -307,8 +307,8 @@ export function AclsEbookAdminClient({ initialState = null }: { initialState?: A
 
       <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="self-start rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-40">
-          <div className="mb-3 flex items-center justify-between px-2"><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Capítulos</h2><button type="button" aria-label="Adicionar capítulo" onClick={() => changeDocument((document) => ({ ...document, chapters: [...document.chapters, { slug: `novo-capitulo-${document.chapters.length + 1}`, title: "Novo capítulo", group: "ACLS", sourceLines: [1, 1], sourcePages: [1, 1], blocks: [createBlock("heading"), createBlock("paragraph")] }] }))} className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-[#123A6D] dark:bg-slate-800"><Plus className="h-4 w-4" /></button></div>
-          <nav className="max-h-[62vh] space-y-1 overflow-y-auto">{state.document.chapters.map((item, index) => <button key={item.slug} type="button" onClick={() => { setSelectedChapter(index); setBlockPage(0); }} className={`w-full rounded-xl px-3 py-3 text-left text-sm font-bold leading-5 transition ${index === selectedChapter ? "bg-[#123A6D] text-white" : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"}`}><span className="mr-2 opacity-55">{String(index + 1).padStart(2, "0")}</span>{item.title}</button>)}</nav>
+          <div className="mb-3 flex items-center justify-between px-2"><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">Capítulos</h2><button type="button" aria-label="Adicionar capítulo" onClick={() => changeDocument((document) => ({ ...document, chapters: [...document.chapters, { slug: `novo-capitulo-${document.chapters.length + 1}`, title: "Novo capítulo", group: "ACLS", sourceLines: [1, 1], sourcePages: [1, 1], blocks: [createBlock("heading"), createBlock("paragraph")] }] }))} className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-cyan-900 dark:bg-slate-800"><Plus className="h-4 w-4" /></button></div>
+          <nav className="max-h-[62vh] space-y-1 overflow-y-auto">{state.document.chapters.map((item, index) => <button key={item.slug} type="button" onClick={() => { setSelectedChapter(index); setBlockPage(0); }} className={`w-full rounded-xl px-3 py-3 text-left text-sm font-bold leading-5 transition ${index === selectedChapter ? "bg-cyan-800 text-white" : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"}`}><span className="mr-2 opacity-55">{String(index + 1).padStart(2, "0")}</span>{item.title}</button>)}</nav>
           {state.revisions.length ? <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700"><p className="px-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Versões publicadas</p><div className="mt-2 space-y-1">{state.revisions.slice(0, 5).map((item) => <button key={item.revision} type="button" onClick={async () => { if (!window.confirm(`Restaurar a revisão ${item.revision} como novo rascunho?`)) return; const response = await fetch("/api/admin/acls-ebook", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision: item.revision, expectedRevision: state.revision }) }); const payload = await response.json(); if (!response.ok) return setMessage({ type: "error", text: payload.error }); setState((current) => current ? { ...current, document: payload.document, revision: payload.revision } : current); setDirty(false); setMessage({ type: "success", text: `Revisão ${item.revision} restaurada no rascunho.` }); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><RotateCcw className="h-3.5 w-3.5" />Revisão {item.revision}</button>)}</div></div> : null}
         </aside>
 
@@ -328,8 +328,8 @@ export function AclsEbookAdminClient({ initialState = null }: { initialState?: A
             </div>
           </section>
 
-          <section className="flex flex-wrap gap-2 rounded-2xl border border-dashed border-[#2d5d8f]/30 bg-blue-50/50 p-3 dark:bg-blue-950/10">
-            {([ ["heading", Heading, "Título"], ["paragraph", FileText, "Texto"], ["table", Table2, "Tabela"], ["flow", GitBranch, "Fluxo"], ["image", ImageIcon, "Imagem"] ] as const).map(([kind, Icon, label]) => <button key={kind} type="button" onClick={() => changeChapter((current) => ({ ...current, blocks: [...current.blocks, createBlock(kind)] }))} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-3 text-xs font-bold text-[#123A6D] shadow-sm dark:bg-slate-900 dark:text-blue-200"><Icon className="h-4 w-4" />Adicionar {label}</button>)}
+          <section className="flex flex-wrap gap-2 rounded-2xl border border-dashed border-cyan-700/30 bg-blue-50/50 p-3 dark:bg-blue-950/10">
+            {([ ["heading", Heading, "Título"], ["paragraph", FileText, "Texto"], ["table", Table2, "Tabela"], ["flow", GitBranch, "Fluxo"], ["image", ImageIcon, "Imagem"] ] as const).map(([kind, Icon, label]) => <button key={kind} type="button" onClick={() => changeChapter((current) => ({ ...current, blocks: [...current.blocks, createBlock(kind)] }))} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-3 text-xs font-bold text-cyan-900 shadow-sm dark:bg-slate-900 dark:text-blue-200"><Icon className="h-4 w-4" />Adicionar {label}</button>)}
           </section>
 
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -340,7 +340,7 @@ export function AclsEbookAdminClient({ initialState = null }: { initialState?: A
           <div className="space-y-4">{visibleBlocks.map(({ block, blockIndex }) => (
             <section key={block.id || blockIndex} className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-                <div><span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#486a91]">Bloco {blockIndex + 1}</span><p className="mt-0.5 text-sm font-bold capitalize text-slate-800 dark:text-white">{block.kind === "heading" ? "Título" : block.kind === "paragraph" ? "Texto" : block.kind === "table" ? "Tabela" : block.kind === "flow" ? "Fluxograma" : "Imagem"}</p></div>
+                <div><span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-cyan-800">Bloco {blockIndex + 1}</span><p className="mt-0.5 text-sm font-bold capitalize text-slate-800 dark:text-white">{block.kind === "heading" ? "Título" : block.kind === "paragraph" ? "Texto" : block.kind === "table" ? "Tabela" : block.kind === "flow" ? "Fluxograma" : "Imagem"}</p></div>
                 <div className="flex gap-1">
                   <button type="button" aria-label="Mover para cima" disabled={blockIndex === 0} onClick={() => changeChapter((current) => { const blocks = [...current.blocks]; [blocks[blockIndex - 1], blocks[blockIndex]] = [blocks[blockIndex], blocks[blockIndex - 1]]; return { ...current, blocks }; })} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"><ArrowUp className="h-4 w-4" /></button>
                   <button type="button" aria-label="Mover para baixo" disabled={blockIndex === chapter.blocks.length - 1} onClick={() => changeChapter((current) => { const blocks = [...current.blocks]; [blocks[blockIndex], blocks[blockIndex + 1]] = [blocks[blockIndex + 1], blocks[blockIndex]]; return { ...current, blocks }; })} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"><ArrowDown className="h-4 w-4" /></button>
