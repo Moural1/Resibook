@@ -296,3 +296,30 @@ body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(butto
   border-color: var(--color-cyan-900);
   background-color: var(--color-cyan-900);
 }
+
+/* Legacy surfaces: oversized radii and soft card shadows from the previous
+   visual language. Signed-in modules use the flatter cards of the current
+   system (thin border, 14px radius, no resting shadow). Floating layers
+   (drawers, modals, toasts) keep their own shadows. */
+body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(
+  [class*="rounded-[20px]"], [class*="rounded-[22px]"], [class*="rounded-[24px]"],
+  [class*="rounded-[26px]"], [class*="rounded-[27px]"], [class*="rounded-[28px]"],
+  [class*="rounded-[30px]"], [class*="rounded-[34px]"], [class*="rounded-[36px]"], .rounded-3xl
+) {
+  border-radius: 14px !important;
+}
+
+body[data-resibook-surface]:not([data-resibook-surface="public"]) main .shadow-sm {
+  box-shadow: none;
+}
+
+/* Solid blue actions follow the single cyan primary as well. */
+body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(button, a):is(.bg-blue-600, .bg-blue-700, [class*="bg-[#2563eb]"]):not(:disabled) {
+  border-color: var(--color-cyan-800);
+  background-color: var(--color-cyan-800);
+  color: #ffffff;
+}
+
+body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(button, a):is(.bg-blue-600, .bg-blue-700, [class*="bg-[#2563eb]"]):not(:disabled):hover {
+  background-color: var(--color-cyan-900);
+}
