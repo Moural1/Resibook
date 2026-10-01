@@ -678,3 +678,12 @@ test("migration de revisão espaçada isola cada usuário e não toca tabelas ex
   assert.match(migration, /on delete cascade/);
   assert.doesNotMatch(migration, /\b(drop table|alter table public\.flashcards|delete from|truncate)\b/i);
 });
+
+test("relatos de erro e analytics não carregam dados pessoais nem parâmetros de URL", async () => {
+  const { redactErrorText, sanitizePath, sanitizeAnalyticsUrl } = await import("../src/lib/client-error-report.ts");
+  const text = redactErrorText("Falha para joao@x.com cpf 123.456.789-00 id 3f2b8c1e-1a2b-4c3d-8e9f-0a1b2c3d4e5f", 300);
+  assert.doesNotMatch(text, /joao@x\.com|123\.456|3f2b8c1e/);
+  assert.equal(sanitizePath("/pacientes/3f2b8c1e-1a2b-4c3d-8e9f-0a1b2c3d4e5f?q=Maria#x"), "/pacientes/[id]");
+  assert.equal(sanitizePath("/prescricao/42/editar"), "/prescricao/[id]/editar");
+  assert.equal(sanitizeAnalyticsUrl("https://www.resibook.com.br/pacientes?q=Maria%20Silva"), "https://www.resibook.com.br/pacientes");
+});

@@ -7,6 +7,7 @@ import AppShell from "../components/app-shell";
 import AccessibilityBridge from "../components/accessibility-bridge";
 import ClinicalRuntime from "../components/clinical-runtime";
 import ServiceWorkerRegister from "../components/service-worker-register";
+import ClientErrorReporter from "../components/client-error-reporter";
 import VisualSystemController from "../components/visual-system-controller";
 
 const inter = Inter({
@@ -100,6 +101,7 @@ export default function RootLayout({
         <ClinicalRuntime />
         <Toaster />
         <ServiceWorkerRegister />
+        <ClientErrorReporter />
       </body>
     </html>
   );

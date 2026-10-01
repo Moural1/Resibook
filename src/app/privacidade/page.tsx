@@ -45,7 +45,9 @@ export default function PoliticaDePrivacidadePage() {
               <li>exame físico, hipótese diagnóstica, condutas e observações;</li>
               <li>evoluções, anotações, prescrições e documentos vinculados;</li>
               <li>logs de acesso, como e-mail, data, hora e navegador utilizado;</li>
-              <li>marcações pessoais do usuário, como flashcards difíceis.</li>
+              <li>marcações pessoais do usuário, como flashcards difíceis e o agendamento das revisões;</li>
+              <li>métricas agregadas de uso (páginas visitadas, sem cookies, sem parâmetros de busca e com identificadores mascarados);</li>
+              <li>registros técnicos de erro do navegador, com e-mails, documentos e identificadores removidos.</li>
               <li>casos clínicos desidentificados enviados voluntariamente a recursos de IA.</li>
             </ul>
           </section>
