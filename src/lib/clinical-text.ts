@@ -29,6 +29,17 @@ const ACRONYMS = new Set([
   "TOT", "TPSV", "TSH", "TSV", "TTPA", "TV", "TVP", "TVSP", "UBS", "UPA", "USG", "UTI", "VM", "VO", "VS", "VHS",
 ]);
 
+// Nomes próprios que aparecem em títulos em caixa alta.
+const PROPER_NOUNS: Record<string, string> = {
+  RESIBOOK: "Resibook",
+  CUSHING: "Cushing",
+  ADDISON: "Addison",
+  GLASGOW: "Glasgow",
+  BRASIL: "Brasil",
+  RATHKE: "Rathke",
+  AUER: "Auer",
+};
+
 // Palavras curtas do português que viram minúsculas mesmo em linha de caixa alta.
 const SHORT_WORDS = new Set([
   "A", "AS", "O", "OS", "E", "É", "OU", "DE", "DA", "DAS", "DO", "DOS", "EM", "NA", "NAS", "NO", "NOS", "AO", "AOS",
@@ -84,6 +95,10 @@ export function toReadableCase(value: string) {
     const upper = word.toLocaleUpperCase("pt-BR");
     const hasDigit = /\d/.test(word);
     if (!/\p{L}/u.test(word)) return word;
+    if (PROPER_NOUNS[upper]) {
+      first = false;
+      return PROPER_NOUNS[upper];
+    }
     let out: string;
     if (ACRONYMS.has(upper) || (hasDigit && word.length <= 6)) out = upper;
     else if (word.length <= 3 && !SHORT_WORDS.has(upper) && !first) out = upper;

@@ -40,6 +40,7 @@ import {
   paginateEbookBlocks,
   type EbookReaderBlock,
 } from "@/lib/acls-ebook-pagination";
+import { isShouting, toReadableCase } from "@/lib/clinical-text";
 
 const LAYOUT_HINTS = layoutHintsSource as Record<string, EbookLayoutHint[]>;
 const FONT_CLASSES = [
@@ -56,7 +57,27 @@ function chapterHref(chapter?: Pick<AclsEbookChapter, "slug">, lastPage = false)
   return `/acls/ebook?capitulo=${encodeURIComponent(chapter.slug)}${lastPage ? "&pagina=ultima" : ""}`;
 }
 
-function RichContent({ content, inheritColor = false }: { content: AclsEbookRichText[]; inheritColor?: boolean }) {
+// Trechos inteiros em negrito/vermelho viraram regra no material importado do
+// Word; quando quase tudo está destacado, nada se destaca. Nesses blocos o
+// destaque é suavizado para o texto continuar legível.
+function emphasisRatio(content: AclsEbookRichText[]) {
+  let total = 0;
+  let emphasised = 0;
+  for (const segment of content) {
+    if (segment.kind !== "text") continue;
+    const size = segment.text.replace(/\s+/g, "").length;
+    total += size;
+    if (segment.bold || segment.red) emphasised += size;
+  }
+  return total ? emphasised / total : 0;
+}
+
+function readableSegment(text: string) {
+  return isShouting(text) && text.replace(/[^\p{L}]/gu, "").length >= 8 ? toReadableCase(text) : text;
+}
+
+function RichContent({ content, inheritColor = false, soften }: { content: AclsEbookRichText[]; inheritColor?: boolean; soften?: boolean }) {
+  const mute = soften ?? (emphasisRatio(content) > 0.85 && richTextValue(content).length > 90);
   return (
     <span className="max-w-full whitespace-pre-line break-keep [overflow-wrap:normal] [text-wrap:pretty] [word-break:normal] hyphens-none">
       {content.map((segment, index) => {
@@ -77,14 +98,16 @@ function RichContent({ content, inheritColor = false }: { content: AclsEbookRich
         }
 
         const className = inheritColor
-          ? segment.bold || segment.red ? "font-bold" : undefined
+          ? undefined
+          : mute
+            ? segment.red ? "text-rose-800 dark:text-rose-300" : undefined
           : segment.red
-            ? "font-bold text-[#c62828] dark:text-red-400"
+            ? "font-semibold text-rose-700 dark:text-rose-300"
           : segment.bold
-            ? "font-bold text-slate-950 dark:text-white"
+            ? "font-semibold text-slate-900 dark:text-white"
             : undefined;
 
-        return <span key={`${segment.text}-${index}`} className={className}>{segment.text}</span>;
+        return <span key={`${segment.text}-${index}`} className={className}>{readableSegment(segment.text)}</span>;
       })}
     </span>
   );
@@ -97,10 +120,10 @@ function StructuredChildren({ items }: { items: AclsEbookRichText[][] }) {
   });
   if (!visibleChildren.length) return null;
   return (
-    <ul className="mt-3 grid gap-2 border-l-2 border-[#123A6D]/15 pl-4">
+    <ul className="mt-3 grid gap-2 border-l-2 border-cyan-800/15 pl-4">
       {visibleChildren.map((child, index) => (
         <li key={index} className="flex items-start gap-2 text-[0.94em] leading-6">
-          <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
+          <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-700" aria-hidden="true" />
           <span><RichContent content={child} /></span>
         </li>
       ))}
@@ -157,15 +180,25 @@ function structuredCellData(content: AclsEbookRichText[], hints: EbookLayoutHint
 
 function StructuredCell({ content, hints }: { content: AclsEbookRichText[]; hints: EbookLayoutHint[] }) {
   const structure = structuredCellData(content, hints);
-  if (!structure.items.length) return <RichContent content={content} />;
+  if (!structure.items.length) {
+    if (/^\s*[-–•]\s*(?=\S)/.test(richTextValue(content))) {
+      return (
+        <div className="flex items-start gap-3">
+          <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-700" aria-hidden="true" />
+          <p className="min-w-0"><RichContent content={removeLeadingListMarker(content) as AclsEbookRichText[]} /></p>
+        </div>
+      );
+    }
+    return <RichContent content={content} />;
+  }
   return (
     <div className="space-y-3">
       {hasVisibleRichContent(structure.intro) ? <p><RichContent content={structure.intro as AclsEbookRichText[]} /></p> : null}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {structure.items.map((item, index) => (
-          <div key={index} className="rounded-xl border border-slate-200/80 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+          <div key={index}>
             <div className="flex items-start gap-3">
-              <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
+              <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-700" aria-hidden="true" />
               <p className="min-w-0"><RichContent content={item.content as AclsEbookRichText[]} /></p>
             </div>
             <StructuredChildren items={item.children as AclsEbookRichText[][]} />
@@ -186,11 +219,11 @@ function TableCellContent({ content }: { content: AclsEbookRichText[] }) {
   return (
     <div className="space-y-3 text-slate-800 dark:text-slate-100">
       {hasVisibleRichContent(intro) ? <p className="font-semibold leading-7"><RichContent content={intro as AclsEbookRichText[]} /></p> : null}
-      <ul className="space-y-2.5 border-l-2 border-[#123A6D]/15 pl-4">
+      <ul className="space-y-2.5 border-l-2 border-cyan-800/15 pl-4">
         {items.map((item, index) => (
           <li key={index} className="leading-7">
             <div className="flex items-start gap-2.5">
-              <span className="mt-[0.7em] h-1.5 w-1.5 shrink-0 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
+              <span className="mt-[0.7em] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-700" aria-hidden="true" />
               <span className="min-w-0"><RichContent content={item.content as AclsEbookRichText[]} /></span>
             </div>
             {item.children.length ? (
@@ -233,34 +266,26 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
 
     if (compactHeading) {
       return (
-        <section className="my-7 rounded-2xl border border-[#123A6D]/15 bg-[#123A6D]/[0.045] px-5 py-4 dark:border-blue-300/20 dark:bg-blue-300/[0.06]">
-          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Seção clínica</p>
-          <h4 className="font-serif text-[1.18em] font-bold leading-snug text-[#a82828] dark:text-red-300">
-            <RichContent content={content} />
+        <section className="my-6 border-l-4 border-cyan-700 bg-cyan-50/60 py-3 pl-4 pr-3 dark:bg-cyan-950/30">
+          <h4 className="text-[1.05em] font-semibold leading-snug text-slate-900 dark:text-white">
+            <RichContent content={content} inheritColor />
           </h4>
         </section>
       );
     }
 
     return (
-      <section className="my-8 rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
-        <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
-          <div className="flex items-center gap-3">
-            <span className="h-8 w-1 rounded-full bg-[#123A6D]" />
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Quadro clínico</p>
-          </div>
-          <span className="rounded-full bg-white px-3 py-1 text-[9px] font-extrabold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">{items.length} {items.length === 1 ? "item" : "itens"}</span>
-        </div>
+      <section aria-label="Quadro clínico" className="my-8 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 sm:p-5">
         {hasVisibleRichContent(intro) ? (
-          <div className="mb-4 rounded-2xl bg-[#123A6D] px-5 py-4 leading-7 text-white shadow-sm">
-            <RichContent content={intro as AclsEbookRichText[]} />
+          <div className="mb-4 border-b border-slate-100 pb-3 font-semibold leading-7 text-slate-900 dark:border-slate-800 dark:text-white">
+            <RichContent content={intro as AclsEbookRichText[]} inheritColor />
           </div>
         ) : null}
-        <div className="relative space-y-3 before:absolute before:bottom-6 before:left-[17px] before:top-6 before:w-px before:bg-[#123A6D]/20 dark:before:bg-blue-300/20">
+        <div className="relative space-y-3 before:absolute before:bottom-4 before:left-[13px] before:top-4 before:w-px before:bg-cyan-800/15 dark:before:bg-cyan-300/20">
           {items.map((item, index) => (
-            <div key={index} className="relative grid grid-cols-[36px_1fr] items-start gap-3">
-              <span className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full border-4 border-slate-100 bg-[#123A6D] text-[10px] font-black text-white dark:border-slate-900">{index + 1}</span>
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 leading-7 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 sm:px-5">
+            <div key={index} className="relative grid grid-cols-[28px_1fr] items-start gap-3">
+              <span className="relative z-10 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-cyan-800 text-[11px] font-semibold text-white">{index + 1}</span>
+              <div className="leading-7 text-slate-700 dark:text-slate-200">
                 {(() => {
                   const clauses = item.children.length ? [] : splitRichClauses(item.content);
                   const fallbackChildren = clauses.length >= 3 ? clauses.slice(1) : [];
@@ -287,19 +312,17 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
     const hasTitleRow = block.rows.length >= 2 && firstCellText.length > 0 && firstCellText.length <= 160 && splitRichSteps(firstCell).length === 1;
     const bodyRows = hasTitleRow ? block.rows.slice(1) : block.rows;
     return (
-      <section className="my-8 overflow-hidden rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
-        <div className="mb-5 flex items-start gap-4 border-b border-slate-200 pb-4 dark:border-slate-700">
-          <span className="h-10 w-1 shrink-0 rounded-full bg-[#123A6D]" />
-          <div className="min-w-0">
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-[#486a91] dark:text-blue-300">Tabela clínica</p>
-            {hasTitleRow ? <h4 className="mt-2 font-serif text-[1.15em] font-bold leading-snug text-[#123A6D] dark:text-blue-100"><RichContent content={firstCell} /></h4> : null}
+      <section className="my-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+        {hasTitleRow ? (
+          <div className="border-b border-slate-200 border-l-4 border-l-cyan-700 bg-slate-50 px-5 py-3 dark:border-slate-700 dark:bg-slate-800">
+            <h4 className="text-[1.05em] font-semibold leading-snug text-slate-900 dark:text-white"><RichContent content={firstCell} inheritColor /></h4>
           </div>
-        </div>
-        <div className="space-y-3">
+        ) : null}
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {bodyRows.map((row, visibleRowIndex) => {
             const rowIndex = hasTitleRow ? visibleRowIndex + 1 : visibleRowIndex;
             return (
-              <div key={rowIndex} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 leading-7 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+              <div key={rowIndex} className="px-5 py-3.5 leading-7 text-slate-700 dark:text-slate-200">
                 <StructuredCell content={row[0] ?? []} hints={hintsFor(rowIndex, 0)} />
               </div>
             );
@@ -312,10 +335,10 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
   if (block.rows.length === 1) {
     const panelColumns = columnCount === 2 ? "md:grid-cols-2" : columnCount === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
     return (
-      <section className="my-8 rounded-3xl border border-slate-200 bg-slate-100/70 p-4 dark:border-slate-700 dark:bg-slate-900/70 sm:p-6">
-        <div className={`grid gap-4 ${panelColumns}`}>
+      <section className="my-8">
+        <div className={`grid gap-3 ${panelColumns}`}>
           {Array.from({ length: columnCount }).map((_, cellIndex) => (
-            <article key={cellIndex} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+            <article key={cellIndex} className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
               <TableCellContent content={block.rows[0]?.[cellIndex] ?? []} />
             </article>
           ))}
@@ -333,8 +356,8 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
     <>
       <div className="my-8 space-y-4 md:hidden">
         {mobileRows.map((row, visibleRowIndex) => (
-          <article key={visibleRowIndex} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
-            <h4 className="bg-[#0d315d] px-4 py-3 text-base font-bold leading-6 text-white">
+          <article key={visibleRowIndex} className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+            <h4 className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold leading-6 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
               <RichContent content={row[0] ?? []} inheritColor />
             </h4>
             <div className="space-y-4 px-4 py-4 text-slate-800 dark:text-slate-100">
@@ -343,7 +366,7 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
                 return (
                   <div key={cellIndex}>
                     {hasVisibleRichContent(mobileHeaders[cellIndex] ?? []) ? (
-                      <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#486a91] dark:text-blue-300">
+                      <p className="mb-1.5 text-xs font-semibold text-cyan-800 dark:text-cyan-300">
                         <RichContent content={mobileHeaders[cellIndex] ?? []} inheritColor />
                       </p>
                     ) : null}
@@ -355,7 +378,7 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
           </article>
         ))}
       </div>
-      <div className="my-8 hidden overflow-hidden rounded-2xl border border-slate-300/80 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 md:block">
+      <div className="my-8 hidden overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 md:block">
       <div className="max-w-full overflow-hidden">
         <table
           className="w-full table-fixed border-collapse text-left text-[0.94em]"
@@ -371,9 +394,9 @@ function SourceTable({ block, chapterSlug, sourceIndex }: { block: Extract<AclsE
                     <Cell
                       key={cellIndex}
                       className={isHeader
-                        ? "bg-[#0d315d] px-5 py-4 font-bold text-white"
+                        ? "border-b border-slate-200 bg-slate-50 px-5 py-3 font-semibold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         : cellIndex === 0
-                          ? "border-r border-slate-200 bg-slate-100 px-5 py-4 align-top font-bold leading-7 text-[#0d315d] dark:border-slate-700 dark:bg-slate-800 dark:text-blue-100"
+                          ? "border-r border-slate-200 bg-slate-50/70 px-5 py-4 align-top font-semibold leading-7 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           : "border-r border-slate-200 bg-white px-5 py-4 align-top leading-7 text-slate-800 last:border-r-0 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"}
                     >
                       {isHeader
@@ -396,16 +419,15 @@ function SourceBlockContent({ block, chapterSlug, sourceIndex }: { block: AclsEb
   if (block.kind === "heading") {
     if (block.level <= 1) {
       return (
-        <header className="mb-8 mt-10 border-b border-[#123A6D]/20 pb-5 first:mt-0 dark:border-blue-300/20">
-          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.28em] text-[#486a91] dark:text-blue-300">Seção</p>
-          <h2 className="font-serif text-3xl font-bold leading-tight tracking-[-0.025em] text-[#092a50] dark:text-blue-100">
+        <header className="mb-6 mt-10 border-b border-slate-200 pb-3 first:mt-0 dark:border-slate-700">
+          <h2 className="text-[1.6em] font-semibold leading-tight tracking-tight text-slate-950 dark:text-white">
             <RichContent content={block.content} inheritColor />
           </h2>
         </header>
       );
     }
     return (
-      <h3 className="mb-3 mt-8 font-serif text-xl font-bold leading-snug text-[#123A6D] first:mt-0 dark:text-blue-200">
+      <h3 className="mb-3 mt-8 text-[1.2em] font-semibold leading-snug text-cyan-900 first:mt-0 dark:text-cyan-200">
         <RichContent content={block.content} inheritColor />
       </h3>
     );
@@ -421,20 +443,20 @@ function SourceBlockContent({ block, chapterSlug, sourceIndex }: { block: AclsEb
       conduct: "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100",
       warning: "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100",
       danger: "border-red-200 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100",
-      pearl: "border-slate-700 bg-slate-950 text-white dark:border-slate-600",
+      pearl: "border-slate-300 bg-slate-50 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white",
       medication: "border-violet-200 bg-violet-50 text-violet-950 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100",
     };
     return (
       <section className="my-8">
-        {block.title ? <h3 className="mb-5 font-serif text-xl font-bold text-[#123A6D] dark:text-blue-200">{block.title}</h3> : null}
+        {block.title ? <h3 className="mb-5 text-[1.2em] font-semibold text-cyan-900 dark:text-cyan-200">{toReadableCase(block.title)}</h3> : null}
         <div className="mx-auto max-w-3xl space-y-0">
           {block.nodes.map((node, index) => (
             <div key={node.id} className="flex flex-col items-center">
-              <article className={`w-full rounded-2xl border px-5 py-4 text-center shadow-sm ${toneClasses[node.tone]}`}>
-                <p className="font-bold leading-6">{node.title}</p>
+              <article className={`w-full rounded-xl border px-5 py-3.5 text-center ${toneClasses[node.tone]}`}>
+                <p className="font-semibold leading-6">{toReadableCase(node.title)}</p>
                 {node.detail ? <p className="mt-1 text-sm leading-6 opacity-85">{node.detail}</p> : null}
               </article>
-              {index < block.nodes.length - 1 ? <span className="flex h-10 items-center text-2xl font-bold text-[#2d5d8f]" aria-hidden="true">↓</span> : null}
+              {index < block.nodes.length - 1 ? <span className="flex h-7 items-center text-lg text-slate-400" aria-hidden="true">↓</span> : null}
             </div>
           ))}
         </div>
@@ -458,11 +480,12 @@ function SourceBlockContent({ block, chapterSlug, sourceIndex }: { block: AclsEb
     );
   }
 
-  if (block.listStyle) {
+  const leadingMarker = /^\s*[-–•]\s*(?=\S)/.test(richTextValue(block.content));
+  if (block.listStyle || leadingMarker) {
     return (
       <div className="my-2.5 grid grid-cols-[22px_1fr] gap-2 leading-7 text-slate-700 dark:text-slate-200">
-        <span className="mt-[0.7em] h-1.5 w-1.5 rounded-full bg-[#2d5d8f]" aria-hidden="true" />
-        <p><RichContent content={block.content} /></p>
+        <span className="mt-[0.7em] h-1.5 w-1.5 rounded-full bg-cyan-700" aria-hidden="true" />
+        <p><RichContent content={leadingMarker ? (removeLeadingListMarker(block.content) as AclsEbookRichText[]) : block.content} /></p>
       </div>
     );
   }
@@ -608,18 +631,18 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
   return (
     <div ref={readerTop} className={`min-h-screen scroll-mt-4 ${isFullscreen ? "fixed inset-0 z-[120] m-0 overflow-y-auto bg-slate-100 p-2 dark:bg-slate-950 sm:p-5" : ""}`}>
       <div className="fixed inset-x-0 top-0 z-[80] h-1 bg-slate-200 dark:bg-slate-800" aria-hidden="true">
-        <div className="h-full bg-[#2d5d8f] transition-[width] duration-300" style={{ width: `${bookProgress}%` }} />
+        <div className="h-full bg-cyan-700 transition-[width] duration-300" style={{ width: `${bookProgress}%` }} />
       </div>
 
       <header className="sticky top-2 z-40 mx-auto mb-5 flex max-w-[1380px] items-center justify-between gap-2 rounded-2xl border border-white/60 bg-white/90 p-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/90">
-        <Link href={chapterHref()} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-[#123A6D] dark:text-slate-200 dark:hover:bg-slate-800">
+        <Link href={chapterHref()} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-cyan-800 dark:text-slate-200 dark:hover:bg-slate-800">
           <ArrowLeft className="h-4 w-4" /><span className="hidden sm:inline">Biblioteca</span>
         </Link>
         <div className="min-w-0 text-center">
-          <p className="truncate text-[9px] font-extrabold uppercase tracking-[0.2em] text-[#486a91] dark:text-blue-300">ACLS · Capítulo {activeIndex + 1}</p>
+          <p className="truncate text-[9px] font-extrabold uppercase tracking-[0.2em] text-cyan-800 dark:text-blue-300">ACLS · Capítulo {activeIndex + 1}</p>
           <p className="max-w-[160px] truncate font-serif text-sm font-bold text-slate-900 dark:text-white sm:max-w-md">{chapter.title}</p>
         </div>
-        <button type="button" onClick={() => setContentsOpen(true)} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-[#123A6D] dark:text-slate-200 dark:hover:bg-slate-800">
+        <button type="button" onClick={() => setContentsOpen(true)} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-cyan-800 dark:text-slate-200 dark:hover:bg-slate-800">
           <List className="h-4 w-4" /><span className="hidden sm:inline">Sumário</span>
         </button>
       </header>
@@ -638,7 +661,7 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
         }}
       >
         <div className="grid items-center gap-3 lg:grid-cols-[52px_minmax(0,1fr)_52px]">
-          <button type="button" aria-label="Página anterior" onClick={goPrevious} className="hidden h-13 w-13 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition hover:-translate-x-0.5 hover:border-[#123A6D]/30 hover:text-[#123A6D] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 lg:flex">
+          <button type="button" aria-label="Página anterior" onClick={goPrevious} className="hidden h-13 w-13 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition hover:-translate-x-0.5 hover:border-cyan-800/30 hover:text-cyan-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 lg:flex">
             <ChevronLeft className="h-5 w-5" />
           </button>
 
@@ -670,13 +693,13 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
             </div>
           </article>
 
-          <button type="button" aria-label="Próxima página" onClick={goNext} className="hidden h-13 w-13 items-center justify-center rounded-full bg-[#123A6D] text-white shadow-lg transition hover:translate-x-0.5 hover:bg-[#0d315d] lg:flex">
+          <button type="button" aria-label="Próxima página" onClick={goNext} className="hidden h-13 w-13 items-center justify-center rounded-full bg-cyan-800 text-white shadow-lg transition hover:translate-x-0.5 hover:bg-cyan-900 lg:flex">
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
 
         <div className="sticky bottom-3 z-40 mx-auto mt-5 max-w-4xl rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl shadow-slate-900/10 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95">
-          <div className="mb-3 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-[#2d5d8f] transition-[width]" style={{ width: `${chapterProgress}%` }} /></div>
+          <div className="mb-3 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-cyan-700 transition-[width]" style={{ width: `${chapterProgress}%` }} /></div>
           <div className="flex items-center justify-between gap-2">
             <button type="button" onClick={goPrevious} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">
               <ChevronLeft className="h-4 w-4" /><span className="hidden sm:inline">Anterior</span>
@@ -688,7 +711,7 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
               <button type="button" aria-pressed={highlightMode} aria-label="Ativar marca-texto" title="Marca-texto" onClick={() => setHighlightMode((value) => !value)} className={`flex h-11 w-10 items-center justify-center rounded-xl transition ${highlightMode ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300 dark:bg-amber-400/15 dark:text-amber-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}><Highlighter className="h-4 w-4" /></button>
               <button type="button" aria-label={isFullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"} title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className="flex h-11 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
             </div>
-            <button type="button" onClick={goNext} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#123A6D] px-4 text-xs font-bold text-white shadow-md hover:bg-[#0d315d]">
+            <button type="button" onClick={goNext} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-cyan-800 px-4 text-xs font-bold text-white shadow-md hover:bg-cyan-900">
               <span className="hidden sm:inline">Próxima</span><ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -701,12 +724,12 @@ export function AclsEbookSourceView({ chapter, chapters, activeIndex, initialLas
         <div className="fixed inset-0 z-[100] bg-[#071a33]/55 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Sumário do eBook" onClick={() => setContentsOpen(false)}>
           <aside className="ml-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl dark:bg-slate-950" onClick={(event) => event.stopPropagation()}>
             <header className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
-              <div><p className="text-[9px] font-extrabold uppercase tracking-[0.22em] text-[#486a91]">ACLS</p><h2 className="mt-1 font-serif text-2xl font-bold text-slate-950 dark:text-white">Sumário</h2></div>
+              <div><p className="text-[9px] font-extrabold uppercase tracking-[0.22em] text-cyan-800">ACLS</p><h2 className="mt-1 font-serif text-2xl font-bold text-slate-950 dark:text-white">Sumário</h2></div>
               <button type="button" aria-label="Fechar sumário" onClick={() => setContentsOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"><X className="h-5 w-5" /></button>
             </header>
             <nav className="flex-1 overflow-y-auto p-4">
               {chapters.map((item, index) => (
-                <Link key={item.slug} href={chapterHref(item)} onClick={() => setContentsOpen(false)} className={`flex min-h-16 items-center gap-4 border-b px-2 py-3 transition dark:border-slate-800 ${index === activeIndex ? "border-[#123A6D]/20 text-[#123A6D] dark:text-blue-300" : "border-slate-100 text-slate-700 hover:text-[#123A6D] dark:text-slate-200"}`}>
+                <Link key={item.slug} href={chapterHref(item)} onClick={() => setContentsOpen(false)} className={`flex min-h-16 items-center gap-4 border-b px-2 py-3 transition dark:border-slate-800 ${index === activeIndex ? "border-cyan-800/20 text-cyan-800 dark:text-blue-300" : "border-slate-100 text-slate-700 hover:text-cyan-800 dark:text-slate-200"}`}>
                   <span className="font-serif text-xl font-bold opacity-40">{String(index + 1).padStart(2, "0")}</span>
                   <span className="min-w-0 flex-1 text-sm font-bold leading-5">{item.label}</span>
                   {index === activeIndex ? <BookOpen className="h-4 w-4 shrink-0" /> : null}
