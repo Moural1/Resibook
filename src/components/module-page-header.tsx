@@ -89,7 +89,7 @@ export default function ModulePageHeader({
 
   return (
     <section className="module-page-header overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="module-page-header-hero p-5 md:p-6">
+      <div className="module-page-header-hero relative border-t-[3px] border-t-cyan-700 bg-[linear-gradient(115deg,#ecfeff_0%,#f5fbfd_38%,#ffffff_70%,#f0f7ff_100%)] p-5 md:p-6">
         <nav
           aria-label="Localização no aplicativo"
           className="mb-3 flex min-w-0 items-center gap-1.5 text-xs text-slate-500"

@@ -226,7 +226,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <header className="flex flex-col gap-4 rounded-xl border border-slate-200 border-t-[3px] border-t-cyan-700 bg-[linear-gradient(115deg,#ecfeff_0%,#f5fbfd_38%,#ffffff_70%,#f0f7ff_100%)] p-5 md:p-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-sm font-medium text-cyan-800">Central clínica</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">O que precisa ser resolvido agora?</h1>
