@@ -145,15 +145,15 @@ function isStepTitle(title: string) {
 
 function sectionPresentation(kind: SectionKind) {
   return {
-    flow: { label: "Fluxo", icon: Zap, shell: "border-cyan-200 bg-cyan-50/70 dark:border-cyan-900 dark:bg-cyan-950/40", header: "text-cyan-950 dark:text-cyan-100", badge: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-100" },
-    information: { label: "Informação", icon: Info, shell: "border-blue-200 bg-blue-50/70 dark:border-blue-900 dark:bg-blue-950/40", header: "text-blue-950 dark:text-blue-100", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" },
-    conduct: { label: "Conduta", icon: Target, shell: "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/40", header: "text-emerald-950 dark:text-emerald-100", badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100" },
-    medication: { label: "Medicamento", icon: Pill, shell: "border-violet-200 bg-violet-50/70 dark:border-violet-900 dark:bg-violet-950/40", header: "text-violet-950 dark:text-violet-100", badge: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-100" },
-    alert: { label: "Atenção", icon: AlertTriangle, shell: "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40", header: "text-amber-950 dark:text-amber-100", badge: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100" },
-    contraindication: { label: "Evitar", icon: XCircle, shell: "border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/40", header: "text-rose-950 dark:text-rose-100", badge: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-100" },
-    pearl: { label: "Pérola", icon: Gem, shell: "border-slate-950 bg-slate-950 dark:border-slate-700 dark:bg-black", header: "text-white", badge: "bg-white/10 text-white" },
-    study: { label: "Estudo", icon: GraduationCap, shell: "border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900", header: "text-slate-950 dark:text-white", badge: "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200" },
-    default: { label: "Protocolo", icon: ClipboardCheck, shell: "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900", header: "text-slate-950 dark:text-white", badge: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" },
+    flow: { label: "Fluxo", icon: Zap, shell: "border-l-cyan-700", iconTone: "text-cyan-700" },
+    information: { label: "Informação", icon: Info, shell: "border-l-sky-600", iconTone: "text-sky-600" },
+    conduct: { label: "Conduta", icon: Target, shell: "border-l-emerald-600", iconTone: "text-emerald-600" },
+    medication: { label: "Medicamento", icon: Pill, shell: "border-l-violet-600", iconTone: "text-violet-600" },
+    alert: { label: "Atenção", icon: AlertTriangle, shell: "border-l-amber-500", iconTone: "text-amber-600" },
+    contraindication: { label: "Evitar", icon: XCircle, shell: "border-l-rose-600", iconTone: "text-rose-600" },
+    pearl: { label: "Pérola", icon: Gem, shell: "border-l-slate-900", iconTone: "text-slate-900 dark:text-white" },
+    study: { label: "Estudo", icon: GraduationCap, shell: "border-l-slate-400", iconTone: "text-slate-500" },
+    default: { label: "Protocolo", icon: ClipboardCheck, shell: "border-l-slate-300", iconTone: "text-slate-500" },
   }[kind];
 }
 
@@ -180,9 +180,9 @@ function RawProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boo
 
     if (line === "↓") {
       rendered.push(
-        <div key={index} className="flex h-10 flex-col items-center justify-center" aria-hidden="true">
-          <span className="h-6 w-px bg-cyan-300 dark:bg-cyan-700" />
-          <span className="-mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan-700 text-[11px] font-bold text-white shadow-sm">↓</span>
+        <div key={index} className="flex h-6 flex-col items-center justify-center" aria-hidden="true">
+          <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-600" />
+          <ChevronDown className="-mt-1 h-3.5 w-3.5 text-slate-400" />
         </div>
       );
       continue;
@@ -191,7 +191,7 @@ function RawProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boo
     if (flow && /^(OU|\+|SIM|NÃO|NAO)$/.test(line)) {
       rendered.push(
         <div key={index} className="flex justify-center py-0.5">
-          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-cyan-800 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-100">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             {line}
           </span>
         </div>
@@ -213,14 +213,14 @@ function RawProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boo
       const hasHeader = tableLines.length > 1 && /^\|[\s|:-]+\|$/.test(tableLines[1]);
 
       rendered.push(
-        <div key={`table-${index}`} className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
+        <div key={`table-${index}`} className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
           <table className="w-full min-w-[480px] border-collapse text-left text-xs sm:text-sm">
             <tbody>
               {rows.map((cells, rowIndex) => (
-                <tr key={rowIndex} className={hasHeader && rowIndex === 0 ? "bg-blue-50 text-blue-950 dark:bg-blue-950 dark:text-blue-100" : "border-t border-slate-200 text-slate-700 first:border-t-0 dark:border-slate-800 dark:text-slate-200"}>
+                <tr key={rowIndex} className={hasHeader && rowIndex === 0 ? "bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100" : "border-t border-slate-200 text-slate-700 first:border-t-0 dark:border-slate-800 dark:text-slate-200"}>
                   {cells.map((cell, cellIndex) => {
                     const Cell = hasHeader && rowIndex === 0 ? "th" : "td";
-                    return <Cell key={cellIndex} className="px-3.5 py-3 font-semibold first:pl-4">{cell}</Cell>;
+                    return <Cell key={cellIndex} className={`px-3.5 py-2.5 first:pl-4 ${hasHeader && rowIndex === 0 ? "font-semibold" : "font-medium"}`}>{cell}</Cell>;
                   })}
                 </tr>
               ))}
@@ -233,8 +233,7 @@ function RawProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boo
 
     if (line.startsWith("### ")) {
       rendered.push(
-        <h4 key={index} className="mt-5 flex items-center gap-2 text-sm font-extrabold text-slate-950 first:mt-0 dark:text-white">
-          <span className="h-5 w-1 rounded-full bg-cyan-600" />
+        <h4 key={index} className="mt-5 text-sm font-semibold text-slate-900 first:mt-0 dark:text-white">
           {line.slice(4)}
         </h4>
       );
@@ -245,11 +244,11 @@ function RawProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boo
     const doseValue = /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|g|ml|mL|UI|U|J|mmHg|mEq|%)(?:\s*\/\s*(?:kg|min|h|hora))?/i.test(cleanMarkdown(line));
     const tone = doseLabel || doseValue ? "dose" : lineTone(line);
     const classes = {
-      dose: "border-violet-200 bg-violet-50 text-violet-950 font-extrabold tabular-nums dark:border-violet-800 dark:bg-violet-950/60 dark:text-violet-100",
+      dose: "border-violet-200 bg-violet-50 text-violet-950 font-semibold tabular-nums dark:border-violet-800 dark:bg-violet-950/60 dark:text-violet-100",
       alert: "border-amber-200 bg-amber-50 text-amber-950 font-semibold dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100",
       contraindication: "border-rose-200 bg-rose-50 text-rose-950 font-semibold dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-100",
       conduct: "border-emerald-200 bg-emerald-50 text-emerald-950 font-semibold dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100",
-      pearl: "border-slate-800 bg-slate-950 text-white font-semibold dark:border-slate-600 dark:bg-black",
+      pearl: "border-slate-300 bg-slate-50 text-slate-900 font-semibold dark:border-slate-600 dark:bg-slate-900 dark:text-white",
       default: "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200",
     }[tone];
     const isListItem = /^(- |• |✔ |☐ |☑ )/.test(line);
@@ -259,7 +258,7 @@ function RawProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boo
     rendered.push(
       <div
         key={index}
-        className={isEmphasized || isFlowStep ? `rounded-xl border px-4 py-3 text-sm leading-6 ${isFlowStep && tone === "default" ? "border-cyan-200 bg-white text-center font-bold text-slate-800 shadow-sm dark:border-cyan-800 dark:bg-slate-950 dark:text-slate-100" : classes}` : "px-1 text-sm font-medium leading-6 text-slate-700 dark:text-slate-200"}
+        className={isEmphasized || isFlowStep ? `rounded-lg border px-3.5 py-2 text-sm leading-6 ${isFlowStep ? "text-center" : ""} ${isFlowStep && tone === "default" ? "border-slate-200 bg-white font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" : classes}` : "px-1 text-sm font-medium leading-6 text-slate-700 dark:text-slate-200"}
       >
         {cleanMarkdown(line)}
       </div>
@@ -267,7 +266,7 @@ function RawProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boo
   }
 
   return (
-    <div className={flow ? "mx-auto max-w-xl space-y-2.5" : "space-y-2.5"}>
+    <div className={flow ? "mx-auto max-w-md space-y-0" : "space-y-2"}>
       {rendered}
     </div>
   );
@@ -288,12 +287,12 @@ function ProtocolLines({ lines, flow = false, medication = false }: { lines: str
 
         if (step) {
           return (
-            <details key={index} open={index === firstStepIndex} className="group/step overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm dark:border-emerald-800 dark:bg-slate-950">
-              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 text-sm font-extrabold text-emerald-950 dark:text-emerald-100">
+            <details key={index} open={index === firstStepIndex} className="group/step overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                 <span className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />{block.title}</span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-emerald-600 transition group-open/step:rotate-180" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition group-open/step:rotate-180" />
               </summary>
-              <div className="border-t border-emerald-100 bg-emerald-50/40 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+              <div className="border-t border-slate-100 p-4 dark:border-slate-800">
                 <RawProtocolLines lines={block.lines} flow={flow} />
               </div>
             </details>
@@ -301,9 +300,9 @@ function ProtocolLines({ lines, flow = false, medication = false }: { lines: str
         }
 
         return (
-          <div key={index} className={`rounded-2xl border bg-white p-4 shadow-sm dark:bg-slate-950 ${medication ? "border-violet-200 dark:border-violet-800" : "border-slate-200 dark:border-slate-700"}`}>
-            <h3 className={`mb-3 flex items-center gap-2 text-sm font-extrabold ${medication ? "text-violet-950 dark:text-violet-100" : "text-slate-950 dark:text-white"}`}>
-              {medication ? <Pill className="h-4 w-4 text-violet-600" /> : <span className="h-5 w-1 rounded-full bg-cyan-600" />}
+          <div key={index} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-950">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+              {medication ? <Pill className="h-4 w-4 text-violet-600" /> : null}
               {block.title}
             </h3>
             <RawProtocolLines lines={block.lines} flow={flow} />
@@ -321,7 +320,7 @@ function ProtocolMetadata({ lines }: { lines: string[] }) {
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2">
       {items.map((item, index) => (
-        <span key={index} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+        <span key={index} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
           {cleanMarkdown(item)}
         </span>
       ))}
@@ -348,14 +347,14 @@ function ProtocolNavigation() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Buscar no ACLS"
-          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-700 dark:focus:ring-cyan-950"
+          className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-700 dark:focus:ring-cyan-950"
         />
       </label>
       <div className="space-y-4">
       {groups.map((group) => (
         <div key={group}>
-          <p className="mb-1.5 px-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{group}</p>
-          <div className="space-y-1">
+          <p className="mb-1 px-2 text-xs font-medium text-slate-500 dark:text-slate-400">{group}</p>
+          <div className="space-y-0.5">
           {filteredItems.filter((item) => item.group === group).map((item) => {
         const href = getAclsHref(item.slug);
         const active = pathname === href;
@@ -364,7 +363,7 @@ function ProtocolNavigation() {
           return (
             <div
               key={item.label}
-              className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-xs ${active ? "border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" : "border-transparent text-slate-400 dark:text-slate-600"}`}
+              className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-sm ${active ? "border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" : "border-transparent text-slate-400 dark:text-slate-600"}`}
               aria-disabled="true"
             >
               <span>{item.label}</span>
@@ -377,7 +376,7 @@ function ProtocolNavigation() {
           <Link
             key={item.label}
             href={href}
-            className={`block min-h-10 rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${active ? "border-cyan-200 bg-cyan-50 text-cyan-950 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-100" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800"}`}
+            className={`block rounded-lg px-2.5 py-2 text-sm transition ${active ? "bg-cyan-50 font-medium text-cyan-900 dark:bg-cyan-950 dark:text-cyan-100" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"}`}
           >
             {item.label}
           </Link>
@@ -391,50 +390,54 @@ function ProtocolNavigation() {
   );
 }
 
+const LEGEND = [
+  { label: "Conduta", dot: "bg-emerald-600" },
+  { label: "Dose", dot: "bg-violet-600" },
+  { label: "Alerta", dot: "bg-amber-500" },
+  { label: "Contraindicação", dot: "bg-rose-600" },
+  { label: "Pérola", dot: "bg-slate-900 dark:bg-white" },
+];
+
 export function AclsShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto max-w-7xl space-y-4">
-      <header className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="border-b border-slate-200 bg-[#081a3a] px-5 py-5 text-white md:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5">
-                <HeartPulse className="h-5 w-5 text-cyan-200" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200">Protocolos</p>
-                <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">ACLS</h1>
-              </div>
+      <header className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="flex items-center gap-3">
+            <HeartPulse className="h-6 w-6 text-cyan-800 dark:text-cyan-300" />
+            <div>
+              <p className="text-sm font-medium text-cyan-800 dark:text-cyan-300">Protocolos</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">ACLS</h1>
             </div>
-            <Link href="/acls/ebook" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-extrabold text-white transition hover:bg-white/15">
-              <BookMarked className="h-4 w-4 text-blue-100" />
-              Abrir eBook ACLS
-            </Link>
           </div>
+          <Link href="/acls/ebook" className="inline-flex h-10 items-center gap-2 rounded-lg border border-cyan-800 bg-cyan-800 px-4 text-sm font-medium text-white transition hover:bg-cyan-900">
+            <BookMarked className="h-4 w-4" />
+            Abrir eBook ACLS
+          </Link>
         </div>
 
-        <div className="grid grid-cols-5 border-b border-slate-200 text-[9px] font-bold uppercase tracking-[0.08em] dark:border-slate-800 sm:text-xs sm:tracking-[0.12em]">
-          <span className="bg-emerald-50 px-2 py-2.5 text-center text-emerald-800">Conduta</span>
-          <span className="bg-blue-50 px-2 py-2.5 text-center text-blue-800">Dose</span>
-          <span className="bg-amber-50 px-2 py-2.5 text-center text-amber-800">Alerta</span>
-          <span className="bg-rose-50 px-2 py-2.5 text-center text-rose-800">Contraindicação</span>
-          <span className="bg-slate-950 px-2 py-2.5 text-center text-white">Pérola</span>
-        </div>
+        <ul aria-label="Legenda de cores" className="flex flex-wrap gap-x-4 gap-y-1.5 border-t border-slate-100 px-5 py-2.5 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">
+          {LEGEND.map((item) => (
+            <li key={item.label} className="inline-flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${item.dot}`} aria-hidden="true" />
+              {item.label}
+            </li>
+          ))}
+        </ul>
 
-        <details className="group lg:hidden">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+        <details className="group border-t border-slate-100 dark:border-slate-800 lg:hidden">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-5 py-3 text-sm font-medium text-slate-800 dark:text-slate-100">
             Navegar pelos protocolos
             <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
           </summary>
-          <div className="max-h-80 overflow-y-auto border-t border-slate-200 p-3 dark:border-slate-800">
+          <div className="max-h-80 overflow-y-auto border-t border-slate-100 p-3 dark:border-slate-800">
             <ProtocolNavigation />
           </div>
         </details>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
-        <aside className="sticky top-24 hidden max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:block">
-          <p className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">ACLS</p>
+      <div className="grid gap-5 lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start">
+        <aside className="sticky top-24 hidden max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 lg:block">
           <ProtocolNavigation />
         </aside>
         <main className="min-w-0">{children}</main>
@@ -466,29 +469,28 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
 
   return (
     <article className="space-y-4">
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:p-7">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 md:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700">ACLS</p>
-            <h2 className="mt-2 text-2xl font-extrabold uppercase tracking-tight text-slate-950 dark:text-white md:text-3xl">{parsed.title || protocol.title}</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white md:text-2xl">{parsed.title || protocol.title}</h2>
             <ProtocolMetadata lines={parsed.preamble} />
           </div>
           <button
             type="button"
             onClick={toggleAll}
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <ChevronsUpDown className="h-4 w-4" />
             {allExpanded ? "Recolher tudo" : "Expandir tudo"}
           </button>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4 dark:border-cyan-900 dark:bg-cyan-950/30">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-cyan-900">
-            <BookOpen className="h-4 w-4" />
+        <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <BookOpen className="h-3.5 w-3.5" />
             Navegação rápida
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
             {sections.map((section) => (
               <button
                 key={section.id}
@@ -497,7 +499,7 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
                   setOpenSections((current) => new Set(current).add(section.id));
                   window.setTimeout(() => document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
                 }}
-                className={`min-h-9 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:-translate-y-0.5 ${sectionPresentation(getSectionKind(section.title)).badge}`}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-cyan-800/40 hover:bg-cyan-50 hover:text-cyan-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
               >
                 {section.title}
               </button>
@@ -520,16 +522,16 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
               id={section.id}
               open={openSections.has(section.id)}
               onToggle={(event) => toggleSection(section.id, event.currentTarget.open)}
-              className={`group scroll-mt-24 overflow-hidden rounded-2xl border shadow-sm transition open:shadow-md ${presentation.shell}`}
+              className={`group scroll-mt-24 overflow-hidden rounded-xl border border-l-4 border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 ${presentation.shell}`}
             >
-              <summary className={`flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-base font-extrabold sm:px-5 ${presentation.header}`}>
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-slate-900 dark:text-white sm:px-5">
                 <span className="flex min-w-0 items-center gap-3">
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${presentation.badge}`}><SectionIcon className="h-4.5 w-4.5" /></span>
-                  <span className="min-w-0"><span className="block text-[9px] font-extrabold uppercase tracking-[0.18em] opacity-60">{presentation.label}</span><span className="block leading-5">{section.title}</span></span>
+                  <SectionIcon className={`h-4.5 w-4.5 shrink-0 ${presentation.iconTone}`} />
+                  <span className="min-w-0"><span className="block text-xs text-slate-500 dark:text-slate-400">{presentation.label}</span><span className="block text-[15px] font-semibold leading-5">{section.title}</span></span>
                 </span>
-                <ChevronDown className="h-5 w-5 shrink-0 opacity-60 transition group-open:rotate-180" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition group-open:rotate-180" />
               </summary>
-              <div className="border-t border-black/5 bg-white/80 px-4 py-5 dark:border-white/10 dark:bg-slate-900/80 sm:px-5">
+              <div className="border-t border-slate-100 px-4 py-4 dark:border-slate-800 sm:px-5">
                 <ProtocolLines lines={section.lines} flow={flow} medication={medication} />
               </div>
             </details>
@@ -545,31 +547,33 @@ export function AclsOverview() {
   const groups = Array.from(new Set(availableItems.map((item) => item.group)));
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:p-6">
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700">ACLS</p>
-      <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">Protocolos ACLS</h2>
-      <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">Acesso rápido aos protocolos disponíveis.</p>
-      <Link href="/acls/ebook" className="mt-6 flex min-h-24 items-center justify-between gap-4 overflow-hidden rounded-2xl bg-[#123A6D] px-5 py-4 text-white shadow-lg shadow-[#123A6D]/15 transition hover:bg-[#0e2f59] sm:px-6">
-        <span className="flex items-center gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10"><BookMarked className="h-6 w-6" /></span>
-          <span><span className="block text-[10px] font-extrabold uppercase tracking-[0.2em] text-blue-100">Novo modo de leitura</span><span className="mt-1 block text-lg font-black">eBook interativo ACLS</span><span className="mt-1 hidden text-xs font-medium text-blue-100 sm:block">Capa, sumário, capítulos e progresso de leitura.</span></span>
+    <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 md:p-6">
+      <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white md:text-2xl">Protocolos ACLS</h2>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Acesso rápido aos protocolos disponíveis.</p>
+      <Link href="/acls/ebook" className="group mt-5 flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-4 py-3.5 transition hover:border-cyan-800/40 hover:bg-cyan-50/40 dark:border-slate-700 dark:hover:bg-cyan-950/30">
+        <span className="flex items-center gap-3">
+          <BookMarked className="h-5 w-5 shrink-0 text-cyan-800 dark:text-cyan-300" />
+          <span>
+            <span className="block text-[15px] font-semibold text-slate-900 dark:text-white">eBook interativo ACLS</span>
+            <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Novo modo de leitura: capa, sumário, capítulos e progresso.</span>
+          </span>
         </span>
-        <ArrowRight className="h-5 w-5 shrink-0" />
+        <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-cyan-800" />
       </Link>
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-6 grid gap-x-8 gap-y-6 md:grid-cols-2">
         {groups.map((group) => {
           const items = availableItems.filter((item) => item.group === group);
           return (
-            <div key={group} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-950/60">
-              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
-                <h3 className="text-sm font-bold text-slate-950 dark:text-white">{group}</h3>
-                <span className="rounded-full bg-cyan-50 px-2 py-1 text-[10px] font-bold text-cyan-800">{items.length}</span>
+            <div key={group} className="min-w-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{group}</h3>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{items.length}</span>
               </div>
-              <div className="grid gap-2 p-3">
+              <div className="mt-2 divide-y divide-slate-100 border-y border-slate-100 dark:divide-slate-800 dark:border-slate-800">
                 {items.map((item) => (
-                  <Link key={item.slug} href={getAclsHref(item.slug)} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-transparent bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-cyan-200 hover:text-cyan-950 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-800 dark:hover:text-cyan-100">
+                  <Link key={item.slug} href={getAclsHref(item.slug)} className="group flex items-center justify-between gap-3 px-1 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800">
                     {item.label}
-                    <span className="text-cyan-700" aria-hidden="true">→</span>
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300 transition group-hover:text-cyan-800" aria-hidden="true" />
                   </Link>
                 ))}
               </div>
