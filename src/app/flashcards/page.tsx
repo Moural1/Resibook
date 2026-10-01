@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -10,7 +9,6 @@ import { rankSearchResults } from "@/lib/search";
 import { isResibookAdmin } from "@/lib/auth-role";
 import {
   ArrowRight,
-  BookOpen,
   BookCopy,
   Brain,
   CheckCircle2,
@@ -21,8 +19,6 @@ import {
   Play,
   RotateCcw,
   Search,
-  Sparkles,
-  Target,
   Trash2,
   X,
 } from "lucide-react";
@@ -158,34 +154,6 @@ function renderRichText(value?: string | null, emptyText = "Sem conteúdo") {
           </p>
         );
       })}
-    </div>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
-          {icon}
-        </div>
-
-        <span className="text-2xl font-semibold tracking-tight text-slate-900">
-          {value}
-        </span>
-      </div>
-
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
     </div>
   );
 }
@@ -780,33 +748,7 @@ export default function FlashcardsPage() {
             </button>
           ) : null
         }
-      >
-        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-          <StatCard
-            icon={<BookOpen className="h-5 w-5" />}
-            label="Total"
-            value={cards.length}
-          />
-
-          <StatCard
-            icon={<Brain className="h-5 w-5" />}
-            label="Difíceis"
-            value={difficultCount}
-          />
-
-          <StatCard
-            icon={<Sparkles className="h-5 w-5" />}
-            label="Revelados"
-            value={revealedCount}
-          />
-
-          <StatCard
-            icon={<Target className="h-5 w-5" />}
-            label="Áreas visíveis"
-            value={visibleAreas}
-          />
-        </div>
-      </ModulePageHeader>
+      />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
