@@ -173,3 +173,17 @@ test("bloqueio do plano Completo leva o contexto do módulo para /assinar sem re
   assert.match(assinar, /faz parte do plano Completo/);
   assert.doesNotMatch(assinar, /"\/psiquiatria":/);
 });
+
+test("primeiros passos marcam a página visitada e terminam com a instalação", async () => {
+  const { EMPTY_ONBOARDING, markVisited, onboardingProgress, parseOnboardingState, stepForPath } = await import("../src/lib/onboarding.ts");
+  assert.equal(stepForPath("/plantao/roteiro-caso"), "roteiro");
+  assert.equal(stepForPath("/acls/bradicardia"), "acls");
+  assert.equal(stepForPath("/pacientes"), null);
+  let state = markVisited({ ...EMPTY_ONBOARDING }, "/acls");
+  assert.deepEqual(state.done, ["acls"]);
+  assert.equal(markVisited(state, "/acls"), state);
+  for (const path of ["/caso-rapido", "/flashcards", "/meu-resibook"]) state = markVisited(state, path);
+  assert.equal(onboardingProgress(state).finished, false);
+  assert.equal(onboardingProgress({ ...state, installed: true }).finished, true);
+  assert.deepEqual(parseOnboardingState("{quebrado"), EMPTY_ONBOARDING);
+});

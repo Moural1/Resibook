@@ -9,6 +9,7 @@ import ClinicalEvolutionComposer from "./clinical-evolution-composer";
 import ClinicalReassessmentPanel from "./clinical-reassessment-panel";
 import GlobalSearchShortcut from "./global-search-shortcut";
 import MobileClinicalNav from "./mobile-clinical-nav";
+import { OnboardingTracker } from "./onboarding-checklist";
 import MobilePrescriptionSafety from "./mobile-prescription-safety";
 import PatientRecordNavigator from "./patient-record-navigator";
 import PatientTimelineControls from "./patient-timeline-controls";
@@ -43,6 +44,7 @@ export default function ClinicalRuntime() {
       <PatientTimelineControls />
       <ShiftToolNavigator />
       <GlobalSearchShortcut />
+      <OnboardingTracker />
       <MobileClinicalNav />
       <MobilePrescriptionSafety />
       <ClinicalCaseSessionBridge />

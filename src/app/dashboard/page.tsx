@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import OnboardingChecklist from "@/components/onboarding-checklist";
 import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import { PRODUCT_CAPABILITIES } from "@/lib/product-config";
 import {
@@ -246,6 +247,8 @@ export default function DashboardPage() {
         <ClinicalStatus icon={Clock3} label="Para revisar" value={loading ? "Atualizando..." : `${todayCount} ${todayCount === 1 ? "item" : "itens"}`} tone={todayCount > 0 ? "attention" : "neutral"} />
         <ClinicalStatus icon={Brain} label="Flashcards difíceis" value={loading ? "Atualizando..." : `${difficultFlashcards} ${difficultFlashcards === 1 ? "ponto" : "pontos"}`} tone="neutral" />
       </div>
+
+      <OnboardingChecklist />
 
       {error ? <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0" /><span>Alguns dados pessoais não puderam ser atualizados: {error}</span></div> : null}
       {activeCase ? <ActiveCasePanel activeCase={activeCase} vitals={caseVitals} /> : <EmptyCasePanel />}
