@@ -66,7 +66,7 @@ test("CTA principal mantém contraste e cabeçalhos internos exibem localizaçã
     source("../src/components/module-page-header.tsx"),
   ]);
 
-  assert.match(dashboard, /style=\{\{ color: "#071a35" \}\}/);
+  assert.match(dashboard, /BUTTON_PRIMARY = "[^"]*bg-cyan-800[^"]*text-white/);
   assert.match(header, /aria-label="Localização no aplicativo"/);
   assert.match(header, /href="\/dashboard"/);
   assert.match(header, /Central clínica/);
