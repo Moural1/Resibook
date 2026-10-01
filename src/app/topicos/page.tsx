@@ -8,15 +8,12 @@ import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
 import {
-  BookOpen,
   ChevronDown,
   ChevronUp,
   Edit3,
   Gauge,
   Plus,
   Search,
-  Sparkles,
-  Stethoscope,
   X,
 } from "lucide-react";
 
@@ -718,6 +715,7 @@ export default function TopicosPage() {
           },
         ]}
         metrics={[
+          { label: "Áreas clínicas", value: areas.length },
           { label: "Tópicos", value: topicos.length },
           { label: "Exibindo", value: filtered.length },
           { label: "Flashcards", value: flashcards.length },
@@ -736,57 +734,7 @@ export default function TopicosPage() {
             </button>
           ) : null
         }
-      >
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
-          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
-                <Stethoscope className="h-5 w-5" />
-              </div>
-
-              <span className="text-2xl font-semibold tracking-tight text-slate-900">
-                {areas.length}
-              </span>
-            </div>
-
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Áreas clínicas
-            </p>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
-                <BookOpen className="h-5 w-5" />
-              </div>
-
-              <span className="text-2xl font-semibold tracking-tight text-slate-900">
-                {filtered.length}
-              </span>
-            </div>
-
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Tópicos filtrados
-            </p>
-          </div>
-
-          <div className="col-span-2 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:col-span-1">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
-                <Sparkles className="h-5 w-5" />
-              </div>
-
-              <span className="text-2xl font-semibold tracking-tight text-slate-900">
-                {flashcards.length}
-              </span>
-            </div>
-
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Flashcards ligados
-            </p>
-          </div>
-        </div>
-      </ModulePageHeader>
+      />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">

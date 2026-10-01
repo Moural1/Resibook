@@ -100,6 +100,43 @@ function cleanMarkdown(value: string) {
   return value.replace(/^\*\*(.*)\*\*$/, "$1");
 }
 
+// Os títulos do conteúdo vêm em CAIXA ALTA com emoji ("🚨 RESUMO RÁPIDO").
+// Na tela eles aparecem em caixa normal, sem o emoji inicial (o ícone da
+// seção já cumpre esse papel), preservando siglas clínicas. O texto-fonte
+// dos protocolos não é alterado.
+const ACLS_ACRONYMS = new Set([
+  "ACLS", "AESP", "AVC", "AVCI", "AVCH", "AAS", "BAV", "BLS", "BRE", "BRD", "CIVD", "DPOC", "ECG", "ETCO₂", "ETCO2",
+  "FA", "FV", "HAS", "IAM", "IAMCSST", "IAMSSST", "ICP", "IO", "IOT", "IV", "NIHSS", "PA", "PAS", "PAD", "PCR",
+  "RCE", "RCP", "SAMPLE", "SBV", "SCA", "SCACSST", "SCASSST", "SST", "SSST", "TC", "TEP", "TSV", "TV", "TVSP",
+  "UTI", "VM", "ABCDE", "QRS", "TPSV", "ASPECTS", "TOT", "SNG", "CPAP", "BIPAP", "PAM", "EV", "VO", "SC", "IM", "SL", "NSTEMI", "STEMI", "SYNC", "HNF", "HBPM", "ECMO", "DVA", "SNC", "TCE", "GCS", "TTPA", "INR", "RX", "USG", "POCUS", "SVD", "SVE", "VD", "VE", "BRA", "IECA", "FC", "FR", "HB", "PCO2", "PO2", "PH", "HCO3", "RNM", "TNK", "TPA", "RT-PA", "EAP", "SpO2", "SPO2", "DEA", "5HS", "5TS", "UI", "MG", "KG",
+]);
+
+const ACLS_PROPER_NOUNS: Record<string, string> = { RESIBOOK: "Resibook", GLASGOW: "Glasgow", CINCINNATI: "Cincinnati", WELLS: "Wells", KILLIP: "Killip", TIMI: "TIMI", GRACE: "GRACE", HEART: "HEART", LOS: "LOS" };
+
+function stripLeadingEmoji(value: string) {
+  return value.replace(/^(\d)\uFE0F?\u20E3\s*/u, "$1. ").replace(/^[^\p{L}\p{N}(]+/u, "").trim();
+}
+
+function formatAclsTitle(value: string) {
+  const text = stripLeadingEmoji(value);
+  const letters = text.replace(/[^\p{L}]/gu, "");
+  if (!letters || letters !== letters.toLocaleUpperCase("pt-BR")) return text;
+
+  let first = true;
+  return text.replace(/[\p{L}\p{N}₂]+/gu, (word) => {
+    const upper = word.toLocaleUpperCase("pt-BR");
+    const out = ACLS_PROPER_NOUNS[upper]
+      ? ACLS_PROPER_NOUNS[upper]
+      : ACLS_ACRONYMS.has(upper)
+      ? upper
+      : first
+        ? upper.charAt(0) + upper.slice(1).toLocaleLowerCase("pt-BR")
+        : upper.toLocaleLowerCase("pt-BR");
+    first = false;
+    return out;
+  });
+}
+
 function normalizeLabel(value: string) {
   return value
     .normalize("NFD")
@@ -234,7 +271,7 @@ function RawProtocolLines({ lines, flow = false }: { lines: string[]; flow?: boo
     if (line.startsWith("### ")) {
       rendered.push(
         <h4 key={index} className="mt-5 text-sm font-semibold text-slate-900 first:mt-0 dark:text-white">
-          {line.slice(4)}
+          {formatAclsTitle(line.slice(4))}
         </h4>
       );
       continue;
@@ -289,7 +326,7 @@ function ProtocolLines({ lines, flow = false, medication = false }: { lines: str
           return (
             <details key={index} open={index === firstStepIndex} className="group/step overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                <span className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />{block.title}</span>
+                <span className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />{formatAclsTitle(block.title)}</span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition group-open/step:rotate-180" />
               </summary>
               <div className="border-t border-slate-100 p-4 dark:border-slate-800">
@@ -303,7 +340,7 @@ function ProtocolLines({ lines, flow = false, medication = false }: { lines: str
           <div key={index} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-950">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
               {medication ? <Pill className="h-4 w-4 text-violet-600" /> : null}
-              {block.title}
+              {formatAclsTitle(block.title)}
             </h3>
             <RawProtocolLines lines={block.lines} flow={flow} />
           </div>
@@ -472,7 +509,7 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
       <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 md:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white md:text-2xl">{parsed.title || protocol.title}</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white md:text-2xl">{formatAclsTitle(parsed.title || protocol.title)}</h2>
             <ProtocolMetadata lines={parsed.preamble} />
           </div>
           <button
@@ -501,7 +538,7 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
                 }}
                 className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-cyan-800/40 hover:bg-cyan-50 hover:text-cyan-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
               >
-                {section.title}
+                {formatAclsTitle(section.title)}
               </button>
             ))}
           </div>
@@ -527,7 +564,7 @@ export function AclsProtocolView({ protocol }: { protocol: AclsProtocol }) {
               <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-slate-900 dark:text-white sm:px-5">
                 <span className="flex min-w-0 items-center gap-3">
                   <SectionIcon className={`h-4.5 w-4.5 shrink-0 ${presentation.iconTone}`} />
-                  <span className="min-w-0"><span className="block text-xs text-slate-500 dark:text-slate-400">{presentation.label}</span><span className="block text-[15px] font-semibold leading-5">{section.title}</span></span>
+                  <span className="min-w-0"><span className="block text-xs text-slate-500 dark:text-slate-400">{presentation.label}</span><span className="block text-[15px] font-semibold leading-5">{formatAclsTitle(section.title)}</span></span>
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition group-open:rotate-180" />
               </summary>
