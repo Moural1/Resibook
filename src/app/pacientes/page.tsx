@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -531,34 +530,6 @@ function InputField({
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
-          {icon}
-        </div>
-
-        <span className="text-2xl font-semibold tracking-tight text-slate-900">
-          {value}
-        </span>
-      </div>
-
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 md:tracking-[0.18em]">
-        {label}
-      </p>
-    </div>
-  );
-}
-
 export default function PacientesPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -1041,6 +1012,10 @@ export default function PacientesPage() {
             label: "Com alertas",
             value: riskCount,
           },
+          {
+            label: "Retornos atrasados",
+            value: overdueCount,
+          },
         ]}
         error={error}
         success={success}
@@ -1054,163 +1029,7 @@ export default function PacientesPage() {
             Novo paciente
           </button>
         }
-      >
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          <StatCard
-            icon={<UserRound className="h-5 w-5" />}
-            label="Pacientes"
-            value={loading ? "..." : patients.length}
-          />
-
-          <StatCard
-            icon={<ShieldAlert className="h-5 w-5" />}
-            label="Com alertas"
-            value={riskCount}
-          />
-
-          <StatCard
-            icon={<CalendarDays className="h-5 w-5" />}
-            label="Retornos atrasados"
-            value={overdueCount}
-          />
-
-          <StatCard
-            icon={<CircleAlert className="h-5 w-5" />}
-            label="Cadastros incompletos"
-            value={incompleteCount}
-          />
-        </div>
-
-        <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-          <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end">
-            <div className="min-w-0 flex-1">
-              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Busca no prontuário
-              </label>
-
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Buscar nome, alergias, queixa, HMA, HPP, diagnóstico, medicamento, plano..."
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:w-[860px] 2xl:shrink-0">
-              <div>
-                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Sexo
-                </label>
-
-                <select
-                  value={sexo}
-                  onChange={(event) => setSexo(event.target.value)}
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-                >
-                  <option value="">Todos</option>
-                  {sexos.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Especialidade
-                </label>
-
-                <select
-                  value={especialidade}
-                  onChange={(event) => setEspecialidade(event.target.value)}
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-                >
-                  <option value="">Todas</option>
-                  {especialidades.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Cadastro
-                </label>
-
-                <select
-                  value={cadastro}
-                  onChange={(event) => setCadastro(event.target.value)}
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-                >
-                  <option value="">Todos</option>
-                  <option value="incompleto">Com pendências</option>
-                  <option value="completo">Completos</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-transparent">
-                  Ações
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setSexo("");
-                    setEspecialidade("");
-                    setCadastro("");
-                    setSeguimento("");
-                  }}
-                  disabled={!hasFilters}
-                  className={`inline-flex h-12 w-full items-center justify-center rounded-2xl px-6 text-sm font-semibold transition ${
-                    hasFilters
-                      ? "bg-slate-900 text-white hover:bg-slate-800"
-                      : "cursor-not-allowed border border-slate-200 bg-white text-slate-400"
-                  }`}
-                >
-                  {hasFilters ? "Limpar filtros" : "Sem filtros ativos"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
-            <span className="mr-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Seguimento
-            </span>
-            {[
-              { value: "", label: "Todos" },
-              { value: "overdue", label: `Atrasados (${overdueCount})` },
-              {
-                value: "upcoming",
-                label: `Próximos 7 dias (${followupQueue.length - overdueCount})`,
-              },
-              { value: "none", label: "Sem retorno" },
-            ].map((option) => (
-              <button
-                key={option.value || "all"}
-                type="button"
-                onClick={() => setSeguimento(option.value)}
-                className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-semibold transition ${
-                  seguimento === option.value
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </ModulePageHeader>
+      />
 
       {!loading && followupQueue.length > 0 ? (
         <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">

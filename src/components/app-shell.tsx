@@ -202,7 +202,7 @@ function Badge({ value }: { value?: number | null }) {
   if (value === null || value === undefined) return null;
 
   return (
-    <span className="inline-flex min-w-[24px] items-center justify-center rounded-full border border-white/8 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-400">
+    <span className="text-[11px] font-medium tabular-nums text-slate-400">
       {value}
     </span>
   );
@@ -226,11 +226,11 @@ function NavSection({
 }) {
   return (
     <section>
-      <div className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+      <div className="mb-1 px-2.5 text-xs font-medium text-slate-400">
         {title}
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-px">
         {items.map((item) => {
           const Icon = item.icon;
           const active =
@@ -241,32 +241,20 @@ function NavSection({
               key={item.href}
               href={item.href}
               onClick={onNavigate}
-              className={`group flex items-center justify-between rounded-xl border px-2.5 py-2 transition ${
+              aria-current={active ? "page" : undefined}
+              className={`group flex items-center justify-between rounded-lg px-2.5 py-[7px] transition ${
                 active
-                  ? "border-cyan-300/16 bg-white/[0.065] shadow-[inset_0_0_0_1px_rgba(125,211,252,0.06)]"
-                  : "border-transparent bg-transparent hover:border-white/7 hover:bg-white/[0.03]"
+                  ? "bg-cyan-50 text-cyan-900"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
               <div className="flex min-w-0 items-center gap-2.5">
-                <div
-                  className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border ${
-                    active
-                      ? "border-cyan-300/12 bg-cyan-400/[0.07]"
-                      : "border-white/7 bg-white/[0.025]"
+                <Icon
+                  className={`h-4 w-4 shrink-0 ${
+                    active ? "text-cyan-800" : "text-slate-400 group-hover:text-slate-600"
                   }`}
-                >
-                  <Icon
-                    className={`h-[15px] w-[15px] ${
-                      active ? "text-cyan-200" : "text-slate-300"
-                    }`}
-                  />
-                </div>
-
-                <span
-                  className={`truncate text-[13px] font-medium ${
-                    active ? "text-white" : "text-slate-200"
-                  }`}
-                >
+                />
+                <span className={`truncate text-[13.5px] ${active ? "font-semibold" : "font-medium"}`}>
                   {item.label}
                 </span>
               </div>
@@ -465,10 +453,10 @@ function SidebarContent({
   const visibleSecondaryItems = isGuest ? [] : secondaryItems;
 
   return (
-    <div className="flex h-full flex-col bg-[#081a3a] text-white">
-      <div className={`border-b border-white/7 py-3 pl-3 ${isMobile ? "pr-14" : "pr-3"}`}>
+    <div className="flex h-full flex-col bg-white text-slate-900">
+      <div className={`py-3.5 pl-4 ${isMobile ? "pr-14" : "pr-3"}`}>
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cyan-200/20 bg-white p-0.5 shadow-[0_8px_20px_rgba(0,0,0,0.18)]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-0.5">
             <Image
               src="/resibook-icon.svg"
               alt="ResiBook"
@@ -480,17 +468,17 @@ function SidebarContent({
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-bold uppercase tracking-[0.12em] text-white">
-              Resi<span className="text-cyan-300">Book</span>
+            <p className="truncate text-[15px] font-semibold tracking-tight text-slate-950">
+              Resi<span className="text-cyan-700">Book</span>
             </p>
-            <p className="mt-0.5 truncate text-[9px] font-medium uppercase tracking-[0.08em] text-slate-400">Workspace clínico</p>
+            <p className="truncate text-[11px] text-slate-500">Workspace clínico</p>
           </div>
-          <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${
+          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
             isGuest
-              ? "border-amber-300/20 bg-amber-300/10 text-amber-200"
+              ? "border-amber-200 bg-amber-50 text-amber-800"
               : isAdmin
-                ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-200"
-                : "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
+                ? "border-cyan-100 bg-cyan-50 text-cyan-900"
+                : "border-slate-200 bg-slate-50 text-slate-600"
           }`}>
             {isGuest
               ? "Convidado"
@@ -501,7 +489,7 @@ function SidebarContent({
         </div>
 
         {isMobile ? (
-          <p className="mt-2 text-[11px] leading-4 text-slate-500">
+          <p className="mt-2 text-xs leading-4 text-slate-500">
             {isGuest
               ? "Acesso restrito aos módulos liberados."
               : "Navegação compacta para rotina clínica."}
@@ -509,7 +497,7 @@ function SidebarContent({
         ) : null}
       </div>
 
-      <div className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
+      <div className="sidebar-scroll flex-1 space-y-5 overflow-y-auto px-2.5 pb-3 pt-1">
         {isGuest ? (
           <NavSection
             title="Acesso liberado"
@@ -559,14 +547,14 @@ function SidebarContent({
         ) : null}
 
         {isGuest ? (
-          <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-4">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5">
             <div className="flex items-start gap-3">
-              <Lock className="mt-0.5 h-4 w-4 text-amber-200" />
+              <Lock className="mt-0.5 h-4 w-4 text-amber-700" />
               <div>
-                <p className="text-sm font-semibold text-amber-100">
+                <p className="text-sm font-semibold text-amber-900">
                   Perfil convidado
                 </p>
-                <p className="mt-1 text-sm leading-6 text-amber-100/80">
+                <p className="mt-1 text-sm leading-6 text-amber-800">
                   As demais áreas do sistema estão bloqueadas para este usuário.
                 </p>
 
@@ -574,21 +562,21 @@ function SidebarContent({
                   <Link
                     href="/termos"
                     onClick={onNavigate}
-                    className="rounded-full border border-amber-200/15 bg-white/10 px-3 py-1 text-xs font-medium text-amber-100 hover:bg-white/15"
+                    className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
                   >
                     Termos
                   </Link>
                   <Link
                     href="/privacidade"
                     onClick={onNavigate}
-                    className="rounded-full border border-amber-200/15 bg-white/10 px-3 py-1 text-xs font-medium text-amber-100 hover:bg-white/15"
+                    className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
                   >
                     Privacidade
                   </Link>
                   <Link
                     href="/suporte"
                     onClick={onNavigate}
-                    className="rounded-full border border-amber-200/15 bg-white/10 px-3 py-1 text-xs font-medium text-amber-100 hover:bg-white/15"
+                    className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
                   >
                     Suporte
                   </Link>
@@ -599,27 +587,11 @@ function SidebarContent({
         ) : null}
       </div>
 
-      <div className="border-t border-white/7 p-2.5">
-        <div className="rounded-2xl border border-white/7 bg-white/[0.025] p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {isGuest ? "Sessão" : isAdmin ? "Administrador" : "Conta"}
-              </p>
-              <p className="mt-1 text-[13px] text-slate-300">
-                {isGuest
-                  ? "Usuário convidado ativo."
-                  : isAdmin
-                    ? "Sessão administrativa protegida."
-                    : "Saída segura do ambiente clínico."}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <LogoutButton />
-          </div>
-        </div>
+      <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3">
+        <p className="min-w-0 truncate text-xs text-slate-500">
+          {isGuest ? "Sessão de convidado" : isAdmin ? "Sessão administrativa" : "Sessão clínica"}
+        </p>
+        <LogoutButton />
       </div>
     </div>
   );
@@ -637,16 +609,16 @@ function ShellSkeleton({ sidebarOpen }: { sidebarOpen: boolean }) {
     >
       <span className="sr-only">Carregando acesso.</span>
       {sidebarOpen ? (
-        <div className="fixed inset-y-0 left-0 hidden w-[248px] bg-[#081a3a] px-3 py-3 lg:block">
-          <div className="flex items-center gap-2.5 border-b border-white/7 pb-3">
-            <div className="h-9 w-9 rounded-xl bg-white/10" />
-            <div className="h-3 w-24 rounded bg-white/10" />
+        <div className="fixed inset-y-0 left-0 hidden w-[248px] border-r border-slate-200 bg-white px-3 py-3.5 lg:block">
+          <div className="flex items-center gap-2.5 pb-3 pl-1">
+            <div className="h-8 w-8 rounded-lg bg-slate-100" />
+            <div className="h-3 w-24 rounded bg-slate-100" />
           </div>
-          <div className="mt-5 space-y-2.5">
+          <div className="mt-4 space-y-1.5">
             {Array.from({ length: 9 }, (_, index) => (
-              <div key={index} className="flex items-center gap-3 px-2 py-2">
-                <div className="h-8 w-8 rounded-xl bg-white/[0.07]" />
-                <div className="h-2.5 w-24 rounded bg-white/[0.07]" />
+              <div key={index} className="flex items-center gap-2.5 px-2.5 py-2">
+                <div className="h-4 w-4 rounded bg-slate-100" />
+                <div className="h-2.5 w-24 rounded bg-slate-100" />
               </div>
             ))}
           </div>
@@ -658,10 +630,10 @@ function ShellSkeleton({ sidebarOpen }: { sidebarOpen: boolean }) {
           <div className="h-11 rounded-2xl border border-slate-200 bg-white" />
         </div>
         <div className="mx-auto w-full max-w-7xl animate-pulse px-3 pt-4 sm:px-4 md:px-6 md:py-6 lg:px-8">
-          <div className="rounded-[18px] bg-[#0b2447]/90 p-6 md:p-8">
-            <div className="h-3 w-40 rounded bg-white/15" />
-            <div className="mt-5 h-8 w-2/3 max-w-md rounded-lg bg-white/15" />
-            <div className="mt-4 h-3 w-full max-w-xl rounded bg-white/10" />
+          <div className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className={`${bar} h-3 w-40`} />
+            <div className={`${bar} mt-4 h-7 w-2/3 max-w-md`} />
+            <div className={`${bar} mt-3 h-3 w-full max-w-xl`} />
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
             {Array.from({ length: 4 }, (_, index) => (
@@ -994,7 +966,7 @@ export default function AppShell({ children }: Props) {
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
       {desktopSidebarOpen ? (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-slate-200/80 shadow-[18px_0_50px_rgba(15,23,42,0.06)] lg:block print:hidden">
+        <aside className="app-sidebar fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-slate-200 lg:block print:hidden">
           <SidebarContent
             pathname={pathname}
             counts={counts}
@@ -1048,7 +1020,7 @@ export default function AppShell({ children }: Props) {
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white backdrop-blur transition hover:bg-white/15"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
                 aria-label="Fechar menu"
               >
                 <X className="h-5 w-5" />

@@ -283,3 +283,16 @@ body[data-resibook-surface]:not([data-resibook-surface="public"]) main [class*="
 body[data-resibook-surface]:not([data-resibook-surface="public"]) main [class*="uppercase"][class*="tracking-[0."]:is([class*="text-[9px]"], [class*="text-[10px]"], [class*="text-[11px]"]) {
   font-size: 12px;
 }
+
+/* One accent colour: solid dark action buttons inside signed-in modules use
+   the cyan primary, matching the header actions and the psychiatry module. */
+body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(button, a):is(.bg-slate-900, .bg-slate-950):not(:disabled) {
+  border-color: var(--color-cyan-800);
+  background-color: var(--color-cyan-800);
+  color: #ffffff;
+}
+
+body[data-resibook-surface]:not([data-resibook-surface="public"]) main :is(button, a):is(.bg-slate-900, .bg-slate-950):not(:disabled):hover {
+  border-color: var(--color-cyan-900);
+  background-color: var(--color-cyan-900);
+}
