@@ -39,6 +39,7 @@ import {
   X,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
+import ThemeToggle from "./theme-toggle";
 import { FeedbackWidget } from "./feedback-widget";
 import { Topbar } from "./topbar";
 
@@ -453,7 +454,7 @@ function SidebarContent({
   const visibleSecondaryItems = isGuest ? [] : secondaryItems;
 
   return (
-    <div className="flex h-full flex-col bg-[#0b1b33] text-white">
+    <div className="app-sidebar-panel flex h-full flex-col bg-[#0b1b33] text-white">
       <div className={`py-3.5 pl-4 ${isMobile ? "pr-14" : "pr-3"}`}>
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5">
@@ -591,7 +592,10 @@ function SidebarContent({
         <p className="min-w-0 truncate text-xs text-slate-400">
           {isGuest ? "Sessão de convidado" : isAdmin ? "Sessão administrativa" : "Sessão clínica"}
         </p>
-        <LogoutButton />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <LogoutButton />
+        </div>
       </div>
     </div>
   );
