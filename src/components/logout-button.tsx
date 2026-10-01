@@ -3,6 +3,7 @@
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { clearClinicalCaseSession } from "@/lib/clinical-case-session";
+import { clearOfflinePages } from "./service-worker-register";
 
 export default function LogoutButton() {
   async function handleLogout() {
@@ -10,6 +11,7 @@ export default function LogoutButton() {
 
     try {
       clearClinicalCaseSession();
+      clearOfflinePages();
       await supabase.auth.signOut();
     } finally {
       window.location.replace("/login");

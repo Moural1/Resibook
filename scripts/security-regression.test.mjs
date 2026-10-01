@@ -652,3 +652,16 @@ test("nova tentativa de pagamento não libera acesso pelo botão", () => {
   assert.match(actions, /retry=1/);
   assert.doesNotMatch(actions, /status:\s*["']authorized["']/);
 });
+
+test("service worker não guarda APIs nem páginas com dados pessoais", () => {
+  const sw = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return;/);
+  assert.match(sw, /request\.method !== "GET"/);
+  const pages = sw.match(/const OFFLINE_PAGES = \[([^\]]*)\]/)?.[1] || "";
+  assert.deepEqual(
+    pages.split(",").map((item) => item.trim().replace(/"/g, "")),
+    ["/acls", "/calculadoras", "/ecg-guiado"]
+  );
+  const logout = readFileSync(new URL("../src/components/logout-button.tsx", import.meta.url), "utf8");
+  assert.match(logout, /clearOfflinePages\(\)/);
+});

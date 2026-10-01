@@ -748,7 +748,9 @@ export default function AppShell({ children }: Props) {
           return;
         }
 
-        if (!isLegalPublicPath(pathname)) {
+        // Sem internet a consulta falha; o aceite já é exigido pelo proxy em
+        // toda navegação online, então páginas guardadas offline seguem abertas.
+        if (!isLegalPublicPath(pathname) && navigator.onLine) {
           const accepted = await hasAcceptedCurrentLegal(supabase, userId);
 
           if (!mounted) return;

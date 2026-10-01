@@ -93,11 +93,30 @@ const RESOURCE_GROUPS: { title: string; items: { label: string; icon: IconType }
   },
 ];
 
+const PLAN_ROWS: [string, boolean][] = [
+  ["Calculadoras clínicas, CIDs e tópicos médicos", true],
+  ["ACLS com eBook e ECG guiado", true],
+  ["Flashcards do Banco Resibook", true],
+  ["Plantão: roteiro do caso, caso rápido, alta segura e SBAR", false],
+  ["Prescrições e modelos prontos para copiar", false],
+  ["Exames, evolução e condutas", false],
+  ["Revisão dos flashcards difíceis", false],
+  ["Meu Resibook: cópias privadas e editáveis", false],
+];
+
+/* Depoimentos reais de usuários. A seção só aparece quando houver itens:
+   nunca preencher com depoimentos fictícios. */
+const TESTIMONIALS: { quote: string; name: string; role: string }[] = [];
+
 const FAQ = [
-  ["Funciona no celular durante o plantão?", "Sim. O Resibook roda no navegador do celular, sem instalar nada, e foi desenhado para consulta rápida em tela pequena."],
+  ["Funciona no celular durante o plantão?", "Sim. O Resibook roda no navegador do celular e foi desenhado para consulta rápida em tela pequena. Você também pode adicioná-lo à tela inicial para abrir como um app."],
+  ["Qual a diferença entre o Básico e o Completo?", "O Básico reúne a biblioteca de consulta e estudo: calculadoras, CIDs, tópicos, ACLS e flashcards. O Completo acrescenta as ferramentas do plantão (roteiro do caso, prescrições, exames, condutas) e o Meu Resibook, seu acervo privado."],
+  ["Quais as formas de pagamento?", "Cartão pelo Mercado Pago, com liberação automática, ou Pix. A assinatura é mensal."],
+  ["Posso trocar de plano depois?", "Sim. Você pode começar no Básico e fazer upgrade para o Completo quando quiser, pela área Minha assinatura."],
   ["Minhas adaptações ficam visíveis para outras pessoas?", "Não. O Meu Resibook é privado e protegido por regras de acesso vinculadas à sua conta."],
   ["O Banco Resibook pode ser alterado por qualquer médico?", "Não. Médicos consultam e copiam; a edição do conteúdo global fica restrita à equipe autorizada."],
   ["Posso cancelar quando quiser?", "Sim. Não há fidelidade, e a assinatura é gerenciada na área Minha assinatura."],
+  ["Como meus dados e os dos pacientes são protegidos?", "Cada conta só acessa os próprios registros, com regras de segurança no banco de dados. Recomendamos não registrar dados que identifiquem o paciente além do necessário, e você pode apagar seus registros a qualquer momento. Detalhes na Política de privacidade."],
 ] as const;
 
 function Brand({
@@ -410,8 +429,8 @@ export default function HomePage() {
                 Menos que um lanche de plantão por semana
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                Crie sua conta, pague com segurança no Mercado Pago e tenha o
-                acesso liberado automaticamente.
+                Crie sua conta, pague por cartão ou Pix e comece a usar no
+                mesmo plantão.
               </p>
             </div>
 
@@ -472,8 +491,38 @@ export default function HomePage() {
               </article>
             </div>
 
+            <div className="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">Comparação entre os planos Básico e Completo</caption>
+                <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                  <tr>
+                    <th scope="col" className="px-4 py-3 font-semibold sm:px-6">O que está incluído</th>
+                    <th scope="col" className="w-20 px-2 py-3 text-center font-semibold sm:w-28">Básico</th>
+                    <th scope="col" className="w-20 px-2 py-3 text-center font-semibold text-cyan-800 sm:w-28">Completo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {PLAN_ROWS.map(([label, basic]) => (
+                    <tr key={label}>
+                      <th scope="row" className="px-4 py-3 font-medium text-slate-800 sm:px-6">{label}</th>
+                      <td className="px-2 py-3 text-center">
+                        {basic ? (
+                          <Check className="mx-auto h-4 w-4 text-cyan-700" aria-label="Incluído" />
+                        ) : (
+                          <span className="text-slate-300" aria-label="Não incluído">—</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-3 text-center">
+                        <Check className="mx-auto h-4 w-4 text-cyan-700" aria-label="Incluído" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
             <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-slate-600">
-              {["Pagamento seguro via Mercado Pago", "Acesso liberado na hora", "Sem fidelidade: cancele quando quiser"].map((item) => (
+              {["Cartão via Mercado Pago ou Pix", "Acesso liberado na hora", "Sem fidelidade: cancele quando quiser"].map((item) => (
                 <li key={item} className="inline-flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-cyan-700" />
                   {item}
@@ -482,6 +531,26 @@ export default function HomePage() {
             </ul>
           </div>
         </section>
+
+        {TESTIMONIALS.length > 0 && (
+          <section aria-label="Depoimentos" className="bg-white py-16 sm:py-20">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-10">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">Quem usa</p>
+              <h2 className="mt-3 text-3xl font-semibold text-[#091a38]">O que dizem os médicos</h2>
+              <div className="mt-8 grid gap-5 md:grid-cols-2">
+                {TESTIMONIALS.map(({ quote, name, role }) => (
+                  <figure key={name} className="rounded-xl border border-slate-200 bg-slate-50 p-6">
+                    <blockquote className="text-base leading-7 text-slate-700">“{quote}”</blockquote>
+                    <figcaption className="mt-4 text-sm">
+                      <span className="font-semibold text-slate-900">{name}</span>
+                      <span className="text-slate-500"> · {role}</span>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section id="seguranca" className="scroll-mt-20 bg-white py-16 sm:py-20">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-10">

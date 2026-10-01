@@ -6,7 +6,7 @@ import { isDisabledCommercialRoute } from "@/lib/product-config";
 import { getBillingRuntimeConfig } from "@/lib/billing/config";
 import { getBestActiveEntitlement } from "@/lib/billing/entitlement";
 
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/auth/callback", "/auth/confirm", "/termos", "/privacidade", "/aceite-legal", "/api/mercado-pago/webhook"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/auth/callback", "/auth/confirm", "/termos", "/privacidade", "/aceite-legal", "/api/mercado-pago/webhook", "/sw.js", "/offline.html", "/manifest.webmanifest"];
 const GUEST_EMAIL = "convidado@resibook.com";
 const GUEST_ALLOWED_PATHS = ["/prescricao", "/caso-rapido", "/topicos", "/cids", "/exames-evolucao", "/termos", "/privacidade", "/aceite-legal", "/suporte"];
 const BILLING_ALLOWED_PATHS = ["/assinar", "/minha-assinatura", "/api/billing", "/dados-da-conta", "/suporte"];
