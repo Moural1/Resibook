@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ModulePageHeader from "@/components/module-page-header";
 import ResibookGuard from "@/components/resibook-guard";
+import ComplaintBoard from "@/components/complaint-board";
 import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import {
   ArrowUpRight,
@@ -108,9 +109,6 @@ const SAFETY_CHECKS = [
   "Orientações de retorno e pendências comunicadas com clareza",
 ];
 
-function queryHref(path: string, query: string) {
-  return `${path}?q=${encodeURIComponent(query)}`;
-}
 
 export default function PlantaoPage() {
   return (
@@ -196,31 +194,21 @@ export default function PlantaoPage() {
 
       <ResibookGuard context="plantao" />
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Queixas rápidas
-            </p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
-              Escolha a síndrome e vá direto para a ação
-            </h2>
+            <h2 className="text-[15px] font-semibold text-slate-900">Queixas rápidas</h2>
+            <p className="mt-0.5 text-sm text-slate-500">Escolha a síndrome: o roteiro abre com o caso já contextualizado.</p>
           </div>
-
           <Link
             href="/condutas"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
             <Search className="h-4 w-4" />
-            Ver condutas
+            Ver todas as condutas
           </Link>
         </div>
-
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {QUICK_COMPLAINTS.map((item) => (
-            <ComplaintHub key={item.title} title={item.title} description={item.description} group={item.group} href={item.href} />
-          ))}
-        </div>
+        <ComplaintBoard />
       </section>
     </div>
   );
@@ -251,55 +239,5 @@ function ActionCard({
       <p className="mt-3 text-sm font-semibold text-slate-950">{title}</p>
       <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
     </Link>
-  );
-}
-
-function ComplaintHub({
-  title,
-  description,
-  href,
-  group,
-}: {
-  title: string;
-  description: string;
-  href: string;
-  group: string;
-}) {
-  const actions = [
-    { label: "Roteiro", href: queryHref("/plantao/roteiro-caso", title) },
-    { label: "Caso", href: queryHref("/caso-rapido", title) },
-    { label: "Conduta", href },
-    { label: "Plano", href: queryHref("/plantao/prescricao-guiada", title) },
-    { label: "Rx", href: queryHref("/prescricao", title) },
-    { label: "Exames", href: queryHref("/exames-evolucao", title) },
-    { label: "Encam.", href: queryHref("/plantao/encaminhamento", title) },
-    { label: "Alta", href: queryHref("/plantao/alta-segura", title) },
-    { label: "CID", href: queryHref("/cids", title) },
-  ];
-
-  return (
-    <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 transition hover:border-slate-300 hover:bg-white">
-      <div className="flex items-center justify-between gap-3">
-        <Link href={href} className="min-w-0 text-sm font-semibold text-slate-950 transition hover:text-cyan-700">
-          {title}
-        </Link>
-        <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-          {group}
-        </span>
-      </div>
-      <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500">{description}</p>
-
-      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-4 xl:grid-cols-8">
-        {actions.map((action) => (
-          <Link
-            key={action.label}
-            href={action.href}
-            className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-950 hover:text-white"
-          >
-            {action.label}
-          </Link>
-        ))}
-      </div>
-    </article>
   );
 }
