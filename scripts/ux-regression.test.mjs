@@ -154,3 +154,11 @@ test("calculadoras funcionam como central clínica com descoberta e continuidade
   assert.match(calculators, /role="tablist"/);
   assert.match(calculators, /router\.replace\(`\/calculadoras\?calculadora=/);
 });
+
+test("animação de entrada não prende modais fixos dentro da página", async () => {
+  const css = await source("../src/app/globals.css");
+  // fill-mode "both"/"forwards" deixa um transform aplicado e transforma o
+  // conteúdo em containing block de position:fixed (gaveta de prescrição).
+  assert.match(css, /\.page-enter > \* \{ animation: page-enter [^;]*backwards; \}/);
+  assert.doesNotMatch(css, /\.page-enter > \* \{ animation:[^;]*\b(both|forwards)\b/);
+});
