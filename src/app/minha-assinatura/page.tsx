@@ -72,8 +72,8 @@ export default async function MinhaAssinaturaPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
-        <div className="flex items-center gap-4"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700"><CreditCard /></span><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Cobrança</p><h1 className="text-2xl font-semibold text-slate-950">Minha assinatura</h1></div></div>
+      <section className="overflow-hidden rounded-xl border border-slate-200 border-t-[3px] border-t-cyan-700 bg-white p-6 md:p-7">
+        <div className="flex items-center gap-3"><CreditCard className="h-6 w-6 text-cyan-800" /><div><p className="text-sm font-medium text-cyan-800">Cobrança</p><h1 className="text-2xl font-semibold tracking-tight text-slate-950">Minha assinatura</h1></div></div>
         {billingConfig.testMode ? <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Ambiente de teste — esta assinatura não altera o acesso comercial.</div> : null}
         {subscription && plan ? (
           <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5">

@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { isResibookAdmin, LEGACY_ADMIN_EMAIL } from "@/lib/auth-role";
+import ModulePageHeader from "@/components/module-page-header";
 import {
-  Activity,
   AlertTriangle,
   Ban,
   CheckCircle2,
-  Clock3,
   Copy,
   Download,
   KeyRound,
@@ -16,7 +15,6 @@ import {
   ShieldCheck,
   Trash2,
   UserRound,
-  Users,
 } from "lucide-react";
 
 type LoginLog = {
@@ -117,33 +115,6 @@ async function getSessionInfo(): Promise<SessionInfo> {
     email,
     isAdmin: isResibookAdmin(data.session?.user),
   };
-}
-
-function SummaryCard({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
-          <Icon className="h-5 w-5" />
-        </div>
-
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            {label}
-          </p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function AcessosPage() {
@@ -666,57 +637,31 @@ export default function AcessosPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-              Administração
-            </span>
-
-            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-              Logins e bloqueios
-            </span>
-          </div>
-
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-            Acessos ao ResiBook
-          </h1>
-
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Monitore acessos, veja usuários únicos, confira o último login e
-            gerencie bloqueios sem expor dados clínicos.
-          </p>
-
-          {error ? (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-              Erro: {error}
-            </div>
-          ) : null}
-
-          {success ? (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-              {success}
-            </div>
-          ) : null}
-
-          {!adminApiAvailable ? (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <ModulePageHeader
+        eyebrow="Administração"
+        title="Acessos ao ResiBook"
+        description="Monitore acessos, veja usuários únicos, confira o último login e gerencie bloqueios sem expor dados clínicos."
+        badges={[{ label: "Logins e bloqueios", tone: "slate" }]}
+        metrics={[
+          { label: "Logins registrados", value: logs.length },
+          { label: "Usuários únicos", value: uniqueUsers },
+          { label: "Logins hoje", value: todayCount },
+          { label: "Bloqueados", value: blockedCount },
+        ]}
+        error={error || undefined}
+        success={success || undefined}
+        notice={
+          !adminApiAvailable ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               Listagem, convites e exclusão de contas estão desativados até configurar
               <code className="mx-1 rounded bg-white px-1.5 py-0.5 text-xs font-semibold">
                 SUPABASE_SERVICE_ROLE_KEY
               </code>
               somente no servidor. Logs e bloqueios continuam disponíveis.
             </div>
-          ) : null}
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Logins registrados" value={logs.length} icon={Activity} />
-          <SummaryCard label="Usuários únicos" value={uniqueUsers} icon={Users} />
-          <SummaryCard label="Logins hoje" value={todayCount} icon={Clock3} />
-          <SummaryCard label="Bloqueados" value={blockedCount} icon={Ban} />
-        </div>
-      </section>
+          ) : undefined
+        }
+      />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="border-b border-slate-200 pb-5">

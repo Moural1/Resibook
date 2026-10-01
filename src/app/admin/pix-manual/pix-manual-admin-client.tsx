@@ -1,5 +1,6 @@
 "use client";
 
+import ModulePageHeader from "@/components/module-page-header";
 import { useCallback, useEffect, useState } from "react";
 import {
   CalendarDays,
@@ -104,23 +105,24 @@ export function PixManualAdminClient() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">Administração</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-950">Pagamentos Pix manuais</h1>
-            <p className="mt-2 text-sm text-slate-600">Confira comprovantes, renove acessos e acompanhe vencimentos sem abrir o Supabase.</p>
-          </div>
-          <button onClick={() => void load()} disabled={loading} className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"><RefreshCw className="h-4 w-4" />Atualizar</button>
-        </div>
-        {error ? <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
-        <div className="mt-6 grid gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl bg-amber-50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Pendentes</p><p className="mt-1 text-2xl font-semibold text-amber-950">{pending.length}</p></div>
-          <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Ativos</p><p className="mt-1 text-2xl font-semibold text-emerald-950">{active.length}</p></div>
-          <div className="rounded-2xl bg-cyan-50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">Vence em 7 dias</p><p className="mt-1 text-2xl font-semibold text-cyan-950">{expiringSoon.length}</p></div>
-          <div className="rounded-2xl bg-slate-100 p-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">Expirados</p><p className="mt-1 text-2xl font-semibold text-slate-950">{expired.length}</p></div>
-        </div>
-      </section>
+      <ModulePageHeader
+        eyebrow="Administração"
+        title="Pagamentos Pix manuais"
+        description="Confira comprovantes, renove acessos e acompanhe vencimentos sem abrir o Supabase."
+        badges={pending.length ? [{ label: `${pending.length} aguardando aprovação`, tone: "amber" }] : []}
+        metrics={[
+          { label: "Pendentes", value: pending.length },
+          { label: "Ativos", value: active.length },
+          { label: "Vence em 7 dias", value: expiringSoon.length },
+          { label: "Expirados", value: expired.length },
+        ]}
+        error={error || undefined}
+        actions={
+          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium disabled:opacity-50">
+            <RefreshCw className="h-4 w-4" />Atualizar
+          </button>
+        }
+      />
 
       {expiringSoon.length > 0 ? <section className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5">
         <h2 className="text-lg font-semibold text-cyan-950">Clientes para cobrar renovação</h2>

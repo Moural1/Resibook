@@ -203,21 +203,12 @@ function Card({
   hint: string;
 }) {
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-            {title}
-          </p>
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
-            {value}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-slate-500">{hint}</p>
-        </div>
-
-        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
-          {icon}
-        </div>
+    <div className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+      <span className="mt-0.5 shrink-0 text-cyan-800 [&>svg]:h-5 [&>svg]:w-5">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-sm text-slate-500">{title}</p>
+        <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-slate-900">{value}</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{hint}</p>
       </div>
     </div>
   );
@@ -420,14 +411,9 @@ export default function MetricasPage() {
           { label: "Dados privados", tone: "emerald" },
           { label: `Atualizado em ${formatDate(new Date().toISOString())}`, tone: "slate" },
         ]}
-        metrics={[
-          { label: "Pacientes", value: metrics.patientCount },
-          { label: "Prescrições", value: metrics.prescriptionCount },
-          { label: "Risco elevado", value: metrics.highRiskPatients.length },
-        ]}
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Card
           icon={<Users className="h-5 w-5" />}
           title="Pacientes"
@@ -474,7 +460,7 @@ export default function MetricasPage() {
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+            <div className="inline-flex shrink-0 text-cyan-800">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
@@ -517,7 +503,7 @@ export default function MetricasPage() {
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+            <div className="inline-flex shrink-0 text-cyan-800">
               <BarChart3 className="h-5 w-5" />
             </div>
             <div>
@@ -553,7 +539,7 @@ export default function MetricasPage() {
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+            <div className="inline-flex shrink-0 text-cyan-800">
               <ShieldAlert className="h-5 w-5" />
             </div>
             <div>
@@ -606,7 +592,7 @@ export default function MetricasPage() {
         <div className="space-y-6">
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+              <div className="inline-flex shrink-0 text-cyan-800">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <div>
@@ -670,7 +656,7 @@ export default function MetricasPage() {
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+              <div className="inline-flex shrink-0 text-cyan-800">
                 <Activity className="h-5 w-5" />
               </div>
               <div>
@@ -728,7 +714,7 @@ export default function MetricasPage() {
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+            <div className="inline-flex shrink-0 text-cyan-800">
               <Activity className="h-5 w-5" />
             </div>
             <div>
