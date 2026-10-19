@@ -37,8 +37,10 @@ import {
   Tags,
   Users,
   X,
+  Workflow,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
+import { RESUMO_FLUXOS } from "@/lib/fluxos/resumo";
 import ThemeToggle from "./theme-toggle";
 import { FeedbackWidget } from "./feedback-widget";
 import { Topbar } from "./topbar";
@@ -333,6 +335,7 @@ function SidebarContent({
       icon: Stethoscope,
       badge: counts.topicos,
     },
+    { href: "/fluxos", label: "Fluxogramas", icon: Workflow, badge: RESUMO_FLUXOS.temas },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
     {
       href: "/ecg-guiado",

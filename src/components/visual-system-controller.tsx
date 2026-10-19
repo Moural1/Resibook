@@ -6,6 +6,7 @@ import { useEffect } from "react";
 const LIBRARY_ROUTES = [
   "/flashcards",
   "/topicos",
+  "/fluxos",
   "/cids",
   "/condutas",
   "/calculadoras",

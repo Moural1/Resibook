@@ -31,6 +31,7 @@ import {
   Stethoscope,
   Tags,
   Users,
+  Workflow,
   X,
 } from "lucide-react";
 
@@ -48,7 +49,8 @@ type SearchResult = {
     | "cid"
     | "flashcard"
     | "conduta"
-    | "calculadora";
+    | "calculadora"
+    | "fluxo";
 };
 
 type SearchAction = {
@@ -90,6 +92,8 @@ function loadRecentSearches(userId: string | null) {
   }
 }
 
+type FluxoRow = { id: string; titulo: string; area: string; href: string; texto: string };
+
 type SearchIndex = {
   patients: PatientRow[];
   prescriptions: PrescriptionRow[];
@@ -99,6 +103,7 @@ type SearchIndex = {
   cids: CidRow[];
   flashcards: FlashcardRow[];
   marks: MarkRow[];
+  fluxos: FluxoRow[];
 };
 
 // Índice da busca carregado uma vez por usuário e reaproveitado por alguns
@@ -127,7 +132,20 @@ function loadSearchIndex(userId: string, guest: boolean) {
     supabase.from("cids").select("id, codigo, descricao, grupo").limit(5000),
     guest ? emptyRows<FlashcardRow>() : supabase.from("flashcards").select("id, area, materia, frente").limit(5000),
     guest ? emptyRows<MarkRow>() : supabase.from("flashcard_user_marks").select("flashcard_id, dificil").eq("user_id", userId).eq("dificil", true).limit(5000),
-  ]).then(([patients, prescriptions, prescriptionTemplates, exams, topicos, cids, flashcards, marks]) => ({
+    // Conteúdo estático dos fluxogramas: carregado só quando a busca é usada.
+    guest ? Promise.resolve([] as FluxoRow[]) : import("@/lib/fluxos").then(({ AREAS_FLUXOS, textoDoTema }) =>
+      AREAS_FLUXOS.flatMap((area) => [
+        ...area.temas.map((tema) => ({ id: `${area.id}-${tema.id}`, titulo: tema.titulo, area: area.nome, href: `/fluxos/${area.id}/${tema.id}`, texto: textoDoTema(tema) })),
+        ...[...(area.raioX?.regras ?? []), ...(area.regrasRelampago ?? [])].map((regra, index) => ({
+          id: `${area.id}-regra-${index}`,
+          titulo: regra.titulo ? `${regra.tema}: ${regra.titulo}` : regra.tema,
+          area: `Regra relâmpago · ${area.nome}`,
+          href: `/fluxos/${area.id}/relampago`,
+          texto: regra.texto,
+        })),
+      ])
+    ).catch(() => [] as FluxoRow[]),
+  ]).then(([patients, prescriptions, prescriptionTemplates, exams, topicos, cids, flashcards, marks, fluxos]) => ({
     patients: (patients.data || []) as PatientRow[],
     prescriptions: (prescriptions.data || []) as PrescriptionRow[],
     prescriptionTemplates: (prescriptionTemplates.data || []) as PrescriptionTemplateRow[],
@@ -136,6 +154,7 @@ function loadSearchIndex(userId: string, guest: boolean) {
     cids: (cids.data || []) as CidRow[],
     flashcards: (flashcards.data || []) as FlashcardRow[],
     marks: (marks.data || []) as MarkRow[],
+    fluxos,
   }));
 
   searchIndexCache = { key, loadedAt: Date.now(), promise };
@@ -166,6 +185,7 @@ function badgeLabel(type: SearchResult["type"]) {
   if (type === "flashcard") return "Flashcard";
   if (type === "conduta") return "Conduta";
   if (type === "calculadora") return "Calculadora";
+  if (type === "fluxo") return "Fluxograma";
   return "CID";
 }
 
@@ -178,6 +198,7 @@ function ResultIcon({ type }: { type: SearchResult["type"] }) {
   if (type === "flashcard") return <Brain className={className} />;
   if (type === "conduta") return <Siren className={className} />;
   if (type === "calculadora") return <Calculator className={className} />;
+  if (type === "fluxo") return <Workflow className={className} />;
   return <Tags className={className} />;
 }
 
@@ -230,7 +251,7 @@ export function Topbar() {
 
   const groupedResults = useMemo(() => {
     const groups: Array<{ label: string; types: SearchResult["type"][] }> = [
-      { label: "Condutas e apoio", types: ["conduta", "topico", "calculadora"] },
+      { label: "Condutas e apoio", types: ["conduta", "fluxo", "topico", "calculadora"] },
       { label: "Prescrições", types: ["modelo_prescricao", "prescricao"] },
       { label: "Exames e códigos", types: ["exame", "cid"] },
       { label: "Pacientes e revisão", types: ["paciente", "flashcard"] },
@@ -338,8 +359,9 @@ export function Topbar() {
             }));
       const condutaResults: SearchResult[] = rankSearchResults(flashcardRows.filter((item) => difficultIds.has(String(item.id))), q, (item) => [{ value: item.frente, weight: 10 }, { value: item.materia, weight: 6 }, { value: item.area, weight: 5 }, { value: item.verso, weight: 2 }]).map((item) => ({ id: `conduta-${item.id}`, title: item.frente || "Conduta médica", subtitle: item.materia || item.area || "Protocolo marcado por você", href: `/condutas?q=${encodeURIComponent(item.frente || q)}`, type: "conduta" }));
       const flashcardResults: SearchResult[] = rankSearchResults(flashcardRows.filter((item) => !difficultIds.has(String(item.id))), q, (item) => [{ value: item.frente, weight: 10 }, { value: item.materia, weight: 6 }, { value: item.area, weight: 5 }, { value: item.verso, weight: 2 }]).map((item) => ({ id: `flashcard-${item.id}`, title: item.frente || "Flashcard", subtitle: item.materia || item.area || "Revisão rápida", href: `/flashcards?q=${encodeURIComponent(item.frente || q)}`, type: "flashcard" }));
-      const typeBoost: Record<SearchResult["type"], number> = { paciente: 9, modelo_prescricao: 8, prescricao: 7, calculadora: 6.5, topico: 6, exame: 5, cid: 4, conduta: 4.5, flashcard: 3 };
-      const merged = [...patientResults, ...topicoResults, ...calculatorResults, ...prescriptionTemplateResults, ...prescriptionResults, ...examResults, ...cidResults, ...condutaResults, ...flashcardResults].sort((a, b) => getSearchScore([{ value: b.title, weight: 10 }, { value: b.subtitle, weight: 4 }], q) + typeBoost[b.type] - getSearchScore([{ value: a.title, weight: 10 }, { value: a.subtitle, weight: 4 }], q) - typeBoost[a.type]).slice(0, 12);
+      const fluxoResults: SearchResult[] = rankSearchResults(index.fluxos, q, (item) => [{ value: item.titulo, weight: 10 }, { value: item.texto, weight: 1 }]).slice(0, 6).map((item) => ({ id: `fluxo-${item.id}`, title: item.titulo, subtitle: item.area, href: item.href, type: "fluxo" }));
+      const typeBoost: Record<SearchResult["type"], number> = { paciente: 9, modelo_prescricao: 8, prescricao: 7, calculadora: 6.5, topico: 6, fluxo: 5.5, exame: 5, cid: 4, conduta: 4.5, flashcard: 3 };
+      const merged = [...patientResults, ...topicoResults, ...fluxoResults, ...calculatorResults, ...prescriptionTemplateResults, ...prescriptionResults, ...examResults, ...cidResults, ...condutaResults, ...flashcardResults].sort((a, b) => getSearchScore([{ value: b.title, weight: 10 }, { value: b.subtitle, weight: 4 }], q) + typeBoost[b.type] - getSearchScore([{ value: a.title, weight: 10 }, { value: a.subtitle, weight: 4 }], q) - typeBoost[a.type]).slice(0, 12);
       setResults(merged);
       setLoading(false);
     }

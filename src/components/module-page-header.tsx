@@ -52,7 +52,7 @@ function getModuleArea(pathname: string) {
     return "Atendimento";
   }
 
-  if (pathname.startsWith("/acls") || pathname.startsWith("/topicos")) {
+  if (pathname.startsWith("/acls") || pathname.startsWith("/topicos") || pathname.startsWith("/fluxos")) {
     return "Protocolos e consulta";
   }
 
