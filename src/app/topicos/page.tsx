@@ -15,6 +15,8 @@ import {
   Plus,
   Search,
   X,
+  ArrowRight,
+  Workflow,
 } from "lucide-react";
 
 type TopicoMedico = {
@@ -735,6 +737,22 @@ export default function TopicosPage() {
           ) : null
         }
       />
+
+      <Link
+        href="/fluxos"
+        className="group flex items-center gap-3 rounded-xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 transition hover:border-cyan-700/40"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-cyan-800">
+          <Workflow className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-cyan-950">Fluxogramas de revisão</span>
+          <span className="block text-xs text-cyan-900/80">
+            49 temas com algoritmo, quadros, o que mais cai e pegadinhas, mais 153 regras relâmpago.
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-cyan-800 transition group-hover:translate-x-0.5" />
+      </Link>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">

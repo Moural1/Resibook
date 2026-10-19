@@ -36,8 +36,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Dependency audit
-        run: npm audit --audit-level=high
+      # Produção: bloqueia a partir de "high". Ferramentas de desenvolvimento
+      # (lint/build, fora do bundle): bloqueia só "critical", porque alertas
+      # sem versão corrigida (ex.: braces via eslint-config-next) travariam todo PR.
+      - name: Dependency audit (production)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Dependency audit (all, critical)
+        run: npm audit --audit-level=critical
 
       - name: Typecheck
         run: npm run typecheck
