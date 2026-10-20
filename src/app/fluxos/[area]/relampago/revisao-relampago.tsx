@@ -6,6 +6,7 @@ import { ArrowLeft, Eye, EyeOff, Search } from "lucide-react";
 import ModulePageHeader from "@/components/module-page-header";
 import Fluxograma from "@/components/fluxos/fluxograma";
 import { QuadroComparativo } from "@/components/fluxos/blocos";
+import TextoRico from "@/components/fluxos/texto-rico";
 import { encontrarArea, type RegraRelampago } from "@/lib/fluxos";
 import { rankSearchResults } from "@/lib/search";
 
@@ -18,7 +19,9 @@ function CartaoRegra({ regra, oculto }: { regra: RegraRelampago; oculto: boolean
       <p className="text-xs font-medium text-cyan-800">{regra.tema}</p>
       {regra.titulo ? <h3 className="mt-0.5 text-[15px] font-semibold text-slate-900">{regra.titulo}</h3> : null}
       {mostrar ? (
-        <p className="mt-2 text-sm leading-6 text-slate-700">{regra.texto}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          <TextoRico texto={regra.texto} />
+        </p>
       ) : (
         <button
           type="button"
