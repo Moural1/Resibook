@@ -72,7 +72,8 @@ export default async function TemaFluxoPage({ params }: Props) {
         }
       />
 
-      <nav aria-label="Seções do tema" className="sticky top-[76px] z-20 -mx-1 flex gap-1.5 overflow-x-auto rounded-xl border border-slate-200 bg-white/95 p-1.5 backdrop-blur">
+      <nav aria-label="Seções do tema" className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-medium text-slate-500">Ir para:</span>
         {[
           tema.algoritmos?.length ? ["#secao-algoritmos", tema.algoritmos.length === 1 ? "Algoritmo" : "Algoritmos"] : null,
           tema.linhasDoTempo?.length ? ["#secao-linha-do-tempo", "Linha do tempo"] : null,
@@ -83,7 +84,7 @@ export default async function TemaFluxoPage({ params }: Props) {
         ]
           .filter((item): item is string[] => Boolean(item))
           .map(([href, rotulo]) => (
-            <a key={href} href={href} className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-900">
+            <a key={href} href={href} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-600 transition hover:border-cyan-700/40 hover:bg-cyan-50 hover:text-cyan-900">
               {rotulo}
             </a>
           ))}
