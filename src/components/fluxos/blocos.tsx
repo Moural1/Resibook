@@ -1,33 +1,47 @@
-import { AlertTriangle, X } from "lucide-react";
+import { CircleCheck, ShieldAlert, Target, TriangleAlert, X } from "lucide-react";
 import type { GraficoIntervalos, LinhaDoTempo, Quadro } from "@/lib/fluxos";
+import { separarTitulo, separarVeredito } from "@/lib/fluxos/destaque";
+import TextoRico from "./texto-rico";
 
+/* Quadro comparativo: tabela no desktop, um cartão por linha no celular. */
 export function QuadroComparativo({ quadro }: { quadro: Quadro }) {
-  const larguraMinima = Math.max(quadro.colunas.length * 170, 480);
+  const [rotuloColuna, ...colunas] = quadro.colunas;
+  const muitasColunas = quadro.colunas.length >= 4;
+
   return (
     <figure className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <figcaption className="border-b border-slate-200 px-4 py-3 text-[15px] font-semibold text-slate-950">{quadro.titulo}</figcaption>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm leading-6" style={{ minWidth: larguraMinima }}>
-          <thead className="bg-slate-50 text-xs text-slate-500">
-            <tr>
+      <figcaption className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 text-[15px] font-semibold text-slate-950">
+        <span className="h-4 w-1 rounded-full bg-cyan-700" aria-hidden="true" />
+        {quadro.titulo}
+      </figcaption>
+
+      {/* Desktop */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full border-collapse text-left text-sm leading-6" style={{ minWidth: muitasColunas ? 760 : undefined }}>
+          <thead>
+            <tr className="bg-cyan-900 text-white">
               {quadro.colunas.map((coluna, index) => (
-                <th key={`${coluna}-${index}`} scope="col" className="px-4 py-2.5 font-semibold">
+                <th
+                  key={`${coluna}-${index}`}
+                  scope="col"
+                  className={`px-4 py-2.5 text-[13px] font-semibold ${index === 0 ? "w-[22%] min-w-[140px]" : ""}`}
+                >
                   {coluna}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {quadro.linhas.map((linha, linhaIndex) => (
-              <tr key={linhaIndex} className="align-top">
+              <tr key={linhaIndex} className={`align-top ${linhaIndex % 2 ? "bg-slate-50/70" : "bg-white"}`}>
                 {linha.map((celula, index) =>
                   index === 0 ? (
-                    <th key={index} scope="row" className="px-4 py-2.5 font-semibold text-slate-900">
+                    <th key={index} scope="row" className="border-r border-slate-200 px-4 py-3 font-semibold text-slate-900">
                       {celula}
                     </th>
                   ) : (
-                    <td key={index} className="px-4 py-2.5 text-slate-700">
-                      {celula}
+                    <td key={index} className="border-r border-slate-100 px-4 py-3 text-slate-700 last:border-r-0">
+                      <TextoRico texto={celula} />
                     </td>
                   )
                 )}
@@ -36,6 +50,31 @@ export function QuadroComparativo({ quadro }: { quadro: Quadro }) {
           </tbody>
         </table>
       </div>
+
+      {/* Celular */}
+      <ul className="divide-y divide-slate-100 md:hidden">
+        {quadro.linhas.map((linha, linhaIndex) => {
+          const [rotulo, ...valores] = linha;
+          return (
+            <li key={linhaIndex} className="px-4 py-3">
+              <p className="text-sm font-semibold text-slate-950">
+                {rotuloColuna ? <span className="font-normal text-slate-500">{rotuloColuna}: </span> : null}
+                {rotulo}
+              </p>
+              <dl className="mt-2 space-y-2">
+                {valores.map((valor, index) => (
+                  <div key={index} className="rounded-lg bg-slate-50 px-3 py-2">
+                    {colunas[index] ? <dt className="text-xs font-semibold text-cyan-800">{colunas[index]}</dt> : null}
+                    <dd className="text-sm leading-6 text-slate-700">
+                      <TextoRico texto={valor} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          );
+        })}
+      </ul>
     </figure>
   );
 }
@@ -43,13 +82,18 @@ export function QuadroComparativo({ quadro }: { quadro: Quadro }) {
 export function LinhaDoTempoVisual({ linha }: { linha: LinhaDoTempo }) {
   return (
     <figure className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
-      <figcaption className="mb-4 text-[15px] font-semibold text-slate-950">{linha.titulo}</figcaption>
-      <ol className="relative space-y-4 border-l-2 border-cyan-100 pl-5">
+      <figcaption className="mb-4 flex items-center gap-2 text-[15px] font-semibold text-slate-950">
+        <span className="h-4 w-1 rounded-full bg-cyan-700" aria-hidden="true" />
+        {linha.titulo}
+      </figcaption>
+      <ol className="relative space-y-3 border-l-2 border-cyan-100 pl-5">
         {linha.marcos.map((marco) => (
-          <li key={marco.quando} className="relative">
-            <span className="absolute -left-[27px] top-1.5 h-3 w-3 rounded-full border-2 border-white bg-cyan-700" aria-hidden="true" />
+          <li key={marco.quando} className="relative rounded-lg bg-slate-50 px-3.5 py-2.5">
+            <span className="absolute -left-[27px] top-3.5 h-3 w-3 rounded-full border-2 border-white bg-cyan-700" aria-hidden="true" />
             <p className="text-sm font-semibold text-cyan-900">{marco.quando}</p>
-            <p className="mt-0.5 text-sm leading-6 text-slate-700">{marco.texto}</p>
+            <p className="mt-0.5 text-sm leading-6 text-slate-700">
+              <TextoRico texto={marco.texto} />
+            </p>
           </li>
         ))}
       </ol>
@@ -71,7 +115,10 @@ function formatar(valor: number) {
 export function GraficoIntervalosVisual({ grafico }: { grafico: GraficoIntervalos }) {
   return (
     <figure className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
-      <figcaption className="mb-4 text-[15px] font-semibold text-slate-950">{grafico.titulo}</figcaption>
+      <figcaption className="mb-4 flex items-center gap-2 text-[15px] font-semibold text-slate-950">
+        <span className="h-4 w-1 rounded-full bg-cyan-700" aria-hidden="true" />
+        {grafico.titulo}
+      </figcaption>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="space-y-6">
           {grafico.grupos.map((grupo) => {
@@ -128,43 +175,93 @@ export function GraficoIntervalosVisual({ grafico }: { grafico: GraficoIntervalo
   );
 }
 
+function CabecalhoPainel({ icone: Icone, titulo, subtitulo, tom }: { icone: typeof Target; titulo: string; subtitulo: string; tom: "cyan" | "rose" }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+          tom === "cyan" ? "bg-cyan-800 text-white" : "bg-rose-600 text-white"
+        }`}
+      >
+        <Icone className="h-5 w-5" />
+      </span>
+      <div>
+        <h2 className="text-base font-semibold text-slate-950">{titulo}</h2>
+        <p className="text-sm text-slate-500">{subtitulo}</p>
+      </div>
+    </div>
+  );
+}
+
 export function OQueCai({ itens }: { itens: string[] }) {
   return (
-    <ol className="grid gap-2.5 md:grid-cols-2">
-      {itens.map((item, index) => (
-        <li key={item} className="flex gap-3 rounded-lg border border-slate-200 bg-white px-3.5 py-3 text-sm leading-6 text-slate-700">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-xs font-semibold text-cyan-800">
-            {index + 1}
-          </span>
-          <span className="min-w-0">{item}</span>
-        </li>
-      ))}
-    </ol>
+    <section aria-label="O que cai" className="space-y-4 rounded-2xl border border-cyan-100 bg-gradient-to-b from-cyan-50/70 to-white p-4 md:p-5">
+      <CabecalhoPainel icone={Target} titulo="O que cai" subtitulo={`${itens.length} pontos que a banca cobra`} tom="cyan" />
+      <ol className="grid gap-3 md:grid-cols-2">
+        {itens.map((item, index) => {
+          const { titulo, corpo } = separarTitulo(item);
+          return (
+            <li key={item} className="flex gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-800 text-xs font-bold text-white">
+                {index + 1}
+              </span>
+              <div className="min-w-0 text-sm leading-6 text-slate-700">
+                {titulo ? <p className="font-semibold text-slate-950">{titulo}</p> : null}
+                <p>
+                  <TextoRico texto={titulo ? corpo.charAt(0).toUpperCase() + corpo.slice(1) : corpo} />
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 
 export function Pegadinhas({ itens }: { itens: string[] }) {
   return (
-    <ul className="grid gap-2.5 md:grid-cols-2">
-      {itens.map((item) => (
-        <li key={item} className="flex gap-2.5 rounded-lg border border-rose-100 bg-rose-50/70 px-3.5 py-3 text-sm leading-6 text-rose-950">
-          <X className="mt-1 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
-          <span className="min-w-0">{item}</span>
-        </li>
-      ))}
-    </ul>
+    <section aria-label="Pegadinhas" className="space-y-4 rounded-2xl border border-rose-100 bg-gradient-to-b from-rose-50/70 to-white p-4 md:p-5">
+      <CabecalhoPainel icone={ShieldAlert} titulo="Pegadinhas" subtitulo="Como a banca tenta te pegar" tom="rose" />
+      <ul className="grid gap-3 md:grid-cols-2">
+        {itens.map((item) => {
+          const { enunciado, veredito } = separarVeredito(item);
+          return (
+            <li key={item} className="relative overflow-hidden rounded-xl border border-rose-100 bg-white p-3.5 pl-4">
+              <span className="absolute inset-y-0 left-0 w-1 bg-rose-500" aria-hidden="true" />
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-rose-700">
+                <X className="h-3.5 w-3.5" />
+                Armadilha
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-800">
+                <TextoRico texto={enunciado} />
+                {veredito ? (
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-rose-600 px-2 py-0.5 align-middle text-[11px] font-semibold text-white">
+                    {veredito}
+                  </span>
+                ) : null}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+        <CircleCheck className="h-3.5 w-3.5 text-emerald-600" />
+        Em verde, a resposta certa quando a pegadinha já traz a correção.
+      </p>
+    </section>
   );
 }
 
 export function PontoDeRevisao({ itens }: { itens: string[] }) {
   return (
     <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-amber-950">
-      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+      <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
       <div className="min-w-0">
         <p className="text-sm font-semibold">Ponto que mais confunde</p>
         {itens.map((item) => (
           <p key={item} className="mt-1 text-sm leading-6">
-            {item}
+            <TextoRico texto={item} />
           </p>
         ))}
       </div>

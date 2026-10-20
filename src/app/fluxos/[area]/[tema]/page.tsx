@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 function Secao({ id, titulo, children }: { id: string; titulo: string; children: React.ReactNode }) {
   return (
-    <section aria-labelledby={id} className="space-y-3">
+    <section id={`secao-${id}`} aria-labelledby={id} className="scroll-mt-24 space-y-3">
       <h2 id={id} className="text-base font-semibold text-slate-950">
         {titulo}
       </h2>
@@ -72,6 +72,23 @@ export default async function TemaFluxoPage({ params }: Props) {
         }
       />
 
+      <nav aria-label="Seções do tema" className="sticky top-[76px] z-20 -mx-1 flex gap-1.5 overflow-x-auto rounded-xl border border-slate-200 bg-white/95 p-1.5 backdrop-blur">
+        {[
+          tema.algoritmos?.length ? ["#secao-algoritmos", tema.algoritmos.length === 1 ? "Algoritmo" : "Algoritmos"] : null,
+          tema.linhasDoTempo?.length ? ["#secao-linha-do-tempo", "Linha do tempo"] : null,
+          tema.graficos?.length ? ["#secao-esquema", "Esquema"] : null,
+          tema.quadros?.length ? ["#secao-quadros", tema.quadros.length === 1 ? "Quadro" : "Quadros"] : null,
+          tema.oQueCai?.length ? ["#o-que-cai", "O que cai"] : null,
+          tema.pegadinhas?.length ? ["#pegadinhas", "Pegadinhas"] : null,
+        ]
+          .filter((item): item is string[] => Boolean(item))
+          .map(([href, rotulo]) => (
+            <a key={href} href={href} className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-900">
+              {rotulo}
+            </a>
+          ))}
+      </nav>
+
       {tema.revisar?.length ? <PontoDeRevisao itens={tema.revisar} /> : null}
 
       {tema.algoritmos?.length ? (
@@ -111,15 +128,15 @@ export default async function TemaFluxoPage({ params }: Props) {
       ) : null}
 
       {tema.oQueCai?.length ? (
-        <Secao id="o-que-cai" titulo="O que cai">
+        <div id="o-que-cai" className="scroll-mt-24">
           <OQueCai itens={tema.oQueCai} />
-        </Secao>
+        </div>
       ) : null}
 
       {tema.pegadinhas?.length ? (
-        <Secao id="pegadinhas" titulo="Pegadinhas">
+        <div id="pegadinhas" className="scroll-mt-24">
           <Pegadinhas itens={tema.pegadinhas} />
-        </Secao>
+        </div>
       ) : null}
 
       <nav aria-label="Outros temas da área" className="grid gap-3 border-t border-slate-200 pt-5 sm:grid-cols-2">
