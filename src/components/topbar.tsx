@@ -133,18 +133,31 @@ function loadSearchIndex(userId: string, guest: boolean) {
     guest ? emptyRows<FlashcardRow>() : supabase.from("flashcards").select("id, area, materia, frente").limit(5000),
     guest ? emptyRows<MarkRow>() : supabase.from("flashcard_user_marks").select("flashcard_id, dificil").eq("user_id", userId).eq("dificil", true).limit(5000),
     // Conteúdo estático dos fluxogramas: carregado só quando a busca é usada.
-    guest ? Promise.resolve([] as FluxoRow[]) : import("@/lib/fluxos").then(({ AREAS_FLUXOS, textoDoTema }) =>
-      AREAS_FLUXOS.flatMap((area) => [
-        ...area.temas.map((tema) => ({ id: `${area.id}-${tema.id}`, titulo: tema.titulo, area: area.nome, href: `/fluxos/${area.id}/${tema.id}`, texto: textoDoTema(tema) })),
-        ...[...(area.raioX?.regras ?? []), ...(area.regrasRelampago ?? [])].map((regra, index) => ({
-          id: `${area.id}-regra-${index}`,
-          titulo: regra.titulo ? `${regra.tema}: ${regra.titulo}` : regra.tema,
-          area: `Regra relâmpago · ${area.nome}`,
-          href: `/fluxos/${area.id}/relampago`,
-          texto: regra.texto,
-        })),
-      ])
-    ).catch(() => [] as FluxoRow[]),
+    guest ? Promise.resolve([] as FluxoRow[]) : Promise.all([
+      import("@/lib/fluxos").then(({ AREAS_FLUXOS, textoDoTema }) =>
+        AREAS_FLUXOS.flatMap((area) => [
+          ...area.temas.map((tema) => ({ id: `${area.id}-${tema.id}`, titulo: tema.titulo, area: area.nome, href: `/fluxos/${area.id}/${tema.id}`, texto: textoDoTema(tema) })),
+          ...[...(area.raioX?.regras ?? []), ...(area.regrasRelampago ?? [])].map((regra, index) => ({
+            id: `${area.id}-regra-${index}`,
+            titulo: regra.titulo ? `${regra.tema}: ${regra.titulo}` : regra.tema,
+            area: `Regra relâmpago · ${area.nome}`,
+            href: `/fluxos/${area.id}/relampago`,
+            texto: regra.texto,
+          })),
+        ])
+      ),
+      import("@/lib/fluxos/enamed").then(({ AREAS_DOSSIE, chavesDoBloco, textosDoElemento }) =>
+        AREAS_DOSSIE.flatMap((area) =>
+          area.blocos.map((bloco) => ({
+            id: `enamed-${area.id}-${bloco.id}`,
+            titulo: bloco.titulo,
+            area: `Dossiê ENAMED · ${area.nome}`,
+            href: `/fluxos/enamed/${area.id}/${bloco.id}`,
+            texto: [...chavesDoBloco(bloco), ...bloco.elementos.flatMap(textosDoElemento)].join(" "),
+          }))
+        )
+      ),
+    ]).then(([temas, dossie]) => [...temas, ...dossie]).catch(() => [] as FluxoRow[]),
   ]).then(([patients, prescriptions, prescriptionTemplates, exams, topicos, cids, flashcards, marks, fluxos]) => ({
     patients: (patients.data || []) as PatientRow[],
     prescriptions: (prescriptions.data || []) as PrescriptionRow[],

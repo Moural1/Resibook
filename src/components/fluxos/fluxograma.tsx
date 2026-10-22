@@ -1,6 +1,6 @@
 import { CircleAlert, ClipboardCheck, GitBranch, Search, Stethoscope } from "lucide-react";
 import type { Algoritmo, NoFluxo, RamoFluxo } from "@/lib/fluxos";
-import TextoRico from "./texto-rico";
+import { TextoComSelo, TituloComSelo } from "./selo-confirmar";
 
 /* Fluxograma vertical: cenário → avaliar → decisão (ramos lado a lado,
    ligados por uma barra) → conduta → atenção. Os ramos empilham no celular. */
@@ -56,7 +56,7 @@ function Caixa({ tipo, texto }: { tipo: NoFluxo["tipo"]; texto: string }) {
         <Icone className="h-3 w-3" aria-hidden="true" />
         {estilo.rotulo}
       </span>
-      <TextoRico texto={texto} numeros={tipo !== "cenario"} />
+      <TextoComSelo texto={texto} numeros={tipo !== "cenario"} />
     </div>
   );
 }
@@ -79,7 +79,7 @@ function Ramos({ ramos }: { ramos: RamoFluxo[] }) {
           <div key={ramo.rotulo} className="flex min-w-0 flex-col items-center">
             <span className="hidden h-3 w-0.5 bg-cyan-700/30 md:block" aria-hidden="true" />
             <div className="flex w-full min-w-0 flex-1 flex-col items-center rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
-              <span className="w-full rounded-full bg-cyan-800 px-3 py-1.5 text-center text-xs font-semibold leading-5 text-white">
+              <span className="w-full rounded-full bg-cyan-800 px-3 py-1.5 text-center text-xs font-semibold leading-5 text-white [overflow-wrap:anywhere]">
                 {ramo.rotulo}
               </span>
               <Conector />
@@ -120,7 +120,9 @@ export default function Fluxograma({ algoritmo }: { algoritmo: Algoritmo }) {
         </span>
         <span>
           <span className="block text-xs font-medium text-cyan-800">Algoritmo</span>
-          <span className="block text-[15px] font-semibold leading-6 text-slate-950">{algoritmo.titulo}</span>
+          <span className="block text-[15px] font-semibold leading-6 text-slate-950">
+            <TituloComSelo texto={algoritmo.titulo} />
+          </span>
         </span>
       </figcaption>
       <Passos passos={algoritmo.passos} />

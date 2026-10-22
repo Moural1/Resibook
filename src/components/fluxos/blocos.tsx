@@ -1,18 +1,89 @@
-import { CircleCheck, ShieldAlert, Target, TriangleAlert, X } from "lucide-react";
+import { CircleCheck, Lock, ShieldAlert, Target, TriangleAlert, X } from "lucide-react";
 import type { GraficoIntervalos, LinhaDoTempo, Quadro } from "@/lib/fluxos";
 import { separarTitulo, separarVeredito } from "@/lib/fluxos/destaque";
+import { separarConfirmar } from "@/lib/fluxos/enamed/confirmar";
+import { SeloConfirmar, TextoComSelo, TituloComSelo } from "./selo-confirmar";
 import TextoRico from "./texto-rico";
+
+const ETIQUETAS = new Set(["URGÊNCIA", "IMAGEM"]);
+
+/* Rótulo da linha: "⚠ TCE · URGÊNCIA · IMAGEM" → selo + "TCE" + etiquetas. */
+function RotuloLinha({ texto }: { texto: string }) {
+  const { confirmar, texto: limpo } = separarConfirmar(texto);
+  const partes = limpo.split(" · ");
+  const etiquetas = partes.filter((parte) => ETIQUETAS.has(parte));
+  const nome = partes.filter((parte) => !ETIQUETAS.has(parte)).join(" · ");
+  const subitem = nome.startsWith("↳");
+  return (
+    <>
+      <span className={subitem ? "font-medium text-slate-600" : undefined}>{nome}</span>
+      {confirmar || etiquetas.length ? (
+        <span className="mt-1 flex flex-wrap gap-1">
+          {confirmar ? <SeloConfirmar /> : null}
+          {etiquetas.map((etiqueta) => (
+            <span key={etiqueta} className="rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-semibold tracking-wide text-slate-600">
+              {etiqueta === "URGÊNCIA" ? "Urgência" : "Imagem"}
+            </span>
+          ))}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/* Linhas cujo rótulo está vazio ou começa com "↳" continuam a linha de cima
+   (ex.: uma norma com vários pontos, uma aposta com subitens). */
+function agruparLinhas(linhas: string[][]) {
+  const grupos: string[][][] = [];
+  for (const linha of linhas) {
+    const continua = grupos.length > 0 && (linha[0] === "" || linha[0].startsWith("↳"));
+    if (continua) grupos[grupos.length - 1].push(linha);
+    else grupos.push([linha]);
+  }
+  return grupos;
+}
+
+/* No celular, cada subitem ("↳ …") abre um trecho; linhas sem rótulo
+   acrescentam valores às colunas do trecho atual. */
+function segmentar(grupo: string[][]) {
+  const segmentos: { rotulo: string; colunas: string[][] }[] = [];
+  for (const [rotulo, ...valores] of grupo) {
+    if (!segmentos.length || rotulo) segmentos.push({ rotulo, colunas: valores.map(() => []) });
+    const atual = segmentos[segmentos.length - 1];
+    valores.forEach((valor, index) => {
+      if (valor) (atual.colunas[index] ??= []).push(valor);
+    });
+  }
+  return segmentos;
+}
+
+/* Célula com destaque; "Trava: …" vira uma frase-trava em evidência. */
+function CelulaQuadro({ texto }: { texto: string }) {
+  const trava = /^Trava:\s*/.exec(texto);
+  if (!trava) return <TextoComSelo texto={texto} />;
+  return (
+    <span className="inline-flex items-start gap-1.5 font-medium text-amber-900">
+      <Lock className="mt-1 h-3.5 w-3.5 shrink-0 text-amber-600" aria-label="Trava" />
+      <span>
+        <TextoComSelo texto={texto.slice(trava[0].length)} />
+      </span>
+    </span>
+  );
+}
 
 /* Quadro comparativo: tabela no desktop, um cartão por linha no celular. */
 export function QuadroComparativo({ quadro }: { quadro: Quadro }) {
   const [rotuloColuna, ...colunas] = quadro.colunas;
   const muitasColunas = quadro.colunas.length >= 4;
+  const grupos = agruparLinhas(quadro.linhas);
 
   return (
     <figure className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <figcaption className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 text-[15px] font-semibold text-slate-950">
-        <span className="h-4 w-1 rounded-full bg-cyan-700" aria-hidden="true" />
-        {quadro.titulo}
+        <span className="h-4 w-1 shrink-0 rounded-full bg-cyan-700" aria-hidden="true" />
+        <span>
+          <TituloComSelo texto={quadro.titulo} />
+        </span>
       </figcaption>
 
       {/* Desktop */}
@@ -31,49 +102,58 @@ export function QuadroComparativo({ quadro }: { quadro: Quadro }) {
               ))}
             </tr>
           </thead>
-          <tbody>
-            {quadro.linhas.map((linha, linhaIndex) => (
-              <tr key={linhaIndex} className={`align-top ${linhaIndex % 2 ? "bg-slate-50/70" : "bg-white"}`}>
-                {linha.map((celula, index) =>
-                  index === 0 ? (
-                    <th key={index} scope="row" className="border-r border-slate-200 px-4 py-3 font-semibold text-slate-900">
-                      {celula}
-                    </th>
-                  ) : (
-                    <td key={index} className="border-r border-slate-100 px-4 py-3 text-slate-700 last:border-r-0">
-                      <TextoRico texto={celula} />
-                    </td>
-                  )
-                )}
-              </tr>
-            ))}
-          </tbody>
+          {grupos.map((grupo, grupoIndex) => (
+            <tbody key={grupoIndex} className={grupoIndex % 2 ? "bg-slate-50/70" : "bg-white"}>
+              {grupo.map((linha, linhaIndex) => (
+                <tr key={linhaIndex} className={`align-top ${linhaIndex > 0 ? "border-t border-dashed border-slate-200" : ""}`}>
+                  {linha.map((celula, index) =>
+                    index === 0 ? (
+                      <th key={index} scope="row" className={`border-r border-slate-200 px-4 font-semibold text-slate-900 ${linhaIndex > 0 ? "py-2" : "py-3"}`}>
+                        {celula ? <RotuloLinha texto={celula} /> : null}
+                      </th>
+                    ) : (
+                      <td key={index} className={`border-r border-slate-100 px-4 text-slate-700 last:border-r-0 ${linhaIndex > 0 ? "py-2" : "py-3"}`}>
+                        <CelulaQuadro texto={celula} />
+                      </td>
+                    )
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          ))}
         </table>
       </div>
 
-      {/* Celular */}
+      {/* Celular: linhas sem rótulo somam-se à coluna correspondente da linha de cima. */}
       <ul className="divide-y divide-slate-100 md:hidden">
-        {quadro.linhas.map((linha, linhaIndex) => {
-          const [rotulo, ...valores] = linha;
-          return (
-            <li key={linhaIndex} className="px-4 py-3">
-              <p className="text-sm font-semibold text-slate-950">
-                {rotuloColuna ? <span className="font-normal text-slate-500">{rotuloColuna}: </span> : null}
-                {rotulo}
-              </p>
-              <dl className="mt-2 space-y-2">
-                {valores.map((valor, index) => (
-                  <div key={index} className="rounded-lg bg-slate-50 px-3 py-2">
-                    {colunas[index] ? <dt className="text-xs font-semibold text-cyan-800">{colunas[index]}</dt> : null}
-                    <dd className="text-sm leading-6 text-slate-700">
-                      <TextoRico texto={valor} />
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </li>
-          );
-        })}
+        {grupos.map((grupo, grupoIndex) => (
+          <li key={grupoIndex} className="space-y-3 px-4 py-3">
+            {segmentar(grupo).map((segmento, segmentoIndex) => (
+              <div key={segmentoIndex}>
+                {segmento.rotulo ? (
+                  <p className="text-sm font-semibold text-slate-950">
+                    {rotuloColuna && segmentoIndex === 0 ? <span className="font-normal text-slate-500">{rotuloColuna}: </span> : null}
+                    <RotuloLinha texto={segmento.rotulo} />
+                  </p>
+                ) : null}
+                <dl className={`space-y-2 ${segmento.rotulo ? "mt-2" : ""}`}>
+                  {segmento.colunas.map((valores, index) =>
+                    valores.length ? (
+                      <div key={index} className="rounded-lg bg-slate-50 px-3 py-2">
+                        {colunas[index] ? <dt className="text-xs font-semibold text-cyan-800">{colunas[index]}</dt> : null}
+                        {valores.map((valor, valorIndex) => (
+                          <dd key={valorIndex} className={`text-sm leading-6 text-slate-700 ${valorIndex > 0 ? "mt-1.5 border-t border-dashed border-slate-200 pt-1.5" : ""}`}>
+                            <CelulaQuadro texto={valor} />
+                          </dd>
+                        ))}
+                      </div>
+                    ) : null
+                  )}
+                </dl>
+              </div>
+            ))}
+          </li>
+        ))}
       </ul>
     </figure>
   );
