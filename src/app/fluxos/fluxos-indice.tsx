@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, GitBranch, Search, Table2, Zap } from "lucide-react";
 import ModulePageHeader from "@/components/module-page-header";
+import ColecoesFluxos from "@/components/fluxos/colecoes";
 import { AREAS_FLUXOS, contarRegras, textoDoTema, totaisFluxos } from "@/lib/fluxos";
 import { rankSearchResults } from "@/lib/search";
 
@@ -43,6 +44,8 @@ export default function FluxosIndice() {
           { label: "Áreas", value: TOTAIS.areas },
         ]}
       />
+
+      <ColecoesFluxos ativa="temas" />
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
