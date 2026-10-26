@@ -6,6 +6,9 @@ import LandingGallery from "../components/landing-gallery";
 import modeloCard from "../../public/landing/modelo-card.webp";
 import heroDesktop from "../../public/landing/hero-desktop.webp";
 import heroMobile from "../../public/landing/hero-mobile.webp";
+import dossieEnamed from "../../public/landing/dossie-enamed.webp";
+import { totaisDossie } from "@/lib/fluxos/enamed";
+import { totaisFluxos } from "@/lib/fluxos";
 import {
   Activity,
   ArrowRight,
@@ -17,6 +20,8 @@ import {
   ClipboardCheck,
   ClipboardList,
   FlaskConical,
+  GitBranch,
+  GraduationCap,
   HeartPulse,
   MessageSquareText,
   Search,
@@ -38,6 +43,7 @@ type IconType = ComponentType<{ className?: string }>;
 
 const NAV_LINKS = [
   ["#como-funciona", "Como funciona"],
+  ["#enamed", "ENAMED"],
   ["#meu-resibook", "Meu Resibook"],
   ["#recursos", "Recursos"],
   ["#planos", "Planos"],
@@ -45,8 +51,8 @@ const NAV_LINKS = [
 
 const SHIFT_STEPS: { title: string; description: string; icon: IconType }[] = [
   {
-    title: "Roteiro do caso",
-    description: "Digite a queixa e abra condutas, diagnósticos diferenciais e red flags já contextualizados.",
+    title: "Caso e prioridade",
+    description: "Digite a queixa e os sinais vitais: prioridade sugerida, red flags clicáveis e conduta já contextualizados.",
     icon: Search,
   },
   {
@@ -60,8 +66,8 @@ const SHIFT_STEPS: { title: string; description: string; icon: IconType }[] = [
     icon: ClipboardCheck,
   },
   {
-    title: "Passagem SBAR",
-    description: "Pendências e passagem objetiva para a troca de plantão, sem esquecer nada.",
+    title: "Quadro e passagem",
+    description: "Todos os pacientes por prioridade, com timer de reavaliação e a passagem SBAR de todos para a troca de turno.",
     icon: MessageSquareText,
   },
 ];
@@ -87,6 +93,7 @@ const RESOURCE_GROUPS: { title: string; items: { label: string; icon: IconType }
     title: "Estudo",
     items: [
       { label: "Tópicos médicos", icon: BookOpen },
+      { label: "Dossiê ENAMED e fluxogramas", icon: GitBranch },
       { label: "Flashcards com revisão", icon: Brain },
       { label: "Condutas por síndrome", icon: Stethoscope },
     ],
@@ -96,8 +103,9 @@ const RESOURCE_GROUPS: { title: string; items: { label: string; icon: IconType }
 const PLAN_ROWS: [string, boolean][] = [
   ["Calculadoras clínicas, CIDs e tópicos médicos", true],
   ["ACLS com eBook e ECG guiado", true],
+  ["Dossiê ENAMED e fluxogramas de revisão", true],
   ["Flashcards do Banco Resibook", true],
-  ["Plantão: roteiro do caso, caso rápido, alta segura e SBAR", false],
+  ["Plantão: caso rápido com prioridade, quadro do plantão, alta segura e SBAR", false],
   ["Prescrições e modelos prontos para copiar", false],
   ["Exames, evolução e condutas", false],
   ["Revisão dos flashcards difíceis", false],
@@ -109,8 +117,9 @@ const PLAN_ROWS: [string, boolean][] = [
 const TESTIMONIALS: { quote: string; name: string; role: string }[] = [];
 
 const FAQ = [
+  ["Serve para quem ainda está no internato?", "Sim. Para a prova, o Básico já inclui o Dossiê ENAMED, os fluxogramas e os flashcards. No internato, o Completo ajuda a organizar o caso para discutir com o preceptor; condutas e prescrições seguem sempre a supervisão e o protocolo do serviço."],
   ["Funciona no celular durante o plantão?", "Sim. O Resibook roda no navegador do celular e foi desenhado para consulta rápida em tela pequena. Você também pode adicioná-lo à tela inicial para abrir como um app."],
-  ["Qual a diferença entre o Básico e o Completo?", "O Básico reúne a biblioteca de consulta e estudo: calculadoras, CIDs, tópicos, ACLS e flashcards. O Completo acrescenta as ferramentas do plantão (roteiro do caso, prescrições, exames, condutas) e o Meu Resibook, seu acervo privado."],
+  ["Qual a diferença entre o Básico e o Completo?", "O Básico reúne a biblioteca de consulta e estudo: calculadoras, CIDs, tópicos, ACLS, flashcards, fluxogramas e o Dossiê ENAMED. O Completo acrescenta as ferramentas do plantão (roteiro do caso, prescrições, exames, condutas) e o Meu Resibook, seu acervo privado."],
   ["Quais as formas de pagamento?", "Cartão pelo Mercado Pago, com liberação automática, ou Pix. A assinatura é mensal."],
   ["Posso trocar de plano depois?", "Sim. Você pode começar no Básico e fazer upgrade para o Completo quando quiser, pela área Minha assinatura."],
   ["Minhas adaptações ficam visíveis para outras pessoas?", "Não. O Meu Resibook é privado e protegido por regras de acesso vinculadas à sua conta."],
@@ -164,9 +173,11 @@ const LIBRARY_STATS = [
 function BrowserFrame({
   children,
   className = "",
+  label = "Resibook · Roteiro de caso",
 }: {
   children: React.ReactNode;
   className?: string;
+  label?: string;
 }) {
   return (
     <div
@@ -177,7 +188,7 @@ function BrowserFrame({
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
         <span className="ml-3 hidden h-5 flex-1 items-center rounded-md border border-slate-200 bg-white px-2 text-[10px] font-medium text-slate-400 sm:flex">
-          Resibook · Roteiro de caso
+          {label}
         </span>
       </div>
       {children}
@@ -218,6 +229,76 @@ function HeroVisual() {
         />
       </div>
     </div>
+  );
+}
+
+function EnamedSection() {
+  const dossie = totaisDossie();
+  const fluxos = totaisFluxos();
+  const stats = [
+    [dossie.blocos, "blocos de revisão"],
+    [dossie.quadros, "tabelas comparativas"],
+    [dossie.algoritmos + fluxos.algoritmos, "algoritmos"],
+    [dossie.erros, "erros comuns"],
+  ] as const;
+
+  return (
+    <section id="enamed" className="scroll-mt-20 border-t border-slate-200 bg-[#f7f9fc] py-16 sm:py-20">
+      <div className="mx-auto grid max-w-[1180px] items-center gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:px-10">
+        <div>
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">
+            <GraduationCap className="h-4 w-4" />
+            Para a prova
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.025em] text-[#091a38] sm:text-4xl">
+            Dossiê ENAMED: o que mais derruba, em uma tela.
+          </h2>
+          <p className="mt-4 text-base leading-7 text-slate-600">
+            Os temas que mais caem em tabelas, algoritmos e frases-trava: erros
+            comuns, contrastes, números, atualizações normativas e como a banca
+            arma as questões. Junto, fluxogramas de cirurgia, clínica, GO,
+            pediatria e preventiva.
+          </p>
+          <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+            {stats.map(([value, label]) => (
+              <div key={label}>
+                <dt className="sr-only">{label}</dt>
+                <dd className="text-3xl font-semibold tracking-[-0.03em] text-[#091a38]">{value}</dd>
+                <dd className="mt-0.5 text-sm font-medium text-slate-500">{label}</dd>
+              </div>
+            ))}
+          </dl>
+          <ul className="mt-7 space-y-2.5 text-sm text-slate-700">
+            {[
+              `${dossie.areas} áreas, da cirurgia à estratégia de prova`,
+              "Itens ainda não reconferidos com a fonte aparecem sinalizados",
+              "Incluído desde o plano Básico",
+            ].map((item) => (
+              <li key={item} className="flex gap-2.5">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-700" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/cadastro?plano=basic"
+            className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-800 px-6 text-sm font-semibold text-white transition hover:bg-cyan-900"
+          >
+            Começar a revisar
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <BrowserFrame label="Resibook · Dossiê ENAMED">
+          <Image
+            src={dossieEnamed}
+            alt="Algoritmo de gravidez ectópica no Dossiê ENAMED do Resibook"
+            placeholder="blur"
+            sizes="(min-width: 1024px) 620px, 100vw"
+            className="h-auto w-full"
+          />
+        </BrowserFrame>
+      </div>
+    </section>
   );
 }
 
@@ -263,7 +344,7 @@ export default function HomePage() {
             <div className="max-w-2xl">
               <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-cyan-900">
                 <Stethoscope className="h-3.5 w-3.5" />
-                Para residentes e plantonistas
+                Para internos, residentes e plantonistas
               </p>
               <h1 className="mt-5 text-[38px] font-semibold leading-[1.05] tracking-[-0.035em] text-[#091a38] sm:text-5xl lg:text-[60px]">
                 Do primeiro atendimento à passagem de plantão.
@@ -358,6 +439,8 @@ export default function HomePage() {
           </div>
         </section>
 
+        <EnamedSection />
+
         <section id="meu-resibook" className="scroll-mt-20 bg-[#091a38] py-16 text-white sm:py-20">
           <div className="mx-auto grid max-w-[1180px] items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-10">
             <div>
@@ -445,7 +528,7 @@ export default function HomePage() {
                   rotina médica.
                 </p>
                 <ul className="mt-6 space-y-3 text-sm text-slate-700">
-                  {["Calculadoras clínicas", "CIDs e tópicos médicos", "Flashcards e biblioteca essencial"].map((item) => (
+                  {["Calculadoras clínicas", "CIDs e tópicos médicos", "Dossiê ENAMED e fluxogramas", "Flashcards e biblioteca essencial"].map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-cyan-700" />
                       {item}
