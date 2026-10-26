@@ -16,7 +16,8 @@ import {
   Stethoscope,
   X,
 } from "lucide-react";
-import { buildCaseRouting } from "@/lib/clinical-case-routing";
+import { NOME_COR, COR_PRIORIDADE } from "./shift/prioridade";
+import { leituraDoCaso, prioridadeFinal } from "@/lib/shift/caso";
 import {
   CLINICAL_CASE_SESSION_EVENT,
   clearClinicalCaseSession,
@@ -28,32 +29,6 @@ import {
 } from "@/lib/clinical-case-session";
 
 type FieldElement = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-
-const FIELD_SELECTORS = {
-  complaint: 'input[placeholder^="Ex.: cefaleia"]',
-  age: 'input[placeholder="Ex.: 62 anos"]',
-  pa: 'input[placeholder="Ex.: 140x90"]',
-  fc: 'input[placeholder="bpm"]',
-  fr: 'input[placeholder="irpm"]',
-  temp: 'input[placeholder="Â°C"]',
-  spo2: 'input[placeholder="%"]',
-  glicemia: 'input[placeholder="mg/dL"]',
-  redFlags: 'textarea[placeholder^="Ex.: dor sÃºbita"]',
-  notes: 'textarea[placeholder^="HistÃ³ria curta"]',
-};
-
-function findField(selector: string) {
-  return document.querySelector<FieldElement>(selector);
-}
-
-function findSelect(label: string) {
-  const labels = Array.from(document.querySelectorAll("label"));
-  return (
-    labels
-      .find((item) => item.textContent?.includes(label))
-      ?.querySelector<HTMLSelectElement>("select") || null
-  );
-}
 
 function setNativeValue(element: FieldElement | null, value: string) {
   if (!element || !value || element.value) return;
@@ -68,62 +43,6 @@ function setNativeValue(element: FieldElement | null, value: string) {
   setter?.call(element, value);
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-function readValue(selector: string) {
-  return findField(selector)?.value.trim() || "";
-}
-
-function collectCase(): ClinicalCaseSession {
-  const complaint = readValue(FIELD_SELECTORS.complaint);
-  const routing = buildCaseRouting(complaint);
-  const redFlags = readValue(FIELD_SELECTORS.redFlags);
-  const alerts = [
-    redFlags ? "Sinais de alarme descritos" : "",
-    Number(readValue(FIELD_SELECTORS.spo2)) < 92 &&
-    Number(readValue(FIELD_SELECTORS.spo2)) > 0
-      ? "SpO2 baixa"
-      : "",
-    Number(readValue(FIELD_SELECTORS.glicemia)) < 70 &&
-    Number(readValue(FIELD_SELECTORS.glicemia)) > 0
-      ? "Hipoglicemia possível"
-      : "",
-  ].filter(Boolean);
-
-  return {
-    complaint: routing.complaint?.title || complaint,
-    age: readValue(FIELD_SELECTORS.age),
-    sex: findSelect("Sexo")?.value || "",
-    severity: findSelect("Gravidade inicial")?.value || "A definir",
-    vitals: {
-      pa: readValue(FIELD_SELECTORS.pa),
-      fc: readValue(FIELD_SELECTORS.fc),
-      fr: readValue(FIELD_SELECTORS.fr),
-      temp: readValue(FIELD_SELECTORS.temp),
-      spo2: readValue(FIELD_SELECTORS.spo2),
-      glicemia: readValue(FIELD_SELECTORS.glicemia),
-    },
-    redFlags,
-    notes: readValue(FIELD_SELECTORS.notes),
-    alerts,
-    priorities: routing.priorities,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-function hydrateCase(saved: ClinicalCaseSession) {
-  setNativeValue(findField(FIELD_SELECTORS.complaint), saved.complaint);
-  setNativeValue(findField(FIELD_SELECTORS.age), saved.age);
-  setNativeValue(findSelect("Sexo"), saved.sex);
-  setNativeValue(findSelect("Gravidade inicial"), saved.severity);
-  setNativeValue(findField(FIELD_SELECTORS.pa), saved.vitals.pa);
-  setNativeValue(findField(FIELD_SELECTORS.fc), saved.vitals.fc);
-  setNativeValue(findField(FIELD_SELECTORS.fr), saved.vitals.fr);
-  setNativeValue(findField(FIELD_SELECTORS.temp), saved.vitals.temp);
-  setNativeValue(findField(FIELD_SELECTORS.spo2), saved.vitals.spo2);
-  setNativeValue(findField(FIELD_SELECTORS.glicemia), saved.vitals.glicemia);
-  setNativeValue(findField(FIELD_SELECTORS.redFlags), saved.redFlags);
-  setNativeValue(findField(FIELD_SELECTORS.notes), saved.notes);
 }
 
 function clickComplaintOption(complaint: string) {
@@ -171,51 +90,6 @@ export default function ClinicalCaseSessionBridge() {
     refresh();
     window.addEventListener(CLINICAL_CASE_SESSION_EVENT, refresh);
     return () => window.removeEventListener(CLINICAL_CASE_SESSION_EVENT, refresh);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (pathname !== "/caso-rapido") return;
-
-    let attempts = 0;
-    let cleanup = () => {};
-
-    const timer = window.setInterval(() => {
-      const complaintField = findField(FIELD_SELECTORS.complaint);
-      attempts += 1;
-
-      if (!complaintField && attempts < 20) return;
-      window.clearInterval(timer);
-      if (!complaintField) return;
-
-      const saved = loadClinicalCaseSession();
-      if (saved) hydrateCase(saved);
-
-      const handleChange = () => {
-        const current = collectCase();
-        const hasContent =
-          current.complaint ||
-          current.age ||
-          current.redFlags ||
-          current.notes ||
-          Object.values(current.vitals).some(Boolean);
-
-        if (hasContent) saveClinicalCaseSession(current);
-      };
-
-      document.addEventListener("input", handleChange);
-      document.addEventListener("change", handleChange);
-      handleChange();
-
-      cleanup = () => {
-        document.removeEventListener("input", handleChange);
-        document.removeEventListener("change", handleChange);
-      };
-    }, 150);
-
-    return () => {
-      window.clearInterval(timer);
-      cleanup();
-    };
   }, [pathname]);
 
   useEffect(() => {
@@ -278,6 +152,7 @@ export default function ClinicalCaseSessionBridge() {
   if (!activeCase?.complaint) return null;
 
   const query = encodeURIComponent(activeCase.complaint);
+  const prioridade = prioridadeFinal(leituraDoCaso(activeCase).prioridade, activeCase.prioridadeManual);
   const vitals = Object.entries(activeCase.vitals)
     .filter(([, value]) => value.trim())
     .map(([key, value]) => `${key.toUpperCase()} ${value}`)
@@ -308,7 +183,7 @@ export default function ClinicalCaseSessionBridge() {
                 {activeCase.complaint}
               </p>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                {[activeCase.age, activeCase.sex, activeCase.severity]
+                {[activeCase.age, activeCase.sex, prioridade ? `Prioridade ${NOME_COR[prioridade].toLowerCase()}` : ""]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
@@ -383,8 +258,14 @@ export default function ClinicalCaseSessionBridge() {
           className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-cyan-50"
           aria-expanded={expanded}
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
+          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
             <Stethoscope className="h-4 w-4" />
+            {prioridade ? (
+              <span
+                className={`absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white ${COR_PRIORIDADE[prioridade].ponto}`}
+                title={`Prioridade ${NOME_COR[prioridade].toLowerCase()}`}
+              />
+            ) : null}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-700">

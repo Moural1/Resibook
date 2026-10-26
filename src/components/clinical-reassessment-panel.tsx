@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
-import { createPortal } from "react-dom";
 import {
   CheckCircle2,
   Minus,
@@ -110,34 +108,21 @@ function buildText(activeCase: ClinicalCaseSession, value: Reassessment) {
     .join("\n");
 }
 
+/* Reavaliação do caso ativo, exibida no Caso rápido logo abaixo do caso. */
 export default function ClinicalReassessmentPanel() {
-  const pathname = usePathname();
-  const [mountNode, setMountNode] = useState<HTMLDivElement | null>(null);
   const [activeCase, setActiveCase] = useState<ClinicalCaseSession | null>(null);
   const [value, setValue] = useState<Reassessment>(EMPTY_REASSESSMENT);
-  const isCasePage = pathname === "/caso-rapido";
-
-  useEffect(() => {
-    if (!isCasePage) return;
-    const content = document.querySelector<HTMLElement>("main > div");
-    const firstSection = content?.querySelector<HTMLElement>(":scope > section");
-    if (!content || !firstSection) return;
-
-    const node = document.createElement("div");
-    node.dataset.clinicalReassessment = "true";
-    firstSection.after(node);
-    setMountNode(node);
-    return () => {
-      setMountNode(null);
-      node.remove();
-    };
-  }, [isCasePage, pathname]);
 
   useEffect(() => {
     function refresh() {
       const loaded = loadClinicalCaseSession();
       setActiveCase(loaded);
-      setValue(loaded?.reassessment || EMPTY_REASSESSMENT);
+      /* Só troca o formulário quando muda a reavaliação salva, para não
+         apagar o que está sendo digitado quando o caso é atualizado. */
+      setValue((current) => {
+        const saved = loaded?.reassessment || EMPTY_REASSESSMENT;
+        return saved.recordedAt === current.recordedAt ? current : saved;
+      });
     }
 
     refresh();
@@ -150,7 +135,7 @@ export default function ClinicalReassessmentPanel() {
     [activeCase, value]
   );
 
-  if (!mountNode || !isCasePage || !activeCase?.complaint) return null;
+  if (!activeCase?.complaint) return null;
 
   function updateVital(key: VitalKey, nextValue: string) {
     setValue((current) => ({
@@ -170,8 +155,8 @@ export default function ClinicalReassessmentPanel() {
     });
   }
 
-  return createPortal(
-    <section className="mt-5 overflow-hidden rounded-[24px] border border-cyan-200 bg-white shadow-sm">
+  return (
+    <section id="reavaliacao" className="scroll-mt-24 overflow-hidden rounded-[24px] border border-cyan-200 bg-white shadow-sm">
       <div className="border-b border-cyan-100 bg-cyan-50/70 p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -306,7 +291,6 @@ export default function ClinicalReassessmentPanel() {
           ) : null}
         </div>
       </div>
-    </section>,
-    mountNode
+    </section>
   );
 }

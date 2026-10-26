@@ -19,6 +19,13 @@ export type ClinicalCaseSession = {
     codigo: string;
     descricao: string;
   } | null;
+  /* Campos do Shift inteligente (opcionais: casos antigos continuam válidos). */
+  consciencia?: string;
+  oxigenio?: boolean;
+  sinaisAlarme?: string[];
+  alarmesRevisados?: boolean;
+  prioridadeManual?: "vermelho" | "laranja" | "amarelo" | "verde" | null;
+  condutaDefinida?: boolean;
   reassessment?: {
     vitals: ClinicalCaseSession["vitals"];
     symptomStatus: string;
@@ -69,6 +76,12 @@ function getCaseContentFingerprint(value: ClinicalCaseSession) {
     notes: value.notes,
     selectedCid: value.selectedCid || null,
     reassessment: value.reassessment || null,
+    consciencia: value.consciencia || "",
+    oxigenio: Boolean(value.oxigenio),
+    sinaisAlarme: value.sinaisAlarme || [],
+    alarmesRevisados: Boolean(value.alarmesRevisados),
+    prioridadeManual: value.prioridadeManual || null,
+    condutaDefinida: Boolean(value.condutaDefinida),
   });
 }
 
