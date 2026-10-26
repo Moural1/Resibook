@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { clearClinicalCaseSession } from "@/lib/clinical-case-session";
+import { apagarQuadro } from "@/lib/shift/quadro";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isResibookAdmin } from "@/lib/auth-role";
@@ -41,6 +43,8 @@ export default function AccessLogger() {
       if (blockedError) return;
 
       if (blockedData && !isResibookAdmin(user)) {
+        clearClinicalCaseSession();
+        apagarQuadro();
         await supabase.auth.signOut();
 
         if (!mounted || lastRunRef.current !== runId) return;

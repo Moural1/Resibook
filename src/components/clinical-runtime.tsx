@@ -12,6 +12,7 @@ import MobilePrescriptionSafety from "./mobile-prescription-safety";
 import PatientRecordNavigator from "./patient-record-navigator";
 import PatientTimelineControls from "./patient-timeline-controls";
 import ShiftToolNavigator from "./shift-tool-navigator";
+import QuadroSync from "./shift/quadro-sync";
 
 const PUBLIC_ROUTES = [
   "/",
@@ -47,6 +48,7 @@ export default function ClinicalRuntime() {
       <MobilePrescriptionSafety />
       <ClinicalCaseSessionBridge />
       <ClinicalCaseFreshnessGuard />
+      <QuadroSync />
     </>
   );
 }

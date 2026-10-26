@@ -26,6 +26,9 @@ export type ClinicalCaseSession = {
   alarmesRevisados?: boolean;
   prioridadeManual?: "vermelho" | "laranja" | "amarelo" | "verde" | null;
   condutaDefinida?: boolean;
+  /* Vínculo com o Quadro do plantão (leito ou iniciais, nunca o nome). */
+  quadroId?: string;
+  leito?: string;
   reassessment?: {
     vitals: ClinicalCaseSession["vitals"];
     symptomStatus: string;
@@ -82,6 +85,8 @@ function getCaseContentFingerprint(value: ClinicalCaseSession) {
     alarmesRevisados: Boolean(value.alarmesRevisados),
     prioridadeManual: value.prioridadeManual || null,
     condutaDefinida: Boolean(value.condutaDefinida),
+    quadroId: value.quadroId || "",
+    leito: value.leito || "",
   });
 }
 

@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   FileText,
   Gauge,
+  LayoutGrid,
   ListChecks,
   LogOut,
   Send,
@@ -23,6 +24,7 @@ import { buildContextualShiftHref } from "@/lib/clinical-shift-context";
 
 const SHIFT_TOOLS = [
   { href: "/plantao", label: "Central", icon: Activity },
+  { href: "/plantao/quadro", label: "Quadro", icon: LayoutGrid },
   { href: "/plantao/roteiro-caso", label: "Roteiro", icon: Workflow },
   { href: "/caso-rapido", label: "Caso rápido", icon: Gauge },
   { href: "/plantao/sbar", label: "SBAR", icon: FileText },
