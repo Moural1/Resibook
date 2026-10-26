@@ -7,6 +7,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION, PRIVACY_VERSION } from "@/lib/legal/constants";
 import { clearClinicalCaseSession } from "@/lib/clinical-case-session";
+import { safeInternalPath } from "@/lib/safe-redirect";
 import {
   ArrowLeft,
   Check,
@@ -21,11 +22,7 @@ import {
 const GUEST_EMAIL = "convidado@resibook.com";
 
 function sanitizeRedirect(value: string | null) {
-  if (!value) return "/dashboard";
-  if (!value.startsWith("/")) return "/dashboard";
-  if (value.startsWith("//")) return "/dashboard";
-
-  return value;
+  return safeInternalPath(value, "/dashboard");
 }
 
 function LoginContent() {
