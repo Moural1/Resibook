@@ -4,8 +4,10 @@ import Image, { type StaticImageData } from "next/image";
 import { useState } from "react";
 import acls from "../../public/landing/acls.webp";
 import calculadora from "../../public/landing/calculadora.webp";
+import casoRapido from "../../public/landing/caso-rapido.webp";
 import flashcards from "../../public/landing/flashcards.webp";
 import prescricao from "../../public/landing/prescricao.webp";
+import quadroPlantao from "../../public/landing/quadro-plantao.webp";
 import topicos from "../../public/landing/topicos.webp";
 
 type Slide = {
@@ -18,6 +20,24 @@ type Slide = {
 };
 
 const SLIDES: Slide[] = [
+  {
+    id: "caso-rapido",
+    label: "Prioridade automática",
+    title: "Sinais vitais viram prioridade",
+    description:
+      "Digite a queixa e os sinais vitais: NEWS2, qSOFA e índice de choque se calculam sozinhos e sugerem a cor da prioridade.",
+    image: casoRapido,
+    alt: "Caso rápido do Resibook com febre, prioridade vermelha sugerida, NEWS2, qSOFA e índice de choque",
+  },
+  {
+    id: "quadro",
+    label: "Quadro do plantão",
+    title: "Todos os pacientes em um quadro",
+    description:
+      "Pacientes por prioridade, com timer de reavaliação, pendências e a passagem SBAR de todos pronta para copiar.",
+    image: quadroPlantao,
+    alt: "Quadro do plantão do Resibook com três leitos por prioridade, timers de reavaliação e passagem SBAR",
+  },
   {
     id: "prescricao",
     label: "Prescrição guiada",
