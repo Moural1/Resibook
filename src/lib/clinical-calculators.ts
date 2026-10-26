@@ -300,14 +300,14 @@ const qsofa: ClinicalCalculator = {
   },
 };
 
-function scoreNewsRespiratoryRate(value: number) {
+export function scoreNewsRespiratoryRate(value: number) {
   if (value <= 8 || value >= 25) return 3;
   if (value <= 11) return 1;
   if (value <= 20) return 0;
   return 2;
 }
 
-function scoreNewsSpo2(value: number, scale: string, oxygen: boolean) {
+export function scoreNewsSpo2(value: number, scale: string, oxygen: boolean) {
   if (scale === "scale2") {
     if (value <= 83) return 3;
     if (value <= 85) return 2;
@@ -323,21 +323,21 @@ function scoreNewsSpo2(value: number, scale: string, oxygen: boolean) {
   return 0;
 }
 
-function scoreNewsSbp(value: number) {
+export function scoreNewsSbp(value: number) {
   if (value <= 90 || value >= 220) return 3;
   if (value <= 100) return 2;
   if (value <= 110) return 1;
   return 0;
 }
 
-function scoreNewsPulse(value: number) {
+export function scoreNewsPulse(value: number) {
   if (value <= 40 || value >= 131) return 3;
   if (value <= 50 || (value >= 91 && value <= 110)) return 1;
   if (value >= 111) return 2;
   return 0;
 }
 
-function scoreNewsTemperature(value: number) {
+export function scoreNewsTemperature(value: number) {
   if (value <= 35) return 3;
   if (value <= 36 || (value >= 38.1 && value <= 39)) return 1;
   if (value >= 39.1) return 2;
@@ -1529,3 +1529,24 @@ export function calculateClinicalScore(id: string, values: CalculatorValues) {
   return clinicalCalculators.find((calculator) => calculator.id === id)?.calculate(values) ?? null;
 }
 
+
+/* Valores vindos da URL (ex.: do Caso rápido), validados contra os campos da
+   calculadora: só entram números, "true"/"false" e opções existentes. */
+export function calculatorValuesFromParams(
+  calculator: ClinicalCalculator,
+  params: { get(name: string): string | null }
+): CalculatorValues {
+  const values: CalculatorValues = {};
+  for (const field of calculator.fields) {
+    const raw = params.get(field.id);
+    if (raw === null || raw === "") continue;
+    if (field.type === "boolean") {
+      if (raw === "true" || raw === "false") values[field.id] = raw === "true";
+    } else if (field.type === "select") {
+      if (field.options?.some((option) => option.value === raw)) values[field.id] = raw;
+    } else if (Number.isFinite(Number(raw))) {
+      values[field.id] = raw;
+    }
+  }
+  return values;
+}

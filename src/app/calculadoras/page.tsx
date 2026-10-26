@@ -21,6 +21,7 @@ import ResibookGuard from "@/components/resibook-guard";
 import { createClient } from "@/lib/supabase/client";
 import {
   clinicalCalculators,
+  calculatorValuesFromParams,
   getCalculatorInitialValues,
   validateCalculatorValues,
   type CalculatorField,
@@ -320,13 +321,17 @@ function ResultPanel({ result }: { result: CalculatorResult }) {
 function CalculatorWorkspace({
   calculator,
   onUsed,
+  prefill = {},
 }: {
   calculator: ClinicalCalculator;
   onUsed: (calculatorId: string) => void;
+  prefill?: CalculatorValues;
 }) {
-  const [values, setValues] = useState<CalculatorValues>(() =>
-    getCalculatorInitialValues(calculator)
-  );
+  const [values, setValues] = useState<CalculatorValues>(() => ({
+    ...getCalculatorInitialValues(calculator),
+    ...prefill,
+  }));
+  const prefilled = Object.keys(prefill).length > 0;
   const [calculatedResult, setCalculatedResult] = useState<CalculatorResult | null>(null);
   const [error, setError] = useState("");
 
@@ -405,6 +410,11 @@ function CalculatorWorkspace({
         </div>
 
         <div className="space-y-5 p-5 md:p-6">
+          {prefilled ? (
+            <p className="rounded-xl border border-cyan-100 bg-cyan-50 px-4 py-2.5 text-sm text-cyan-900">
+              Preenchida com os dados do caso ativo. Confira os valores e complete o que faltar antes de calcular.
+            </p>
+          ) : null}
           {numberAndSelectFields.length ? (
             <div className="grid gap-4 md:grid-cols-2">
               {numberAndSelectFields.map((field) => (
@@ -867,6 +877,11 @@ function CalculadorasContent() {
               key={selected.id}
               calculator={selected}
               onUsed={rememberRecent}
+              prefill={
+                selected.id === requestedCalculator
+                  ? calculatorValuesFromParams(selected, searchParams)
+                  : undefined
+              }
             />
           ) : (
             <section className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-16 text-center shadow-sm">

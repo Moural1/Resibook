@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   CheckCircle2,
   CircleAlert,
@@ -222,47 +220,8 @@ function getChecklist(activeCase: ClinicalCaseSession) {
 }
 
 export default function ClinicalEvolutionComposer() {
-  const pathname = usePathname();
-  const [mountNode, setMountNode] = useState<HTMLDivElement | null>(null);
   const [activeCase, setActiveCase] = useState<ClinicalCaseSession | null>(null);
   const [mode, setMode] = useState<EvolutionMode>("soap");
-  const isCasePage = pathname === "/caso-rapido";
-
-  useEffect(() => {
-    if (!isCasePage) return;
-    let attempts = 0;
-    let timer = 0;
-
-    const mount = () => {
-      const reassessment = document.querySelector<HTMLElement>(
-        "[data-clinical-reassessment]"
-      );
-      const content = document.querySelector<HTMLElement>("main > div");
-      const firstSection = content?.querySelector<HTMLElement>(":scope > section");
-      const anchor = reassessment || firstSection;
-
-      if (!anchor && attempts < 20) {
-        attempts += 1;
-        timer = window.setTimeout(mount, 100);
-        return;
-      }
-      if (!anchor) return;
-
-      const node = document.createElement("div");
-      node.dataset.clinicalEvolutionComposer = "true";
-      anchor.after(node);
-      setMountNode(node);
-    };
-
-    mount();
-    return () => {
-      window.clearTimeout(timer);
-      setMountNode((node) => {
-        node?.remove();
-        return null;
-      });
-    };
-  }, [isCasePage, pathname]);
 
   useEffect(() => {
     function refresh() {
@@ -286,10 +245,10 @@ export default function ClinicalEvolutionComposer() {
   );
   const completedItems = checklist.filter((item) => item.complete).length;
 
-  if (!mountNode || !isCasePage || !activeCase?.complaint) return null;
+  if (!activeCase?.complaint) return null;
 
-  return createPortal(
-    <section className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+  return (
+    <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 p-4 md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -382,8 +341,7 @@ export default function ClinicalEvolutionComposer() {
           </p>
         </aside>
       </div>
-    </section>,
-    mountNode
+    </section>
   );
 }
 

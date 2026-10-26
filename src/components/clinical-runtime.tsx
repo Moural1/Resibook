@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import AccessLogger from "./access-logger";
 import ClinicalCaseSessionBridge from "./clinical-case-session-bridge";
 import ClinicalCaseFreshnessGuard from "./clinical-case-freshness-guard";
-import ClinicalEvolutionComposer from "./clinical-evolution-composer";
-import ClinicalReassessmentPanel from "./clinical-reassessment-panel";
 import GlobalSearchShortcut from "./global-search-shortcut";
 import MobileClinicalNav from "./mobile-clinical-nav";
 import { OnboardingTracker } from "./onboarding-checklist";
@@ -49,8 +47,6 @@ export default function ClinicalRuntime() {
       <MobilePrescriptionSafety />
       <ClinicalCaseSessionBridge />
       <ClinicalCaseFreshnessGuard />
-      <ClinicalReassessmentPanel />
-      <ClinicalEvolutionComposer />
     </>
   );
 }

@@ -6,32 +6,30 @@ import { useEffect, useMemo, useState } from "react";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
 import ResibookGuard from "@/components/resibook-guard";
+import ClinicalReassessmentPanel from "@/components/clinical-reassessment-panel";
+import ClinicalEvolutionComposer from "@/components/clinical-evolution-composer";
+import PainelTriagem from "@/components/shift/painel-triagem";
+import SinaisAlarme from "@/components/shift/sinais-alarme";
+import KitQueixa from "@/components/shift/kit-queixa";
+import { COR_PRIORIDADE, NOME_COR } from "@/components/shift/prioridade";
+import { buildContextualShiftHref, clinicalComplaintsMatch } from "@/lib/clinical-shift-context";
 import {
-  clinicalComplaintsMatch,
-  buildContextualShiftHref,
-} from "@/lib/clinical-shift-context";
-import {
+  clearClinicalCaseSession,
   loadClinicalCaseSession,
   saveClinicalCaseSession,
 } from "@/lib/clinical-case-session";
+import { findQuickComplaint, QUICK_COMPLAINTS, type QuickComplaint } from "@/lib/clinical-quick-complaints";
+import { consciencia as lerConsciencia, gravidadeLegada, valoresParaCalculadoras } from "@/lib/shift/caso";
+import { queixaShift, sinaisDaQueixa, type SinalAlarme } from "@/lib/shift/queixas";
 import {
-  findQuickComplaint,
-  QUICK_COMPLAINTS,
-  type QuickComplaint,
-} from "@/lib/clinical-quick-complaints";
-import {
-  Activity,
-  ArrowUpRight,
-  ClipboardCheck,
-  ClipboardList,
-  FileText,
-  Gauge,
-  Search,
-  Send,
-  ShieldAlert,
-  Stethoscope,
-  Tags,
-} from "lucide-react";
+  CONSCIENCIA_OPCOES,
+  PRIORIDADES,
+  lerTriagem,
+  type Consciencia,
+  type LeituraTriagem,
+  type NivelPrioridade,
+} from "@/lib/shift/triagem";
+import { Activity, ArrowUpRight, ClipboardCheck, FileText, ListChecks, LogOut, RotateCcw, Search, Send, ShieldAlert, Stethoscope } from "lucide-react";
 
 type CaseProfile = {
   title: string;
@@ -185,54 +183,6 @@ function getProfile(complaintTitle: string) {
   return CASE_PROFILES[complaintTitle] || DEFAULT_PROFILE;
 }
 
-function buildHref(path: string, query: string) {
-  const clean = query.trim();
-  return clean ? `${path}?q=${encodeURIComponent(clean)}` : path;
-}
-
-function parseNumber(value: string) {
-  const parsed = Number(value.replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function parseBloodPressure(value: string) {
-  const match = value.match(/(\d{2,3})\D+(\d{2,3})/);
-
-  if (!match) return null;
-
-  return {
-    systolic: Number(match[1]),
-    diastolic: Number(match[2]),
-  };
-}
-
-function getAcuitySummary(alerts: CaseAlert[], severity: string) {
-  const criticalCount = alerts.filter((item) => item.tone === "critical").length;
-  const warningCount = alerts.filter((item) => item.tone === "warning").length;
-
-  if (severity === "Emergência" || criticalCount > 0) {
-    return {
-      label: "Prioridade alta",
-      description: "Reavaliar ABCDE, monitorização, acesso e necessidade de sala crítica.",
-      tone: "critical" as const,
-    };
-  }
-
-  if (severity === "Urgência" || warningCount >= 2) {
-    return {
-      label: "Observação próxima",
-      description: "Manter reavaliação seriada, fechar hipóteses de risco e documentar resposta.",
-      tone: "warning" as const,
-    };
-  }
-
-  return {
-    label: "Fluxo direcionado",
-    description: "Sem alerta automático forte pelos campos preenchidos; seguir avaliação clínica.",
-    tone: "info" as const,
-  };
-}
-
 function getFirstHourTasks(profile: CaseProfile, alerts: CaseAlert[]) {
   const tasks = [
     "Rever sinais vitais e estabilidade antes da alta ou transferência",
@@ -306,35 +256,62 @@ function getReassessmentPlan(alerts: CaseAlert[], severity: string) {
   };
 }
 
-function buildCaseText(params: {
+
+type TextoCaso = {
   complaint: string;
   age: string;
   sex: string;
-  severity: string;
   vitals: Record<string, string>;
-  redFlags: string;
   notes: string;
   profile: CaseProfile;
-  alerts: CaseAlert[];
-  acuity: ReturnType<typeof getAcuitySummary>;
+  leitura: LeituraTriagem;
+  prioridade: NivelPrioridade | null;
+  manual: boolean;
+  sinais: SinalAlarme[];
+  outrosSinais: string;
   firstHourTasks: string[];
   safetyChecks: string[];
   reassessment: ReturnType<typeof getReassessmentPlan>;
-}) {
-  const vitalsText = Object.entries(params.vitals)
-    .filter(([, value]) => value.trim())
-    .map(([key, value]) => `${key.toUpperCase()}: ${value}`)
-    .join(" | ");
+};
 
+function linhaPrioridade(params: TextoCaso) {
+  if (!params.prioridade) return "Prioridade: a definir";
+  const { rotulo } = PRIORIDADES[params.prioridade];
+  return `Prioridade: ${NOME_COR[params.prioridade]} · ${rotulo}${params.manual ? " (definida pelo médico)" : " (sugerida pelos dados)"}`;
+}
+
+function linhaEscores(leitura: LeituraTriagem) {
+  return [
+    leitura.news2 ? `NEWS2 ${leitura.news2.pontos}${leitura.news2.completo ? "" : ` (parcial, ${leitura.news2.parametros}/7)`}` : "",
+    leitura.qsofa ? `qSOFA ${leitura.qsofa.pontos}` : "",
+    leitura.indiceChoque !== null ? `índice de choque ${leitura.indiceChoque.toFixed(2).replace(".", ",")}` : "",
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function linhaVitais(vitals: Record<string, string>, separador: string) {
+  return Object.entries(vitals)
+    .filter(([, value]) => value.trim())
+    .map(([key, value]) => `${key.toUpperCase()}${separador}${value}`)
+    .join(separador === ": " ? " | " : ", ");
+}
+
+function buildCaseText(params: TextoCaso) {
+  const vitalsText = linhaVitais(params.vitals, ": ");
+  const escores = linhaEscores(params.leitura);
   return [
     "CASO RÁPIDO - RESIBOOK",
     `Queixa: ${params.complaint || "não definida"}`,
     `Paciente: ${params.age || "idade não informada"} | ${params.sex || "sexo não informado"}`,
-    `Gravidade inicial: ${params.severity}`,
-    `Prioridade operacional: ${params.acuity.label} - ${params.acuity.description}`,
+    linhaPrioridade(params),
     vitalsText ? `Sinais vitais: ${vitalsText}` : "Sinais vitais: não preenchidos",
-    params.alerts.length ? `Alertas: ${params.alerts.map((item) => item.label).join("; ")}` : "Alertas: sem alerta automático pelos campos preenchidos",
-    params.redFlags ? `Sinais de alarme descritos: ${params.redFlags}` : "",
+    escores ? `Escores: ${escores}` : "",
+    params.leitura.alertas.length
+      ? `Alertas: ${params.leitura.alertas.map((item) => item.titulo).join("; ")}`
+      : "Alertas: sem alerta automático pelos campos preenchidos",
+    params.sinais.length ? `Sinais de alarme presentes: ${params.sinais.map((item) => item.texto).join("; ")}` : "",
+    params.outrosSinais ? `Outros sinais de alarme: ${params.outrosSinais}` : "",
     params.notes ? `Anotações: ${params.notes}` : "",
     "",
     "Hipóteses para lembrar:",
@@ -359,34 +336,19 @@ function buildCaseText(params: {
     .join("\n");
 }
 
-function buildHandoffText(params: {
-  complaint: string;
-  age: string;
-  sex: string;
-  severity: string;
-  vitals: Record<string, string>;
-  redFlags: string;
-  notes: string;
-  profile: CaseProfile;
-  alerts: CaseAlert[];
-  acuity: ReturnType<typeof getAcuitySummary>;
-  firstHourTasks: string[];
-  safetyChecks: string[];
-  reassessment: ReturnType<typeof getReassessmentPlan>;
-}) {
-  const vitalsText = Object.entries(params.vitals)
-    .filter(([, value]) => value.trim())
-    .map(([key, value]) => `${key.toUpperCase()} ${value}`)
-    .join(", ");
-
+function buildHandoffText(params: TextoCaso) {
+  const vitalsText = linhaVitais(params.vitals, " ");
+  const escores = linhaEscores(params.leitura);
   return [
     "PASSAGEM DE CASO - RESIBOOK",
     `Identificação: ${params.age || "idade não informada"}, ${params.sex || "sexo não informado"}.`,
-    `Situação: ${params.complaint || "queixa não definida"} | ${params.severity}.`,
-    `Prioridade: ${params.acuity.label}. ${params.acuity.description}`,
+    `Situação: ${params.complaint || "queixa não definida"}.`,
+    `${linhaPrioridade(params)}.`,
     vitalsText ? `Sinais vitais: ${vitalsText}.` : "Sinais vitais: não preenchidos.",
-    params.alerts.length ? `Alertas: ${params.alerts.map((item) => item.label).join("; ")}.` : "Alertas: sem alerta automático pelos campos preenchidos.",
-    params.redFlags ? `Sinais de alarme descritos: ${params.redFlags}` : "",
+    escores ? `Escores: ${escores}.` : "",
+    params.leitura.alertas.length ? `Alertas: ${params.leitura.alertas.map((item) => item.titulo).join("; ")}.` : "",
+    params.sinais.length ? `Sinais de alarme presentes: ${params.sinais.map((item) => item.texto).join("; ")}.` : "",
+    params.outrosSinais ? `Outros sinais de alarme: ${params.outrosSinais}` : "",
     params.notes ? `Contexto/anotações: ${params.notes}` : "",
     `Hipóteses para lembrar: ${params.profile.differentials.slice(0, 3).join("; ")}.`,
     "Pendências da primeira hora:",
@@ -400,138 +362,108 @@ function buildHandoffText(params: {
     .join("\n");
 }
 
+const VITAIS_VAZIOS = { pa: "", fc: "", fr: "", temp: "", spo2: "", glicemia: "" };
+
+const INPUT =
+  "h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100";
+
 export default function CasoRapidoPage() {
   const searchParams = useSearchParams();
 
   const [complaint, setComplaint] = useState("");
   const [age, setAge] = useState("");
   const [sex, setSex] = useState("");
-  const [severity, setSeverity] = useState("A definir");
   const [redFlags, setRedFlags] = useState("");
   const [notes, setNotes] = useState("");
-  const [vitals, setVitals] = useState({
-    pa: "",
-    fc: "",
-    fr: "",
-    temp: "",
-    spo2: "",
-    glicemia: "",
-  });
+  const [vitals, setVitals] = useState({ ...VITAIS_VAZIOS });
+  const [consciencia, setConsciencia] = useState<Consciencia>("");
+  const [oxigenio, setOxigenio] = useState(false);
+  const [sinaisMarcados, setSinaisMarcados] = useState<string[]>([]);
+  const [alarmesRevisados, setAlarmesRevisados] = useState(false);
+  const [manual, setManual] = useState<NivelPrioridade | null>(null);
+  const [condutaDefinida, setCondutaDefinida] = useState(false);
 
+  /* Restaura o caso ativo do aparelho; uma queixa diferente na URL abre caso novo. */
   useEffect(() => {
     const urlQuery = searchParams.get("q") || searchParams.get("busca") || "";
+    const saved = loadClinicalCaseSession();
+    if (saved && (!urlQuery || clinicalComplaintsMatch(urlQuery, saved.complaint))) {
+      setComplaint(saved.complaint);
+      setAge(saved.age);
+      setSex(saved.sex);
+      setVitals({ ...VITAIS_VAZIOS, ...saved.vitals });
+      setRedFlags(saved.redFlags);
+      setNotes(saved.notes);
+      setConsciencia(lerConsciencia(saved.consciencia));
+      setOxigenio(Boolean(saved.oxigenio));
+      setSinaisMarcados(saved.sinaisAlarme ?? []);
+      setAlarmesRevisados(Boolean(saved.alarmesRevisados));
+      setManual(saved.prioridadeManual ?? null);
+      setCondutaDefinida(Boolean(saved.condutaDefinida));
+      return;
+    }
     if (urlQuery) setComplaint(urlQuery);
   }, [searchParams]);
 
-  const activeComplaint = useMemo(() => {
-    return findQuickComplaint(complaint);
-  }, [complaint]);
-
+  const activeComplaint = useMemo(() => findQuickComplaint(complaint), [complaint]);
   const workingComplaint = activeComplaint?.title || complaint.trim();
   const profile = getProfile(activeComplaint?.title || "");
+  const sinais = useMemo(() => sinaisDaQueixa(activeComplaint?.title || ""), [activeComplaint]);
+  const sinaisPresentes = useMemo(() => sinais.filter((sinal) => sinaisMarcados.includes(sinal.id)), [sinais, sinaisMarcados]);
 
-  const alerts = useMemo(() => {
-    const next: CaseAlert[] = [];
-    const spo2 = parseNumber(vitals.spo2);
-    const fc = parseNumber(vitals.fc);
-    const fr = parseNumber(vitals.fr);
-    const temp = parseNumber(vitals.temp);
-    const glicemia = parseNumber(vitals.glicemia);
-    const pa = parseBloodPressure(vitals.pa);
+  const leitura = useMemo(
+    () =>
+      lerTriagem({
+        idade: age,
+        vitals,
+        consciencia,
+        oxigenio,
+        sinaisAlarme: [
+          ...sinaisPresentes,
+          ...(redFlags.trim() ? [{ id: "livre", texto: "Outros sinais de alarme descritos", nivel: "amarelo" as const, acao: redFlags.trim() }] : []),
+        ],
+      }),
+    [age, vitals, consciencia, oxigenio, sinaisPresentes, redFlags]
+  );
 
-    if (spo2 && spo2 < 90) {
-      next.push({ label: "SpO2 crítica", detail: "Saturação abaixo de 90%", tone: "critical" });
-    } else if (spo2 && spo2 < 92) {
-      next.push({ label: "SpO2 baixa", detail: "Saturação abaixo de 92%", tone: "warning" });
-    }
+  const prioridade = manual ?? leitura.prioridade;
+  const severity = gravidadeLegada(prioridade);
 
-    if (fc && (fc < 45 || fc > 130)) {
-      next.push({ label: "FC crítica", detail: "Frequência cardíaca muito fora da faixa esperada", tone: "critical" });
-    } else if (fc && (fc < 50 || fc > 120)) {
-      next.push({ label: "FC alterada", detail: "Frequência cardíaca fora da faixa esperada", tone: "warning" });
-    }
+  const alerts = useMemo<CaseAlert[]>(
+    () =>
+      leitura.alertas.map((item) => ({
+        label: item.titulo,
+        detail: item.detalhe,
+        tone: item.nivel === "vermelho" || item.nivel === "laranja" ? "critical" : item.nivel === "amarelo" ? "warning" : "info",
+      })),
+    [leitura]
+  );
 
-    if (fr && (fr < 8 || fr > 30)) {
-      next.push({ label: "FR preocupante", detail: "Frequência respiratória muito alterada", tone: "critical" });
-    }
+  const firstHourTasks = useMemo(() => getFirstHourTasks(profile, alerts), [profile, alerts]);
+  const safetyChecks = useMemo(() => getSafetyChecks(alerts, severity), [alerts, severity]);
+  const reassessment = useMemo(() => getReassessmentPlan(alerts, severity), [alerts, severity]);
 
-    if (temp && temp >= 38.5) {
-      next.push({ label: "Febre alta", detail: "Temperatura elevada no preenchimento", tone: "warning" });
-    }
-
-    if (glicemia && glicemia < 70) {
-      next.push({ label: "Hipoglicemia possível", detail: "Glicemia abaixo de 70 mg/dL", tone: "critical" });
-    }
-
-    if (pa && (pa.systolic >= 180 || pa.diastolic >= 120)) {
-      next.push({ label: "PA muito elevada", detail: "Pesquisar lesão de órgão-alvo e repetir medida", tone: "warning" });
-    }
-
-    if (redFlags.trim()) {
-      next.push({ label: "Sinais de alarme descritos", detail: redFlags.trim(), tone: "warning" });
-    }
-
-    return next;
-  }, [vitals, redFlags]);
-
-  const acuity = useMemo(() => {
-    return getAcuitySummary(alerts, severity);
-  }, [alerts, severity]);
-
-  const firstHourTasks = useMemo(() => {
-    return getFirstHourTasks(profile, alerts);
-  }, [profile, alerts]);
-
-  const safetyChecks = useMemo(() => {
-    return getSafetyChecks(alerts, severity);
-  }, [alerts, severity]);
-
-  const reassessment = useMemo(() => {
-    return getReassessmentPlan(alerts, severity);
-  }, [alerts, severity]);
-
-  const caseText = buildCaseText({
+  const textoBase: TextoCaso = {
     complaint: workingComplaint,
     age,
     sex,
-    severity,
     vitals,
-    redFlags,
     notes,
     profile,
-    alerts,
-    acuity,
+    leitura,
+    prioridade,
+    manual: Boolean(manual),
+    sinais: sinaisPresentes,
+    outrosSinais: redFlags.trim(),
     firstHourTasks,
     safetyChecks,
     reassessment,
-  });
+  };
+  const caseText = buildCaseText(textoBase);
+  const handoffText = buildHandoffText(textoBase);
 
-  const handoffText = buildHandoffText({
-    complaint: workingComplaint,
-    age,
-    sex,
-    severity,
-    vitals,
-    redFlags,
-    notes,
-    profile,
-    alerts,
-    acuity,
-    firstHourTasks,
-    safetyChecks,
-    reassessment,
-  });
-
-  useEffect(() => {
-    if (!workingComplaint) return;
-
-    const previous = loadClinicalCaseSession();
-    const sameCase = Boolean(
-      previous &&
-        clinicalComplaintsMatch(previous.complaint, workingComplaint)
-    );
-
-    saveClinicalCaseSession({
+  const sessionBase = useMemo(
+    () => ({
       complaint: workingComplaint,
       age,
       sex,
@@ -539,47 +471,99 @@ export default function CasoRapidoPage() {
       vitals,
       redFlags,
       notes,
-      alerts: alerts.map((item) => item.label),
+      alerts: leitura.alertas.map((item) => item.titulo),
       priorities: firstHourTasks,
+      consciencia,
+      oxigenio,
+      sinaisAlarme: sinaisPresentes.map((sinal) => sinal.id),
+      alarmesRevisados,
+      prioridadeManual: manual,
+      condutaDefinida,
+    }),
+    [workingComplaint, age, sex, severity, vitals, redFlags, notes, leitura, firstHourTasks, consciencia, oxigenio, sinaisPresentes, alarmesRevisados, manual, condutaDefinida]
+  );
+
+  useEffect(() => {
+    if (!sessionBase.complaint) return;
+    const previous = loadClinicalCaseSession();
+    const sameCase = Boolean(previous && clinicalComplaintsMatch(previous.complaint, sessionBase.complaint));
+    saveClinicalCaseSession({
+      ...sessionBase,
       selectedCid: sameCase ? previous?.selectedCid || null : null,
       reassessment: sameCase ? previous?.reassessment || null : null,
       updatedAt: new Date().toISOString(),
     });
-  }, [
-    age,
-    alerts,
-    firstHourTasks,
-    notes,
-    redFlags,
-    severity,
-    sex,
-    vitals,
-    workingComplaint,
-  ]);
+  }, [sessionBase]);
+
+  const valoresCalculadora = useMemo(
+    () => valoresParaCalculadoras({ ...sessionBase, updatedAt: "" }, leitura),
+    [sessionBase, leitura]
+  );
 
   function updateVital(key: keyof typeof vitals, value: string) {
     setVitals((current) => ({ ...current, [key]: value }));
   }
 
   function pickComplaint(item: QuickComplaint) {
+    if (item.title !== activeComplaint?.title) {
+      setSinaisMarcados([]);
+      setAlarmesRevisados(false);
+      setCondutaDefinida(false);
+    }
     setComplaint(item.title);
+  }
+
+  function alternarSinal(id: string) {
+    setAlarmesRevisados(true);
+    setSinaisMarcados((atuais) => (atuais.includes(id) ? atuais.filter((item) => item !== id) : [...atuais, id]));
+  }
+
+  function nenhumSinal() {
+    setSinaisMarcados([]);
+    setAlarmesRevisados(true);
+  }
+
+  function novoCaso() {
+    clearClinicalCaseSession();
+    setComplaint("");
+    setAge("");
+    setSex("");
+    setRedFlags("");
+    setNotes("");
+    setVitals({ ...VITAIS_VAZIOS });
+    setConsciencia("");
+    setOxigenio(false);
+    setSinaisMarcados([]);
+    setAlarmesRevisados(false);
+    setManual(null);
+    setCondutaDefinida(false);
   }
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <ModulePageHeader
-        eyebrow="Assistente de plantão"
+        eyebrow="Resibook Shift"
         title="Caso rápido"
-        description="Estruture a primeira abordagem, destaque gravidade e abra os módulos do ResiBook já filtrados pela queixa."
+        description="Preencha queixa e sinais vitais: a prioridade, os escores e o kit da queixa se montam sozinhos."
         badges={[
-          { label: "Primeira abordagem", tone: "cyan" },
-          { label: "Segurança clínica", tone: "emerald" },
+          { label: "Prioridade automática", tone: "cyan" },
+          { label: "Kit integrado", tone: "emerald" },
         ]}
         metrics={[
-          { label: "Queixa", value: workingComplaint ? "Ativa" : "Livre" },
-          { label: "Alertas", value: alerts.length },
-          { label: "Prioridade", value: acuity.label },
+          { label: "Prioridade", value: prioridade ? NOME_COR[prioridade] : "A definir" },
+          { label: "Alertas", value: leitura.alertas.length },
+          { label: "NEWS2", value: leitura.news2 ? `${leitura.news2.pontos}${leitura.news2.completo ? "" : " (parcial)"}` : "—" },
         ]}
+        actions={
+          <button
+            type="button"
+            onClick={novoCaso}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Novo caso
+          </button>
+        }
       >
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="space-y-4">
@@ -592,40 +576,17 @@ export default function CasoRapidoPage() {
                       value={complaint}
                       onChange={(event) => setComplaint(event.target.value)}
                       placeholder="Ex.: cefaleia, dor torácica, dispneia..."
-                      className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                      className={`${INPUT} pl-11`}
                     />
                   </div>
                 </Field>
 
-                <Field label="Gravidade inicial" className="md:col-span-2">
-                  <select
-                    value={severity}
-                    onChange={(event) => setSeverity(event.target.value)}
-                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
-                  >
-                    <option>A definir</option>
-                    <option>Baixa complexidade</option>
-                    <option>Observação</option>
-                    <option>Urgência</option>
-                    <option>Emergência</option>
-                  </select>
-                </Field>
-
                 <Field label="Idade">
-                  <input
-                    value={age}
-                    onChange={(event) => setAge(event.target.value)}
-                    placeholder="Ex.: 62 anos"
-                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
-                  />
+                  <input value={age} onChange={(event) => setAge(event.target.value)} placeholder="Ex.: 62 anos ou 8 meses" className={INPUT} />
                 </Field>
 
                 <Field label="Sexo">
-                  <select
-                    value={sex}
-                    onChange={(event) => setSex(event.target.value)}
-                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
-                  >
+                  <select value={sex} onChange={(event) => setSex(event.target.value)} className={INPUT}>
                     <option value="">Não informado</option>
                     <option>Feminino</option>
                     <option>Masculino</option>
@@ -634,7 +595,7 @@ export default function CasoRapidoPage() {
                 </Field>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
                 {([
                   ["pa", "PA", "Ex.: 140x90"],
                   ["fc", "FC", "bpm"],
@@ -648,17 +609,60 @@ export default function CasoRapidoPage() {
                       value={vitals[key]}
                       onChange={(event) => updateVital(key, event.target.value)}
                       placeholder={placeholder}
-                      className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                      inputMode={key === "pa" ? "text" : "decimal"}
+                      className={INPUT}
                     />
                   </Field>
                 ))}
               </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <Field label="Consciência">
+                  <select value={consciencia} onChange={(event) => setConsciencia(event.target.value as Consciencia)} className={INPUT}>
+                    {CONSCIENCIA_OPCOES.map((opcao) => (
+                      <option key={opcao.valor} value={opcao.valor}>
+                        {opcao.rotulo}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <label className="flex items-end">
+                  <span className="flex h-11 w-full items-center gap-2.5 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700">
+                    <input type="checkbox" checked={oxigenio} onChange={(event) => setOxigenio(event.target.checked)} className="h-4 w-4 accent-cyan-700" />
+                    Em oxigênio suplementar
+                  </span>
+                </label>
+              </div>
             </div>
 
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4">
-              <Field label="Sinais de alarme percebidos">
+            {prioridade ? (
+              <a
+                href="#leitura-caso"
+                className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold xl:hidden ${COR_PRIORIDADE[prioridade].faixa}`}
+              >
+                <span>
+                  {NOME_COR[prioridade]} · {PRIORIDADES[prioridade].rotulo}
+                  <span className="block text-xs font-medium opacity-90">
+                    {leitura.alertas.length} {leitura.alertas.length === 1 ? "alerta" : "alertas"}
+                    {leitura.news2 ? ` · NEWS2 ${leitura.news2.pontos}` : ""}
+                  </span>
+                </span>
+                <span className="text-xs">Ver leitura ↓</span>
+              </a>
+            ) : null}
+
+            <div className="space-y-4 rounded-[24px] border border-slate-200 bg-white p-4">
+              <SinaisAlarme
+                sinais={sinais}
+                marcados={sinaisMarcados}
+                revisados={alarmesRevisados}
+                onAlternar={alternarSinal}
+                onNenhum={nenhumSinal}
+              />
+
+              <Field label="Outros sinais de alarme">
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={redFlags}
                   onChange={(event) => setRedFlags(event.target.value)}
                   placeholder="Ex.: dor súbita, déficit focal, hipotensão, rigidez de nuca..."
@@ -666,153 +670,67 @@ export default function CasoRapidoPage() {
                 />
               </Field>
 
-              <div className="mt-4">
-                <Field label="Anotações rápidas">
-                  <textarea
-                    rows={4}
-                    value={notes}
-                    onChange={(event) => setNotes(event.target.value)}
-                    placeholder="História curta, exame físico, contexto ou pendências."
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-                  />
-                </Field>
-              </div>
+              <Field label="Anotações rápidas">
+                <textarea
+                  rows={4}
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="História curta, exame físico, contexto ou pendências."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                />
+              </Field>
             </div>
           </section>
 
           <section className="space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-white p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Plano operacional
-                  </p>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                    {profile.title}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Revise, copie e siga para o módulo necessário com a mesma queixa.
-                  </p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Leitura do caso</p>
+                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{profile.title}</h2>
                 </div>
-
                 <div className="flex flex-wrap gap-2">
                   <CopyButton text={handoffText} label="Copiar passagem" copiedLabel="Copiada" />
                   <CopyButton text={caseText} label="Copiar caso" copiedLabel="Copiado" />
                 </div>
               </div>
+              <PainelTriagem leitura={leitura} manual={manual} onManual={setManual} />
+            </div>
 
-              <div className={`mt-4 rounded-2xl border p-4 ${
-                acuity.tone === "critical"
-                  ? "border-rose-200 bg-rose-50"
-                  : acuity.tone === "warning"
-                    ? "border-amber-200 bg-amber-50"
-                    : "border-slate-200 bg-slate-50"
-              }`}>
-                <div className="flex gap-3">
-                  <ShieldAlert className={`mt-0.5 h-5 w-5 shrink-0 ${
-                    acuity.tone === "critical"
-                      ? "text-rose-700"
-                      : acuity.tone === "warning"
-                        ? "text-amber-700"
-                        : "text-slate-500"
-                  }`} />
-                  <div>
-                    <p className={`text-sm font-semibold ${
-                      acuity.tone === "critical"
-                        ? "text-rose-950"
-                        : acuity.tone === "warning"
-                          ? "text-amber-950"
-                          : "text-slate-950"
-                    }`}>
-                      {acuity.label}
-                    </p>
-                    <p className={`mt-1 text-sm leading-6 ${
-                      acuity.tone === "critical"
-                        ? "text-rose-800"
-                        : acuity.tone === "warning"
-                          ? "text-amber-800"
-                          : "text-slate-600"
-                    }`}>
-                      {acuity.description}
-                    </p>
-                  </div>
+            <KitQueixa
+              queixa={queixaShift(activeComplaint?.title || "")}
+              titulo={workingComplaint}
+              valores={valoresCalculadora}
+              pediatrico={leitura.faixaEtaria === "pediatrico"}
+              condutaDefinida={condutaDefinida}
+              onCondutaDefinida={setCondutaDefinida}
+            />
+
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+              <div className="flex gap-3">
+                <ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">{reassessment.label}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{reassessment.detail}</p>
+                  <ul className="mt-3 space-y-2">
+                    {reassessment.items.map((item) => (
+                      <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
+                        <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
 
-              {alerts.length > 0 ? (
-                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                  <div className="flex gap-3">
-                    <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-700" />
-                    <div>
-                      <p className="text-sm font-semibold text-rose-900">
-                        Alertas do preenchimento
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {alerts.map((item) => (
-                          <span key={item.label} className={`rounded-full border bg-white px-3 py-1 text-xs font-semibold ${
-                            item.tone === "critical"
-                              ? "border-rose-200 text-rose-700"
-                              : "border-amber-200 text-amber-700"
-                          }`}>
-                            {item.label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="flex gap-3">
-                  <ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">
-                      {reassessment.label}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">
-                      {reassessment.detail}
-                    </p>
-                    <ul className="mt-3 space-y-2">
-                      {reassessment.items.map((item) => (
-                        <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
-                          <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 <PlanBlock title="Hipóteses" items={profile.differentials} icon={Stethoscope} />
-                <PlanBlock title="Não perder" items={profile.redFlags} icon={ShieldAlert} />
                 <PlanBlock title="Exames" items={profile.examFocus} icon={FileText} />
               </div>
 
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-950">Ações iniciais</p>
-                <ul className="mt-3 space-y-2">
-                  {profile.initialActions.map((item) => (
-                    <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
-                      <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-sm font-semibold text-slate-950">Primeira hora</p>
-                <ul className="mt-3 space-y-2">
-                  {firstHourTasks.map((item) => (
-                    <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
-                      <ClipboardCheck className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <PlanBlock title="Ações iniciais" items={profile.initialActions} icon={ClipboardCheck} />
+                <PlanBlock title="Primeira hora" items={firstHourTasks} icon={ShieldAlert} />
               </div>
 
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -828,32 +746,29 @@ export default function CasoRapidoPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
-              <ModuleLink href={buildContextualShiftHref("/plantao/prescricao-guiada", workingComplaint)} title="Plano guiado" icon={ClipboardCheck} />
-              <ModuleLink href={buildContextualShiftHref("/plantao/pendencias", workingComplaint)} title="Pendências" icon={ClipboardCheck} />
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              <ModuleLink href={buildContextualShiftHref("/plantao/pendencias", workingComplaint)} title="Pendências" icon={ListChecks} />
+              <ModuleLink href={buildContextualShiftHref("/plantao/sbar", workingComplaint)} title="Passagem SBAR" icon={FileText} />
               <ModuleLink href={buildContextualShiftHref("/plantao/encaminhamento", workingComplaint)} title="Encaminhamento" icon={Send} />
-              <ModuleLink href={buildHref("/condutas", workingComplaint)} title="Condutas" icon={ClipboardList} />
-              <ModuleLink href={buildHref("/prescricao", workingComplaint)} title="Prescrição" icon={ClipboardList} />
-              <ModuleLink href={buildHref("/exames-evolucao", workingComplaint)} title="Exames / evolução" icon={FileText} />
-              <ModuleLink href={buildHref("/cids", workingComplaint)} title="CID" icon={Tags} />
+              <ModuleLink href={buildContextualShiftHref("/plantao/alta-segura", workingComplaint)} title="Alta segura" icon={LogOut} />
+              <ModuleLink href={buildContextualShiftHref("/exames-evolucao", workingComplaint)} title="Exames / evolução" icon={FileText} />
               <ModuleLink href="/pacientes" title="Paciente" icon={Activity} />
-              <ModuleLink href="/dashboard" title="Dashboard" icon={Gauge} />
             </div>
           </section>
         </div>
       </ModulePageHeader>
+
+      <ClinicalReassessmentPanel />
+
+      <ClinicalEvolutionComposer />
 
       <ResibookGuard context="plantao" />
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Entradas rápidas
-            </p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
-              Comece pela síndrome
-            </h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Entradas rápidas</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Comece pela síndrome</h2>
           </div>
         </div>
 
@@ -881,23 +796,13 @@ export default function CasoRapidoPage() {
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </span>
+      <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</span>
       {children}
     </label>
   );
 }
 
-function PlanBlock({
-  title,
-  items,
-  icon: Icon,
-}: {
-  title: string;
-  items: string[];
-  icon: React.ComponentType<{ className?: string }>;
-}) {
+function PlanBlock({ title, items, icon: Icon }: { title: string; items: string[]; icon: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
       <div className="flex items-center gap-2">
@@ -915,20 +820,9 @@ function PlanBlock({
   );
 }
 
-function ModuleLink({
-  href,
-  title,
-  icon: Icon,
-}: {
-  href: string;
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
+function ModuleLink({ href, title, icon: Icon }: { href: string; title: string; icon: React.ComponentType<{ className?: string }> }) {
   return (
-    <Link
-      href={href}
-      className="group rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
-    >
+    <Link href={href} className="group rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
           <Icon className="h-4.5 w-4.5" />
