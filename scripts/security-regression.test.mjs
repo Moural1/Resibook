@@ -687,3 +687,12 @@ test("relatos de erro e analytics não carregam dados pessoais nem parâmetros d
   assert.equal(sanitizePath("/prescricao/42/editar"), "/prescricao/[id]/editar");
   assert.equal(sanitizeAnalyticsUrl("https://www.resibook.com.br/pacientes?q=Maria%20Silva"), "https://www.resibook.com.br/pacientes");
 });
+
+test("redirecionamento pós-login só aceita caminhos internos", async () => {
+  const { safeInternalPath } = await import("../src/lib/safe-redirect.ts");
+  const fora = ["//evil.com", "/\\evil.com", "/\\/evil.com", "https://evil.com", "evil.com", "/\tevil.com", "javascript:alert(1)", "", null, undefined];
+  for (const valor of fora) assert.equal(safeInternalPath(valor, "/dashboard"), "/dashboard", JSON.stringify(valor));
+  assert.equal(safeInternalPath("/fluxos/enamed?x=1#topo", "/dashboard"), "/fluxos/enamed?x=1#topo");
+  assert.equal(safeInternalPath("/caso-rapido", "/dashboard"), "/caso-rapido");
+  assert.equal(safeInternalPath("/%5Cevil.com", "/dashboard"), "/%5Cevil.com", "barra codificada continua interna");
+});
