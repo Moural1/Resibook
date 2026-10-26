@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Pencil, Search, Stethoscope, X } from "lucide-react";
+import { AlarmClock, ArrowRight, LayoutGrid, Pencil, Plus, Search, Stethoscope, X } from "lucide-react";
 import {
   CLINICAL_CASE_SESSION_EVENT,
   clearClinicalCaseSession,
@@ -16,10 +16,99 @@ import {
 import { QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import { etapasDoCaso, leituraDoCaso, prioridadeFinal, valoresParaCalculadoras } from "@/lib/shift/caso";
 import { queixaShift } from "@/lib/shift/queixas";
+import { adicionarPaciente, resumoQuadro } from "@/lib/shift/quadro";
 import { PRIORIDADES } from "@/lib/shift/triagem";
 import EtapasCaso from "./etapas-caso";
 import KitQueixa from "./kit-queixa";
 import { COR_PRIORIDADE, NOME_COR } from "./prioridade";
+import { useQuadro } from "./use-quadro";
+
+/* Faixa do Quadro do plantão: quantos pacientes, reavaliações vencidas e pendências. */
+function ResumoDoQuadro() {
+  const { quadro, pronto, agora } = useQuadro();
+  if (!pronto) return null;
+  const resumo = resumoQuadro(quadro, agora);
+  return (
+    <Link
+      href="/plantao/quadro"
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition ${
+        resumo.atrasadas ? "border-rose-200 bg-rose-50 hover:border-rose-300" : "border-slate-200 bg-white hover:border-cyan-700/40"
+      }`}
+    >
+      <span className="flex items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-800">
+          <LayoutGrid className="h-4 w-4" />
+        </span>
+        <span>
+          <span className="block text-sm font-semibold text-slate-950">Quadro do plantão</span>
+          <span className="block text-xs text-slate-500">
+            {resumo.total
+              ? `${resumo.total} ${resumo.total === 1 ? "paciente" : "pacientes"} · ${resumo.pendencias} ${resumo.pendencias === 1 ? "pendência aberta" : "pendências abertas"}`
+              : "Acompanhe vários pacientes com timer de reavaliação e passagem de todos"}
+          </span>
+        </span>
+      </span>
+      <span className="flex items-center gap-2">
+        {resumo.atrasadas ? (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white">
+            <AlarmClock className="h-3.5 w-3.5" />
+            {resumo.atrasadas} {resumo.atrasadas === 1 ? "reavaliação atrasada" : "reavaliações atrasadas"}
+          </span>
+        ) : null}
+        <ArrowRight className="h-4 w-4 text-slate-400" />
+      </span>
+    </Link>
+  );
+}
+
+/* Põe o caso ativo no quadro, pedindo só o leito ou as iniciais. */
+export function PorNoQuadro({ caso }: { caso: ClinicalCaseSession }) {
+  const { quadro, alterar } = useQuadro();
+  const [aberto, setAberto] = useState(false);
+  const [leito, setLeito] = useState(caso.leito ?? "");
+  const noQuadro = Boolean(caso.quadroId && quadro.pacientes.some((p) => p.id === caso.quadroId));
+
+  if (noQuadro) {
+    return (
+      <Link href="/plantao/quadro" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-cyan-100 bg-cyan-50 px-3 text-xs font-semibold text-cyan-900">
+        <LayoutGrid className="h-3.5 w-3.5" />
+        No quadro{caso.leito ? ` · ${caso.leito}` : ""}
+      </Link>
+    );
+  }
+  if (!aberto) {
+    return (
+      <button type="button" onClick={() => setAberto(true)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300">
+        <Plus className="h-3.5 w-3.5" />
+        Pôr no quadro
+      </button>
+    );
+  }
+  return (
+    <form
+      className="flex items-center gap-1.5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        let id = "";
+        alterar((atual, momento) => {
+          const resultado = adicionarPaciente(atual, { leito, caso }, momento);
+          id = resultado.id;
+          return resultado.quadro;
+        });
+        saveClinicalCaseSession({ ...caso, quadroId: id, leito: leito.trim() });
+        setAberto(false);
+      }}
+    >
+      <label>
+        <span className="sr-only">Leito ou iniciais</span>
+        <input autoFocus value={leito} onChange={(event) => setLeito(event.target.value)} placeholder="Leito ou iniciais" className="h-9 w-36 rounded-lg border border-slate-200 bg-white px-2.5 text-xs outline-none focus:border-cyan-700" />
+      </label>
+      <button type="submit" className="h-9 rounded-lg bg-cyan-800 px-3 text-xs font-semibold text-white">
+        Adicionar
+      </button>
+    </form>
+  );
+}
 
 function ComecarCaso() {
   const router = useRouter();
@@ -89,7 +178,9 @@ function CasoAtivo({ caso }: { caso: ClinicalCaseSession }) {
               <Stethoscope className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-semibold opacity-90">Caso ativo · {formatClinicalCaseAge(caso)}</p>
+              <p className="text-xs font-semibold opacity-90">
+                Caso ativo{caso.leito ? ` · ${caso.leito}` : ""} · {formatClinicalCaseAge(caso)}
+              </p>
               <p className="truncate text-xl font-semibold">{caso.complaint}</p>
             </div>
           </div>
@@ -115,7 +206,8 @@ function CasoAtivo({ caso }: { caso: ClinicalCaseSession }) {
                 </p>
               ) : null}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <PorNoQuadro caso={caso} />
               <Link href="/caso-rapido" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300">
                 <Pencil className="h-3.5 w-3.5" />
                 Editar caso
@@ -177,5 +269,10 @@ export default function CentralCaso() {
   }, []);
 
   if (!pronto) return <div className="h-48 animate-pulse rounded-[24px] border border-slate-200 bg-white" aria-hidden="true" />;
-  return caso?.complaint ? <CasoAtivo caso={caso} /> : <ComecarCaso />;
+  return (
+    <div className="space-y-4">
+      <ResumoDoQuadro />
+      {caso?.complaint ? <CasoAtivo caso={caso} /> : <ComecarCaso />}
+    </div>
+  );
 }

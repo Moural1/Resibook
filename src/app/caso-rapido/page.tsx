@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
 import ResibookGuard from "@/components/resibook-guard";
@@ -11,12 +11,15 @@ import ClinicalEvolutionComposer from "@/components/clinical-evolution-composer"
 import PainelTriagem from "@/components/shift/painel-triagem";
 import SinaisAlarme from "@/components/shift/sinais-alarme";
 import KitQueixa from "@/components/shift/kit-queixa";
+import { PorNoQuadro } from "@/components/shift/central-caso";
 import { COR_PRIORIDADE, NOME_COR } from "@/components/shift/prioridade";
 import { buildContextualShiftHref, clinicalComplaintsMatch } from "@/lib/clinical-shift-context";
 import {
+  CLINICAL_CASE_SESSION_EVENT,
   clearClinicalCaseSession,
   loadClinicalCaseSession,
   saveClinicalCaseSession,
+  type ClinicalCaseSession,
 } from "@/lib/clinical-case-session";
 import { findQuickComplaint, QUICK_COMPLAINTS, type QuickComplaint } from "@/lib/clinical-quick-complaints";
 import { consciencia as lerConsciencia, gravidadeLegada, valoresParaCalculadoras } from "@/lib/shift/caso";
@@ -382,6 +385,8 @@ export default function CasoRapidoPage() {
   const [alarmesRevisados, setAlarmesRevisados] = useState(false);
   const [manual, setManual] = useState<NivelPrioridade | null>(null);
   const [condutaDefinida, setCondutaDefinida] = useState(false);
+  const [leito, setLeito] = useState("");
+  const [sessaoAtual, setSessaoAtual] = useState<ClinicalCaseSession | null>(null);
 
   /* Restaura o caso ativo do aparelho; uma queixa diferente na URL abre caso novo. */
   useEffect(() => {
@@ -400,6 +405,7 @@ export default function CasoRapidoPage() {
       setAlarmesRevisados(Boolean(saved.alarmesRevisados));
       setManual(saved.prioridadeManual ?? null);
       setCondutaDefinida(Boolean(saved.condutaDefinida));
+      setLeito(saved.leito ?? "");
       return;
     }
     if (urlQuery) setComplaint(urlQuery);
@@ -407,6 +413,10 @@ export default function CasoRapidoPage() {
 
   const activeComplaint = useMemo(() => findQuickComplaint(complaint), [complaint]);
   const workingComplaint = activeComplaint?.title || complaint.trim();
+  const queixaAtual = useRef("");
+  useEffect(() => {
+    queixaAtual.current = workingComplaint;
+  }, [workingComplaint]);
   const profile = getProfile(activeComplaint?.title || "");
   const sinais = useMemo(() => sinaisDaQueixa(activeComplaint?.title || ""), [activeComplaint]);
   const sinaisPresentes = useMemo(() => sinais.filter((sinal) => sinaisMarcados.includes(sinal.id)), [sinais, sinaisMarcados]);
@@ -479,8 +489,9 @@ export default function CasoRapidoPage() {
       alarmesRevisados,
       prioridadeManual: manual,
       condutaDefinida,
+      leito: leito.trim(),
     }),
-    [workingComplaint, age, sex, severity, vitals, redFlags, notes, leitura, firstHourTasks, consciencia, oxigenio, sinaisPresentes, alarmesRevisados, manual, condutaDefinida]
+    [workingComplaint, age, sex, severity, vitals, redFlags, notes, leitura, firstHourTasks, consciencia, oxigenio, sinaisPresentes, alarmesRevisados, manual, condutaDefinida, leito]
   );
 
   useEffect(() => {
@@ -491,6 +502,8 @@ export default function CasoRapidoPage() {
       ...sessionBase,
       selectedCid: sameCase ? previous?.selectedCid || null : null,
       reassessment: sameCase ? previous?.reassessment || null : null,
+      /* O vínculo com o Quadro do plantão vem da sessão (pode ter sido criado em outra tela). */
+      quadroId: sameCase ? previous?.quadroId || "" : "",
       updatedAt: new Date().toISOString(),
     });
   }, [sessionBase]);
@@ -537,7 +550,21 @@ export default function CasoRapidoPage() {
     setAlarmesRevisados(false);
     setManual(null);
     setCondutaDefinida(false);
+    setLeito("");
   }
+
+  /* Acompanha a sessão para mostrar o vínculo com o quadro e o leito definidos fora daqui. */
+  useEffect(() => {
+    function atualizar() {
+      const sessao = loadClinicalCaseSession();
+      const mesmoCaso = Boolean(sessao && queixaAtual.current && clinicalComplaintsMatch(sessao.complaint, queixaAtual.current));
+      setSessaoAtual(mesmoCaso ? sessao : null);
+      if (mesmoCaso && sessao?.leito !== undefined) setLeito((atual) => (atual.trim() === sessao.leito ? atual : sessao.leito ?? atual));
+    }
+    atualizar();
+    window.addEventListener(CLINICAL_CASE_SESSION_EVENT, atualizar);
+    return () => window.removeEventListener(CLINICAL_CASE_SESSION_EVENT, atualizar);
+  }, []);
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -555,21 +582,24 @@ export default function CasoRapidoPage() {
           { label: "NEWS2", value: leitura.news2 ? `${leitura.news2.pontos}${leitura.news2.completo ? "" : " (parcial)"}` : "—" },
         ]}
         actions={
-          <button
-            type="button"
-            onClick={novoCaso}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Novo caso
-          </button>
+          <>
+            {sessaoAtual?.complaint ? <PorNoQuadro caso={sessaoAtual} /> : null}
+            <button
+              type="button"
+              onClick={novoCaso}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Novo caso
+            </button>
+          </>
         }
       >
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <section className="space-y-4">
             <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Queixa principal" className="md:col-span-2">
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="Queixa principal" className="md:col-span-3">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
@@ -579,6 +609,10 @@ export default function CasoRapidoPage() {
                       className={`${INPUT} pl-11`}
                     />
                   </div>
+                </Field>
+
+                <Field label="Leito / iniciais">
+                  <input value={leito} onChange={(event) => setLeito(event.target.value)} placeholder="Ex.: Leito 3 (sem nome)" className={INPUT} />
                 </Field>
 
                 <Field label="Idade">
