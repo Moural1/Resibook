@@ -9,6 +9,7 @@ import heroMobile from "../../public/landing/hero-mobile.webp";
 import dossieEnamed from "../../public/landing/dossie-enamed.webp";
 import { totaisDossie } from "@/lib/fluxos/enamed";
 import { totaisFluxos } from "@/lib/fluxos";
+import { SUPPORT_EMAIL } from "@/lib/support";
 import {
   Activity,
   ArrowRight,
@@ -698,6 +699,9 @@ export default function HomePage() {
             <Link href="/suporte" className="font-semibold text-cyan-300 transition hover:text-cyan-200">
               Suporte
             </Link>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="transition hover:text-white">
+              {SUPPORT_EMAIL}
+            </a>
           </nav>
         </div>
         <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-slate-500">
