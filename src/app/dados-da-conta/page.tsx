@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "../../components/module-page-header";
+import AccountPasswordForm from "../../components/account-password-form";
 import {
   AlertTriangle,
   Brain,
@@ -767,6 +768,16 @@ export default function DadosDaContaPage() {
           </div>
         </div>
       </section>
+
+      {session.userId && session.email && !session.isGuest ? (
+        <section id="senha" className="scroll-mt-24 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900">Senha</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Troque a senha de acesso. Pedimos a senha atual para confirmar que é você.
+          </p>
+          <AccountPasswordForm email={session.email} />
+        </section>
+      ) : null}
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
