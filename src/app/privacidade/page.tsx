@@ -1,3 +1,5 @@
+import { PRIVACY_EMAIL } from "@/lib/support";
+
 export default function PoliticaDePrivacidadePage() {
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
@@ -253,7 +255,12 @@ export default function PoliticaDePrivacidadePage() {
             </h2>
             <p className="mt-2">
               Dúvidas, solicitações de privacidade ou pedidos relacionados a
-              dados pessoais devem ser encaminhados ao administrador do sistema.
+              dados pessoais, incluindo acesso, correção, portabilidade ou
+              exclusão, devem ser enviados para{" "}
+              <a href={`mailto:${PRIVACY_EMAIL}`} className="font-semibold text-emerald-700 underline-offset-2 hover:underline">
+                {PRIVACY_EMAIL}
+              </a>
+              .
             </p>
           </section>
         </div>

@@ -1,3 +1,5 @@
+import { SUPPORT_EMAIL } from "@/lib/support";
+
 export default function TermosDeUsoPage() {
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
@@ -215,7 +217,11 @@ export default function TermosDeUsoPage() {
             </h2>
             <p className="mt-2">
               Dúvidas, solicitações ou questões relacionadas ao uso do ResiBook
-              devem ser encaminhadas ao administrador do sistema.
+              devem ser enviadas para{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-blue-700 underline-offset-2 hover:underline">
+                {SUPPORT_EMAIL}
+              </a>
+              .
             </p>
           </section>
         </div>
