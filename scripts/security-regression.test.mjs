@@ -144,8 +144,12 @@ test("carteira de pacientes permanece disponível para usuários autenticados", 
   assert.equal(isDisabledCommercialRoute("/api/patients/123"), false);
 });
 
-test("conta proprietária é reconhecida como administradora", () => {
-  assert.equal(isResibookAdmin({ email: "igormoura@resibook.com" }), true);
+test("admin vem só da marcação interna, nunca do e-mail", () => {
+  assert.equal(isResibookAdmin({ email: "igormoura@resibook.com" }), false);
+  assert.equal(
+    isResibookAdmin({ email: "igormoura@resibook.com", user_metadata: { role: "admin" } }),
+    false
+  );
   assert.equal(isResibookAdmin({ email: "medico@example.com" }), false);
   assert.equal(
     isResibookAdmin({

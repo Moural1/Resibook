@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { isResibookAdmin, LEGACY_ADMIN_EMAIL } from "@/lib/auth-role";
+import { isResibookAdmin } from "@/lib/auth-role";
 import ModulePageHeader from "@/components/module-page-header";
 import {
   AlertTriangle,
@@ -60,8 +60,6 @@ type UserAccessSummary = {
   authManaged?: boolean;
   isAdmin?: boolean;
 };
-
-const ADMIN_EMAIL = LEGACY_ADMIN_EMAIL;
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -371,7 +369,6 @@ export default function AcessosPage() {
     }
 
     if (
-      email === ADMIN_EMAIL ||
       userSummaries.some((item) => item.email === email && item.isAdmin)
     ) {
       setError("Você não pode bloquear o administrador.");

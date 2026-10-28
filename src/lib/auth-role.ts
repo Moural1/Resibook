@@ -1,5 +1,3 @@
-export const LEGACY_ADMIN_EMAIL = "igormoura@resibook.com";
-
 const SUBSCRIPTION_EXEMPT_EMAILS = new Set([
   "igormouralopes@hotmail.com",
   "liviarosa@resibook.com",
@@ -13,10 +11,10 @@ type AuthUserLike = {
   app_metadata?: Record<string, unknown> | null;
 };
 
+/* Admin só pela marcação interna da conta (app_metadata, que o usuário não
+   altera). E-mail nunca dá permissão: um domínio pode mudar de dono. */
 export function isResibookAdmin(user?: AuthUserLike | null) {
-  const role = user?.app_metadata?.role;
-  const email = user?.email?.trim().toLowerCase() || "";
-  return role === "admin" || email === LEGACY_ADMIN_EMAIL;
+  return user?.app_metadata?.role === "admin";
 }
 
 export function isSubscriptionExempt(user?: AuthUserLike | null) {
