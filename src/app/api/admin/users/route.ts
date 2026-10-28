@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import {
-  isResibookAdmin,
-  isSubscriptionExempt,
-  LEGACY_ADMIN_EMAIL,
-} from "@/lib/auth-role";
+import { isResibookAdmin, isSubscriptionExempt } from "@/lib/auth-role";
 
 async function authorizeAdmin() {
   const supabase = await createServerClient();
@@ -136,7 +132,7 @@ export async function DELETE(request: Request) {
   if (!email) {
     return NextResponse.json({ error: "E-mail obrigatório." }, { status: 400 });
   }
-  if (email === LEGACY_ADMIN_EMAIL || isSubscriptionExempt({ email })) {
+  if (isSubscriptionExempt({ email })) {
     return NextResponse.json(
       { error: "Esta conta interna é protegida e não pode ser excluída." },
       { status: 400 }
