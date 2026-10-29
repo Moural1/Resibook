@@ -1459,12 +1459,404 @@ const bmi: ClinicalCalculator = {
   },
 };
 
+const heartScore: ClinicalCalculator = {
+  id: "heart",
+  name: "HEART score para dor torácica",
+  shortName: "HEART",
+  category: "Cardiologia",
+  description: "Risco de evento cardíaco maior em 6 semanas na dor torácica suspeita de SCA sem supra de ST.",
+  fields: [
+    selectField("history", "História", [
+      { label: "Pouco suspeita", value: "0" },
+      { label: "Moderadamente suspeita", value: "1" },
+      { label: "Altamente suspeita", value: "2" },
+    ], "", "Características da dor: localização, irradiação, gatilho, alívio com repouso/nitrato."),
+    selectField("ecg", "ECG", [
+      { label: "Normal", value: "0" },
+      { label: "Alteração inespecífica da repolarização (BRE, HVE, marcapasso, repolarização)", value: "1" },
+      { label: "Desvio significativo de ST", value: "2" },
+    ], ""),
+    numberField("age", "Idade", "anos", 18, 120),
+    selectField("risk", "Fatores de risco", [
+      { label: "Nenhum conhecido", value: "0" },
+      { label: "1 ou 2 fatores", value: "1" },
+      { label: "3 ou mais, ou doença aterosclerótica conhecida", value: "2" },
+    ], "", "HAS, dislipidemia, DM, obesidade (IMC > 30), tabagismo atual ou recente, história familiar. Aterosclerose: IAM, angioplastia/revascularização, AVC ou DAP prévios."),
+    selectField("troponin", "Troponina inicial", [
+      { label: "≤ limite da normalidade", value: "0" },
+      { label: "1 a 3 vezes o limite", value: "1" },
+      { label: "> 3 vezes o limite", value: "2" },
+    ], ""),
+  ],
+  reference: {
+    label: "Backus et al., Int J Cardiol 2013 - validação do HEART score",
+    url: "https://pubmed.ncbi.nlm.nih.gov/23465250/",
+  },
+  calculate(values) {
+    const age = num(values, "age");
+    const ids = ["history", "ecg", "risk", "troponin"] as const;
+    if (age === null || ids.some((id) => selected(values, id) === "")) return null;
+    const agePoints = age >= 65 ? 2 : age >= 45 ? 1 : 0;
+    const parts: Array<[string, number]> = [
+      ["história", Number(selected(values, "history"))],
+      ["ECG", Number(selected(values, "ecg"))],
+      ["idade", agePoints],
+      ["fatores de risco", Number(selected(values, "risk"))],
+      ["troponina", Number(selected(values, "troponin"))],
+    ];
+    const score = parts.reduce((sum, [, points]) => sum + points, 0);
+    const band = score <= 3 ? "baixo" : score <= 6 ? "moderado" : "alto";
+    const classification = band === "baixo"
+      ? "Baixo risco (MACE 0,9-1,7% em 6 semanas)"
+      : band === "moderado"
+        ? "Risco moderado (MACE 12-16,6% em 6 semanas)"
+        : "Alto risco (MACE 50-65% em 6 semanas)";
+    const recommendation = band === "baixo"
+      ? "Com troponinas seriadas negativas pelo protocolo do serviço, considerar alta precoce com seguimento ambulatorial."
+      : band === "moderado"
+        ? "Observação, troponina seriada e estratificação adicional (teste funcional ou angiotomografia) conforme protocolo."
+        : "Tratar como SCA de alto risco: internação, cardiologia e estratégia invasiva precoce conforme protocolo.";
+    return result(
+      String(score),
+      "pontos",
+      classification,
+      `HEART = ${score} (${parts.map(([label, points]) => `${label} ${points}`).join(", ")}).`,
+      recommendation,
+      "Não se aplica a supra de ST, instabilidade hemodinâmica ou arritmia grave, que exigem conduta imediata. Use junto com troponina seriada; com troponina de alta sensibilidade, siga o algoritmo validado do serviço.",
+      `HEART score = ${score} pontos. ${classification}. ${recommendation}`,
+      parts.filter(([, points]) => points > 0).map(([label, points]) => `+${points} ${label}`)
+    );
+  },
+};
+
+const percRule: ClinicalCalculator = {
+  id: "perc",
+  name: "Critérios PERC para TEP",
+  shortName: "PERC",
+  category: "Tromboembolismo",
+  description: "Afasta TEP sem D-dímero quando a probabilidade pré-teste já é baixa e nenhum critério está presente.",
+  fields: [
+    numberField("age", "Idade", "anos", 18, 120),
+    numberField("heartRate", "Frequência cardíaca", "bpm", 20, 250),
+    numberField("spo2", "SpO₂ em ar ambiente", "%", 50, 100),
+    checkbox("legSwelling", "Edema unilateral de membro inferior"),
+    checkbox("hemoptysis", "Hemoptise"),
+    checkbox("recentSurgery", "Cirurgia ou trauma com anestesia geral nas últimas 4 semanas"),
+    checkbox("previousVte", "TEP ou TVP prévios"),
+    checkbox("hormone", "Uso de estrogênio (anticoncepcional oral ou reposição hormonal)"),
+  ],
+  reference: {
+    label: "Kline et al., J Thromb Haemost 2004/2008 - regra PERC",
+    url: "https://pubmed.ncbi.nlm.nih.gov/18318689/",
+  },
+  calculate(values) {
+    const age = num(values, "age");
+    const heartRate = num(values, "heartRate");
+    const spo2 = num(values, "spo2");
+    if ([age, heartRate, spo2].some((value) => value === null)) return null;
+    const criteria: Array<[boolean, string]> = [
+      [age! >= 50, "idade ≥ 50 anos"],
+      [heartRate! >= 100, "FC ≥ 100 bpm"],
+      [spo2! < 95, "SpO₂ < 95%"],
+      [yes(values, "legSwelling"), "edema unilateral de MI"],
+      [yes(values, "hemoptysis"), "hemoptise"],
+      [yes(values, "recentSurgery"), "cirurgia/trauma recente"],
+      [yes(values, "previousVte"), "TEP/TVP prévios"],
+      [yes(values, "hormone"), "uso de estrogênio"],
+    ];
+    const present = criteria.filter(([active]) => active).map(([, label]) => label);
+    const negative = present.length === 0;
+    return result(
+      String(present.length),
+      present.length === 1 ? "critério" : "critérios",
+      negative ? "PERC negativo" : "PERC positivo",
+      negative
+        ? "Nenhum dos 8 critérios presente."
+        : `Critério(s) presente(s): ${present.join(", ")}.`,
+      negative
+        ? "Se a probabilidade pré-teste já era baixa (gestalt < 15%), TEP pode ser afastado sem D-dímero."
+        : "PERC não afasta TEP: seguir com D-dímero ou estratégia por Wells/YEARS conforme probabilidade clínica.",
+      "Só vale para paciente com baixa probabilidade pré-teste. Não usar em gestantes, em paciente instável ou quando a suspeita clínica é moderada ou alta.",
+      `PERC: ${negative ? "negativo (0/8 critérios)" : `positivo (${present.join(", ")})`}. ${
+        negative ? "Com baixa probabilidade pré-teste, TEP afastado sem D-dímero." : "Prosseguir com D-dímero/estratificação conforme protocolo."
+      }`,
+      present.map((label) => `+ ${label}`)
+    );
+  },
+};
+
+const childPugh: ClinicalCalculator = {
+  id: "child-pugh",
+  name: "Child-Pugh",
+  shortName: "Child-Pugh",
+  category: "Hepatologia",
+  description: "Gravidade da cirrose e reserva hepática, usada em prognóstico, ajuste de dose e indicação de procedimentos.",
+  fields: [
+    numberField("bilirubin", "Bilirrubina total", "mg/dL", 0.1, 50, 0.1),
+    numberField("albumin", "Albumina", "g/dL", 0.5, 6, 0.1),
+    numberField("inr", "INR", "", 0.5, 15, 0.01),
+    selectField("ascites", "Ascite", [
+      { label: "Ausente", value: "1" },
+      { label: "Leve ou controlada com diurético", value: "2" },
+      { label: "Moderada a volumosa ou refratária", value: "3" },
+    ], ""),
+    selectField("encephalopathy", "Encefalopatia hepática", [
+      { label: "Ausente", value: "1" },
+      { label: "Grau I-II ou controlada com medicação", value: "2" },
+      { label: "Grau III-IV ou refratária", value: "3" },
+    ], ""),
+  ],
+  reference: {
+    label: "Pugh et al., Br J Surg 1973 - classificação de Child-Pugh",
+    url: "https://pubmed.ncbi.nlm.nih.gov/4541913/",
+  },
+  calculate(values) {
+    const bilirubin = num(values, "bilirubin");
+    const albumin = num(values, "albumin");
+    const inr = num(values, "inr");
+    const ascites = selected(values, "ascites");
+    const encephalopathy = selected(values, "encephalopathy");
+    if ([bilirubin, albumin, inr].some((value) => value === null) || !ascites || !encephalopathy) return null;
+    const parts: Array<[string, number]> = [
+      ["bilirrubina", bilirubin! < 2 ? 1 : bilirubin! <= 3 ? 2 : 3],
+      ["albumina", albumin! > 3.5 ? 1 : albumin! >= 2.8 ? 2 : 3],
+      ["INR", inr! < 1.7 ? 1 : inr! <= 2.3 ? 2 : 3],
+      ["ascite", Number(ascites)],
+      ["encefalopatia", Number(encephalopathy)],
+    ];
+    const score = parts.reduce((sum, [, points]) => sum + points, 0);
+    const grade = score <= 6 ? "A" : score <= 9 ? "B" : "C";
+    const classification = grade === "A"
+      ? "Classe A: doença compensada"
+      : grade === "B"
+        ? "Classe B: comprometimento funcional significativo"
+        : "Classe C: doença descompensada";
+    const recommendation = grade === "A"
+      ? "Seguimento da cirrose com rastreio de varizes e de carcinoma hepatocelular conforme diretriz; checar ajuste de dose de fármacos de metabolismo hepático."
+      : grade === "B"
+        ? "Avaliar encaminhamento para hepatologia/centro de transplante, rever doses e risco cirúrgico aumentado."
+        : "Encaminhar para avaliação de transplante; risco cirúrgico muito elevado e necessidade de ajuste ou suspensão de fármacos hepatotóxicos.";
+    return result(
+      String(score),
+      `pontos · Classe ${grade}`,
+      classification,
+      `Child-Pugh ${score} pontos, classe ${grade}. Sobrevida histórica em 1 ano: A ~100%, B ~80%, C ~45%.`,
+      recommendation,
+      "Ascite e encefalopatia são subjetivas; INR varia entre laboratórios. Para priorização de transplante usa-se o MELD. A colestase pode elevar a bilirrubina sem refletir a mesma gravidade.",
+      `Child-Pugh = ${score} pontos (classe ${grade}). ${classification}. ${recommendation}`,
+      parts.map(([label, points]) => `${points} ${label}`)
+    );
+  },
+};
+
+const correctedCalcium: ClinicalCalculator = {
+  id: "calcio-corrigido",
+  name: "Cálcio corrigido pela albumina",
+  shortName: "Cálcio corrigido",
+  category: "Distúrbios hidroeletrolíticos",
+  description: "Estima o cálcio total quando a albumina está alterada (fórmula de Payne).",
+  fields: [
+    numberField("calcium", "Cálcio total", "mg/dL", 2, 20, 0.1),
+    numberField("albumin", "Albumina", "g/dL", 0.5, 6, 0.1),
+  ],
+  reference: {
+    label: "Payne et al., BMJ 1973 - correção do cálcio pela albumina",
+    url: "https://pubmed.ncbi.nlm.nih.gov/4758544/",
+  },
+  calculate(values) {
+    const calcium = num(values, "calcium");
+    const albumin = num(values, "albumin");
+    if (calcium === null || albumin === null) return null;
+    const corrected = calcium + 0.8 * (4 - albumin);
+    const classification = corrected < 8.5
+      ? "Hipocalcemia pela faixa usual"
+      : corrected > 10.5
+        ? "Hipercalcemia pela faixa usual"
+        : "Dentro da faixa usual (8,5-10,5 mg/dL)";
+    const recommendation = corrected < 8.5 || corrected > 10.5
+      ? "Confirmar com cálcio iônico, sobretudo em paciente grave, e investigar a causa (PTH, vitamina D, fósforo, magnésio, função renal)."
+      : "Se a suspeita clínica persistir, dosar cálcio iônico.";
+    return result(
+      corrected.toFixed(1),
+      "mg/dL",
+      classification,
+      `Cálcio corrigido = ${calcium.toFixed(1)} + 0,8 × (4 - ${albumin.toFixed(1)}) = ${corrected.toFixed(1)} mg/dL.`,
+      recommendation,
+      "A correção é imprecisa em doentes críticos, DRC, distúrbios ácido-base e hipoalbuminemia grave; nesses casos prefira o cálcio iônico. A faixa de referência varia por laboratório.",
+      `Cálcio total ${calcium.toFixed(1)} mg/dL com albumina ${albumin.toFixed(1)} g/dL; cálcio corrigido = ${corrected.toFixed(1)} mg/dL. ${classification}.`
+    );
+  },
+};
+
+const correctedSodium: ClinicalCalculator = {
+  id: "sodio-corrigido",
+  name: "Sódio corrigido para hiperglicemia",
+  shortName: "Sódio corrigido",
+  category: "Distúrbios hidroeletrolíticos",
+  description: "Corrige o sódio medido pela diluição causada pela glicose alta (CAD, EHH).",
+  fields: [
+    numberField("sodium", "Sódio medido", "mEq/L", 90, 200, 0.1),
+    numberField("glucose", "Glicemia", "mg/dL", 20, 3000),
+  ],
+  reference: {
+    label: "Katz, NEJM 1973; Hillier et al., Am J Med 1999",
+    url: "https://pubmed.ncbi.nlm.nih.gov/10225241/",
+  },
+  calculate(values) {
+    const sodium = num(values, "sodium");
+    const glucose = num(values, "glucose");
+    if (sodium === null || glucose === null) return null;
+    const excess = Math.max(0, glucose - 100) / 100;
+    const katz = sodium + 1.6 * excess;
+    const hillier = sodium + 2.4 * excess;
+    const classification = katz < 135
+      ? "Hiponatremia verdadeira mesmo após correção"
+      : katz > 145
+        ? "Hipernatremia após correção (déficit de água livre)"
+        : "Sódio corrigido na faixa normal";
+    return result(
+      katz.toFixed(1),
+      "mEq/L",
+      classification,
+      glucose <= 100
+        ? "Glicemia ≤ 100 mg/dL: não há correção a fazer."
+        : `Fator 1,6 (Katz) = ${katz.toFixed(1)} mEq/L; fator 2,4 (Hillier) = ${hillier.toFixed(1)} mEq/L.`,
+      "Use o sódio corrigido para escolher o fluido após a expansão inicial na CAD/EHH e acompanhe a queda: evitar redução do sódio corrigido > 10-12 mEq/L em 24 h.",
+      "O fator real varia entre pacientes, sobretudo com glicemia > 400 mg/dL, quando o fator 2,4 pode ser mais fiel. Hipertrigliceridemia e hiperproteinemia podem causar pseudo-hiponatremia em alguns métodos.",
+      `Sódio ${sodium.toFixed(1)} mEq/L com glicemia ${glucose} mg/dL; sódio corrigido ${katz.toFixed(1)} mEq/L (Katz) / ${hillier.toFixed(1)} mEq/L (Hillier). ${classification}.`
+    );
+  },
+};
+
+const serumOsmolarity: ClinicalCalculator = {
+  id: "osmolaridade",
+  name: "Osmolaridade sérica calculada",
+  shortName: "Osmolaridade",
+  category: "Distúrbios hidroeletrolíticos",
+  description: "Osmolaridade total e efetiva (tonicidade) com ureia em mg/dL; gap osmolar se houver osmolalidade medida.",
+  fields: [
+    numberField("sodium", "Sódio", "mEq/L", 90, 200, 0.1),
+    numberField("glucose", "Glicemia", "mg/dL", 20, 3000),
+    numberField("urea", "Ureia", "mg/dL", 1, 600),
+    numberField("measured", "Osmolalidade medida (opcional)", "mOsm/kg", 150, 500, 1, "Se preenchida, calcula o gap osmolar.", false),
+  ],
+  reference: {
+    label: "Revisão NCBI - osmolalidade sérica",
+    url: "https://www.ncbi.nlm.nih.gov/books/NBK567764/",
+  },
+  calculate(values) {
+    const sodium = num(values, "sodium");
+    const glucose = num(values, "glucose");
+    const urea = num(values, "urea");
+    if ([sodium, glucose, urea].some((value) => value === null)) return null;
+    const measured = num(values, "measured");
+    const effective = 2 * sodium! + glucose! / 18;
+    const total = effective + urea! / 6;
+    const gap = measured === null ? null : measured - total;
+    const classification = effective > 320
+      ? "Hiperosmolaridade efetiva > 320 (compatível com EHH no contexto)"
+      : total < 275
+        ? "Hipo-osmolar"
+        : total > 295
+          ? "Hiperosmolar"
+          : "Faixa usual (275-295)";
+    const breakdown = [`Efetiva (2×Na + glicose/18): ${effective.toFixed(0)}`, `Total (+ ureia/6): ${total.toFixed(0)}`];
+    if (gap !== null) breakdown.push(`Gap osmolar: ${gap.toFixed(0)}`);
+    return result(
+      total.toFixed(0),
+      "mOsm/L",
+      classification,
+      `Osmolaridade total ${total.toFixed(0)} mOsm/L; efetiva ${effective.toFixed(0)} mOsm/L${
+        gap === null ? "." : `; gap osmolar ${gap.toFixed(0)} (${gap > 10 ? "elevado: pensar em álcoois tóxicos, manitol, cetoacidose/lactato" : "não elevado"}).`
+      }`,
+      "A tonicidade (efetiva) é a que guia hiponatremia e estado hiperosmolar; a ureia atravessa membranas e não move água.",
+      "Ureia/6 equivale a BUN/2,8. Fórmulas de estimativa variam; gap osmolar normal não exclui intoxicação tardia por álcool tóxico.",
+      `Osmolaridade calculada ${total.toFixed(0)} mOsm/L (efetiva ${effective.toFixed(0)})${gap === null ? "" : `; gap osmolar ${gap.toFixed(0)}`}. ${classification}.`,
+      breakdown
+    );
+  },
+};
+
+const bishopScore: ClinicalCalculator = {
+  id: "bishop",
+  name: "Índice de Bishop",
+  shortName: "Bishop",
+  category: "Obstetrícia",
+  description: "Favorabilidade do colo para indução do trabalho de parto.",
+  fields: [
+    selectField("dilation", "Dilatação", [
+      { label: "Fechado (0 cm)", value: "0" },
+      { label: "1-2 cm", value: "1" },
+      { label: "3-4 cm", value: "2" },
+      { label: "≥ 5 cm", value: "3" },
+    ], ""),
+    selectField("effacement", "Apagamento", [
+      { label: "0-30%", value: "0" },
+      { label: "40-50%", value: "1" },
+      { label: "60-70%", value: "2" },
+      { label: "≥ 80%", value: "3" },
+    ], ""),
+    selectField("station", "Altura da apresentação (De Lee)", [
+      { label: "-3", value: "0" },
+      { label: "-2", value: "1" },
+      { label: "-1 ou 0", value: "2" },
+      { label: "+1 ou +2", value: "3" },
+    ], ""),
+    selectField("consistency", "Consistência do colo", [
+      { label: "Firme", value: "0" },
+      { label: "Média", value: "1" },
+      { label: "Amolecida", value: "2" },
+    ], ""),
+    selectField("position", "Posição do colo", [
+      { label: "Posterior", value: "0" },
+      { label: "Intermediária", value: "1" },
+      { label: "Anterior (centralizado)", value: "2" },
+    ], ""),
+  ],
+  reference: {
+    label: "Bishop, Obstet Gynecol 1964; ACOG Practice Bulletin 107",
+    url: "https://pubmed.ncbi.nlm.nih.gov/14199536/",
+  },
+  calculate(values) {
+    const ids = [
+      ["dilation", "dilatação"],
+      ["effacement", "apagamento"],
+      ["station", "altura"],
+      ["consistency", "consistência"],
+      ["position", "posição"],
+    ] as const;
+    if (ids.some(([id]) => selected(values, id) === "")) return null;
+    const parts = ids.map(([id, label]) => [label, Number(selected(values, id))] as const);
+    const score = parts.reduce((sum, [, points]) => sum + points, 0);
+    const favorable = score >= 8;
+    const unfavorable = score <= 6;
+    const classification = favorable ? "Colo favorável" : unfavorable ? "Colo desfavorável" : "Colo intermediário";
+    const recommendation = favorable
+      ? "Chance de parto vaginal após indução semelhante à do trabalho de parto espontâneo; indução com ocitocina/amniotomia conforme protocolo."
+      : unfavorable
+        ? "Considerar preparo cervical antes da ocitocina (misoprostol, sonda de Foley) conforme protocolo e contraindicações."
+        : "Decidir entre preparo cervical e ocitocina conforme paridade, idade gestacional e protocolo do serviço.";
+    return result(
+      String(score),
+      "pontos",
+      classification,
+      `Bishop = ${score} (${parts.map(([label, points]) => `${label} ${points}`).join(", ")}).`,
+      recommendation,
+      "Avaliação do colo tem variação entre examinadores. Misoprostol é contraindicado com cesárea/cicatriz uterina prévia; confirmar ausência de contraindicação ao parto vaginal antes da indução.",
+      `Índice de Bishop = ${score} pontos. ${classification}. ${recommendation}`,
+      parts.filter(([, points]) => points > 0).map(([label, points]) => `+${points} ${label}`)
+    );
+  },
+};
+
 export const clinicalCalculators: ClinicalCalculator[] = [
   curb65,
   qsofa,
   news2,
   wellsPe,
   wellsDvt,
+  percRule,
+  heartScore,
   cha2ds2Vasc,
   ascvdRisk,
   hasBled,
@@ -1472,8 +1864,13 @@ export const clinicalCalculators: ClinicalCalculator[] = [
   cockcroftGault,
   ckdEpi2021,
   anionGap,
+  correctedSodium,
+  correctedCalcium,
+  serumOsmolarity,
+  childPugh,
   centor,
   preeclampsiaAspirinRisk,
+  bishopScore,
   bmi,
 ];
 

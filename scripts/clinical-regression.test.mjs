@@ -442,3 +442,37 @@ test("checagem do encaminhamento aponta lacunas sem bloquear o texto", () => {
   assert.match(result.text, /Encaminho paciente/i);
   assert.match(result.text, /Solicito avaliação e definição de conduta/i);
 });
+
+test("novas calculadoras: HEART, PERC, Child-Pugh, cálcio, sódio, osmolaridade e Bishop", () => {
+  const heart = calculateClinicalScore("heart", { history: "1", ecg: "0", age: 50, risk: "1", troponin: "0" });
+  assert.equal(heart.value, "3");
+  assert.match(heart.classification, /Baixo risco/);
+  assert.match(calculateClinicalScore("heart", { history: "2", ecg: "2", age: 70, risk: "2", troponin: "1" }).classification, /Alto risco/);
+  assert.equal(calculateClinicalScore("heart", { history: "", ecg: "0", age: 50, risk: "1", troponin: "0" }), null);
+
+  const percBase = { age: 30, heartRate: 80, spo2: 98, legSwelling: false, hemoptysis: false, recentSurgery: false, previousVte: false, hormone: false };
+  assert.equal(calculateClinicalScore("perc", percBase).classification, "PERC negativo");
+  assert.equal(calculateClinicalScore("perc", { ...percBase, age: 50, spo2: 94 }).value, "2");
+
+  const child = (bilirubin, albumin, inr, ascites, encephalopathy) =>
+    calculateClinicalScore("child-pugh", { bilirubin, albumin, inr, ascites, encephalopathy });
+  assert.equal(child(1, 4, 1.1, "1", "1").value, "5");
+  assert.match(child(1, 4, 1.1, "1", "1").label, /Classe A/);
+  assert.equal(child(2, 3.5, 1.7, "2", "1").value, "9");
+  assert.match(child(4, 2.5, 2.5, "3", "3").label, /Classe C/);
+
+  assert.equal(calculateClinicalScore("calcio-corrigido", { calcium: 8, albumin: 2 }).value, "9.6");
+  const sodium = calculateClinicalScore("sodio-corrigido", { sodium: 130, glucose: 600 });
+  assert.equal(sodium.value, "138.0");
+  assert.match(sodium.interpretation, /142\.0/);
+  assert.equal(calculateClinicalScore("sodio-corrigido", { sodium: 130, glucose: 90 }).value, "130.0");
+
+  const osm = calculateClinicalScore("osmolaridade", { sodium: 140, glucose: 180, urea: 30, measured: 320 });
+  assert.equal(osm.value, "295");
+  assert.ok(osm.breakdown.some((item) => item === "Gap osmolar: 25"));
+
+  const bishop = calculateClinicalScore("bishop", { dilation: "2", effacement: "2", station: "2", consistency: "1", position: "1" });
+  assert.equal(bishop.value, "8");
+  assert.equal(bishop.classification, "Colo favorável");
+  assert.equal(calculateClinicalScore("bishop", { dilation: "0", effacement: "0", station: "0", consistency: "0", position: "0" }).classification, "Colo desfavorável");
+});
