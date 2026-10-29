@@ -72,7 +72,7 @@ const SLIDES: Slide[] = [
     description:
       "Tópicos com diagnóstico, exames, tratamento e urgência, ligados ao caso rápido.",
     image: topicos,
-    alt: "Lista de tópicos clínicos de cirurgia no Resibook",
+    alt: "Tópicos do Resibook: índice com busca à esquerda e o tópico de apendicite aberto à direita",
   },
   {
     id: "flashcards",

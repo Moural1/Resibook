@@ -3195,7 +3195,7 @@ function openPrintHtml(html: string) {
                 }`}
               >
                 {filter.label}
-                <span className={active ? "text-cyan-100" : "text-slate-400"}>{count}</span>
+                <span className={active ? "text-white/70" : "text-slate-400"}>{count}</span>
               </button>
             );
           })}

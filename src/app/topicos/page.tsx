@@ -7,16 +7,25 @@ import { isResibookAdmin } from "@/lib/auth-role";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
+import ClinicalText from "@/components/clinical-text";
 import {
-  ChevronDown,
-  ChevronUp,
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Building2,
+  ChevronRight,
   Edit3,
+  FlaskConical,
   Gauge,
+  Lightbulb,
+  ListChecks,
+  Pill,
   Plus,
   Search,
-  X,
-  ArrowRight,
+  Siren,
+  Stethoscope,
   Workflow,
+  X,
 } from "lucide-react";
 
 type TopicoMedico = {
@@ -81,6 +90,18 @@ const emptyForm: TopicoForm = {
   fonte: "ResiBook",
 };
 
+type ReaderKey = "diagnostico" | "criterios" | "exames" | "tratamento" | "conduta_urgencia" | "internacao_referencia" | "pegadinhas";
+
+const READER_SECTIONS: { key: ReaderKey; title: string; icon: typeof Search; tone?: "rose" | "amber" }[] = [
+  { key: "diagnostico", title: "Diagnóstico", icon: Stethoscope },
+  { key: "criterios", title: "Critérios e classificação", icon: ListChecks },
+  { key: "exames", title: "Exames", icon: FlaskConical },
+  { key: "tratamento", title: "Tratamento e conduta", icon: Pill },
+  { key: "conduta_urgencia", title: "Na urgência", icon: Siren, tone: "rose" },
+  { key: "internacao_referencia", title: "Internação e referência", icon: Building2 },
+  { key: "pegadinhas", title: "Pegadinhas de prova", icon: Lightbulb, tone: "amber" },
+];
+
 function normalize(value?: string | null) {
   return (value || "")
     .normalize("NFD")
@@ -108,13 +129,6 @@ function formatDate(value?: string | null) {
   });
 }
 
-function buildParagraphs(value?: string | null) {
-  return (value || "")
-    .replace(/\r\n/g, "\n")
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-}
 
 function buildFullText(item: TopicoMedico) {
   const sections = [
@@ -174,138 +188,8 @@ function buildPayload(form: TopicoForm) {
   };
 }
 
-function RichText({ value }: { value?: string | null }) {
-  const blocks = buildParagraphs(value);
 
-  if (blocks.length === 0) {
-    return <p className="text-sm leading-7 text-slate-400">Sem conteúdo</p>;
-  }
 
-  return (
-    <div className="space-y-4">
-      {blocks.map((block, index) => {
-        const lines = block
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean);
-
-        const isList =
-          lines.length > 1 &&
-          lines.every((line) => /^[-•]/.test(line) || /^\d+[\.\)]/.test(line));
-
-        if (isList) {
-          const ordered = lines.every((line) => /^\d+[\.\)]/.test(line));
-
-          if (ordered) {
-            return (
-              <ol
-                key={index}
-                className="ml-5 list-decimal space-y-2 text-sm leading-7 text-slate-700"
-              >
-                {lines.map((line, lineIndex) => (
-                  <li key={lineIndex}>
-                    {line.replace(/^\d+[\.\)]\s*/, "")}
-                  </li>
-                ))}
-              </ol>
-            );
-          }
-
-          return (
-            <ul
-              key={index}
-              className="ml-5 list-disc space-y-2 text-sm leading-7 text-slate-700"
-            >
-              {lines.map((line, lineIndex) => (
-                <li key={lineIndex}>{line.replace(/^[-•]\s*/, "")}</li>
-              ))}
-            </ul>
-          );
-        }
-
-        return (
-          <p
-            key={index}
-            className="whitespace-pre-wrap text-sm leading-7 text-slate-700"
-          >
-            {block}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
-
-function sectionToneClass(tone: "slate" | "rose" | "blue" | "emerald" | "amber") {
-  const classes = {
-    slate: {
-      card: "border-slate-200 bg-slate-50/80",
-      accent: "bg-slate-400",
-      title: "text-slate-600",
-    },
-    blue: {
-      card: "border-slate-200 bg-white",
-      accent: "bg-blue-500",
-      title: "text-slate-700",
-    },
-    emerald: {
-      card: "border-slate-200 bg-white",
-      accent: "bg-emerald-500",
-      title: "text-slate-700",
-    },
-    amber: {
-      card: "border-slate-200 bg-white",
-      accent: "bg-amber-500",
-      title: "text-slate-700",
-    },
-    rose: {
-      card: "border-slate-200 bg-white",
-      accent: "bg-rose-500",
-      title: "text-slate-700",
-    },
-  };
-
-  return classes[tone];
-}
-
-function Section({
-  title,
-  value,
-  tone = "slate",
-}: {
-  title: string;
-  value?: string | null;
-  tone?: "slate" | "rose" | "blue" | "emerald" | "amber";
-}) {
-  if (!value) return null;
-
-  const toneClass = sectionToneClass(tone);
-
-  return (
-    <div
-      className={`relative overflow-hidden rounded-[24px] border p-5 shadow-sm shadow-slate-950/[0.015] ${toneClass.card}`}
-    >
-      <div
-        className={`absolute left-0 top-0 h-full w-1 ${toneClass.accent}`}
-      />
-
-      <div className="pl-2">
-        <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${toneClass.accent}`} />
-          <p
-            className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${toneClass.title}`}
-          >
-            {title}
-          </p>
-        </div>
-
-        <div className="mt-3">
-          <RichText value={value} />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function RelatedCardsPanel({ cards }: { cards: RelatedFlashcard[] }) {
   const [openIds, setOpenIds] = useState<string[]>([]);
@@ -321,25 +205,18 @@ function RelatedCardsPanel({ cards }: { cards: RelatedFlashcard[] }) {
   if (cards.length === 0) return null;
 
   return (
-    <section className="rounded-[26px] border border-slate-200 bg-slate-50/80 p-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
-          Revisão rápida
-        </span>
+    <section>
+      <h3 className="text-sm font-semibold text-slate-900">Revise com flashcards</h3>
+      <p className="mt-0.5 text-xs text-slate-500">Cards relacionados a este tópico. Tente responder antes de revelar.</p>
 
-        <p className="text-sm text-slate-600">
-          Flashcards relacionados a este tópico para revisão objetiva.
-        </p>
-      </div>
-
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 grid gap-3 xl:grid-cols-2">
         {cards.map((card) => {
           const open = openIds.includes(card.id);
 
           return (
             <article
               key={card.id}
-              className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm"
+              className="rounded-xl border border-slate-200 bg-white p-4"
             >
               <div className="flex flex-wrap items-center gap-2">
                 {card.materia ? (
@@ -360,8 +237,8 @@ function RelatedCardsPanel({ cards }: { cards: RelatedFlashcard[] }) {
               </h4>
 
               {open ? (
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <RichText value={card.verso} />
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <ClinicalText value={card.verso} />
                 </div>
               ) : null}
 
@@ -369,7 +246,7 @@ function RelatedCardsPanel({ cards }: { cards: RelatedFlashcard[] }) {
                 <button
                   type="button"
                   onClick={() => toggle(card.id)}
-                  className="inline-flex h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-900 px-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   {open ? "Ocultar resposta" : "Revelar resposta"}
                 </button>
@@ -402,7 +279,7 @@ export default function TopicosPage() {
   const [query, setQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [expandedIds, setExpandedIds] = useState<number[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<TopicoMedico | null>(null);
   const [form, setForm] = useState<TopicoForm>(emptyForm);
 
@@ -450,7 +327,15 @@ export default function TopicosPage() {
       setError(topicosRes.error.message);
       setTopicos([]);
     } else {
-      setTopicos((topicosRes.data as TopicoMedico[]) || []);
+      const rows = (topicosRes.data as TopicoMedico[]) || [];
+      setTopicos(rows);
+      // Links da busca global (?q=Título) e de compartilhamento (?t=id).
+      const params = new URLSearchParams(window.location.search);
+      const byId = rows.find((item) => String(item.id) === params.get("t"));
+      const q = params.get("q")?.trim() || "";
+      const byTitle = q ? rows.find((item) => normalize(item.titulo) === normalize(q)) : undefined;
+      if (byId || byTitle) setSelectedId((byId || byTitle)!.id);
+      else if (q) setQuery(q);
     }
 
     if (flashcardsRes.error) {
@@ -504,7 +389,6 @@ export default function TopicosPage() {
     }, {});
   }, [filtered]);
 
-  const hasFilters = Boolean(query || selectedArea);
 
   function updateForm<K extends keyof TopicoForm>(key: K, value: TopicoForm[K]) {
     setForm((current) => ({
@@ -545,13 +429,6 @@ export default function TopicosPage() {
     setForm(emptyForm);
   }
 
-  function toggleExpanded(id: number) {
-    setExpandedIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    );
-  }
 
   async function handleSave() {
     if (!isAdmin) {
@@ -702,24 +579,35 @@ export default function TopicosPage() {
     return scored.slice(0, 4).map((item) => item.card);
   }
 
+  const selected = topicos.find((item) => item.id === selectedId) ?? null;
+  const related = selected ? getRelatedFlashcards(selected) : [];
+  const readerSections = selected
+    ? READER_SECTIONS.filter((section) => Boolean(selected[section.key]))
+    : [];
+
+  function selectTopic(id: number | null) {
+    setSelectedId(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("t", String(id));
+    else url.searchParams.delete("t");
+    url.searchParams.delete("q");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    if (id && window.matchMedia("(max-width: 1023px)").matches) window.scrollTo({ top: 0 });
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ModulePageHeader
         eyebrow="Biblioteca clínica"
         title="Tópicos clínicos"
-        description="Biblioteca médica estruturada por área, com diagnóstico, critérios, exames, tratamento, urgência, internação/referência e flashcards relacionados."
+        description="Resumo, diagnóstico, exames, conduta, urgência e pegadinhas de cada tema, com flashcards relacionados."
         badges={[
-          { label: "Tópicos médicos", tone: "blue" },
-          { label: "Biblioteca clínica", tone: "slate" },
-          {
-            label: isAdmin ? "Gerenciamento liberado" : "Somente leitura",
-            tone: isAdmin ? "emerald" : "slate",
-          },
+          { label: "Consulta rápida", tone: "blue" },
+          ...(isAdmin ? [{ label: "Gerenciamento liberado", tone: "emerald" as const }] : []),
         ]}
         metrics={[
-          { label: "Áreas clínicas", value: areas.length },
+          { label: "Áreas", value: areas.length },
           { label: "Tópicos", value: topicos.length },
-          { label: "Exibindo", value: filtered.length },
           { label: "Flashcards", value: flashcards.length },
         ]}
         error={error}
@@ -729,7 +617,7 @@ export default function TopicosPage() {
             <button
               type="button"
               onClick={openCreateDrawer}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900"
             >
               <Plus className="h-4 w-4" />
               Novo tópico
@@ -738,294 +626,241 @@ export default function TopicosPage() {
         }
       />
 
-      <Link
-        href="/fluxos"
-        className="group flex items-center gap-3 rounded-xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 transition hover:border-cyan-700/40"
-      >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-cyan-800">
-          <Workflow className="h-4 w-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-cyan-950">Fluxogramas de revisão</span>
-          <span className="block text-xs text-cyan-900/80">
-            49 temas com algoritmo, quadros, o que mais cai e pegadinhas, mais 153 regras relâmpago.
-          </span>
-        </span>
-        <ArrowRight className="h-4 w-4 shrink-0 text-cyan-800 transition group-hover:translate-x-0.5" />
-      </Link>
-
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Filtros
-            </p>
-
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
-              Busca e organização
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Procure pelo tema, área, resumo, tratamento, urgência ou tags.
-            </p>
-          </div>
-
-          {hasFilters ? (
-            <span className="inline-flex self-start rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 lg:self-auto">
-              Filtro ativo
-            </span>
-          ) : null}
-        </div>
-
-        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_260px_auto]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar tópico..."
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-            />
-          </div>
-
-          <select
-            value={selectedArea}
-            onChange={(e) => setSelectedArea(e.target.value)}
-            className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-          >
-            <option value="">Todas as áreas</option>
-            {areas.map((area) => (
-              <option key={area} value={area}>
-                {formatLabel(area)}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setSelectedArea("");
-            }}
-            className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            {hasFilters ? "Limpar filtros" : "Filtros"}
-          </button>
-        </div>
-      </section>
-
-      {checkingUser || loading ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-14 text-center text-sm font-medium text-slate-500 shadow-sm">
-          Carregando tópicos...
-        </section>
-      ) : filtered.length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-300 bg-white px-4 py-14 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500">
-            <Search className="h-5 w-5" />
-          </div>
-
-          <h2 className="mt-4 text-lg font-semibold text-slate-900">
-            Nenhum tópico encontrado
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-500">
-            Ajuste a busca ou limpe os filtros para visualizar a biblioteca.
-          </p>
-        </section>
-      ) : (
-        Object.entries(grouped).map(([area, items]) => (
-          <section key={area} className="space-y-4">
-            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    Área clínica
-                  </p>
-
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
-                    {formatLabel(area)}
-                  </h2>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    {items.length} tópico{items.length > 1 ? "s" : ""} nesta
-                    área.
-                  </p>
-                </div>
-
-                <div className="self-start rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
-                  {items.length} {items.length === 1 ? "item" : "itens"}
-                </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] lg:items-start">
+        <aside className={`min-w-0 space-y-3 lg:sticky lg:top-24 ${selected ? "hidden lg:block" : ""}`}>
+          <section className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+            <div className="space-y-3 border-b border-slate-200 p-3">
+              <label className="relative block">
+                <span className="sr-only">Buscar tópico</span>
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar tema, sintoma ou tag"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-9 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-600 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    aria-label="Limpar busca"
+                    className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </label>
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                {[["", "Todas", topicos.length] as const, ...areas.map((area) => [area, formatLabel(area), topicos.filter((item) => item.area === area).length] as const)].map(
+                  ([value, label, count]) => {
+                    const active = selectedArea === value;
+                    return (
+                      <button
+                        key={value || "todas"}
+                        type="button"
+                        onClick={() => setSelectedArea(value)}
+                        aria-pressed={active}
+                        className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition ${
+                          active ? "border-cyan-800 bg-cyan-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        }`}
+                      >
+                        {label}
+                        <span className={active ? "text-white/70" : "text-slate-400"}>{count}</span>
+                      </button>
+                    );
+                  }
+                )}
               </div>
             </div>
 
-            <div className="grid gap-5">
-              {items.map((item) => {
-                const savingItem = savingIds.includes(item.id);
-                const related = getRelatedFlashcards(item);
-                const expanded = expandedIds.includes(item.id);
-
-                return (
-                  <article
-                    key={item.id}
-                    className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm md:p-6"
-                  >
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                            {formatLabel(item.area)}
-                          </span>
-
-                          {item.prioridade ? (
-                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                              Prioridade {item.prioridade}
-                            </span>
-                          ) : null}
-
-                          {item.fonte ? (
-                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                              {item.fonte}
-                            </span>
-                          ) : null}
-
-                          {item.atualizado_em ? (
-                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                              Atualizado em {formatDate(item.atualizado_em)}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <h3 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">
-                          {item.titulo}
-                        </h3>
-
-                        {item.tags ? (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {item.tags
-                              .split(",")
-                              .map((tag) => tag.trim())
-                              .filter(Boolean)
-                              .map((tag, index) => (
-                                <span
-                                  key={`${item.id}-${index}-${tag}`}
-                                  className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
-                                >
-                                  #{tag}
+            {checkingUser || loading ? (
+              <p className="px-4 py-10 text-center text-sm text-slate-500">Carregando tópicos...</p>
+            ) : filtered.length === 0 ? (
+              <div className="px-4 py-10 text-center">
+                <p className="text-sm font-semibold text-slate-800">Nenhum tópico encontrado</p>
+                <p className="mt-1 text-xs text-slate-500">Tente outro termo ou mude a área.</p>
+              </div>
+            ) : (
+              <nav aria-label="Lista de tópicos" className="lg:max-h-[calc(100vh-17rem)] lg:overflow-y-auto">
+                {Object.entries(grouped).map(([area, items]) => (
+                  <div key={area}>
+                    <p className="sticky top-0 z-[1] border-b border-slate-100 bg-slate-50/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 backdrop-blur">
+                      {formatLabel(area)} · {items.length}
+                    </p>
+                    <ul>
+                      {items.map((item) => {
+                        const active = item.id === selectedId;
+                        return (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              onClick={() => selectTopic(item.id)}
+                              aria-current={active ? "true" : undefined}
+                              className={`flex w-full items-start gap-2 border-l-2 px-4 py-2.5 text-left transition ${
+                                active ? "border-cyan-700 bg-cyan-50/70" : "border-transparent hover:bg-slate-50"
+                              }`}
+                            >
+                              <span className="min-w-0 flex-1">
+                                <span className={`block text-sm ${active ? "font-semibold text-slate-950" : "font-medium text-slate-800"}`}>
+                                  {item.titulo}
                                 </span>
-                              ))}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpanded(item.id)}
-                          aria-expanded={expanded}
-                          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
-                        >
-                          {expanded ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                          {expanded ? "Fechar tópico" : "Abrir tópico"}
-                        </button>
-
-                        <Link
-                          href={`/caso-rapido?busca=${encodeURIComponent(
-                            item.titulo
-                          )}`}
-                          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                        >
-                          <Gauge className="h-4 w-4" />
-                          Caso rápido
-                        </Link>
-
-                        <CopyButton text={buildFullText(item)} />
-
-                        {isAdmin ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openEditDrawer(item)}
-                              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                              Editar
+                                {item.resumo ? (
+                                  <span className="mt-0.5 line-clamp-1 text-xs text-slate-500">{item.resumo}</span>
+                                ) : null}
+                              </span>
+                              <ChevronRight className={`mt-0.5 h-4 w-4 shrink-0 ${active ? "text-cyan-700" : "text-slate-300"}`} />
                             </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(item.id, item.titulo)}
-                              disabled={savingItem}
-                              className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {savingItem ? "Apagando..." : "Apagar"}
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {!expanded && item.resumo ? (
-                      <div className="mt-5 border-t border-slate-200 pt-5">
-                        <p className="line-clamp-3 text-sm leading-7 text-slate-600">
-                          {item.resumo}
-                        </p>
-                      </div>
-                    ) : null}
-
-                    {expanded ? (
-                      <>
-                        <div className="mt-6 grid gap-4 xl:grid-cols-2">
-                          <Section title="Resumo" value={item.resumo} tone="blue" />
-                          <Section
-                            title="Diagnóstico"
-                            value={item.diagnostico}
-                            tone="emerald"
-                          />
-                          <Section
-                            title="Critérios / classificação"
-                            value={item.criterios}
-                            tone="amber"
-                          />
-                          <Section title="Exames" value={item.exames} tone="slate" />
-                          <Section
-                            title="Tratamento / conduta"
-                            value={item.tratamento}
-                            tone="blue"
-                          />
-                          <Section
-                            title="Conduta na urgência"
-                            value={item.conduta_urgencia}
-                            tone="rose"
-                          />
-                          <Section
-                            title="Internação / referência"
-                            value={item.internacao_referencia}
-                            tone="emerald"
-                          />
-                          <Section
-                            title="Pegadinhas de prova"
-                            value={item.pegadinhas}
-                            tone="amber"
-                          />
-                        </div>
-
-                        <div className="mt-6">
-                          <RelatedCardsPanel cards={related} />
-                        </div>
-                      </>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </nav>
+            )}
           </section>
-        ))
-      )}
+
+          <Link
+            href="/fluxos"
+            className="group flex items-center gap-3 rounded-xl border border-cyan-100 bg-cyan-50/70 px-3.5 py-3 transition hover:border-cyan-700/40"
+          >
+            <Workflow className="h-4 w-4 shrink-0 text-cyan-800" />
+            <span className="min-w-0 flex-1 text-xs text-cyan-950">
+              <span className="font-semibold">Fluxogramas de revisão:</span> algoritmos, o que mais cai e pegadinhas.
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-cyan-800 transition group-hover:translate-x-0.5" />
+          </Link>
+        </aside>
+
+        <div className={`min-w-0 ${selected ? "" : "hidden lg:block"}`}>
+          {selected ? (
+            <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+              <header className="border-b border-slate-200 p-5 md:p-7">
+                <button
+                  type="button"
+                  onClick={() => selectTopic(null)}
+                  className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-800 lg:hidden"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar à lista
+                </button>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-800">{formatLabel(selected.area)}</p>
+                <h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{selected.titulo}</h2>
+                {selected.resumo ? (
+                  <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-600">{selected.resumo}</p>
+                ) : null}
+                {selected.tags ? (
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {selected.tags
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter(Boolean)
+                      .map((tag, index) => (
+                        <button
+                          key={`${index}-${tag}`}
+                          type="button"
+                          onClick={() => setQuery(tag)}
+                          className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                  </div>
+                ) : null}
+
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/caso-rapido?busca=${encodeURIComponent(selected.titulo)}`}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900"
+                  >
+                    <Gauge className="h-4 w-4" />
+                    Abrir no Caso rápido
+                  </Link>
+                  <CopyButton text={buildFullText(selected)} label="Copiar tópico" />
+                  {isAdmin ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => openEditDrawer(selected)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(selected.id, selected.titulo)}
+                        disabled={savingIds.includes(selected.id)}
+                        className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                      >
+                        {savingIds.includes(selected.id) ? "Apagando..." : "Apagar"}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+
+                {readerSections.length > 1 ? (
+                  <nav aria-label="Seções do tópico" className="mt-5 flex flex-wrap gap-1.5">
+                    {readerSections.map((section) => (
+                      <a
+                        key={section.key}
+                        href={`#topico-${section.key}`}
+                        className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                      >
+                        {section.title}
+                      </a>
+                    ))}
+                  </nav>
+                ) : null}
+              </header>
+
+              <div className="divide-y divide-slate-100">
+                {readerSections.map((section) => (
+                  <section
+                    key={section.key}
+                    id={`topico-${section.key}`}
+                    className={`scroll-mt-24 px-5 py-5 md:px-7 ${section.tone === "rose" ? "bg-rose-50/50" : section.tone === "amber" ? "bg-amber-50/50" : ""}`}
+                  >
+                    <h3
+                      className={`flex items-center gap-2 text-sm font-semibold ${
+                        section.tone === "rose" ? "text-rose-800" : section.tone === "amber" ? "text-amber-800" : "text-slate-900"
+                      }`}
+                    >
+                      <section.icon className="h-4 w-4" />
+                      {section.title}
+                    </h3>
+                    <div className="mt-2.5">
+                      <ClinicalText value={selected[section.key]} />
+                    </div>
+                  </section>
+                ))}
+              </div>
+
+              {related.length ? (
+                <div className="border-t border-slate-200 px-5 py-5 md:px-7">
+                  <RelatedCardsPanel cards={related} />
+                </div>
+              ) : null}
+
+              <footer className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-500 md:px-7">
+                {selected.fonte ? <span>Fonte: {selected.fonte}</span> : null}
+                {selected.atualizado_em ? <span>Atualizado em {formatDate(selected.atualizado_em)}</span> : null}
+                <span>Conteúdo de apoio: confira doses e condutas antes de usar.</span>
+              </footer>
+            </article>
+          ) : (
+            <section className="flex min-h-[420px] flex-col items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-white px-6 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-800">
+                <BookOpen className="h-5 w-5" />
+              </span>
+              <h2 className="mt-4 text-lg font-semibold text-slate-900">Escolha um tópico</h2>
+              <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                Busque pelo tema, sintoma ou tag na lista ao lado. O tópico abre aqui, com as seções e os flashcards relacionados.
+              </p>
+            </section>
+          )}
+        </div>
+      </div>
 
       {drawerOpen ? (
         <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50 backdrop-blur-[2px]">
