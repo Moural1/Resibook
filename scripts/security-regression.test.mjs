@@ -161,16 +161,19 @@ test("admin vem só da marcação interna, nunca do e-mail", () => {
 });
 
 test("contas internas ficam isentas da cobrança sem receber permissão administrativa", () => {
-  for (const email of [
-    "liviarosa@resibook.com",
-    "convidado@resibook.com",
-    "thiagoyan@resibook.com",
-    "isabellaestevo@resibook.com",
-  ]) {
+  for (const email of ["liviaarosa05@gmail.com", "convidado@resibook.com"]) {
     assert.equal(isSubscriptionExempt({ email }), true);
     assert.equal(isResibookAdmin({ email }), false);
   }
-  assert.equal(isSubscriptionExempt({ email: " LIVIAROSA@RESIBOOK.COM " }), true);
+  assert.equal(isSubscriptionExempt({ email: " LIVIAAROSA05@GMAIL.COM " }), true);
+  // Contas antigas da equipe no domínio resibook.com não isentam mais.
+  for (const email of [
+    "liviarosa@resibook.com",
+    "thiagoyan@resibook.com",
+    "isabellaestevo@resibook.com",
+  ]) {
+    assert.equal(isSubscriptionExempt({ email }), false);
+  }
   assert.equal(isSubscriptionExempt({ email: "medico@example.com" }), false);
 });
 
@@ -182,14 +185,16 @@ test("contas internas leem todo o banco de prescrições sem ganhar escrita admi
     ),
     "utf8"
   );
+  const internalAccounts = readFileSync(
+    new URL("../supabase/migrations/20261029120000_internal_accounts_update.sql", import.meta.url),
+    "utf8"
+  );
 
-  for (const email of [
-    "liviarosa@resibook.com",
-    "convidado@resibook.com",
-    "thiagoyan@resibook.com",
-    "isabellaestevo@resibook.com",
-  ]) {
-    assert.match(migration, new RegExp(email.replace(".", "\\.")));
+  for (const email of ["igormouralopes@hotmail.com", "liviaarosa05@gmail.com", "convidado@resibook.com"]) {
+    assert.match(internalAccounts, new RegExp(email.replaceAll(".", "\\.")));
+  }
+  for (const email of ["liviarosa@resibook.com", "thiagoyan@resibook.com", "isabellaestevo@resibook.com"]) {
+    assert.doesNotMatch(internalAccounts, new RegExp(email.replaceAll(".", "\\.")));
   }
 
   assert.match(migration, /create policy prescription_templates_clinical_read/);
