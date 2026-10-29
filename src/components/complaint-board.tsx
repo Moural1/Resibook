@@ -103,7 +103,7 @@ function ComplaintCard({ item }: { item: QuickComplaint }) {
   const more = [
     { label: "Caso rápido", href: queryHref("/caso-rapido", title) },
     { label: "Plano terapêutico", href: queryHref("/plantao/prescricao-guiada", title) },
-    { label: "Exames e evolução", href: queryHref("/exames-evolucao", title) },
+    { label: "Modelos", href: queryHref("/exames-evolucao", title) },
     { label: "Encaminhamento", href: queryHref("/plantao/encaminhamento", title) },
     { label: "Alta segura", href: queryHref("/plantao/alta-segura", title) },
   ];

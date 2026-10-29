@@ -82,8 +82,8 @@ const SHIFT_ACTIONS = [
     icon: LogOut,
   },
   {
-    title: "Exames / evolução",
-    description: "Monte blocos de evolução, exame e plano.",
+    title: "Modelos",
+    description: "Anamnese, exame físico e evolução prontos para copiar.",
     href: "/exames-evolucao",
     icon: FileText,
   },

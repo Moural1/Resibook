@@ -75,7 +75,7 @@ const PRIMARY_ACTIONS: ClinicalLink[] = [
 
 const CLINICAL_TOOLS: ClinicalLink[] = [
   { title: "Pacientes", description: "Prontuário visual e continuidade.", href: "/pacientes", icon: Users, requiresPatientRecords: true },
-  { title: "Exames e evolução", description: "Modelos clínicos copiáveis.", href: "/exames-evolucao", icon: FlaskConical },
+  { title: "Modelos", description: "Anamnese, exame físico e evolução.", href: "/exames-evolucao", icon: FlaskConical },
   { title: "CIDs", description: "Busca rápida por diagnóstico.", href: "/cids", icon: Tags },
   { title: "ECG guiado", description: "Leitura estruturada do traçado.", href: "/ecg-guiado", icon: HeartPulse, requiresEcg: true },
   { title: "ACLS", description: "Protocolos e algoritmos de emergência.", href: "/acls", icon: Activity },
@@ -295,7 +295,7 @@ export default function DashboardPage() {
             { title: "Meu Resibook", description: "Acervo pessoal", href: "/meu-resibook", icon: LibraryBig },
             ...(PRODUCT_CAPABILITIES.patientRecords ? [{ title: "Pacientes", description: "Continuidade clínica", href: "/pacientes", icon: Users }] : []),
             { title: "Modelos de prescrição", description: "Banco organizado", href: "/modelos-prescricao", icon: ClipboardList },
-            { title: "Exames e evolução", description: "Textos prontos", href: "/exames-evolucao", icon: FlaskConical },
+            { title: "Modelos", description: "Anamnese e exame físico", href: "/exames-evolucao", icon: FlaskConical },
           ]} />
         </div>
       </Panel>

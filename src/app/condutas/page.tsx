@@ -466,7 +466,7 @@ export default function CondutasPage() {
   const continueLinks = selectedTema
     ? [
         { href: `/caso-rapido?busca=${encodeURIComponent(selectedTema.titulo)}`, label: "Caso rápido", icon: Gauge },
-        { href: `/exames-evolucao?q=${encodeURIComponent(selectedTema.titulo)}`, label: "Exames e evolução", icon: FileText },
+        { href: `/exames-evolucao?q=${encodeURIComponent(selectedTema.titulo)}`, label: "Modelos", icon: FileText },
         { href: `/cids?q=${encodeURIComponent(selectedTema.titulo)}`, label: "CID", icon: Tags },
         { href: `/topicos?t=${selectedTema.id}`, label: "Tópico completo", icon: BookOpen },
       ]

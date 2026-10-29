@@ -771,6 +771,9 @@ export default function PacientesPage() {
       const categoriaNorm = normalize(item.categoria);
       const conteudo = normalize(item.conteudo);
 
+      // Anamnese completa também tem a linha "Exame físico": não é um modelo de exame.
+      if (categoriaNorm.includes("anamnese") || title.includes("anamnese")) return false;
+
       return (
         title.includes("exame fisico") ||
         categoriaNorm.includes("exame fisico") ||

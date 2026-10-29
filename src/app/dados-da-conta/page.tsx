@@ -102,8 +102,8 @@ const exportConfigs: ExportConfig[] = [
   },
   {
     table: "exam_templates",
-    label: "Exames / Evolução",
-    description: "Blocos clínicos e modelos de exames/evolução.",
+    label: "Modelos",
+    description: "Modelos de anamnese, exame físico e evolução.",
     icon: Stethoscope,
     select: "id, categoria, titulo, sexo, arquivo_origem, conteudo, created_at",
     orderBy: "created_at",

@@ -785,7 +785,7 @@ export default function CasoRapidoPage() {
               <ModuleLink href={buildContextualShiftHref("/plantao/sbar", workingComplaint)} title="Passagem SBAR" icon={FileText} />
               <ModuleLink href={buildContextualShiftHref("/plantao/encaminhamento", workingComplaint)} title="Encaminhamento" icon={Send} />
               <ModuleLink href={buildContextualShiftHref("/plantao/alta-segura", workingComplaint)} title="Alta segura" icon={LogOut} />
-              <ModuleLink href={buildContextualShiftHref("/exames-evolucao", workingComplaint)} title="Exames / evolução" icon={FileText} />
+              <ModuleLink href={buildContextualShiftHref("/exames-evolucao", workingComplaint)} title="Modelos" icon={FileText} />
               <ModuleLink href="/pacientes" title="Paciente" icon={Activity} />
             </div>
           </section>

@@ -85,7 +85,7 @@ const RESOURCE_GROUPS: { title: string; items: { label: string; icon: IconType }
     title: "Paciente",
     items: [
       { label: "Pacientes e retornos", icon: Users },
-      { label: "Exames e evolução", icon: FlaskConical },
+      { label: "Modelos de anamnese e exame", icon: FlaskConical },
       { label: "CIDs", icon: Tags },
     ],
   },
