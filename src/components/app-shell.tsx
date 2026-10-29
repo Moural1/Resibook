@@ -337,12 +337,9 @@ function SidebarContent({
     },
     { href: "/fluxos", label: "Fluxogramas", icon: Workflow, badge: RESUMO_FLUXOS.temas },
     { href: "/cids", label: "CIDs", icon: Tags, badge: counts.cids },
-    {
-      href: "/ecg-guiado",
-      label: "ECG guiado",
-      icon: HeartPulse,
-      badge: null,
-    },
+    ...(PRODUCT_CAPABILITIES.ecgGuided
+      ? [{ href: "/ecg-guiado", label: "ECG guiado", icon: HeartPulse, badge: null }]
+      : []),
   ];
 
   const learningItems = [

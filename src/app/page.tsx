@@ -12,7 +12,6 @@ import { totaisFluxos } from "@/lib/fluxos";
 import { SUPPORT_EMAIL } from "@/lib/support";
 import { SELLER } from "@/lib/legal/seller";
 import {
-  Activity,
   ArrowRight,
   BookOpen,
   Brain,
@@ -79,7 +78,6 @@ const RESOURCE_GROUPS: { title: string; items: { label: string; icon: IconType }
     title: "Emergência",
     items: [
       { label: "ACLS com eBook estruturado", icon: HeartPulse },
-      { label: "ECG guiado", icon: Activity },
       { label: "Calculadoras clínicas", icon: Calculator },
     ],
   },
@@ -104,7 +102,7 @@ const RESOURCE_GROUPS: { title: string; items: { label: string; icon: IconType }
 
 const PLAN_ROWS: [string, boolean][] = [
   ["Calculadoras clínicas, CIDs e tópicos médicos", true],
-  ["ACLS com eBook e ECG guiado", true],
+  ["ACLS com eBook e algoritmos", true],
   ["Dossiê ENAMED e fluxogramas de revisão", true],
   ["Flashcards do Banco Resibook", true],
   ["Plantão: caso rápido com prioridade, quadro do plantão, alta segura e SBAR", false],

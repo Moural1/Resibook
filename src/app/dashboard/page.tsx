@@ -61,6 +61,7 @@ type ClinicalLink = {
   href: string;
   icon: LucideIcon;
   requiresPatientRecords?: boolean;
+  requiresEcg?: boolean;
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
@@ -76,7 +77,7 @@ const CLINICAL_TOOLS: ClinicalLink[] = [
   { title: "Pacientes", description: "Prontuário visual e continuidade.", href: "/pacientes", icon: Users, requiresPatientRecords: true },
   { title: "Exames e evolução", description: "Modelos clínicos copiáveis.", href: "/exames-evolucao", icon: FlaskConical },
   { title: "CIDs", description: "Busca rápida por diagnóstico.", href: "/cids", icon: Tags },
-  { title: "ECG guiado", description: "Leitura estruturada do traçado.", href: "/ecg-guiado", icon: HeartPulse },
+  { title: "ECG guiado", description: "Leitura estruturada do traçado.", href: "/ecg-guiado", icon: HeartPulse, requiresEcg: true },
   { title: "ACLS", description: "Protocolos e algoritmos de emergência.", href: "/acls", icon: Activity },
   { title: "Checklist de risco", description: "Red flags e bloqueios de alta.", href: "/plantao/checklist-risco", icon: ShieldCheck },
   { title: "Alta segura", description: "Critérios, alertas e orientação.", href: "/plantao/alta-segura", icon: ClipboardCheck },
@@ -204,7 +205,11 @@ export default function DashboardPage() {
     [patientFollowups]
   );
 
-  const visibleClinicalTools = CLINICAL_TOOLS.filter((item) => !item.requiresPatientRecords || PRODUCT_CAPABILITIES.patientRecords);
+  const visibleClinicalTools = CLINICAL_TOOLS.filter(
+    (item) =>
+      (!item.requiresPatientRecords || PRODUCT_CAPABILITIES.patientRecords) &&
+      (!item.requiresEcg || PRODUCT_CAPABILITIES.ecgGuided)
+  );
   const caseVitals = activeCase ? Object.entries(activeCase.vitals).filter(([, value]) => value.trim()) : [];
   const quickComplaints = QUICK_COMPLAINTS.slice(0, 4);
   const todayCount = followupQueue.length + pendingExams.length;

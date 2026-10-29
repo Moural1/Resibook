@@ -669,7 +669,7 @@ test("service worker não guarda APIs nem páginas com dados pessoais", () => {
   const pages = sw.match(/const OFFLINE_PAGES = \[([^\]]*)\]/)?.[1] || "";
   assert.deepEqual(
     pages.split(",").map((item) => item.trim().replace(/"/g, "")),
-    ["/acls", "/calculadoras", "/ecg-guiado"]
+    ["/acls", "/calculadoras"]
   );
   const logout = readFileSync(new URL("../src/components/logout-button.tsx", import.meta.url), "utf8");
   assert.match(logout, /clearOfflinePages\(\)/);
