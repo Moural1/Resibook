@@ -90,9 +90,7 @@ select email, raw_app_meta_data ->> 'role' as role
 O resultado esperado é nenhuma linha com `igormoura@resibook.com` e `admin`
 na coluna `role` de cada conta listada.
 
-## Pendente
+## Contas da equipe
 
-As contas da equipe (`liviarosa`, `thiagoyan`, `isabellaestevo`, `convidado`,
-`programador`) ainda usam `@resibook.com`. Elas não são admin, mas a troca de
-senha também poderia ser desviada. Migrar quando cada pessoa informar um e-mail
-real.
+Lívia, Thiago e Isabella: ver `docs/contas-equipe.md`. `convidado` e
+`programador` continuam em `@resibook.com`; nenhuma é admin.

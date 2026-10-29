@@ -1,9 +1,7 @@
 const SUBSCRIPTION_EXEMPT_EMAILS = new Set([
   "igormouralopes@hotmail.com",
-  "liviarosa@resibook.com",
+  "liviaarosa05@gmail.com",
   "convidado@resibook.com",
-  "thiagoyan@resibook.com",
-  "isabellaestevo@resibook.com",
 ]);
 
 type AuthUserLike = {
