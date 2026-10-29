@@ -1,14 +1,14 @@
 /* Resibook service worker.
    - Arquivos estáticos do Next (com hash) e ícones: cache-first.
-   - Páginas de referência sem dados pessoais (ACLS, calculadoras, ECG):
+   - Páginas de referência sem dados pessoais (ACLS, calculadoras):
      network-first, guardadas para abrir sem internet.
    - Demais páginas: sempre da rede; sem internet, mostra /offline.html.
    Nunca guarda respostas de API, nem páginas de pacientes ou de conta. */
-const VERSION = "resibook-v1";
+const VERSION = "resibook-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES_CACHE = `${VERSION}-pages`;
 const OFFLINE_URL = "/offline.html";
-const OFFLINE_PAGES = ["/acls", "/calculadoras", "/ecg-guiado"];
+const OFFLINE_PAGES = ["/acls", "/calculadoras"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
