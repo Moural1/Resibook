@@ -7,9 +7,8 @@ import CopyButton from "./copy-button";
 import { showToast } from "../lib/toast";
 import { rankSearchResults } from "../lib/search";
 import { isResibookAdmin } from "@/lib/auth-role";
-import { formatClinicalTitle, toReadableCase } from "@/lib/clinical-text";
-import { parsePrescriptionSheet } from "@/lib/prescription-sheet";
-import ClinicalText from "./clinical-text";
+import { formatClinicalTitle } from "@/lib/clinical-text";
+import { parsePrescriptionSheet, readablePrescriptionLine, splitItemTitle } from "@/lib/prescription-sheet";
 import PrescriptionSheet from "./prescription-sheet";
 import {
   AlertTriangle,
@@ -19,7 +18,6 @@ import {
   ChevronRight,
   ClipboardPlus,
   Edit3,
-  FileText,
   Pill,
   Plus,
   Search,
@@ -112,6 +110,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   contraindicacoes: "Contraindicações e cuidados",
 };
 
+const LAST_TEMPLATE_KEY = "resibook-prescricao-ultimo-modelo";
+
 const CATEGORY_ORDER = ["Plantão", "Pronto atendimento", "Clínica médica", "Gestante", "Contraindicações e cuidados"];
 
 function categoryLabel(value?: string | null) {
@@ -177,37 +177,14 @@ function parseSpecialAudiences(value?: string | null) {
     .slice(0, 4);
 }
 
+// O modelo inteiro vai para o formulário: título como identificação e a
+// receita completa no campo de prescrição, para editar antes de salvar.
 function parseTemplateToDraft(item: PrescriptionTemplate): PrescriptionDraft {
-  const text = item.conteudo || "";
-  const lines = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const medicationLine =
-    lines.find((line) => /^\d+\)/.test(line)) || item.titulo || "";
-
-  const posologiaLine =
-    lines.find((line) =>
-      /tomar|aplicar|pingar|inalar|usar|fazer|diluir|colocar/i.test(line)
-    ) || "";
-
-  const viaLine =
-    lines.find((line) => /^uso /i.test(line)) ||
-    lines.find((line) => /via:/i.test(line)) ||
-    "";
-
-  const duracaoMatch =
-    text.match(/por\s+\d+\s*(dias|dia|semanas|semana|meses|mês)/i) ||
-    text.match(/dose única/i);
-
-  const duracao = duracaoMatch ? duracaoMatch[0] : "";
-
   return {
-    medicamento: medicationLine.replace(/^\d+\)\s*/, "").trim(),
-    via: viaLine.replace(/^uso\s*/i, "").trim(),
-    posologia: posologiaLine.trim(),
-    duracao: duracao.trim(),
+    medicamento: formatClinicalTitle(item.titulo),
+    via: "",
+    posologia: (item.conteudo || "").trim(),
+    duracao: "",
     orientacoes: item.observacoes || "",
   };
 }
@@ -659,7 +636,7 @@ export default function PrescriptionTemplatesLive({
     const map = new Map<number, string>();
     for (const item of items) {
       const first = parsePrescriptionSheet(item.conteudo).find((block) => block.kind === "item");
-      if (first?.kind === "item" && first.title) map.set(item.id, toReadableCase(first.title));
+      if (first?.kind === "item" && first.title) map.set(item.id, splitItemTitle(readablePrescriptionLine(first.title)).name);
     }
     return map;
   }, [items]);
@@ -677,18 +654,41 @@ export default function PrescriptionTemplatesLive({
 
   function selectTemplate(id: number | null) {
     setSelectedId(id);
+    if (id) {
+      try {
+        window.localStorage.setItem(LAST_TEMPLATE_KEY, String(id));
+      } catch {
+        // Sem armazenamento local: só não lembra o último modelo.
+      }
+    }
     if (id && window.matchMedia("(max-width: 1023px)").matches) window.scrollTo({ top: 0 });
   }
 
-  // Links antigos da busca global abrem com ?q=<título>: se o termo bate
-  // exatamente com um modelo, ele já abre na leitura.
+  // Ao entrar, abre um modelo em vez de deixar a leitura vazia: o título exato
+  // buscado (?q=, links antigos), ou no computador o último aberto, um
+  // favorito ou o primeiro da lista. No celular a lista vem primeiro.
   useEffect(() => {
-    if (autoOpenedRef.current || !hydratedFromUrl || selectedId || !query.trim() || !items.length) return;
+    if (autoOpenedRef.current || !hydratedFromUrl || selectedId || !items.length) return;
     autoOpenedRef.current = true;
-    const key = normalizeKey(query);
-    const match = items.find((item) => normalizeKey(item.titulo) === key);
-    if (match) setSelectedId(match.id);
-  }, [hydratedFromUrl, items, query, selectedId]);
+    if (query.trim()) {
+      const key = normalizeKey(query);
+      const match = items.find((item) => normalizeKey(item.titulo) === key);
+      if (match) setSelectedId(match.id);
+      return;
+    }
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    let lastId = 0;
+    try {
+      lastId = Number(window.localStorage.getItem(LAST_TEMPLATE_KEY));
+    } catch {
+      lastId = 0;
+    }
+    const fallback =
+      items.find((item) => item.id === lastId) ||
+      items.find((item) => favoriteIds.includes(item.id)) ||
+      filteredTemplates[0];
+    if (fallback) setSelectedId(fallback.id);
+  }, [hydratedFromUrl, items, query, selectedId, favoriteIds, filteredTemplates]);
 
   async function registerRecent(item: PrescriptionTemplate) {
     if (!currentUserId) return;
@@ -744,10 +744,12 @@ export default function PrescriptionTemplatesLive({
     const reviewed = (item.review_status || "rascunho") === "revisado";
     const risk = item.risk_level || "baixo";
     const audiences = parseSpecialAudiences(item.publicos_especiais);
+    const ghostButton =
+      "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50";
 
     return (
-      <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
-        <header className="border-b border-slate-200 p-5 md:p-7">
+      <article className="space-y-4">
+        <header className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
           <button
             type="button"
             onClick={() => selectTemplate(null)}
@@ -757,12 +759,27 @@ export default function PrescriptionTemplatesLive({
             Voltar à lista
           </button>
 
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-800">
-            {categoryLabel(item.categoria)}
-          </p>
-          <h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
-            {formatClinicalTitle(item.titulo)}
-          </h2>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-800">{categoryLabel(item.categoria)}</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 md:text-[28px]">
+                {formatClinicalTitle(item.titulo)}
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleFavorite(item.id, item.titulo)}
+              disabled={isDeleting || !currentUserId}
+              aria-pressed={isFavorite}
+              aria-label={isFavorite ? "Remover dos favoritos" : "Favoritar"}
+              title={isFavorite ? "Remover dos favoritos" : "Favoritar"}
+              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition disabled:opacity-50 ${
+                isFavorite ? "border-amber-200 bg-amber-50 text-amber-600" : "border-slate-200 bg-white text-slate-400 hover:text-amber-500"
+              }`}
+            >
+              <Star className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
+            </button>
+          </div>
 
           {isAdmin || reviewed || risk !== "baixo" || audiences.length ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -818,92 +835,69 @@ export default function PrescriptionTemplatesLive({
               type="button"
               onClick={() => handleUse(item)}
               disabled={isDeleting}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <ClipboardPlus className="h-4 w-4" />
-              Usar no formulário
+              Prescrever com este modelo
             </button>
             <CopyButton text={item.conteudo} label="Copiar receita" />
             <button
               type="button"
-              onClick={() => toggleFavorite(item.id, item.titulo)}
-              disabled={isDeleting || !currentUserId}
-              aria-pressed={isFavorite}
-              className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                isFavorite
-                  ? "border-amber-200 bg-amber-50 text-amber-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              <Star className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
-              {isFavorite ? "Favorito" : "Favoritar"}
-            </button>
-            <button
-              type="button"
               onClick={() => duplicateToPersonal(item)}
               disabled={isDeleting || !currentUserId}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              className={ghostButton}
             >
               <BookCopy className="h-4 w-4" />
               Salvar no Meu Resibook
             </button>
 
             {isAdmin ? (
-              <>
+              <span className="ml-auto flex gap-2">
                 <button
                   type="button"
                   onClick={() => openEditDrawer(item)}
                   disabled={isDeleting}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Editar modelo"
+                  title="Editar modelo"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
                 >
                   <Edit3 className="h-4 w-4" />
-                  Editar
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDelete(item)}
                   disabled={isDeleting}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Apagar modelo"
+                  title="Apagar modelo"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
                 >
                   <Trash2 className="h-4 w-4" />
-                  {isDeleting ? "Apagando..." : "Apagar"}
                 </button>
-              </>
+              </span>
             ) : null}
           </div>
         </header>
 
+        <PrescriptionSheet value={item.conteudo} paper label={formatClinicalTitle(item.titulo)} />
+
         {item.observacoes ? (
-          <section className="border-b border-slate-200 bg-amber-50/50 px-5 py-5 md:px-7">
+          <section className="rounded-[20px] border border-amber-200/70 bg-amber-50/50 p-5 md:p-6">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-800">
               <AlertTriangle className="h-4 w-4" />
               Orientações e cuidados
             </h3>
             <div className="mt-2.5">
-              <ClinicalText value={item.observacoes} />
+              <PrescriptionSheet value={item.observacoes} />
             </div>
           </section>
         ) : null}
 
-        <section className="px-5 py-5 md:px-7 md:py-6">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <FileText className="h-4 w-4" />
-            Receituário
-          </h3>
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 md:p-6">
-            <PrescriptionSheet value={item.conteudo} />
-          </div>
-        </section>
-
-        <footer className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-500 md:px-7">
-          {item.last_reviewed_at ? (
-            <span>
-              Revisado em {new Intl.DateTimeFormat("pt-BR").format(new Date(item.last_reviewed_at))}
-              {item.reviewed_by ? ` por ${item.reviewed_by}` : ""}
-            </span>
-          ) : null}
-          <span>Modelo de apoio: confira doses, alergias, interações e função renal antes de prescrever.</span>
-        </footer>
+        <p className="px-1 text-xs leading-5 text-slate-500">
+          {item.last_reviewed_at
+            ? `Revisado em ${new Intl.DateTimeFormat("pt-BR").format(new Date(item.last_reviewed_at))}${item.reviewed_by ? ` por ${item.reviewed_by}` : ""}. `
+            : ""}
+          Modelo de apoio: confira doses, alergias, interações e função renal antes de prescrever.
+        </p>
       </article>
     );
   }

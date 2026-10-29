@@ -1573,11 +1573,12 @@ export default function PrescricaoPage() {
                               />
                             </div>
 
-                            <div>
+                            <div className="md:col-span-2">
                               <label className="mb-2 block text-sm font-medium text-slate-700">
-                                Posologia
+                                Prescrição
                               </label>
-                              <input
+                              <textarea
+                                rows={Math.min(14, Math.max(3, editForm.posologia.split("\n").length + 1))}
                                 value={editForm.posologia}
                                 onChange={(e) =>
                                   updateEditForm(
@@ -1586,7 +1587,7 @@ export default function PrescricaoPage() {
                                     e.target.value
                                   )
                                 }
-                                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none"
                               />
                             </div>
 
@@ -1770,8 +1771,7 @@ export default function PrescricaoPage() {
                   Nova prescrição
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Cadastro em painel separado para deixar a listagem e os
-                  modelos mais limpos.
+                  Ajuste a receita, confira os alertas e salve no seu histórico.
                 </p>
               </div>
 
@@ -1835,15 +1835,15 @@ export default function PrescricaoPage() {
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Medicamento
+                    Medicamento ou título
                   </label>
                   <input
                     value={form.medicamento}
                     onChange={(e) => updateForm("medicamento", e.target.value)}
-                    placeholder="Ex.: Dipirona 500 mg"
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                    placeholder="Ex.: Dipirona 500 mg ou ITU simples"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100"
                   />
                 </div>
 
@@ -1855,18 +1855,6 @@ export default function PrescricaoPage() {
                     value={form.via}
                     onChange={(e) => updateForm("via", e.target.value)}
                     placeholder="Ex.: IV"
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Posologia
-                  </label>
-                  <input
-                    value={form.posologia}
-                    onChange={(e) => updateForm("posologia", e.target.value)}
-                    placeholder="Ex.: 12/12h"
                     className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
                   />
                 </div>
@@ -1886,6 +1874,19 @@ export default function PrescricaoPage() {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Prescrição
+                </label>
+                <textarea
+                  rows={Math.min(16, Math.max(4, form.posologia.split("\n").length + 1))}
+                  value={form.posologia}
+                  onChange={(e) => updateForm("posologia", e.target.value)}
+                  placeholder={"Ex.: Tomar 1 comprimido de 12/12 h\n\nAo usar um modelo pronto, a receita completa entra aqui para você ajustar."}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Orientações
                 </label>
                 <textarea
@@ -1897,13 +1898,9 @@ export default function PrescricaoPage() {
                 />
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Prévia
-                </p>
-                <pre className="mt-3 whitespace-pre-wrap font-mono text-sm leading-7 text-slate-800">
-                  {draftText}
-                </pre>
+              <div>
+                <p className="mb-2 text-sm font-medium text-slate-700">Prévia</p>
+                <PrescriptionSheet value={draftText} paper label={form.paciente_nome || undefined} />
               </div>
 
               {highRiskAlerts.length > 0 ? (
@@ -1942,7 +1939,7 @@ export default function PrescricaoPage() {
                     type="button"
                     onClick={handleCreate}
                     disabled={saving}
-                    className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-11 items-center justify-center rounded-xl bg-cyan-800 px-5 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {saving ? "Salvando..." : highRiskAlerts.length > 0 ? "Revisar alertas e salvar" : "Salvar prescrição"}
                   </button>
