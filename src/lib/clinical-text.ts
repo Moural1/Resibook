@@ -17,7 +17,7 @@ export type ClinicalBlock =
 
 // Siglas e termos que devem continuar em maiúsculas quando uma linha em
 // CAIXA ALTA é convertida para caixa normal.
-const ACRONYMS = new Set([
+export const ACRONYMS = new Set([
   "AAS", "ACLS", "AESP", "AINE", "AINES", "AIT", "ALT", "AST", "ATB", "ATRA", "AVC", "AVCI", "AVCH", "BAV", "BCG", "BNP",
   "BRA", "BRE", "BRD", "CA", "CAD", "CI", "CIVD", "CPRE", "CPK", "DAC", "DIU", "DM", "DM1", "DM2", "DPOC", "DRGE", "DST",
   "EAP", "ECG", "EDA", "EEG", "EV", "FA", "FC", "FR", "FV", "GCS", "HAS", "HB", "HBV", "HCV", "HDA", "HDB", "HIV", "HPV",
