@@ -584,7 +584,7 @@ export default function ExamesEvolucaoPage() {
                         </span>
                       ) : null}
 
-                      {item.arquivo_origem || item.source_file ? (
+                      {isAdmin && (item.arquivo_origem || item.source_file) ? (
                         <span className="inline-flex max-w-full rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
                           <span className="truncate">
                             {formatDisplay(

@@ -16,3 +16,12 @@ export const NOME_COR: Record<NivelPrioridade, string> = {
   amarelo: "Amarelo",
   verde: "Verde",
 };
+
+/* Gravidade de um alerta (valor fora da faixa ou sinal de alarme). Usa as
+   mesmas cores, mas não é prioridade do paciente: essa quem define é o médico. */
+export const NOME_GRAVIDADE: Record<NivelPrioridade, string> = {
+  vermelho: "crítico",
+  laranja: "importante",
+  amarelo: "atenção",
+  verde: "sem alerta",
+};

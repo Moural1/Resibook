@@ -280,7 +280,7 @@ type TextoCaso = {
 function linhaPrioridade(params: TextoCaso) {
   if (!params.prioridade) return "Prioridade: a definir";
   const { rotulo } = PRIORIDADES[params.prioridade];
-  return `Prioridade: ${NOME_COR[params.prioridade]} · ${rotulo}${params.manual ? " (definida pelo médico)" : " (sugerida pelos dados)"}`;
+  return `Prioridade: ${NOME_COR[params.prioridade]} · ${rotulo} (definida pelo médico)`;
 }
 
 function linhaEscores(leitura: LeituraTriagem) {
@@ -436,7 +436,7 @@ export default function CasoRapidoPage() {
     [age, vitals, consciencia, oxigenio, sinaisPresentes, redFlags]
   );
 
-  const prioridade = manual ?? leitura.prioridade;
+  const prioridade = manual;
   const severity = gravidadeLegada(prioridade);
 
   const alerts = useMemo<CaseAlert[]>(
@@ -571,9 +571,9 @@ export default function CasoRapidoPage() {
       <ModulePageHeader
         eyebrow="Resibook Shift"
         title="Caso rápido"
-        description="Preencha queixa e sinais vitais: a prioridade, os escores e o kit da queixa se montam sozinhos."
+        description="Preencha queixa e sinais vitais: os alertas, os escores e o kit da queixa se montam sozinhos. A prioridade é você quem define."
         badges={[
-          { label: "Prioridade automática", tone: "cyan" },
+          { label: "Alertas automáticos", tone: "cyan" },
           { label: "Kit integrado", tone: "emerald" },
         ]}
         metrics={[
@@ -669,19 +669,19 @@ export default function CasoRapidoPage() {
               </div>
             </div>
 
-            {prioridade ? (
+            {prioridade || leitura.alertas.length ? (
               <a
                 href="#leitura-caso"
-                className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold xl:hidden ${COR_PRIORIDADE[prioridade].faixa}`}
+                className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold xl:hidden ${prioridade ? COR_PRIORIDADE[prioridade].faixa : "bg-slate-100 text-slate-800"}`}
               >
                 <span>
-                  {NOME_COR[prioridade]} · {PRIORIDADES[prioridade].rotulo}
+                  {prioridade ? `${NOME_COR[prioridade]} · ${PRIORIDADES[prioridade].rotulo}` : "Prioridade a definir"}
                   <span className="block text-xs font-medium opacity-90">
                     {leitura.alertas.length} {leitura.alertas.length === 1 ? "alerta" : "alertas"}
                     {leitura.news2 ? ` · NEWS2 ${leitura.news2.pontos}` : ""}
                   </span>
                 </span>
-                <span className="text-xs">Ver leitura ↓</span>
+                <span className="text-xs">{prioridade ? "Ver leitura ↓" : "Definir ↓"}</span>
               </a>
             ) : null}
 

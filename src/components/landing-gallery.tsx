@@ -22,12 +22,12 @@ type Slide = {
 const SLIDES: Slide[] = [
   {
     id: "caso-rapido",
-    label: "Prioridade automática",
-    title: "Sinais vitais viram prioridade",
+    label: "Caso rápido",
+    title: "Sinais vitais lidos na hora",
     description:
-      "Digite a queixa e os sinais vitais: NEWS2, qSOFA e índice de choque se calculam sozinhos e sugerem a cor da prioridade.",
+      "Digite a queixa e os sinais vitais: NEWS2, qSOFA, índice de choque e alertas se calculam sozinhos. A prioridade é você quem define.",
     image: casoRapido,
-    alt: "Caso rápido do Resibook com febre, prioridade vermelha sugerida, NEWS2, qSOFA e índice de choque",
+    alt: "Caso rápido do Resibook com febre, alertas de sinais vitais, NEWS2, qSOFA e índice de choque",
   },
   {
     id: "quadro",

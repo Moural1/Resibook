@@ -20,12 +20,13 @@ const SHADES = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "9
 const mirror = (shade) => SHADES[SHADES.length - 1 - SHADES.indexOf(shade)];
 const SCOPE = 'html[data-theme="dark"] body:not([data-resibook-surface="public"])';
 
-const SURFACE = "#111c2e";
+const SURFACE = "#121923";
 /* Fundos neutros bem claros (50/100) viram tons próximos da superfície, não
    quase pretos: painéis internos ficam sutis em vez de buracos escuros. */
-const NEUTRAL_SOFT = { "50": "#0e1829", "100": "#0b1422" };
+const NEUTRAL_SOFT = { "50": "#0f151d", "100": "#0c1118" };
 const SOFT_NEUTRALS = Object.fromEntries(["slate", "gray", "zinc", "neutral", "stone"].map((name) => [name, NEUTRAL_SOFT]));
-const PAGE = "#0a1322";
+/* Fundo quase preto: separa bem a sidebar (azul-marinho) e os cartões. */
+const PAGE = "#06080c";
 
 const mirrored = [];
 const original = [];

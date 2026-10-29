@@ -6,10 +6,11 @@ import {
   scoreNewsTemperature,
 } from "../clinical-calculators.ts";
 
-/* Leitura automática dos dados do caso: sinais vitais, escores de adulto
-   (NEWS2, qSOFA, índice de choque) e prioridade sugerida por cor. Tudo é
-   regra fixa e revisável; a prioridade é sugestão e não substitui o
-   protocolo de classificação de risco do serviço. */
+/* Leitura automática dos dados do caso: valores fora da faixa, escores de
+   adulto (NEWS2, qSOFA, índice de choque) e alertas com nível de gravidade.
+   Tudo é regra fixa e revisável. O sistema não classifica o risco do
+   paciente: a prioridade de atendimento é sempre escolhida pelo médico
+   (ver prioridadeManual no caso). */
 
 export type NivelPrioridade = "vermelho" | "laranja" | "amarelo" | "verde";
 export type Consciencia = "" | "alerta" | "confusao" | "voz" | "dor" | "nao-responde";
@@ -58,7 +59,6 @@ export type LeituraTriagem = {
   alertas: AlertaTriagem[];
   notas: string[];
   preenchidos: number;
-  prioridade: NivelPrioridade | null;
 };
 
 export const ORDEM_PRIORIDADE: NivelPrioridade[] = ["vermelho", "laranja", "amarelo", "verde"];
@@ -297,8 +297,6 @@ export function lerTriagem(entrada: EntradaTriagem): LeituraTriagem {
   }
 
   alertas.sort((a, b) => ORDEM_PRIORIDADE.indexOf(a.nivel) - ORDEM_PRIORIDADE.indexOf(b.nivel));
-  const temDados = preenchidos > 0 || (entrada.sinaisAlarme?.length ?? 0) > 0;
-  const prioridade = maiorPrioridade(alertas.map((item) => item.nivel)) ?? (temDados ? "verde" : null);
 
-  return { idadeAnos, faixaEtaria, pa, indiceChoque, qsofa, news2, alertas, notas, preenchidos, prioridade };
+  return { idadeAnos, faixaEtaria, pa, indiceChoque, qsofa, news2, alertas, notas, preenchidos };
 }

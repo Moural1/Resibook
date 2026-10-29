@@ -708,7 +708,8 @@ export default function PrescriptionTemplatesLive({
             </span>
           ) : null}
 
-          {item.source_file ? (
+          {/* Nome do arquivo de origem é dado interno: só a administração vê. */}
+          {isAdmin && item.source_file ? (
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
               {item.source_file}
             </span>

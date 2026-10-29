@@ -9,8 +9,8 @@ import {
   type NivelPrioridade,
 } from "./triagem.ts";
 
-/* Junta a sessão do caso com o motor de triagem: leitura, prioridade final
-   (sugerida ou escolhida), valores para as calculadoras e etapas do plantão. */
+/* Junta a sessão do caso com a leitura dos dados: alertas e escores, a
+   prioridade escolhida pelo médico, valores para as calculadoras e etapas. */
 
 const CONSCIENCIAS: Consciencia[] = ["", "alerta", "confusao", "voz", "dor", "nao-responde"];
 
@@ -33,8 +33,9 @@ export function leituraDoCaso(caso: ClinicalCaseSession): LeituraTriagem {
   });
 }
 
-export function prioridadeFinal(sugerida: NivelPrioridade | null, manual?: NivelPrioridade | null) {
-  return manual ?? sugerida;
+/* Só o médico define a prioridade; sem escolha, fica "a definir". */
+export function prioridadeFinal(manual?: NivelPrioridade | null) {
+  return manual ?? null;
 }
 
 /* Rótulo antigo de gravidade, ainda lido por pendências, evolução e SBAR. */

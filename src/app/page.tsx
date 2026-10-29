@@ -10,6 +10,7 @@ import dossieEnamed from "../../public/landing/dossie-enamed.webp";
 import { totaisDossie } from "@/lib/fluxos/enamed";
 import { totaisFluxos } from "@/lib/fluxos";
 import { SUPPORT_EMAIL } from "@/lib/support";
+import { SELLER } from "@/lib/legal/seller";
 import {
   Activity,
   ArrowRight,
@@ -52,8 +53,8 @@ const NAV_LINKS = [
 
 const SHIFT_STEPS: { title: string; description: string; icon: IconType }[] = [
   {
-    title: "Caso e prioridade",
-    description: "Digite a queixa e os sinais vitais: prioridade sugerida, red flags clicáveis e conduta já contextualizados.",
+    title: "Caso e alertas",
+    description: "Digite a queixa e os sinais vitais: escores, alertas e red flags clicáveis na hora, conduta contextualizada e a prioridade definida por você.",
     icon: Search,
   },
   {
@@ -704,8 +705,13 @@ export default function HomePage() {
             </a>
           </nav>
         </div>
-        <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-slate-500">
+        <div className="border-t border-white/10 px-4 py-4 text-center text-xs leading-5 text-slate-500">
           © 2026 ResiBook. Uso profissional médico.
+          <br />
+          {SELLER.name} · {SELLER.city} ·{" "}
+          <Link href="/termos#fornecedor" className="underline-offset-2 transition hover:text-white hover:underline">
+            Identificação completa nos Termos
+          </Link>
         </div>
       </footer>
     </div>

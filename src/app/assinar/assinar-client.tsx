@@ -11,6 +11,7 @@ import {
   Copy,
   CreditCard,
   FileCheck2,
+  FileText,
   MessageCircle,
   QrCode,
   RefreshCw,
@@ -23,6 +24,7 @@ import {
   type BillingPlanId,
 } from "@/lib/billing/plans";
 import type { ManualPixOrder } from "@/lib/billing/manual-pix";
+import { SELLER } from "@/lib/legal/seller";
 
 // Origem do bloqueio de plano (proxy → /assinar?upgrade=1&de=/rota). Só rotas
 // conhecidas viram texto; qualquer outro valor cai no rótulo genérico.
@@ -224,6 +226,8 @@ function AssinarContent({
             <button type="button" onClick={() => setMethod("pix")} disabled={!pixAvailable} className={`rounded-2xl border p-5 text-left disabled:cursor-not-allowed disabled:opacity-50 ${method === "pix" ? "border-emerald-700 bg-emerald-50 ring-2 ring-emerald-100" : "border-slate-200"}`}><QrCode className="h-6 w-6 text-emerald-700" /><p className="mt-3 font-semibold text-slate-950">Pix manual</p><p className="mt-1 text-sm leading-6 text-slate-600">Pagamento de 30 dias, liberado após conferência do comprovante.</p></button>
           </div>
 
+          <ContractSummary planId={selected} method={method} />
+
           {error ? <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
 
           {method === "card" ? <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5"><label className="text-sm font-semibold text-slate-900" htmlFor="billing-email">E-mail de cobrança / Mercado Pago</label><input id="billing-email" type="email" value={billingEmail} onChange={(event) => setBillingEmail(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-cyan-600" placeholder="seu-email@exemplo.com" /><p className="mt-2 text-xs text-slate-600">Use o mesmo e-mail da conta Mercado Pago que fará o pagamento.</p><button type="button" onClick={checkout} disabled={loading !== null || !emailValid} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-6 text-sm font-semibold text-white hover:bg-cyan-800 disabled:opacity-60"><CreditCard className="h-5 w-5" />{loading === "card" ? "Abrindo pagamento..." : testMode ? "Testar com cartão" : "Assinar com cartão"}</button></div> : null}
@@ -259,6 +263,27 @@ function AssinarContent({
         </div>
       </div>
     </main>
+  );
+}
+
+/* Resumo do contrato antes do pagamento (Decreto 7.962/2013, art. 4º, I),
+   com destaque para renovação, cancelamento e arrependimento. */
+function ContractSummary({ planId, method }: { planId: BillingPlanId; method: "card" | "pix" }) {
+  const plan = BILLING_PLANS[planId];
+  return (
+    <section aria-labelledby="resumo-contratacao" className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-700">
+      <h2 id="resumo-contratacao" className="flex items-center gap-2 font-semibold text-slate-950"><FileText className="h-4 w-4 text-cyan-700" />Resumo da contratação</h2>
+      <ul className="mt-3 space-y-1.5">
+        <li><strong>Plano {plan.name}:</strong> R$ {plan.price} por mês.</li>
+        {method === "card"
+          ? <li><strong>Renovação:</strong> cobrança mensal automática no cartão até você cancelar. Cancele quando quiser em Minha assinatura, sem multa; o acesso segue até o fim do mês pago.</li>
+          : <li><strong>Pix:</strong> pagamento único de 30 dias de acesso, liberado após a conferência do comprovante. Não renova sozinho.</li>}
+        <li><strong>Arrependimento:</strong> na primeira contratação, desista em até 7 dias e receba o valor integral de volta.</li>
+        <li><strong>Uso:</strong> ferramenta de apoio ao estudo e à rotina; não substitui o julgamento clínico.</li>
+        <li><strong>Vendido por:</strong> {SELLER.name}, {SELLER.city}.</li>
+      </ul>
+      <p className="mt-3 text-xs text-slate-500">Ao continuar, você concorda com os <Link href="/termos" target="_blank" className="font-semibold text-cyan-800 underline-offset-2 hover:underline">Termos de Uso</Link> e a <Link href="/privacidade" target="_blank" className="font-semibold text-cyan-800 underline-offset-2 hover:underline">Política de Privacidade</Link>.</p>
+    </section>
   );
 }
 

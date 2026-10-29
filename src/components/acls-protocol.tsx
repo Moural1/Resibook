@@ -461,6 +461,9 @@ export function AclsShell({ children }: { children: React.ReactNode }) {
             </li>
           ))}
         </ul>
+        <p className="border-t border-slate-100 px-5 py-2.5 text-xs leading-5 text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          Resumo de estudo com redação própria, baseado nas diretrizes da American Heart Association (AHA). O ResiBook não é afiliado nem endossado pela AHA.
+        </p>
 
         <details className="group border-t border-slate-100 dark:border-slate-800 lg:hidden">
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-5 py-3 text-sm font-medium text-slate-800 dark:text-slate-100">

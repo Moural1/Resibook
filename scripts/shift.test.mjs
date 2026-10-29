@@ -40,16 +40,16 @@ test("leitura de pressão, idade e números em formatos do plantão", () => {
   assert.equal(lerNumero("abc"), null);
 });
 
-test("sem dados não há prioridade; dados normais dão verde sem alertas", () => {
-  assert.equal(lerTriagem({ idade: "", vitals: vazio }).prioridade, null);
+test("a leitura nunca define prioridade; dados normais não geram alertas", () => {
+  assert.equal("prioridade" in lerTriagem({ idade: "", vitals: vazio }), false);
   const normal = lerTriagem({ idade: "40 anos", vitals: { pa: "120x80", fc: "78", fr: "16", temp: "36,7", spo2: "98", glicemia: "95" }, consciencia: "alerta" });
-  assert.equal(normal.prioridade, "verde");
+  assert.equal("prioridade" in normal, false);
   assert.deepEqual(normal.alertas, []);
   assert.equal(normal.news2.pontos, 0);
   assert.equal(normal.news2.completo, true);
 });
 
-test("adulto séptico: qSOFA 3, NEWS2 alto, índice de choque ≥ 1 e prioridade vermelha", () => {
+test("adulto séptico: qSOFA 3, NEWS2 alto, índice de choque ≥ 1 e alerta crítico", () => {
   const leitura = lerTriagem({
     idade: "70 anos",
     vitals: { pa: "90x60", fc: "120", fr: "24", temp: "39,5", spo2: "93", glicemia: "" },
@@ -59,7 +59,6 @@ test("adulto séptico: qSOFA 3, NEWS2 alto, índice de choque ≥ 1 e prioridade
   assert.equal(leitura.news2.pontos, 14);
   assert.equal(leitura.news2.faixa, "alto");
   assert.equal(leitura.indiceChoque, 1.33);
-  assert.equal(leitura.prioridade, "vermelho");
   assert.equal(leitura.alertas[0].nivel, "vermelho");
   assert.ok(leitura.alertas.some((a) => a.id === "qsofa"));
 });
@@ -73,14 +72,14 @@ test("criança: sem escores de adulto, taquipneia pela OMS e febre no lactente <
   assert.ok(lactente.alertas.some((a) => a.id === "fr" && a.nivel === "amarelo"));
   assert.ok(!lactente.alertas.some((a) => a.id === "fc"), "FC 160 é normal aos 8 meses");
   const neonato = lerTriagem({ idade: "2 meses", vitals: { ...vazio, temp: "38,2" } });
-  assert.equal(neonato.prioridade, "laranja");
+  assert.ok(neonato.alertas.some((a) => a.id === "temp" && a.nivel === "laranja"));
 });
 
-test("hipoglicemia, hipoxemia e sinal de alarme definem a prioridade", () => {
-  assert.equal(lerTriagem({ idade: "30", vitals: { ...vazio, glicemia: "50" } }).prioridade, "vermelho");
-  assert.equal(lerTriagem({ idade: "30", vitals: { ...vazio, spo2: "88" } }).prioridade, "laranja");
+test("hipoglicemia, hipoxemia e sinal de alarme geram alertas com gravidade", () => {
+  assert.equal(lerTriagem({ idade: "30", vitals: { ...vazio, glicemia: "50" } }).alertas[0].nivel, "vermelho");
+  assert.equal(lerTriagem({ idade: "30", vitals: { ...vazio, spo2: "88" } }).alertas[0].nivel, "laranja");
   const comAlarme = lerTriagem({ idade: "30", vitals: vazio, sinaisAlarme: [{ id: "x", texto: "Petéquias", nivel: "vermelho" }] });
-  assert.equal(comAlarme.prioridade, "vermelho");
+  assert.equal(comAlarme.alertas[0].origem, "sinal-alarme");
   assert.equal(maiorPrioridade(["verde", "amarelo", null]), "amarelo");
 });
 
