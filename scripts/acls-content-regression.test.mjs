@@ -30,7 +30,7 @@ const SOURCE_HASHES = {
   "complicacoes-iam": "0d5c578e7036c97a551a1d1a2589bd1fac876e12f0c8db365a799eb05bf78ee4",
   "avc": "436f0062dc06aaf77efe8ed9bae6b78a2e9aa0a23c55434e126baf1b4e54308e",
   "avc-isquemico": "58020d26e084fef4945bf9f8586c26b3deae2fcd827a5c0c3c8afeed2aaa3951",
-  "trombolise-avc-isquemico": "a14aeecd8ca148193cebfbb421e57b6ef5e536a3dd7ff8cf65dcd3cd85046139",
+  "trombolise-avc-isquemico": "eac6e561cfe90fa02f1929e1da850ef14e43b28c8cc8a70ab4364a667fe40869",
   "trombectomia-avc-isquemico": "849ecc5972b30daf972575d5e50d852869b734fca3e72c20a6337aca115b70c0",
   "cuidados-pos-trombolise": "e11d293b15c14a7a95c62e69146cb2f6aafa0825c7e287e506e7d97a44913750",
   "medicamentos-avc-isquemico": "40112df6ee577588d6655a03176f1114685d7a07270afda53ff4db04138dfd2c",
