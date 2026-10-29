@@ -11,7 +11,8 @@ import ClinicalAlerts, {
 import ModulePageHeader from "../../components/module-page-header";
 import ResibookGuard from "@/components/resibook-guard";
 import { rankSearchResults } from "@/lib/search";
-import { ClipboardPlus, Edit3, Printer, X } from "lucide-react";
+import PrescriptionSheet from "@/components/prescription-sheet";
+import { ChevronDown, ClipboardPlus, Edit3, Printer, X } from "lucide-react";
 
 type Prescription = {
   id: number;
@@ -380,16 +381,17 @@ function buildPrescriptionPrintHtml(
           .section-body { padding: 18px; }
           .rx-box {
             border-radius: 18px;
-            background: #07183d;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
             padding: 18px;
           }
           pre {
             margin: 0;
             white-space: pre-wrap;
-            font-family: "Courier New", Courier, monospace;
+            font-family: inherit;
             font-size: 15px;
             line-height: 1.75;
-            color: #f8fafc;
+            color: #0f172a;
           }
           .footnote {
             margin-top: 18px;
@@ -1231,6 +1233,15 @@ export default function PrescricaoPage() {
             tone: isGuest ? "amber" : "blue",
           },
         ]}
+        metrics={[
+          { label: "Modelos prontos", value: templates.length },
+          ...(!isGuest
+            ? [
+                { label: "Prescrições salvas", value: total },
+                { label: "Último registro", value: ultima ? formatDate(ultima.created_at).split(",")[0] : "-" },
+              ]
+            : []),
+        ]}
         error={error}
         success={success}
         notice={
@@ -1254,192 +1265,9 @@ export default function PrescricaoPage() {
             </button>
           ) : null
         }
-      >
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Modelos e uso rápido
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Use um modelo pronto e, se quiser, abra o cadastro para salvar
-                  no seu histórico.
-                </p>
-              </div>
-
-              {!isGuest ? (
-                <a
-                  href="#lista-prescricoes"
-                  className="text-sm font-semibold text-cyan-800 transition hover:text-cyan-950"
-                >
-                  Ver histórico salvo
-                </a>
-              ) : null}
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-800">
-                Biblioteca compartilhada
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
-                {templates.length} modelos prontos da Biblioteca Resibook
-                para consultar, copiar e aplicar no formulário.
-              </p>
-
-              {!isGuest ? (
-                <button
-                  type="button"
-                  onClick={openCreateDrawer}
-                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl border border-cyan-200 bg-white px-5 text-sm font-semibold text-cyan-800 transition hover:border-cyan-300 hover:bg-cyan-50"
-                >
-                  Abrir cadastro de prescrição
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <aside className="rounded-3xl border border-slate-200 bg-white p-5">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Resumo rápido
-              </h2>
-            </div>
-
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {isGuest ? "Modo atual" : "Prescrições salvas"}
-                </p>
-                <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-                  {isGuest ? "Guest" : total}
-                </p>
-              </div>
-
-              {!isGuest ? (
-                <>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Último registro
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">
-                      {ultima?.medicamento || "Nenhum registro"}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {ultima ? formatDate(ultima.created_at) : "-"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Paciente do último item
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">
-                      {ultima ? getPatientLabel(ultima) : "-"}
-                    </p>
-                  </div>
-
-                  {patientLinkedLabel ? (
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                        Paciente selecionado
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-emerald-900">
-                        {patientLinkedLabel}
-                      </p>
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                    Salvamento bloqueado
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-amber-900">
-                    O convidado pode copiar prescrições e consultar a biblioteca
-                    compartilhada, mas não altera o banco de dados.
-                  </p>
-                </div>
-              )}
-            </div>
-          </aside>
-        </div>
-      </ModulePageHeader>
+      />
 
       <ResibookGuard context="prescricao" />
-
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              Auditoria de confirmações de risco alto
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Últimas confirmações feitas ao salvar prescrições com alertas críticos.
-            </p>
-          </div>
-
-          <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-            {recentConfirmations.length} recentes
-          </span>
-        </div>
-
-        <div className="mt-6 space-y-3">
-          {recentConfirmations.length ? (
-            recentConfirmations.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {item.paciente_nome || "Paciente não vinculado"}
-                    </p>
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-600">
-                      {item.medication_text || "Prescrição clínica"}
-                    </p>
-                  </div>
-
-                  <span className="whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                    {item.high_risk_count} alerta{item.high_risk_count === 1 ? "" : "s"}
-                  </span>
-                </div>
-
-                {item.high_risk_titles?.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {item.high_risk_titles.map((title, index) => (
-                      <span
-                        key={`${item.id}-${index}`}
-                        className="inline-flex rounded-full border border-rose-200 bg-white px-3 py-1 text-[11px] font-medium text-rose-700"
-                      >
-                        {title}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                {item.confirmation_reason ? (
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
-                    <span className="font-semibold text-slate-900">Motivo informado:</span>{" "}
-                    {item.confirmation_reason}
-                  </div>
-                ) : null}
-
-                <p className="mt-3 text-xs text-slate-500">
-                  Confirmado em {formatDate(item.confirmed_at || item.created_at)}
-                </p>
-              </div>
-            ))
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
-              Ainda não há confirmações de risco alto registradas.
-            </div>
-          )}
-        </div>
-      </section>
-
-
 
       <PrescriptionTemplatesLive
         templates={templates}
@@ -1554,10 +1382,82 @@ export default function PrescricaoPage() {
                       </div>
                     ) : null}
 
-                    <div className="mt-4 rounded-2xl bg-[#07183d] px-4 py-4">
-                      <pre className="whitespace-pre-wrap font-mono text-[15px] leading-7 text-slate-100">
-                        {buildPrescriptionTextFromItem(item)}
-                      </pre>
+      {!isGuest ? (
+        <details className="group rounded-[20px] border border-slate-200 bg-white shadow-sm">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Auditoria de confirmações de risco alto
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Últimas confirmações feitas ao salvar prescrições com alertas críticos.
+              </p>
+            </div>
+
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+              {recentConfirmations.length} recentes
+              <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />
+            </span>
+          </summary>
+
+          <div className="space-y-3 border-t border-slate-200 px-5 py-4">
+            {recentConfirmations.length ? (
+              recentConfirmations.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {item.paciente_nome || "Paciente não vinculado"}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                        {item.medication_text || "Prescrição clínica"}
+                      </p>
+                    </div>
+
+                    <span className="whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                      {item.high_risk_count} alerta{item.high_risk_count === 1 ? "" : "s"}
+                    </span>
+                  </div>
+
+                  {item.high_risk_titles?.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {item.high_risk_titles.map((title, index) => (
+                        <span
+                          key={`${item.id}-${index}`}
+                          className="inline-flex rounded-full border border-rose-200 bg-white px-3 py-1 text-[11px] font-medium text-rose-700"
+                        >
+                          {title}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {item.confirmation_reason ? (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                      <span className="font-semibold text-slate-900">Motivo informado:</span>{" "}
+                      {item.confirmation_reason}
+                    </div>
+                  ) : null}
+
+                  <p className="mt-3 text-xs text-slate-500">
+                    Confirmado em {formatDate(item.confirmed_at || item.created_at)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                Ainda não há confirmações de risco alto registradas.
+              </div>
+            )}
+          </div>
+        </details>
+      ) : null}
+
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                      <PrescriptionSheet value={buildPrescriptionTextFromItem(item)} />
                     </div>
 
                     <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
