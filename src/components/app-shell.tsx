@@ -317,7 +317,7 @@ function SidebarContent({
       href: "/condutas",
       label: "Condutas",
       icon: Siren,
-      badge: counts.flashcardsDificeis,
+      badge: counts.topicos,
     },
     {
       href: "/calculadoras",

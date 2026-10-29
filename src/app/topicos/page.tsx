@@ -8,6 +8,9 @@ import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "../../components/module-page-header";
 import { rankSearchResults } from "@/lib/search";
 import ClinicalText from "@/components/clinical-text";
+import RelatedFlashcards, { type RelatedFlashcard } from "@/components/related-flashcards";
+import { relatedCardsForTopic, templatesForTopic, type LinkTemplate } from "@/lib/clinical-links";
+import { formatClinicalTitle } from "@/lib/clinical-text";
 import {
   ArrowLeft,
   ArrowRight,
@@ -44,17 +47,6 @@ type TopicoMedico = {
   prioridade: number | null;
   fonte: string | null;
   atualizado_em: string | null;
-};
-
-type RelatedFlashcard = {
-  id: string;
-  area: string | null;
-  materia: string | null;
-  tipo: string | null;
-  frente: string | null;
-  verso: string | null;
-  source_group: string | null;
-  source_file: string | null;
 };
 
 type TopicoForm = {
@@ -191,87 +183,12 @@ function buildPayload(form: TopicoForm) {
 
 
 
-function RelatedCardsPanel({ cards }: { cards: RelatedFlashcard[] }) {
-  const [openIds, setOpenIds] = useState<string[]>([]);
-
-  function toggle(id: string) {
-    setOpenIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    );
-  }
-
-  if (cards.length === 0) return null;
-
-  return (
-    <section>
-      <h3 className="text-sm font-semibold text-slate-900">Revise com flashcards</h3>
-      <p className="mt-0.5 text-xs text-slate-500">Cards relacionados a este tópico. Tente responder antes de revelar.</p>
-
-      <div className="mt-3 grid gap-3 xl:grid-cols-2">
-        {cards.map((card) => {
-          const open = openIds.includes(card.id);
-
-          return (
-            <article
-              key={card.id}
-              className="rounded-xl border border-slate-200 bg-white p-4"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {card.materia ? (
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700">
-                    {card.materia}
-                  </span>
-                ) : null}
-
-                {card.tipo ? (
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-medium text-slate-600">
-                    {card.tipo}
-                  </span>
-                ) : null}
-              </div>
-
-              <h4 className="mt-3 text-base font-semibold text-slate-900">
-                {card.frente}
-              </h4>
-
-              {open ? (
-                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <ClinicalText value={card.verso} />
-                </div>
-              ) : null}
-
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => toggle(card.id)}
-                  className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-900 px-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                >
-                  {open ? "Ocultar resposta" : "Revelar resposta"}
-                </button>
-
-                {card.verso ? (
-                  <CopyButton
-                    text={`${card.frente}
-
-${card.verso}`}
-                  />
-                ) : null}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 export default function TopicosPage() {
   const supabase = createClient();
 
   const [topicos, setTopicos] = useState<TopicoMedico[]>([]);
   const [flashcards, setFlashcards] = useState<RelatedFlashcard[]>([]);
+  const [templates, setTemplates] = useState<LinkTemplate[]>([]);
   const [checkingUser, setCheckingUser] = useState(true);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -305,7 +222,7 @@ export default function TopicosPage() {
     setLoading(true);
     setError("");
 
-    const [topicosRes, flashcardsRes] = await Promise.all([
+    const [topicosRes, flashcardsRes, templatesRes] = await Promise.all([
       supabase
         .from("topicos_medicos")
         .select(
@@ -317,11 +234,15 @@ export default function TopicosPage() {
       supabase
         .from("flashcards")
         .select(
-          "id, area, materia, tipo, frente, verso, source_group, source_file"
+          "id, area, materia, tipo, frente, verso"
         )
         .order("materia", { ascending: true, nullsFirst: false })
         .order("card_number", { ascending: true, nullsFirst: false }),
+
+      supabase.from("prescription_templates").select("id, titulo, categoria"),
     ]);
+
+    setTemplates((templatesRes.data as LinkTemplate[]) || []);
 
     if (topicosRes.error) {
       setError(topicosRes.error.message);
@@ -531,56 +452,10 @@ export default function TopicosPage() {
     setSavingIds((current) => current.filter((item) => item !== id));
   }
 
-  function getRelatedFlashcards(item: TopicoMedico) {
-    const area = normalize(item.area);
-    const title = normalize(item.titulo);
-    const tags = normalize(item.tags)
-      .split(/[,\n;]+/)
-      .map((value) => value.trim())
-      .filter(Boolean);
-
-    const titleTokens = title.split(/\s+/).filter((token) => token.length >= 4);
-
-    const scored = flashcards
-      .map((card) => {
-        const haystack = normalize(
-          [
-            card.area,
-            card.materia,
-            card.tipo,
-            card.frente,
-            card.verso,
-            card.source_group,
-            card.source_file,
-          ].join(" ")
-        );
-
-        let score = 0;
-
-        if (area && haystack.includes(area)) score += 8;
-        if (title && haystack.includes(title)) score += 10;
-
-        for (const tag of tags) {
-          if (tag && haystack.includes(tag)) score += 6;
-        }
-
-        for (const token of titleTokens) {
-          if (haystack.includes(token)) score += 3;
-        }
-
-        if (normalize(card.materia) === area) score += 4;
-        if (normalize(card.tipo) === title) score += 4;
-
-        return { card, score };
-      })
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score);
-
-    return scored.slice(0, 4).map((item) => item.card);
-  }
 
   const selected = topicos.find((item) => item.id === selectedId) ?? null;
-  const related = selected ? getRelatedFlashcards(selected) : [];
+  const related = useMemo(() => (selected ? relatedCardsForTopic(selected, flashcards, 4) : []), [selected, flashcards]);
+  const relatedTemplates = useMemo(() => (selected ? templatesForTopic(selected, templates) : []), [selected, templates]);
   const readerSections = selected
     ? READER_SECTIONS.filter((section) => Boolean(selected[section.key]))
     : [];
@@ -665,7 +540,7 @@ export default function TopicosPage() {
                         }`}
                       >
                         {label}
-                        <span className={active ? "text-white/70" : "text-slate-400"}>{count}</span>
+                        <span className={active ? "opacity-70" : "text-slate-400"}>{count}</span>
                       </button>
                     );
                   }
@@ -776,6 +651,13 @@ export default function TopicosPage() {
                     <Gauge className="h-4 w-4" />
                     Abrir no Caso rápido
                   </Link>
+                  <Link
+                    href={`/condutas?t=${selected.id}`}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Siren className="h-4 w-4" />
+                    Ver conduta
+                  </Link>
                   <CopyButton text={buildFullText(selected)} label="Copiar tópico" />
                   {isAdmin ? (
                     <>
@@ -836,9 +718,30 @@ export default function TopicosPage() {
                 ))}
               </div>
 
+              {relatedTemplates.length ? (
+                <div className="border-t border-slate-200 px-5 py-5 md:px-7">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <Pill className="h-4 w-4" />
+                    Prescrição pronta
+                  </h3>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {relatedTemplates.map((template) => (
+                      <Link
+                        key={template.id}
+                        href={`/prescricao?modelo=${template.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-sm font-semibold text-cyan-900 transition hover:border-cyan-700/40"
+                      >
+                        {formatClinicalTitle(template.titulo)}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {related.length ? (
                 <div className="border-t border-slate-200 px-5 py-5 md:px-7">
-                  <RelatedCardsPanel cards={related} />
+                  <RelatedFlashcards cards={related} moreHref={`/flashcards?tema=${selected.id}`} />
                 </div>
               ) : null}
 

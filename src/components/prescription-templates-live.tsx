@@ -965,7 +965,7 @@ export default function PrescriptionTemplatesLive({
                   className={chipClass(!selectedCategory && !onlyFavorites)}
                 >
                   Todos
-                  <span className={!selectedCategory && !onlyFavorites ? "text-white/70" : "text-slate-400"}>{items.length}</span>
+                  <span className={!selectedCategory && !onlyFavorites ? "opacity-70" : "text-slate-400"}>{items.length}</span>
                 </button>
                 {favoriteIds.length ? (
                   <button
@@ -976,7 +976,7 @@ export default function PrescriptionTemplatesLive({
                   >
                     <Star className={`h-3 w-3 ${onlyFavorites ? "fill-current" : ""}`} />
                     Favoritos
-                    <span className={onlyFavorites ? "text-white/70" : "text-slate-400"}>{favoriteIds.length}</span>
+                    <span className={onlyFavorites ? "opacity-70" : "text-slate-400"}>{favoriteIds.length}</span>
                   </button>
                 ) : null}
                 {categories.map(([label, count]) => {
@@ -990,7 +990,7 @@ export default function PrescriptionTemplatesLive({
                       className={chipClass(active)}
                     >
                       {label}
-                      <span className={active ? "text-white/70" : "text-slate-400"}>{count}</span>
+                      <span className={active ? "opacity-70" : "text-slate-400"}>{count}</span>
                     </button>
                   );
                 })}

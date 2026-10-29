@@ -9,6 +9,7 @@ import ClinicalText from "@/components/clinical-text";
 import { canonicalArea, formatClinicalTitle, isTechnicalSourceLabel } from "@/lib/clinical-text";
 import { rankSearchResults } from "@/lib/search";
 import { isResibookAdmin } from "@/lib/auth-role";
+import { relatedCardsForTopic, topicForCard, type LinkTopic } from "@/lib/clinical-links";
 import {
   buildDailyQueue,
   intervalLabel,
@@ -21,6 +22,7 @@ import {
 import {
   ArrowRight,
   BookCopy,
+  BookOpen,
   Brain,
   CheckCircle2,
   Edit3,
@@ -31,6 +33,7 @@ import {
   Play,
   RotateCcw,
   Search,
+  Siren,
   Trash2,
   X,
 } from "lucide-react";
@@ -68,6 +71,7 @@ type MarkRow = {
 };
 
 const GUEST_EMAIL = "convidado@resibook.com";
+const PAGE_SIZE = 30;
 
 const emptyForm: FlashcardForm = {
   area: "",
@@ -84,6 +88,13 @@ function formatLabel(value?: string | null, fallback = "Não informado") {
   if (!clean) return fallback;
 
   return formatClinicalTitle(clean.replace(/[_]+/g, " "));
+}
+
+// Matéria ou área legível; "PDF 1", "Importado" e afins não informam nada.
+function cardSubject(card: Pick<Flashcard, "area" | "materia">) {
+  if (card.materia && !isTechnicalSourceLabel(card.materia)) return formatLabel(card.materia);
+  if (card.area && !isTechnicalSourceLabel(card.area)) return canonicalArea(card.area);
+  return "";
 }
 
 function renderRichText(value?: string | null, emptyText = "Sem conteúdo") {
@@ -157,6 +168,9 @@ export default function FlashcardsPage() {
   const [mode, setMode] = useState<"todos" | "dificeis" | "revelados">(
     "todos"
   );
+  const [topics, setTopics] = useState<LinkTopic[]>([]);
+  const [topicId, setTopicId] = useState<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
@@ -203,7 +217,7 @@ export default function FlashcardsPage() {
       return;
     }
 
-    const [cardsRes, marksRes, schedulesRes, daysRes] = await Promise.all([
+    const [cardsRes, marksRes, schedulesRes, daysRes, topicsRes] = await Promise.all([
       supabase
         .from("flashcards")
         .select("id, area, materia, tipo, frente, verso")
@@ -228,7 +242,11 @@ export default function FlashcardsPage() {
         .eq("user_id", userId)
         .order("day", { ascending: false })
         .limit(400),
+
+      supabase.from("topicos_medicos").select("id, area, titulo, tags"),
     ]);
+
+    setTopics((topicsRes.data as LinkTopic[]) || []);
 
     // As tabelas de revisão espaçada são opcionais: sem elas, a tela segue
     // com a revisão rápida de sempre.
@@ -286,6 +304,8 @@ export default function FlashcardsPage() {
     setQuery(params.get("q") || "");
     setArea(params.get("area") || "");
     setMateria(params.get("materia") || "");
+    const urlTopic = Number(params.get("tema"));
+    if (Number.isInteger(urlTopic) && urlTopic > 0) setTopicId(urlTopic);
 
     const nextMode = params.get("mode");
 
@@ -301,13 +321,18 @@ export default function FlashcardsPage() {
     if (area) params.set("area", area);
     if (materia) params.set("materia", materia);
     if (mode !== "todos") params.set("mode", mode);
+    if (topicId) params.set("tema", String(topicId));
 
     const next = params.toString()
       ? `${pathname}?${params.toString()}`
       : pathname;
 
     router.replace(next, { scroll: false });
-  }, [area, materia, mode, pathname, query, router]);
+  }, [area, materia, mode, pathname, query, router, topicId]);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [area, materia, mode, query, topicId]);
 
   const areas = useMemo(
     () =>
@@ -320,13 +345,28 @@ export default function FlashcardsPage() {
   const materias = useMemo(
     () =>
       Array.from(
-        new Set(cards.map((item) => item.materia).filter(Boolean) as string[])
+        new Set(
+          cards
+            .map((item) => item.materia)
+            .filter((item): item is string => Boolean(item) && !isTechnicalSourceLabel(item))
+        )
       ).sort((a, b) => a.localeCompare(b, "pt-BR")),
     [cards]
   );
 
+  const selectedTopic = topics.find((item) => item.id === topicId) ?? null;
+  // Cards ligados ao tema (link "Estudar no modo flashcards" de Tópicos e Condutas).
+  const topicCardIds = useMemo(
+    () => (selectedTopic ? relatedCardsForTopic(selectedTopic, cards, 60).map((item) => item.id) : []),
+    [selectedTopic, cards]
+  );
+
   const filtered = useMemo(() => {
-    const filteredBySelects = cards.filter((item) => {
+    const byId = new Map(cards.map((item) => [item.id, item]));
+    const base = selectedTopic
+      ? topicCardIds.map((id) => byId.get(id)).filter((item): item is Flashcard => Boolean(item))
+      : cards;
+    const filteredBySelects = base.filter((item) => {
       const matchesArea = !area || item.area === area || canonicalArea(item.area) === area;
       const matchesMateria = !materia || item.materia === materia;
       const matchesMode =
@@ -346,13 +386,11 @@ export default function FlashcardsPage() {
       { value: item.tipo, weight: 3 },
       { value: item.verso, weight: 2 },
     ]);
-  }, [area, cards, materia, mode, query, revealedIds]);
+  }, [area, cards, materia, mode, query, revealedIds, selectedTopic, topicCardIds]);
 
   const revealedCount = revealedIds.length;
   const difficultCount = cards.filter((item) => item.dificil).length;
-  const visibleAreas = new Set(filtered.map((item) => canonicalArea(item.area)).filter(Boolean))
-    .size;
-  const hasFilters = Boolean(query || area || materia || mode !== "todos");
+  const hasFilters = Boolean(query || area || materia || mode !== "todos" || topicId);
   const reviewCard = reviewQueue.length
     ? cards.find((item) => item.id === reviewQueue[reviewIndex]) || null
     : null;
@@ -751,20 +789,16 @@ export default function FlashcardsPage() {
       <ModulePageHeader
         eyebrow="Biblioteca de estudo"
         title="Flashcards"
-        description="Busca rápida, filtros por área e matéria, marcação individual de dificuldade e respostas com leitura organizada."
+        description="Revisão espaçada do dia, sessões rápidas por tema e uma biblioteca para consultar pergunta e resposta."
         badges={[
-          { label: "Flashcards", tone: "blue" },
-          { label: "Revisão ativa", tone: "slate" },
-          {
-            label: isAdmin ? "Gerenciamento liberado" : "Revisão individual",
-            tone: isAdmin ? "emerald" : "cyan",
-          },
+          { label: "Revisão ativa", tone: "cyan" },
+          ...(isAdmin ? [{ label: "Gerenciamento liberado", tone: "emerald" as const }] : []),
         ]}
         metrics={[
-          { label: "Total", value: cards.length },
+          { label: "Cards", value: cards.length },
+          ...(srsReady ? [{ label: "Para hoje", value: daily.queue.length }] : []),
           { label: "Difíceis", value: difficultCount },
-          { label: "Revelados", value: revealedCount },
-          { label: "Áreas visíveis", value: visibleAreas },
+          ...(srsReady ? [{ label: "Sequência", value: `${streak} ${streak === 1 ? "dia" : "dias"}` }] : []),
         ]}
         error={error}
         success={success}
@@ -990,299 +1024,285 @@ export default function FlashcardsPage() {
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Revisão
-            </p>
-
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
-              Filtros e modos
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Filtre por conteúdo, foque nos difíceis ou revise apenas os
-              cartões já abertos.
+      {selectedTopic ? (
+        <section className="flex flex-col gap-3 rounded-[20px] border border-cyan-100 bg-cyan-50/70 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-800">Cards do tema</p>
+            <p className="mt-0.5 text-lg font-semibold text-slate-950">{selectedTopic.titulo}</p>
+            <p className="text-sm text-slate-600">
+              {topicCardIds.length} {topicCardIds.length === 1 ? "card ligado" : "cards ligados"} a este tema
             </p>
           </div>
-
           <div className="flex flex-wrap gap-2">
-            {[
-              ["todos", "Todos"],
-              ["dificeis", "Só difíceis"],
-              ["revelados", "Já revelados"],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() =>
-                  setMode(value as "todos" | "dificeis" | "revelados")
-                }
-                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                  mode === value
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => startQuickReview(false)}
+              disabled={loading || filtered.length === 0}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:opacity-50"
+            >
+              <Play className="h-4 w-4" />
+              Revisar estes cards
+            </button>
+            <Link
+              href={`/condutas?t=${selectedTopic.id}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <Siren className="h-4 w-4" />
+              Conduta
+            </Link>
+            <Link
+              href={`/topicos?t=${selectedTopic.id}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <BookOpen className="h-4 w-4" />
+              Tópico
+            </Link>
+            <button
+              type="button"
+              onClick={() => setTopicId(null)}
+              aria-label="Sair do tema"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por frente, verso, área, matéria ou tipo..."
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-            />
-          </div>
-
-          <select
-            value={area}
-            onChange={(event) => setArea(event.target.value)}
-            className="h-12 w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-          >
-            <option value="">Todas as áreas</option>
-            {areas.map((item) => (
-              <option key={item} value={item}>
-                {formatLabel(item)}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={materia}
-            onChange={(event) => setMateria(event.target.value)}
-            className="h-12 w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-          >
-            <option value="">Todas as matérias</option>
-            {materias.map((item) => (
-              <option key={item} value={item}>
-                {formatLabel(item)}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setArea("");
-              setMateria("");
-              setMode("todos");
-            }}
-            className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            {hasFilters ? "Limpar filtros" : "Filtros"}
-          </button>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm font-medium text-slate-400">
-            {filtered.length} de {cards.length} flashcards
-          </span>
-
-          <div className="flex flex-wrap gap-2">
-            {area ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                Área: {formatLabel(area)}
-              </span>
-            ) : null}
-
-            {materia ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                Matéria: {formatLabel(materia)}
-              </span>
-            ) : null}
-
-            {mode !== "todos" ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                Modo: {mode === "dificeis" ? "difíceis" : "revelados"}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      {loading ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white px-4 py-14 text-center text-sm font-medium text-slate-500 shadow-sm">
-          Carregando flashcards...
         </section>
-      ) : filtered.length === 0 ? (
-        <section className="rounded-[28px] border border-dashed border-slate-300 bg-white px-4 py-14 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500">
-            <Search className="h-5 w-5" />
+      ) : null}
+
+      <section className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+        <div className="space-y-3 border-b border-slate-200 p-4">
+          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_200px_200px]">
+            <label className="relative block">
+              <span className="sr-only">Buscar flashcards</span>
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar pergunta, resposta ou assunto"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-9 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-600 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Limpar busca"
+                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </label>
+
+            <select
+              value={area}
+              onChange={(event) => setArea(event.target.value)}
+              aria-label="Filtrar por área"
+              className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-cyan-600"
+            >
+              <option value="">Todas as áreas</option>
+              {areas.map((item) => (
+                <option key={item} value={item}>
+                  {formatLabel(item)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={materia}
+              onChange={(event) => setMateria(event.target.value)}
+              aria-label="Filtrar por matéria"
+              className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-cyan-600"
+            >
+              <option value="">Todas as matérias</option>
+              {materias.map((item) => (
+                <option key={item} value={item}>
+                  {formatLabel(item)}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <h2 className="mt-4 text-lg font-semibold text-slate-900">
-            Nenhum flashcard encontrado
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ["todos", "Todos", cards.length],
+                  ["dificeis", "Difíceis", difficultCount],
+                  ["revelados", "Já revelados", revealedCount],
+                ] as const
+              ).map(([value, label, count]) => {
+                const active = mode === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setMode(value)}
+                    aria-pressed={active}
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition ${
+                      active ? "border-cyan-800 bg-cyan-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    {label}
+                    <span className={active ? "opacity-70" : "text-slate-400"}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-          <p className="mt-2 text-sm text-slate-500">
-            Ajuste a busca ou limpe os filtros para visualizar a biblioteca.
-          </p>
-        </section>
-      ) : (
-        <section className="grid gap-5 xl:grid-cols-2">
-          {filtered.map((item) => {
-            const revealed = revealedIds.includes(item.id);
-            const savingItem = savingIds.includes(item.id);
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <span>
+                {filtered.length} de {cards.length} flashcards
+              </span>
+              {hasFilters ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setArea("");
+                    setMateria("");
+                    setMode("todos");
+                    setTopicId(null);
+                  }}
+                  className="font-semibold text-cyan-800 hover:text-cyan-950"
+                >
+                  Limpar filtros
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
 
-            return (
-              <article
-                key={item.id}
-                className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 md:p-6"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
-                      Banco Resibook
-                    </span>
-                    {item.area && !isTechnicalSourceLabel(item.area) ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                        <Layers3 className="h-3.5 w-3.5 text-slate-500" />
-                        {canonicalArea(item.area)}
+        {loading ? (
+          <p className="px-4 py-14 text-center text-sm font-medium text-slate-500">Carregando flashcards...</p>
+        ) : filtered.length === 0 ? (
+          <div className="px-4 py-14 text-center">
+            <p className="text-sm font-semibold text-slate-800">Nenhum flashcard encontrado</p>
+            <p className="mt-1 text-xs text-slate-500">Ajuste a busca ou limpe os filtros.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {filtered.slice(0, visibleCount).map((item) => {
+              const revealed = revealedIds.includes(item.id);
+              const savingItem = savingIds.includes(item.id);
+              const subject = cardSubject(item);
+              const cardTopic = revealed && !selectedTopic ? topicForCard(item, topics, cards) : null;
+
+              return (
+                <li key={item.id} className="px-4 py-4 md:px-5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {subject ? (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
+                        {subject}
                       </span>
                     ) : null}
-
-                    {item.materia && !isTechnicalSourceLabel(item.materia) ? (
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                        {formatLabel(item.materia)}
-                      </span>
-                    ) : null}
-
-                    {item.tipo ? (
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                        {formatLabel(item.tipo)}
-                      </span>
-                    ) : null}
-
                     {item.dificil ? (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
                         Difícil
                       </span>
                     ) : null}
                   </div>
 
-                  <span
-                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                      revealed
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : "border-slate-200 bg-slate-50 text-slate-500"
-                    }`}
-                  >
-                    {revealed ? "Aberto" : "Fechado"}
-                  </span>
-                </div>
-
-                <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                    Frente
-                  </p>
-
-                  <div className="mt-3">
+                  <div className={`${subject || item.dificil ? "mt-2" : ""} font-medium text-slate-900`}>
                     {renderRichText(item.frente, "Sem frente")}
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                      Verso
-                    </p>
-
-                    {revealed ? (
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                        Resposta
-                      </span>
-                    ) : null}
                   </div>
 
                   {revealed ? (
-                    <div className="mt-4">
-                      {renderRichText(item.verso, "Sem verso")}
+                    <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/40 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-800">Resposta</p>
+                      <div className="mt-2">{renderRichText(item.verso, "Sem verso")}</div>
                     </div>
-                  ) : (
-                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
-                      <p className="text-sm leading-7 text-slate-400">
-                        Resposta oculta. Revele para revisar o conteúdo com
-                        leitura organizada.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => toggleReveal(item.id)}
-                    className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                  >
-                    {revealed ? "Ocultar resposta" : "Revelar resposta"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => toggleDificil(item)}
-                    disabled={savingItem}
-                    className={`inline-flex h-11 items-center justify-center rounded-2xl px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                      item.dificil
-                        ? "border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    {savingItem
-                      ? "Salvando..."
-                      : item.dificil
-                      ? "Remover difícil"
-                      : "Marcar difícil"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => duplicateToPersonal(item)}
-                    disabled={savingItem}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-5 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-100 disabled:opacity-60"
-                  >
-                    <BookCopy className="h-4 w-4" />
-                    Duplicar para Meu Resibook
-                  </button>
-
-                  {isAdmin ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => openEditDrawer(item)}
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                        Editar
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(item.id)}
-                        disabled={savingItem}
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        {savingItem ? "Apagando..." : "Apagar"}
-                      </button>
-                    </>
                   ) : null}
-                </div>
-              </article>
-            );
-          })}
-        </section>
-      )}
 
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleReveal(item.id)}
+                      aria-expanded={revealed}
+                      className={`inline-flex h-9 items-center justify-center rounded-xl px-3.5 text-sm font-semibold transition ${
+                        revealed
+                          ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          : "bg-cyan-800 text-white hover:bg-cyan-900"
+                      }`}
+                    >
+                      {revealed ? "Ocultar resposta" : "Revelar resposta"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleDificil(item)}
+                      disabled={savingItem}
+                      className={`inline-flex h-9 items-center justify-center rounded-xl border px-3.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        item.dificil
+                          ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {savingItem ? "Salvando..." : item.dificil ? "Remover difícil" : "Marcar difícil"}
+                    </button>
+
+                    {revealed ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => duplicateToPersonal(item)}
+                          disabled={savingItem}
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          <BookCopy className="h-4 w-4" />
+                          Salvar no Meu Resibook
+                        </button>
+                        {cardTopic ? (
+                          <Link
+                            href={`/topicos?t=${cardTopic.id}`}
+                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-semibold text-cyan-800 transition hover:text-cyan-950"
+                          >
+                            <BookOpen className="h-4 w-4" />
+                            Tema: {cardTopic.titulo}
+                          </Link>
+                        ) : null}
+                      </>
+                    ) : null}
+
+                    {isAdmin ? (
+                      <span className="ml-auto flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditDrawer(item)}
+                          aria-label="Editar flashcard"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={savingItem}
+                          aria-label="Apagar flashcard"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </span>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {filtered.length > visibleCount ? (
+          <div className="border-t border-slate-200 p-4 text-center">
+            <button
+              type="button"
+              onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Mostrar mais {Math.min(PAGE_SIZE, filtered.length - visibleCount)} de {filtered.length - visibleCount}
+            </button>
+          </div>
+        ) : null}
+      </section>
       {drawerOpen ? (
         <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50 backdrop-blur-[2px]">
           <button
