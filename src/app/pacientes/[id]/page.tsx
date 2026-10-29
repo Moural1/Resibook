@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   CLINICAL_CASE_SESSION_EVENT,
@@ -12,8 +12,13 @@ import {
 import CopyButton from "../../../components/copy-button";
 import PatientBodyMap from "@/components/patient-body-map";
 import {
+  Activity,
   AlertTriangle,
   ArrowDownToLine,
+  ArrowLeft,
+  ChevronRight,
+  MoreHorizontal,
+  NotebookPen,
   CheckCircle2,
   Plus,
   ClipboardList,
@@ -166,6 +171,45 @@ type TimelineItem = {
   date: string | null | undefined;
   timestamp: number;
 };
+
+type RecordTab =
+  | "resumo"
+  | "consultas"
+  | "evolucoes"
+  | "problemas"
+  | "retornos"
+  | "exames"
+  | "prescricoes"
+  | "linha-do-tempo";
+
+/* ?secao= dos links da lista de pacientes abre direto a aba certa. */
+const SECTION_TO_TAB: Record<string, RecordTab> = {
+  resumo: "resumo",
+  consulta: "consultas",
+  consultas: "consultas",
+  evolucao: "evolucoes",
+  problemas: "problemas",
+  retornos: "retornos",
+  exames: "exames",
+  prescricoes: "prescricoes",
+  "linha-do-tempo": "linha-do-tempo",
+};
+
+const TIMELINE_FILTERS: { label: string; type: TimelineItem["sourceType"] | null }[] = [
+  { label: "Todos", type: null },
+  { label: "Consultas", type: "consultation" },
+  { label: "Evoluções", type: "note" },
+  { label: "Exames", type: "exam" },
+  { label: "Prescrições", type: "prescription" },
+  { label: "Problemas", type: "problem" },
+  { label: "Retornos", type: "followup" },
+];
+
+function patientInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter((part) => /^[\p{L}]/u.test(part));
+  const letters = parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts;
+  return letters.map((part) => part[0].toLocaleUpperCase("pt-BR")).join("") || "?";
+}
 
 type NoteForm = {
   tipo: string;
@@ -1403,24 +1447,6 @@ function TimelineCard({ item }: { item: TimelineItem }) {
   );
 }
 
-function SectionToggle({
-  open,
-  onToggle,
-}: {
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-    >
-      {open ? "Esconder" : "Mostrar"}
-    </button>
-  );
-}
-
 function ConsultationTextarea({
   label,
   hint,
@@ -1518,13 +1544,18 @@ export default function PatientDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [showConsultations, setShowConsultations] = useState(true);
-  const [showProblems, setShowProblems] = useState(false);
-  const [showFollowups, setShowFollowups] = useState(false);
-  const [showExams, setShowExams] = useState(false);
-  const [showNewNote, setShowNewNote] = useState(false);
-  const [showNotesHistory, setShowNotesHistory] = useState(false);
-  const [showPrescriptions, setShowPrescriptions] = useState(false);
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<RecordTab>(
+    () => SECTION_TO_TAB[searchParams.get("secao") ?? ""] ?? "resumo"
+  );
+  const [timelineFilter, setTimelineFilter] = useState<TimelineItem["sourceType"] | null>(null);
+  const showConsultations = activeTab === "consultas";
+  const showProblems = activeTab === "problemas";
+  const showFollowups = activeTab === "retornos";
+  const showExams = activeTab === "exames";
+  const showNewNote = activeTab === "evolucoes";
+  const showNotesHistory = activeTab === "evolucoes";
+  const showPrescriptions = activeTab === "prescricoes";
 
 
   const activeProblemsCount = useMemo(
@@ -2004,7 +2035,7 @@ export default function PatientDetailPage() {
       retorno_previsto_em:
         current.retorno_previsto_em || imported.retorno_previsto_em,
     }));
-    setShowConsultations(true);
+    setActiveTab("consultas");
     setError("");
     setSuccess(
       "Caso ativo importado para a consulta. Confirme a identidade e revise antes de salvar."
@@ -2865,240 +2896,275 @@ function openPrintHtml(html: string) {
   const { birthDate, returnDate } = resolveBirthAndReturnDates(patient);
   const riskFlags = getRiskFlags(patient);
   const hasAnyClinicalAlert = Boolean(patient.alergias || riskFlags.length > 0);
+  const visibleTimelineItems = timelineFilter
+    ? timelineItems.filter((item) => item.sourceType === timelineFilter)
+    : timelineItems;
+  const recordTabs: { id: RecordTab; label: string; icon: typeof Stethoscope; count?: number }[] = [
+    { id: "resumo", label: "Resumo", icon: Stethoscope },
+    { id: "consultas", label: "Consultas", icon: NotebookPen, count: consultations.length },
+    { id: "evolucoes", label: "Evoluções", icon: FileText, count: notes.length },
+    { id: "problemas", label: "Problemas", icon: ClipboardList, count: problems.length },
+    { id: "retornos", label: "Retornos", icon: CalendarClock, count: followups.length },
+    { id: "exames", label: "Exames", icon: FlaskConical, count: examRequests.length },
+    { id: "prescricoes", label: "Prescrições", icon: Pill, count: prescriptions.length },
+    { id: "linha-do-tempo", label: "Linha do tempo", icon: Activity, count: timelineItems.length },
+  ];
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                  Prontuário clínico
-                </span>
+      <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+        <div className="p-5 md:p-6">
+          <nav aria-label="Caminho" className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+            <Link href="/pacientes" className="inline-flex items-center gap-1 transition hover:text-slate-800">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Pacientes
+            </Link>
+            <ChevronRight className="h-3.5 w-3.5 text-slate-300" aria-hidden="true" />
+            <span className="text-slate-700">Prontuário</span>
+          </nav>
 
-                {patient.especialidade ? (
-                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                    {patient.especialidade}
+          <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <span
+                aria-hidden="true"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cyan-800 text-lg font-semibold text-white"
+              >
+                {patientInitials(patient.nome)}
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+                  {patient.nome}
+                </h1>
+                <p className="mt-1 text-sm text-slate-600">
+                  {[
+                    patient.sexo || "Sexo não informado",
+                    typeof patient.idade === "number" ? `${patient.idade} anos` : "",
+                    birthDate ? `nasc. ${formatDateOnly(birthDate)}` : "",
+                    patient.telefone || "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {[
+                    patient.especialidade,
+                    patient.local_atendimento,
+                    patient.plano_saude
+                      ? `${patient.plano_saude}${getCarteirinha(patient) ? ` · ${getCarteirinha(patient)}` : ""}`
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .map((item) => (
+                      <span
+                        key={item}
+                        className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  {returnDate ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                      <CalendarClock className="h-3.5 w-3.5" />
+                      Retorno {formatDateOnly(returnDate)}
+                    </span>
+                  ) : null}
+                  <span className="inline-flex rounded-full px-1 py-1 text-xs text-slate-400">
+                    Cadastro {formatDate(patient.created_at)}
                   </span>
-                ) : null}
-
-                {patient.alergias ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    Alergia: {buildAlergiaResumo(patient.alergias)}
-                  </span>
-                ) : null}
-
-                {birthDate ? (
-                  <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                    Nascimento: {formatDateOnly(birthDate)}
-                  </span>
-                ) : null}
-
-                {returnDate ? (
-                  <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                    Retorno: {formatDateOnly(returnDate)}
-                  </span>
-                ) : null}
+                </div>
               </div>
-
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-                {patient.nome}
-              </h1>
-
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                {patient.sexo || "Sexo não informado"}
-                {typeof patient.idade === "number" ? ` • ${patient.idade} anos` : ""}
-                {patient.telefone ? ` • ${patient.telefone}` : ""}
-              </p>
-
-              <p className="mt-2 text-xs font-medium text-slate-400">
-                Cadastro: {formatDate(patient.created_at)}
-              </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <CopyButton
-                text={buildPatientSummary(
-                  patient,
-                  prescriptions,
-                  notes,
-                  problems,
-                  followups,
-                  examRequests,
-                  consultations
-                )}
-              />
-
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <button
                 type="button"
-                onClick={handlePrintSummary}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                onClick={() => setActiveTab("consultas")}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 sm:flex-none text-sm font-semibold text-white transition hover:bg-cyan-900"
               >
-                Resumo PDF
+                <Plus className="h-4 w-4" />
+                Nova consulta
               </button>
-
-              <button
-                type="button"
-                onClick={handlePrintProfessional}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-              >
-                Prontuário PDF
-              </button>
-
               <Link
-                href={`/prescricao?patient_id=${encodeURIComponent(
-                  patient.id
-                )}&paciente_nome=${encodeURIComponent(patient.nome)}`}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white"
+                href={`/prescricao?patient_id=${encodeURIComponent(patient.id)}&paciente_nome=${encodeURIComponent(patient.nome)}`}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 sm:flex-none"
               >
+                <Pill className="h-4 w-4 text-cyan-800" />
                 Nova prescrição
               </Link>
-
-              <Link
-                href={`/prescricao?q=${encodeURIComponent(patient.nome)}`}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-5 text-sm font-semibold text-blue-700"
-              >
-                Ver prescrições
-              </Link>
-
-              <Link
-                href="/pacientes"
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
-              >
-                Voltar
-              </Link>
+              <details className="group relative">
+                <summary className="inline-flex h-11 cursor-pointer list-none items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                  <MoreHorizontal className="h-4 w-4" />
+                  Mais
+                </summary>
+                <div className="absolute left-0 z-30 mt-2 w-60 sm:left-auto sm:right-0 space-y-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg [&>button]:flex [&>button]:w-full [&>button]:items-center [&>button]:gap-2 [&>button]:rounded-lg [&>button]:border-0 [&>button]:px-3 [&>button]:py-2 [&>button]:text-left [&>button]:text-sm [&>button]:font-medium [&>button]:text-slate-700 [&>button:hover]:bg-slate-50">
+                  <CopyButton
+                    label="Copiar resumo do prontuário"
+                    text={buildPatientSummary(
+                      patient,
+                      prescriptions,
+                      notes,
+                      problems,
+                      followups,
+                      examRequests,
+                      consultations
+                    )}
+                  />
+                  <button type="button" onClick={handlePrintSummary}>
+                    <ArrowDownToLine className="h-4 w-4 text-slate-500" />
+                    Resumo em PDF
+                  </button>
+                  <button type="button" onClick={handlePrintProfessional}>
+                    <FileText className="h-4 w-4 text-slate-500" />
+                    Prontuário completo em PDF
+                  </button>
+                  <Link
+                    href={`/prescricao?q=${encodeURIComponent(patient.nome)}`}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Pill className="h-4 w-4 text-slate-500" />
+                    Ver prescrições salvas
+                  </Link>
+                </div>
+              </details>
             </div>
           </div>
 
           {error ? (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
               Erro: {error}
             </div>
           ) : null}
 
           {success ? (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
               {success}
             </div>
           ) : null}
-
-          {hasAnyClinicalAlert ? (
-            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50/70 px-4 py-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-rose-700">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-rose-900">
-                    Alertas clínicos ativos
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-rose-800">
-                    Revisar antes de prescrever, solicitar exames ou orientar alta.
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {patient.alergias ? (
-                      <span className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
-                        Alergia registrada
-                      </span>
-                    ) : null}
-
-                    {riskFlags.map((risk) => (
-                      <span
-                        key={risk}
-                        className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600"
-                      >
-                        {risk}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-slate-700">
-              <Stethoscope className="h-4 w-4" />
-              <p className="text-sm font-semibold">Consultas</p>
-            </div>
-            <p className="mt-3 text-3xl font-bold text-slate-900">
-              {consultations.length}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Atendimentos registrados para esse paciente.
-            </p>
+        {hasAnyClinicalAlert ? (
+          <div className="flex flex-wrap items-center gap-2 border-t border-rose-100 bg-rose-50/70 px-5 py-3 md:px-6">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-800">
+              <AlertTriangle className="h-4 w-4" />
+              Revisar antes de prescrever
+            </span>
+            {patient.alergias ? (
+              <span className="rounded-full bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white">
+                Alergia: {buildAlergiaResumo(patient.alergias)}
+              </span>
+            ) : null}
+            {riskFlags.map((risk) => (
+              <span
+                key={risk}
+                className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800"
+              >
+                {risk}
+              </span>
+            ))}
           </div>
+        ) : null}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-emerald-700">
-              <ClipboardList className="h-4 w-4" />
-              <p className="text-sm font-semibold">Problemas ativos</p>
-            </div>
-            <p className="mt-3 text-3xl font-bold text-slate-900">
-              {activeProblemsCount}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Diagnósticos, hipóteses e comorbidades em acompanhamento.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-amber-700">
-              <CalendarClock className="h-4 w-4" />
-              <p className="text-sm font-semibold">Retornos atrasados</p>
-            </div>
-            <p className="mt-3 text-3xl font-bold text-slate-900">
-              {overdueFollowupsCount}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Pendências de seguimento que merecem revisão.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-blue-700">
-              <FlaskConical className="h-4 w-4" />
-              <p className="text-sm font-semibold">Exames pendentes</p>
-            </div>
-            <p className="mt-3 text-3xl font-bold text-slate-900">
-              {pendingExamCount}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Solicitações aguardando resultado ou revisão.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 xl:grid-cols-2">
-          <InfoBlock title="Alergias">{patient.alergias}</InfoBlock>
-          <InfoBlock title="Queixa base">{patient.queixa}</InfoBlock>
-          <InfoBlock title="HMA base">{patient.hma}</InfoBlock>
-          <InfoBlock title="HPP">{patient.hpp}</InfoBlock>
-          <InfoBlock title="Comorbidades">{patient.comorbidades}</InfoBlock>
-          <InfoBlock title="Medicamentos em uso">{patient.medicamentos_em_uso}</InfoBlock>
-          <InfoBlock title="Exame físico base">{patient.exame_fisico}</InfoBlock>
-          <InfoBlock title="Hipótese diagnóstica base">{patient.hipotese_diagnostica}</InfoBlock>
-          <InfoBlock title="Conduta médica base">{patient.conduta_medica}</InfoBlock>
-          <InfoBlock title="Observações gerais">{patient.observacoes}</InfoBlock>
+        <div role="tablist" aria-label="Seções do prontuário" className="flex gap-1 overflow-x-auto border-t border-slate-200 px-2 md:px-4">
+          {recordTabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActiveTab(tab.id)}
+                className={`inline-flex h-12 shrink-0 items-center gap-1.5 border-b-2 px-2.5 text-sm font-semibold transition ${
+                  active
+                    ? "border-cyan-700 text-cyan-800"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+                {tab.count !== undefined ? (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ${
+                      active ? "bg-cyan-50 text-cyan-800" : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       </section>
 
-      <PatientBodyMap
-        patient={patient}
-        problems={problems}
-        consultations={consultations}
-      />
+      {activeTab === "resumo" ? (
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              { label: "Consultas", value: consultations.length, icon: Stethoscope, tone: "text-cyan-800", tab: "consultas" as const },
+              { label: "Problemas ativos", value: activeProblemsCount, icon: ClipboardList, tone: "text-emerald-700", tab: "problemas" as const },
+              { label: "Retornos atrasados", value: overdueFollowupsCount, icon: CalendarClock, tone: "text-amber-700", tab: "retornos" as const },
+              { label: "Exames pendentes", value: pendingExamCount, icon: FlaskConical, tone: "text-blue-700", tab: "exames" as const },
+            ].map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <button
+                  key={stat.label}
+                  type="button"
+                  onClick={() => setActiveTab(stat.tab)}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300"
+                >
+                  <span className={`flex items-center gap-2 text-xs font-semibold ${stat.tone}`}>
+                    <Icon className="h-4 w-4" />
+                    {stat.label}
+                  </span>
+                  <span className="mt-2 block text-2xl font-semibold tabular-nums text-slate-950">{stat.value}</span>
+                </button>
+              );
+            })}
+          </div>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+            <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Cadastro-base</p>
+                <h2 className="mt-1 text-xl font-semibold text-slate-900">Dados clínicos</h2>
+              </div>
+              <p className="text-xs text-slate-500">Atualize pelo cadastro na lista de pacientes. Cada atendimento novo fica em Consultas.</p>
+            </div>
+            {[patient.alergias, patient.queixa, patient.hma, patient.hpp, patient.comorbidades, patient.medicamentos_em_uso, patient.exame_fisico, patient.hipotese_diagnostica, patient.conduta_medica, patient.observacoes].some(Boolean) ? (
+              <div className="mt-5 grid gap-3 xl:grid-cols-2">
+                <InfoBlock title="Alergias">{patient.alergias}</InfoBlock>
+                <InfoBlock title="Comorbidades">{patient.comorbidades}</InfoBlock>
+                <InfoBlock title="Queixa base">{patient.queixa}</InfoBlock>
+                <InfoBlock title="Medicamentos em uso">{patient.medicamentos_em_uso}</InfoBlock>
+                <InfoBlock title="HMA base">{patient.hma}</InfoBlock>
+                <InfoBlock title="HPP">{patient.hpp}</InfoBlock>
+                <InfoBlock title="Exame físico base">{patient.exame_fisico}</InfoBlock>
+                <InfoBlock title="Hipótese diagnóstica base">{patient.hipotese_diagnostica}</InfoBlock>
+                <InfoBlock title="Conduta médica base">{patient.conduta_medica}</InfoBlock>
+                <InfoBlock title="Observações gerais">{patient.observacoes}</InfoBlock>
+              </div>
+            ) : (
+              <p className="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                Nenhum dado clínico no cadastro-base ainda.
+              </p>
+            )}
+          </section>
+
+          <PatientBodyMap
+            patient={patient}
+            problems={problems}
+            consultations={consultations}
+          />
+        </div>
+      ) : null}
+
+      <section className={`rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${activeTab === "linha-do-tempo" ? "" : "hidden"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-700">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
               Visão longitudinal
             </p>
             <h2 className="mt-1 text-xl font-semibold text-slate-900">
@@ -3108,26 +3174,47 @@ function openPrintHtml(html: string) {
               Consultas, problemas, retornos, exames, evoluções e prescrições em ordem cronológica.
             </p>
           </div>
-
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
-            {timelineItems.length} {timelineItems.length === 1 ? "evento" : "eventos"}
-          </span>
         </div>
 
-        {timelineItems.length === 0 ? (
-          <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-            Ainda não há eventos na linha do tempo.
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {TIMELINE_FILTERS.map((filter) => {
+            const count = filter.type
+              ? timelineItems.filter((item) => item.sourceType === filter.type).length
+              : timelineItems.length;
+            const active = timelineFilter === filter.type;
+            return (
+              <button
+                key={filter.label}
+                type="button"
+                onClick={() => setTimelineFilter(filter.type)}
+                aria-pressed={active}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition ${
+                  active
+                    ? "border-cyan-800 bg-cyan-800 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                }`}
+              >
+                {filter.label}
+                <span className={active ? "text-cyan-100" : "text-slate-400"}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {visibleTimelineItems.length === 0 ? (
+          <div className="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+            {timelineItems.length === 0 ? "Ainda não há eventos na linha do tempo." : "Nenhum evento deste tipo."}
           </div>
         ) : (
           <div className="relative mt-6 space-y-4 before:absolute before:bottom-0 before:left-[15px] before:top-0 before:w-px before:bg-slate-200">
-            {timelineItems.map((item) => (
+            {visibleTimelineItems.map((item) => (
               <TimelineCard key={item.id} item={item} />
             ))}
           </div>
         )}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className={`rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${showConsultations ? "" : "hidden"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-700">
@@ -3157,11 +3244,6 @@ function openPrintHtml(html: string) {
                 Importar Caso Rápido
               </button>
             ) : null}
-
-            <SectionToggle
-              open={showConsultations}
-              onToggle={() => setShowConsultations((v) => !v)}
-            />
           </div>
         </div>
 
@@ -3480,7 +3562,7 @@ function openPrintHtml(html: string) {
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className={`rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${showProblems ? "" : "hidden"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
@@ -3490,11 +3572,6 @@ function openPrintHtml(html: string) {
               Problemas do paciente
             </h2>
           </div>
-
-          <SectionToggle
-            open={showProblems}
-            onToggle={() => setShowProblems((v) => !v)}
-          />
         </div>
 
         {showProblems ? (
@@ -3691,7 +3768,7 @@ function openPrintHtml(html: string) {
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className={`rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${showFollowups ? "" : "hidden"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-700">
@@ -3699,11 +3776,6 @@ function openPrintHtml(html: string) {
             </p>
             <h2 className="mt-1 text-xl font-semibold text-slate-900">Retornos</h2>
           </div>
-
-          <SectionToggle
-            open={showFollowups}
-            onToggle={() => setShowFollowups((v) => !v)}
-          />
         </div>
 
         {showFollowups ? (
@@ -3891,7 +3963,7 @@ function openPrintHtml(html: string) {
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className={`rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${showExams ? "" : "hidden"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">
@@ -3901,11 +3973,6 @@ function openPrintHtml(html: string) {
               Exames do paciente
             </h2>
           </div>
-
-          <SectionToggle
-            open={showExams}
-            onToggle={() => setShowExams((v) => !v)}
-          />
         </div>
 
         {showExams ? (
@@ -4137,7 +4204,7 @@ function openPrintHtml(html: string) {
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className={`rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${showNewNote ? "" : "hidden"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
@@ -4147,11 +4214,6 @@ function openPrintHtml(html: string) {
               Nova evolução / anotação
             </h2>
           </div>
-
-          <SectionToggle
-            open={showNewNote}
-            onToggle={() => setShowNewNote((v) => !v)}
-          />
         </div>
 
         {showNewNote ? (
@@ -4207,7 +4269,7 @@ function openPrintHtml(html: string) {
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className={`rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${showNotesHistory ? "" : "hidden"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
@@ -4222,11 +4284,6 @@ function openPrintHtml(html: string) {
             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
               {notes.length} {notes.length === 1 ? "item" : "itens"}
             </span>
-
-            <SectionToggle
-              open={showNotesHistory}
-              onToggle={() => setShowNotesHistory((v) => !v)}
-            />
           </div>
         </div>
 
@@ -4354,7 +4411,7 @@ function openPrintHtml(html: string) {
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className={`rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${showPrescriptions ? "" : "hidden"}`}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">
@@ -4369,11 +4426,6 @@ function openPrintHtml(html: string) {
             <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
               {prescriptions.length} {prescriptions.length === 1 ? "item" : "itens"}
             </span>
-
-            <SectionToggle
-              open={showPrescriptions}
-              onToggle={() => setShowPrescriptions((v) => !v)}
-            />
           </div>
         </div>
 

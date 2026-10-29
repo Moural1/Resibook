@@ -5,7 +5,8 @@ import {
   Activity,
   AlertCircle,
   CheckCircle2,
-  RotateCcw,
+  ChevronRight,
+  Info,
   ScanLine,
 } from "lucide-react";
 
@@ -79,20 +80,30 @@ type Finding = {
   priority: "attention" | "information";
 };
 
+/* Coordenadas em % da figura (viewBox 200x440). Na vista anterior o lado
+   direito do paciente fica à esquerda de quem olha. */
 const REGIONS: Region[] = [
-  { id: "head", label: "Cabeça e neurologia", view: "front", x: 50, y: 12 },
-  { id: "chest", label: "Tórax", view: "front", x: 50, y: 34 },
-  { id: "abdomen", label: "Abdome", view: "front", x: 50, y: 49 },
-  { id: "pelvis", label: "Pelve", view: "front", x: 50, y: 61 },
-  { id: "leftArm", label: "Membro superior esquerdo", view: "front", x: 24, y: 42 },
-  { id: "rightArm", label: "Membro superior direito", view: "front", x: 76, y: 42 },
-  { id: "leftLeg", label: "Membro inferior esquerdo", view: "front", x: 40, y: 81 },
-  { id: "rightLeg", label: "Membro inferior direito", view: "front", x: 60, y: 81 },
-  { id: "spine", label: "Coluna e dorso", view: "back", x: 50, y: 42 },
-  { id: "kidneys", label: "Região renal", view: "back", x: 50, y: 54 },
+  { id: "head", label: "Cabeça e neurologia", view: "front", x: 50, y: 9.5 },
+  { id: "chest", label: "Tórax", view: "front", x: 50, y: 27 },
+  { id: "abdomen", label: "Abdome", view: "front", x: 50, y: 40 },
+  { id: "pelvis", label: "Pelve", view: "front", x: 50, y: 51 },
+  { id: "rightArm", label: "Membro superior direito", view: "front", x: 18, y: 40 },
+  { id: "leftArm", label: "Membro superior esquerdo", view: "front", x: 82, y: 40 },
+  { id: "rightLeg", label: "Membro inferior direito", view: "front", x: 39, y: 73 },
+  { id: "leftLeg", label: "Membro inferior esquerdo", view: "front", x: 61, y: 73 },
+  { id: "spine", label: "Coluna e dorso", view: "back", x: 50, y: 25 },
+  { id: "kidneys", label: "Região renal", view: "back", x: 59, y: 42 },
 ];
 
-const REGION_PATTERNS: Array<{ region: RegionId; patterns: RegExp[] }> = [
+const REGION_PATTERNS: Array<{ region: RegionId | RegionId[]; patterns: RegExp[] }> = [
+  {
+    region: ["leftLeg", "rightLeg"],
+    patterns: [/\bmmii\b|membros inferiores|ambas as pernas|\bpernas\b|bilateral(mente)? em (mmii|membros inferiores)/i],
+  },
+  {
+    region: ["leftArm", "rightArm"],
+    patterns: [/\bmmss\b|membros superiores|ambos os bra[cç]os/i],
+  },
   {
     region: "head",
     patterns: [
@@ -152,9 +163,10 @@ function shorten(value: string, length = 130) {
 }
 
 function matchRegions(value: string) {
-  return REGION_PATTERNS.filter(({ patterns }) =>
+  const regions = REGION_PATTERNS.filter(({ patterns }) =>
     patterns.some((pattern) => pattern.test(value))
-  ).map(({ region }) => region);
+  ).flatMap(({ region }) => region);
+  return [...new Set(regions)];
 }
 
 function buildFindings(
@@ -296,74 +308,119 @@ function buildFindings(
   return findings;
 }
 
-function BodySilhouette({ view }: { view: BodyView }) {
+const TORSO =
+  "M64 86 C80 80 120 80 136 86 C150 90 156 100 154 116 L148 196 C146 214 146 226 144 246 L56 246 C54 226 54 214 52 196 L46 116 C44 100 50 90 64 86 Z";
+const ARM_RIGHT = "M54 102 C42 142 34 192 30 244"; // direito do paciente (esquerda da tela na vista anterior)
+const ARM_LEFT = "M146 102 C158 142 166 192 170 244";
+const LEG_RIGHT = "M80 242 L76 400";
+const LEG_LEFT = "M120 242 L124 400";
+
+type Tone = { fill: string; stroke: string };
+const TONE_ATTENTION: Tone = { fill: "fill-rose-500", stroke: "stroke-rose-500" };
+const TONE_INFO: Tone = { fill: "fill-cyan-500", stroke: "stroke-cyan-600" };
+
+/* Forma de cada região, desenhada por cima da silhueta quando há registro. */
+function RegionShape({ id, view, tone, selected }: { id: RegionId; view: BodyView; tone: Tone; selected: boolean }) {
+  const fillOpacity = selected ? 0.55 : 0.28;
+  const area = { className: `${tone.fill} ${tone.stroke}`, fillOpacity, strokeWidth: selected ? 2 : 1.2 };
+  const limb = (d: string, width: number) => (
+    <path d={d} fill="none" className={tone.stroke} strokeWidth={width} strokeLinecap="round" strokeOpacity={selected ? 0.6 : 0.32} />
+  );
+  // Membros espelham na vista posterior.
+  const flip = view === "back";
+  switch (id) {
+    case "head":
+      return <circle cx="100" cy="42" r="25" {...area} />;
+    case "chest":
+      return <path d="M50 104 C52 92 70 86 100 86 C130 86 148 92 150 104 L148 152 L52 152 Z" {...area} />;
+    case "abdomen":
+      return <path d="M52 152 L148 152 L146 202 L54 202 Z" {...area} />;
+    case "pelvis":
+      return <path d="M54 202 L146 202 L144 246 L56 246 Z" {...area} />;
+    case "rightArm":
+      return limb(flip ? ARM_LEFT : ARM_RIGHT, 20);
+    case "leftArm":
+      return limb(flip ? ARM_RIGHT : ARM_LEFT, 20);
+    case "rightLeg":
+      return limb(flip ? LEG_LEFT : LEG_RIGHT, 30);
+    case "leftLeg":
+      return limb(flip ? LEG_RIGHT : LEG_LEFT, 30);
+    case "spine":
+      return <rect x="93" y="86" width="14" height="158" rx="7" {...area} />;
+    case "kidneys":
+      return (
+        <g {...area}>
+          <ellipse cx="81" cy="186" rx="11" ry="17" />
+          <ellipse cx="119" cy="186" rx="11" ry="17" />
+        </g>
+      );
+  }
+}
+
+function BodyFigure({
+  view,
+  regions,
+  selected,
+  onSelect,
+}: {
+  view: BodyView;
+  regions: Array<{ region: Region; count: number; attention: boolean }>;
+  selected: RegionId | null;
+  onSelect: (region: Region) => void;
+}) {
+  const sides = view === "front" ? ["D", "E"] : ["E", "D"];
   return (
-    <svg
-      viewBox="0 0 260 520"
-      className="h-full w-full drop-shadow-[0_18px_28px_rgba(8,47,73,0.18)]"
-      role="img"
-      aria-label={view === "front" ? "Silhueta humana anterior" : "Silhueta humana posterior"}
-    >
-      <defs>
-        <linearGradient id={`body-fill-${view}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#effcff" />
-          <stop offset="52%" stopColor="#cceff5" />
-          <stop offset="100%" stopColor="#a9d9e4" />
-        </linearGradient>
-        <filter id={`body-glow-${view}`}>
-          <feGaussianBlur stdDeviation="4" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
+    <div className="relative mx-auto aspect-[200/440] h-[420px] max-h-[62vh]">
+      <svg viewBox="0 0 200 440" className="h-full w-full" role="img" aria-label={view === "front" ? "Figura humana, vista anterior" : "Figura humana, vista posterior"}>
+        <g className="fill-slate-200 stroke-slate-300" strokeWidth="1.5" strokeLinejoin="round">
+          <path d={ARM_RIGHT} fill="none" strokeWidth="21" strokeLinecap="round" className="stroke-slate-200" />
+          <path d={ARM_LEFT} fill="none" strokeWidth="21" strokeLinecap="round" className="stroke-slate-200" />
+          <path d={LEG_RIGHT} fill="none" strokeWidth="31" strokeLinecap="round" className="stroke-slate-200" />
+          <path d={LEG_LEFT} fill="none" strokeWidth="31" strokeLinecap="round" className="stroke-slate-200" />
+          <rect x="90" y="60" width="20" height="28" rx="8" />
+          <path d={TORSO} />
+          <circle cx="100" cy="42" r="25" />
+        </g>
+        <g fill="none" className="stroke-slate-300" strokeWidth="1.2" strokeLinecap="round">
+          {view === "front" ? (
+            <>
+              <path d="M78 104 Q100 112 122 104" />
+              <path d="M100 150 L100 196" strokeDasharray="2 4" />
+            </>
+          ) : (
+            <>
+              <path d="M100 88 L100 244" strokeDasharray="3 4" />
+              <path d="M72 110 Q86 128 84 150" />
+              <path d="M128 110 Q114 128 116 150" />
+            </>
+          )}
+        </g>
 
-      <g
-        fill={`url(#body-fill-${view})`}
-        stroke="#4ea6b8"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      >
-        <ellipse cx="130" cy="48" rx="34" ry="40" />
-        <path d="M111 83 Q110 105 96 116 L164 116 Q150 105 149 83 Z" />
-        <path d="M94 110 Q130 96 166 110 L185 219 Q171 259 162 295 L98 295 Q89 259 75 219 Z" />
-        <path d="M83 119 Q55 130 45 163 L18 274 Q14 296 31 301 Q45 302 51 279 L81 184 Z" />
-        <path d="M177 119 Q205 130 215 163 L242 274 Q246 296 229 301 Q215 302 209 279 L179 184 Z" />
-        <path d="M101 288 L129 288 L119 489 Q116 513 98 510 Q84 507 87 483 Z" />
-        <path d="M131 288 L159 288 L173 483 Q176 507 162 510 Q144 513 141 489 Z" />
-      </g>
+        {regions.map(({ region, attention }) => (
+          <g key={region.id} className="cursor-pointer" onClick={() => onSelect(region)}>
+            <RegionShape id={region.id} view={view} tone={attention ? TONE_ATTENTION : TONE_INFO} selected={selected === region.id} />
+          </g>
+        ))}
+      </svg>
 
-      <g
-        fill="none"
-        stroke="#84c8d5"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        opacity="0.75"
-      >
-        <path d="M105 143 Q130 158 155 143" />
-        <path d="M105 196 Q130 211 155 196" />
-        <path d="M101 247 Q130 260 159 247" />
-        {view === "front" ? (
-          <>
-            <path d="M130 119 L130 286" />
-            <path d="M113 161 Q130 174 147 161" />
-            <path d="M113 222 Q130 234 147 222" />
-          </>
-        ) : (
-          <>
-            <path
-              d="M130 119 C124 154 136 184 130 218 C124 250 136 270 130 292"
-              stroke="#087f96"
-              strokeWidth="2.2"
-              filter={`url(#body-glow-${view})`}
-            />
-            <path d="M102 216 Q113 199 125 220 Q118 250 101 246 Z" fill="#d9f7f5" />
-            <path d="M158 216 Q147 199 135 220 Q142 250 159 246 Z" fill="#d9f7f5" />
-          </>
-        )}
-      </g>
-    </svg>
+      <span className="pointer-events-none absolute left-0 top-1 text-[11px] font-semibold text-slate-400">{sides[0]}</span>
+      <span className="pointer-events-none absolute right-0 top-1 text-[11px] font-semibold text-slate-400">{sides[1]}</span>
+
+      {regions.map(({ region, count, attention }) => (
+        <button
+          key={region.id}
+          type="button"
+          onClick={() => onSelect(region)}
+          style={{ left: `${region.x}%`, top: `${region.y}%` }}
+          className={`absolute z-10 flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full px-1.5 text-[11px] font-bold text-white shadow-sm ring-2 ring-white transition hover:scale-110 focus:outline-none focus-visible:ring-4 focus-visible:ring-cyan-200 ${
+            attention ? "bg-rose-600" : "bg-cyan-700"
+          } ${selected === region.id ? "scale-110" : ""}`}
+          aria-label={`${region.label}: ${count} ${count === 1 ? "registro" : "registros"}`}
+        >
+          {count}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -376,28 +433,21 @@ export default function PatientBodyMap({
     () => buildFindings(patient, problems, consultations),
     [patient, problems, consultations]
   );
-  const firstRegion = REGIONS.find((region) =>
-    findings.some((finding) => finding.region === region.id)
-  );
-  const [view, setView] = useState<BodyView>(firstRegion?.view || "front");
-  const [selectedRegion, setSelectedRegion] = useState<RegionId | null>(
-    findings[0]?.region || null
-  );
-
   const regionsWithFindings = useMemo(
     () =>
-      REGIONS.filter((region) =>
-        findings.some((finding) => finding.region === region.id)
-      ),
+      REGIONS.flatMap((region) => {
+        const regionFindings = findings.filter((finding) => finding.region === region.id);
+        if (!regionFindings.length) return [];
+        return [{ region, count: regionFindings.length, attention: regionFindings.some((finding) => finding.priority === "attention") }];
+      }),
     [findings]
   );
-  const selected =
-    REGIONS.find((region) => region.id === selectedRegion) ||
-    regionsWithFindings[0] ||
-    null;
-  const selectedFindings = selected
-    ? findings.filter((finding) => finding.region === selected.id)
-    : [];
+  const [view, setView] = useState<BodyView>(regionsWithFindings[0]?.region.view || "front");
+  const [selectedRegion, setSelectedRegion] = useState<RegionId | null>(regionsWithFindings[0]?.region.id || null);
+
+  const selected = regionsWithFindings.find((item) => item.region.id === selectedRegion)?.region ?? regionsWithFindings[0]?.region ?? null;
+  const selectedFindings = selected ? findings.filter((finding) => finding.region === selected.id) : [];
+  const visibleRegions = regionsWithFindings.filter((item) => item.region.view === view);
 
   function selectRegion(region: Region) {
     setSelectedRegion(region.id);
@@ -406,196 +456,135 @@ export default function PatientBodyMap({
 
   function changeView(nextView: BodyView) {
     setView(nextView);
-    const firstVisibleRegion = regionsWithFindings.find(
-      (region) => region.view === nextView
-    );
-    if (firstVisibleRegion) setSelectedRegion(firstVisibleRegion.id);
+    const first = regionsWithFindings.find((item) => item.region.view === nextView);
+    if (first) setSelectedRegion(first.region.id);
   }
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[#071a38] text-white shadow-[0_24px_70px_rgba(15,23,42,0.14)]">
-      <div className="border-b border-white/10 px-5 py-5 md:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-200/20 bg-cyan-300/10 text-cyan-200">
-              <ScanLine className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200">
-                Visualização clínica
-              </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
-                Mapa corporal do prontuário
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-300">
-                Organiza visualmente regiões mencionadas nos dados já registrados. Não gera diagnóstico.
-              </p>
-            </div>
+    <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 md:px-6">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-800">
+            <ScanLine className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">Mapa corporal</h2>
+            <p className="text-sm text-slate-500">Regiões citadas no prontuário. É um índice dos registros, não um diagnóstico.</p>
           </div>
-
-          <div className="flex rounded-xl border border-white/10 bg-white/[0.06] p-1">
-            {([
-              ["front", "Anterior"],
-              ["back", "Posterior"],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => changeView(value)}
-                className={`inline-flex h-9 min-w-24 items-center justify-center rounded-lg px-3 text-xs font-semibold transition ${
-                  view === value
-                    ? "bg-white text-slate-950 shadow-sm"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        </div>
+        <div role="group" aria-label="Vista da figura" className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+          {([
+            ["front", "Anterior"],
+            ["back", "Posterior"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={view === value}
+              onClick={() => changeView(value)}
+              className={`inline-flex h-8 min-w-24 items-center justify-center rounded-lg px-3 text-xs font-semibold transition ${
+                view === value ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {label}
+              {regionsWithFindings.some((item) => item.region.view === value) ? (
+                <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-cyan-600" aria-hidden="true" />
+              ) : null}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="grid min-h-[540px] lg:grid-cols-[minmax(320px,0.78fr)_minmax(0,1.22fr)]">
-        <div className="relative overflow-hidden border-b border-white/10 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.12),transparent_58%)] p-5 lg:border-b-0 lg:border-r">
-          <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(103,232,249,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(103,232,249,.12)_1px,transparent_1px)] [background-size:28px_28px]" />
-          <div className="relative mx-auto h-[500px] max-w-[290px]">
-            <BodySilhouette view={view} />
-
-            {REGIONS.filter((region) => region.view === view).map((region) => {
-              const regionFindings = findings.filter(
-                (finding) => finding.region === region.id
-              );
-              if (regionFindings.length === 0) return null;
-              const urgent = regionFindings.some(
-                (finding) => finding.priority === "attention"
-              );
-              const active = selected?.id === region.id;
-
-              return (
-                <button
-                  key={region.id}
-                  type="button"
-                  onClick={() => selectRegion(region)}
-                  style={{ left: `${region.x}%`, top: `${region.y}%` }}
-                  className={`absolute z-10 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-[11px] font-bold shadow-[0_0_0_7px_rgba(255,255,255,0.08)] transition hover:scale-110 focus:outline-none focus:ring-4 focus:ring-cyan-200/30 ${
-                    urgent
-                      ? "border-rose-200 bg-rose-500 text-white"
-                      : "border-cyan-100 bg-cyan-500 text-slate-950"
-                  } ${active ? "scale-110 ring-4 ring-white/30" : ""}`}
-                  aria-label={`${region.label}: ${regionFindings.length} registro(s)`}
-                >
-                  {regionFindings.length}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="relative mt-1 flex items-center justify-center gap-4 text-[11px] font-medium text-slate-300">
+      <div className="grid lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
+        <div className="border-b border-slate-200 bg-slate-50 px-5 py-6 lg:border-b-0 lg:border-r">
+          <BodyFigure view={view} regions={visibleRegions} selected={selected?.id ?? null} onSelect={selectRegion} />
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] font-medium text-slate-500">
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-              Atenção
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-600" />
+              Requer atenção
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+              <span className="h-2.5 w-2.5 rounded-full bg-cyan-700" />
               Registro
             </span>
+            <span>D/E = lado do paciente</span>
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col bg-white p-5 text-slate-900 md:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-700">
-                Índice anatômico
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-950">
-                {selected?.label || "Sem região selecionada"}
-              </h3>
-            </div>
-            <span className="inline-flex h-8 items-center rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600">
-              {findings.length} {findings.length === 1 ? "registro visual" : "registros visuais"}
-            </span>
-          </div>
-
+        <div className="flex min-w-0 flex-col p-5 md:p-6">
           {findings.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+            <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
                 <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-base font-semibold text-slate-900">
-                Nenhum termo regional identificado
-              </h3>
-              <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
-                O mapa será preenchido conforme problemas, exame físico e consultas trouxerem regiões corporais reconhecíveis.
+              </span>
+              <h3 className="mt-3 text-base font-semibold text-slate-900">Nenhuma região citada ainda</h3>
+              <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                O mapa se preenche quando queixa, exame físico, problemas ou consultas mencionam uma região do corpo.
               </p>
             </div>
           ) : (
             <>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {regionsWithFindings.map((region) => (
-                  <button
-                    key={region.id}
-                    type="button"
-                    onClick={() => selectRegion(region)}
-                    className={`inline-flex h-9 items-center rounded-xl border px-3 text-xs font-semibold transition ${
-                      selected?.id === region.id
-                        ? "border-cyan-700 bg-cyan-700 text-white"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                    }`}
-                  >
-                    {region.label}
-                  </button>
-                ))}
-              </div>
+              <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+                {regionsWithFindings.map(({ region, count, attention }) => {
+                  const active = selected?.id === region.id;
+                  return (
+                    <li key={region.id}>
+                      <button
+                        type="button"
+                        onClick={() => selectRegion(region)}
+                        aria-pressed={active}
+                        className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm transition ${active ? "bg-cyan-50/70" : "hover:bg-slate-50"}`}
+                      >
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${attention ? "bg-rose-600" : "bg-cyan-700"}`} aria-hidden="true" />
+                        <span className={`min-w-0 flex-1 truncate ${active ? "font-semibold text-slate-950" : "text-slate-700"}`}>{region.label}</span>
+                        <span className="text-xs text-slate-400">{region.view === "front" ? "anterior" : "posterior"}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600">{count}</span>
+                        <ChevronRight className={`h-4 w-4 shrink-0 ${active ? "text-cyan-700" : "text-slate-300"}`} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
 
-              <div className="mt-5 space-y-3">
-                {selectedFindings.map((finding) => (
-                  <article
-                    key={finding.id}
-                    className={`rounded-2xl border p-4 ${
-                      finding.priority === "attention"
-                        ? "border-rose-200 bg-rose-50/70"
-                        : "border-slate-200 bg-slate-50/70"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                          finding.priority === "attention"
-                            ? "bg-rose-100 text-rose-700"
-                            : "bg-cyan-50 text-cyan-700"
+              {selected ? (
+                <div className="mt-5">
+                  <h3 className="text-sm font-semibold text-slate-950">{selected.label}</h3>
+                  <div className="mt-3 space-y-2.5">
+                    {selectedFindings.map((finding) => (
+                      <article
+                        key={finding.id}
+                        className={`flex items-start gap-3 rounded-xl border p-3.5 ${
+                          finding.priority === "attention" ? "border-rose-200 bg-rose-50/60" : "border-slate-200 bg-white"
                         }`}
                       >
-                        {finding.priority === "attention" ? (
-                          <AlertCircle className="h-4 w-4" />
-                        ) : (
-                          <Activity className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="text-sm font-semibold text-slate-950">
-                            {finding.label}
-                          </h4>
-                          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
-                            {finding.source}
-                          </span>
+                        <span
+                          className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                            finding.priority === "attention" ? "bg-rose-100 text-rose-700" : "bg-cyan-50 text-cyan-800"
+                          }`}
+                        >
+                          {finding.priority === "attention" ? <AlertCircle className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-950">{finding.label}</h4>
+                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                              {finding.source}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm leading-6 text-slate-600">{finding.detail}</p>
                         </div>
-                        <p className="mt-1.5 text-sm leading-6 text-slate-600">
-                          {finding.detail}
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </>
           )}
 
-          <div className="mt-auto flex items-start gap-2 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">
-            <RotateCcw className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            O mapa é um índice dos registros existentes. Confirme sempre no texto integral do prontuário.
-          </div>
+          <p className="mt-auto flex items-start gap-2 pt-5 text-xs leading-5 text-slate-500">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            Confirme sempre no texto integral do prontuário.
+          </p>
         </div>
       </div>
     </section>

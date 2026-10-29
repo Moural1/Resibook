@@ -9,8 +9,6 @@ import GlobalSearchShortcut from "./global-search-shortcut";
 import MobileClinicalNav from "./mobile-clinical-nav";
 import { OnboardingTracker } from "./onboarding-checklist";
 import MobilePrescriptionSafety from "./mobile-prescription-safety";
-import PatientRecordNavigator from "./patient-record-navigator";
-import PatientTimelineControls from "./patient-timeline-controls";
 import ShiftToolNavigator from "./shift-tool-navigator";
 import QuadroSync from "./shift/quadro-sync";
 
@@ -39,8 +37,6 @@ export default function ClinicalRuntime() {
       <Suspense fallback={null}>
         <AccessLogger />
       </Suspense>
-      <PatientRecordNavigator />
-      <PatientTimelineControls />
       <ShiftToolNavigator />
       <GlobalSearchShortcut />
       <OnboardingTracker />
