@@ -1,13 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CopyButton from "./copy-button";
 import { showToast } from "../lib/toast";
 import { rankSearchResults } from "../lib/search";
 import { isResibookAdmin } from "@/lib/auth-role";
-import { BookCopy, Edit3, Plus, Trash2, X } from "lucide-react";
+import { formatClinicalTitle, toReadableCase } from "@/lib/clinical-text";
+import { parsePrescriptionSheet } from "@/lib/prescription-sheet";
+import ClinicalText from "./clinical-text";
+import PrescriptionSheet from "./prescription-sheet";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  BookCopy,
+  Check,
+  ChevronRight,
+  ClipboardPlus,
+  Edit3,
+  FileText,
+  Pill,
+  Plus,
+  Search,
+  Star,
+  Trash2,
+  X,
+} from "lucide-react";
 
 type PrescriptionTemplate = {
   id: number;
@@ -72,6 +91,47 @@ function formatLabel(value?: string | null) {
   return value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function normalizeKey(value?: string | null) {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+// As categorias vieram de importações diferentes ("plantao", "PA", "CLINICA",
+// "Clínica médica"...). Só o rótulo exibido é unificado; o banco não muda.
+const CATEGORY_LABELS: Record<string, string> = {
+  plantao: "Plantão",
+  pa: "Pronto atendimento",
+  clinica: "Clínica médica",
+  "clinica medica": "Clínica médica",
+  gestante: "Gestante",
+  contraindicacoes: "Contraindicações e cuidados",
+};
+
+const CATEGORY_ORDER = ["Plantão", "Pronto atendimento", "Clínica médica", "Gestante", "Contraindicações e cuidados"];
+
+function categoryLabel(value?: string | null) {
+  const key = normalizeKey(value);
+  if (!key) return "Outros";
+  return CATEGORY_LABELS[key] ?? formatClinicalTitle(formatLabel(value));
+}
+
+function categoryRank(label: string) {
+  const index = CATEGORY_ORDER.indexOf(label);
+  if (index >= 0) return index;
+  return label === "Outros" ? CATEGORY_ORDER.length + 1 : CATEGORY_ORDER.length;
+}
+
+function chipClass(active: boolean) {
+  return `inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition ${
+    active ? "border-cyan-800 bg-cyan-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+  }`;
+}
+
 function formatReviewStatus(value?: PrescriptionTemplate["review_status"]) {
   if (value === "revisado") return "Revisado";
   if (value === "pendente") return "Pendente";
@@ -111,18 +171,10 @@ function riskLevelClasses(value?: PrescriptionTemplate["risk_level"]) {
 function parseSpecialAudiences(value?: string | null) {
   return (value || "")
     .split(",")
-    .map((item) => formatLabel(item))
+    .map((item) => item.trim())
     .filter(Boolean)
+    .map((item) => formatLabel(item))
     .slice(0, 4);
-}
-
-function groupTemplates(items: PrescriptionTemplate[]) {
-  return items.reduce<Record<string, PrescriptionTemplate[]>>((acc, item) => {
-    const key = item.categoria || "Sem categoria";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
-    return acc;
-  }, {});
 }
 
 function parseTemplateToDraft(item: PrescriptionTemplate): PrescriptionDraft {
@@ -245,7 +297,10 @@ export default function PrescriptionTemplatesLive({
     ""
   );
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [hydratedFromUrl, setHydratedFromUrl] = useState(false);
+  const autoOpenedRef = useRef(false);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PrescriptionTemplate | null>(
@@ -254,13 +309,6 @@ export default function PrescriptionTemplatesLive({
   const [form, setForm] = useState<TemplateForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [expandedIds, setExpandedIds] = useState<number[]>([]);
-
-  function toggleExpanded(id: number) {
-    setExpandedIds((current) =>
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
-    );
-  }
 
   useEffect(() => {
     setItems(templates);
@@ -286,9 +334,11 @@ export default function PrescriptionTemplatesLive({
       "";
     const urlRisk =
       (params.get("risco") as "" | "alto" | "moderado" | "baixo") || "";
+    const urlModel = Number(params.get("modelo"));
 
     setQuery(urlQuery);
-    setSelectedCategory(urlCategory);
+    if (Number.isInteger(urlModel) && urlModel > 0) setSelectedId(urlModel);
+    setSelectedCategory(urlCategory ? categoryLabel(urlCategory) : "");
     setReviewFilter(urlReview);
     setRiskFilter(urlRisk);
     setHydratedFromUrl(true);
@@ -303,6 +353,7 @@ export default function PrescriptionTemplatesLive({
     if (selectedCategory) params.set("categoria", selectedCategory);
     if (reviewFilter) params.set("revisao", reviewFilter);
     if (riskFilter) params.set("risco", riskFilter);
+    if (selectedId) params.set("modelo", String(selectedId));
 
     const next = params.toString()
       ? `${pathname}?${params.toString()}`
@@ -314,6 +365,7 @@ export default function PrescriptionTemplatesLive({
     selectedCategory,
     reviewFilter,
     riskFilter,
+    selectedId,
     pathname,
     router,
     hydratedFromUrl,
@@ -502,6 +554,7 @@ export default function PrescriptionTemplatesLive({
       variant: "success",
     });
 
+    setSelectedId(saved.id);
     setSaving(false);
     closeDrawer();
   }
@@ -540,6 +593,7 @@ export default function PrescriptionTemplatesLive({
     }
 
     setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+    if (selectedId === item.id) setSelectedId(null);
     setFavoriteIds((current) => current.filter((id) => id !== item.id));
 
     showToast({
@@ -552,23 +606,34 @@ export default function PrescriptionTemplatesLive({
   }
 
   const categories = useMemo(() => {
-    return Array.from(
-      new Set(items.map((item) => item.categoria || "Sem categoria"))
-    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      const label = categoryLabel(item.categoria);
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+    return Array.from(counts.entries()).sort(([a], [b]) => categoryRank(a) - categoryRank(b) || a.localeCompare(b, "pt-BR"));
   }, [items]);
 
   const filteredTemplates = useMemo(() => {
     const filteredBySelects = items.filter((item) => {
-      const itemCategory = item.categoria || "Sem categoria";
       const matchesCategory =
-        !selectedCategory || itemCategory === selectedCategory;
+        !selectedCategory ||
+        categoryLabel(item.categoria) === selectedCategory ||
+        item.categoria === selectedCategory;
+      const matchesFavorite = !onlyFavorites || favoriteIds.includes(item.id);
       const matchesReview =
         !reviewFilter || (item.review_status || "rascunho") === reviewFilter;
       const matchesRisk =
         !riskFilter || (item.risk_level || "baixo") === riskFilter;
 
-      return matchesCategory && matchesReview && matchesRisk;
+      return matchesCategory && matchesFavorite && matchesReview && matchesRisk;
     });
+
+    if (!query.trim()) {
+      return [...filteredBySelects].sort((a, b) =>
+        formatClinicalTitle(a.titulo).localeCompare(formatClinicalTitle(b.titulo), "pt-BR")
+      );
+    }
 
     return rankSearchResults(filteredBySelects, query, (item) => [
       { value: item.titulo, weight: 10 },
@@ -578,45 +643,52 @@ export default function PrescriptionTemplatesLive({
       { value: item.conteudo, weight: 2 },
       { value: item.source_file, weight: 1 },
     ]);
-  }, [items, query, selectedCategory, reviewFilter, riskFilter]);
+  }, [items, query, selectedCategory, onlyFavorites, favoriteIds, reviewFilter, riskFilter]);
 
-  const favorites = useMemo(() => {
-    const map = new Map(items.map((item) => [item.id, item]));
+  const groupedTemplates = useMemo(() => {
+    const groups = new Map<string, PrescriptionTemplate[]>();
+    for (const item of filteredTemplates) {
+      const label = categoryLabel(item.categoria);
+      groups.set(label, [...(groups.get(label) || []), item]);
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => categoryRank(a) - categoryRank(b) || a.localeCompare(b, "pt-BR"));
+  }, [filteredTemplates]);
 
-    return favoriteIds
-      .map((id) => map.get(id))
-      .filter(Boolean) as PrescriptionTemplate[];
-  }, [items, favoriteIds]);
+  // Primeiro medicamento do modelo, como prévia na lista.
+  const previews = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const item of items) {
+      const first = parsePrescriptionSheet(item.conteudo).find((block) => block.kind === "item");
+      if (first?.kind === "item" && first.title) map.set(item.id, toReadableCase(first.title));
+    }
+    return map;
+  }, [items]);
 
-  const filteredFavorites = useMemo(() => {
-    const filteredBySelects = favorites.filter((item) => {
-      const itemCategory = item.categoria || "Sem categoria";
-      const matchesCategory =
-        !selectedCategory || itemCategory === selectedCategory;
-      const matchesReview =
-        !reviewFilter || (item.review_status || "rascunho") === reviewFilter;
-      const matchesRisk =
-        !riskFilter || (item.risk_level || "baixo") === riskFilter;
+  const selected = items.find((item) => item.id === selectedId) ?? null;
+  const hasFilters = Boolean(query || selectedCategory || onlyFavorites || reviewFilter || riskFilter);
 
-      return matchesCategory && matchesReview && matchesRisk;
-    });
+  function clearFilters() {
+    setQuery("");
+    setSelectedCategory("");
+    setOnlyFavorites(false);
+    setReviewFilter("");
+    setRiskFilter("");
+  }
 
-    return rankSearchResults(filteredBySelects, query, (item) => [
-      { value: item.titulo, weight: 10 },
-      { value: item.categoria, weight: 5 },
-      { value: item.observacoes, weight: 4 },
-      { value: item.publicos_especiais, weight: 3 },
-      { value: item.conteudo, weight: 2 },
-      { value: item.source_file, weight: 1 },
-    ]);
-  }, [favorites, query, selectedCategory, reviewFilter, riskFilter]);
+  function selectTemplate(id: number | null) {
+    setSelectedId(id);
+    if (id && window.matchMedia("(max-width: 1023px)").matches) window.scrollTo({ top: 0 });
+  }
 
-  const groupedTemplates = useMemo(
-    () => groupTemplates(filteredTemplates),
-    [filteredTemplates]
-  );
-
-  const hasFilters = Boolean(query || selectedCategory || reviewFilter || riskFilter);
+  // Links antigos da busca global abrem com ?q=<título>: se o termo bate
+  // exatamente com um modelo, ele já abre na leitura.
+  useEffect(() => {
+    if (autoOpenedRef.current || !hydratedFromUrl || selectedId || !query.trim() || !items.length) return;
+    autoOpenedRef.current = true;
+    const key = normalizeKey(query);
+    const match = items.find((item) => normalizeKey(item.titulo) === key);
+    if (match) setSelectedId(match.id);
+  }, [hydratedFromUrl, items, query, selectedId]);
 
   async function registerRecent(item: PrescriptionTemplate) {
     if (!currentUserId) return;
@@ -666,134 +738,114 @@ export default function PrescriptionTemplatesLive({
     });
   }
 
-  function TemplateCard(item: PrescriptionTemplate, compact = false) {
+  function renderReader(item: PrescriptionTemplate) {
     const isFavorite = favoriteIds.includes(item.id);
     const isDeleting = deletingId === item.id;
-    const isExpanded = expandedIds.includes(item.id);
-    const lineCount = item.conteudo.split("\n").length;
-    const isLong = lineCount > 8 || item.conteudo.length > 600;
+    const reviewed = (item.review_status || "rascunho") === "revisado";
+    const risk = item.risk_level || "baixo";
+    const audiences = parseSpecialAudiences(item.publicos_especiais);
 
     return (
-      <article
-        key={item.id}
-        className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
-            Banco Resibook
-          </span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-            {formatLabel(item.categoria)}
-          </span>
-
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${reviewStatusClasses(
-              item.review_status
-            )}`}
+      <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+        <header className="border-b border-slate-200 p-5 md:p-7">
+          <button
+            type="button"
+            onClick={() => selectTemplate(null)}
+            className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-800 lg:hidden"
           >
-            {formatReviewStatus(item.review_status)}
-          </span>
+            <ArrowLeft className="h-4 w-4" />
+            Voltar à lista
+          </button>
 
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${riskLevelClasses(
-              item.risk_level
-            )}`}
-          >
-            {formatRiskLevel(item.risk_level)}
-          </span>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-800">
+            {categoryLabel(item.categoria)}
+          </p>
+          <h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+            {formatClinicalTitle(item.titulo)}
+          </h2>
 
-          {item.model_version ? (
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-              {item.model_version}
-            </span>
-          ) : null}
-
-          {/* Nome do arquivo de origem é dado interno: só a administração vê. */}
-          {isAdmin && item.source_file ? (
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
-              {item.source_file}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="mt-4 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h3 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-              {formatLabel(item.titulo)}
-            </h3>
-
-            {item.observacoes ? (
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                {item.observacoes}
-              </p>
-            ) : null}
-
-            {item.reviewed_by ||
-            item.last_reviewed_at ||
-            item.publicos_especiais ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {item.reviewed_by ? (
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
-                    Revisado por {item.reviewed_by}
+          {isAdmin || reviewed || risk !== "baixo" || audiences.length ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {/* Situação de revisão, versão e arquivo de origem são dados de
+                  gestão do conteúdo: só a administração vê. */}
+              {isAdmin ? (
+                <>
+                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${reviewStatusClasses(item.review_status)}`}>
+                    {formatReviewStatus(item.review_status)}
                   </span>
-                ) : null}
-
-                {item.last_reviewed_at ? (
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
-                    Revisão{" "}
-                    {new Intl.DateTimeFormat("pt-BR").format(
-                      new Date(item.last_reviewed_at)
-                    )}
+                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${riskLevelClasses(item.risk_level)}`}>
+                    {formatRiskLevel(item.risk_level)}
                   </span>
-                ) : null}
-
-                {parseSpecialAudiences(item.publicos_especiais).map(
-                  (audience) => (
-                    <span
-                      key={`${item.id}-${audience}`}
-                      className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-[11px] font-semibold text-purple-700"
-                    >
-                      {audience}
+                  {item.model_version ? (
+                    <span className="rounded-full border border-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                      {item.model_version}
                     </span>
-                  )
-                )}
-              </div>
-            ) : null}
-          </div>
+                  ) : null}
+                  {item.source_file ? (
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+                      {item.source_file}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  {reviewed ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                      <Check className="h-3 w-3" />
+                      Revisado
+                    </span>
+                  ) : null}
+                  {risk !== "baixo" ? (
+                    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${riskLevelClasses(item.risk_level)}`}>
+                      {formatRiskLevel(item.risk_level)}
+                    </span>
+                  ) : null}
+                </>
+              )}
+              {audiences.map((audience) => (
+                <span
+                  key={`${item.id}-${audience}`}
+                  className="rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700"
+                >
+                  {audience}
+                </span>
+              ))}
+            </div>
+          ) : null}
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleUse(item)}
+              disabled={isDeleting}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <ClipboardPlus className="h-4 w-4" />
+              Usar no formulário
+            </button>
+            <CopyButton text={item.conteudo} label="Copiar receita" />
             <button
               type="button"
               onClick={() => toggleFavorite(item.id, item.titulo)}
-              disabled={isDeleting}
-              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              disabled={isDeleting || !currentUserId}
+              aria-pressed={isFavorite}
+              className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                 isFavorite
                   ? "border-amber-200 bg-amber-50 text-amber-700"
                   : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
-              {isFavorite ? "★ Favorito" : "☆ Favoritar"}
+              <Star className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+              {isFavorite ? "Favorito" : "Favoritar"}
             </button>
-
-            <button
-              type="button"
-              onClick={() => handleUse(item)}
-              disabled={isDeleting}
-              className="rounded-xl bg-cyan-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Usar no formulário
-            </button>
-
-            <CopyButton text={item.conteudo} />
-
             <button
               type="button"
               onClick={() => duplicateToPersonal(item)}
               disabled={isDeleting || !currentUserId}
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-100 disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
               <BookCopy className="h-4 w-4" />
-              Duplicar para Meu Resibook
+              Salvar no Meu Resibook
             </button>
 
             {isAdmin ? (
@@ -802,17 +854,16 @@ export default function PrescriptionTemplatesLive({
                   type="button"
                   onClick={() => openEditDrawer(item)}
                   disabled={isDeleting}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Edit3 className="h-4 w-4" />
                   Editar
                 </button>
-
                 <button
                   type="button"
                   onClick={() => handleDelete(item)}
                   disabled={isDeleting}
-                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Trash2 className="h-4 w-4" />
                   {isDeleting ? "Apagando..." : "Apagar"}
@@ -820,216 +871,236 @@ export default function PrescriptionTemplatesLive({
               </>
             ) : null}
           </div>
-        </div>
+        </header>
 
-        <div className="relative mt-4 rounded-2xl bg-[#07183d] px-4 py-4">
-          <pre
-            className={`whitespace-pre-wrap font-mono leading-7 text-slate-100 ${
-              compact ? "text-[14px]" : "text-[15px]"
-            } ${isLong && !isExpanded ? "max-h-[196px] overflow-hidden" : ""}`}
-          >
-            {item.conteudo}
-          </pre>
-
-          {isLong && !isExpanded ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-2xl bg-gradient-to-t from-[#07183d] to-transparent" />
-          ) : null}
-        </div>
-
-        {isLong ? (
-          <button
-            type="button"
-            onClick={() => toggleExpanded(item.id)}
-            aria-expanded={isExpanded}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-50"
-          >
-            {isExpanded ? "Recolher prescrição" : `Ver prescrição completa (${lineCount} linhas)`}
-          </button>
+        {item.observacoes ? (
+          <section className="border-b border-slate-200 bg-amber-50/50 px-5 py-5 md:px-7">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+              <AlertTriangle className="h-4 w-4" />
+              Orientações e cuidados
+            </h3>
+            <div className="mt-2.5">
+              <ClinicalText value={item.observacoes} />
+            </div>
+          </section>
         ) : null}
+
+        <section className="px-5 py-5 md:px-7 md:py-6">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <FileText className="h-4 w-4" />
+            Receituário
+          </h3>
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 md:p-6">
+            <PrescriptionSheet value={item.conteudo} />
+          </div>
+        </section>
+
+        <footer className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-500 md:px-7">
+          {item.last_reviewed_at ? (
+            <span>
+              Revisado em {new Intl.DateTimeFormat("pt-BR").format(new Date(item.last_reviewed_at))}
+              {item.reviewed_by ? ` por ${item.reviewed_by}` : ""}
+            </span>
+          ) : null}
+          <span>Modelo de apoio: confira doses, alergias, interações e função renal antes de prescrever.</span>
+        </footer>
       </article>
     );
   }
 
   return (
-    <section className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">
-              Biblioteca de plantão
-            </p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-              Modelos prontos
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Busca instantânea, favoritos e uso direto no formulário.
-            </p>
-          </div>
-
-          {isAdmin ? (
-            <button
-              type="button"
-              onClick={openCreateDrawer}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              <Plus className="h-4 w-4" />
-              Novo modelo
-            </button>
-          ) : null}
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900">Modelos prontos</h2>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {items.length} modelos da Biblioteca Resibook. Abra, copie ou aplique no formulário.
+          </p>
         </div>
-
-        <div className="mt-5 grid gap-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar modelo de prescrição..."
-            className="h-12 w-full rounded-2xl lg:col-span-4 border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-          />
-
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-          >
-            <option value="">Todas as categorias</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {formatLabel(category)}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={reviewFilter}
-            onChange={(e) =>
-              setReviewFilter(
-                e.target.value as "" | "revisado" | "pendente" | "rascunho"
-              )
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-          >
-            <option value="">Todas as revisões</option>
-            <option value="revisado">Só revisados</option>
-            <option value="pendente">Pendentes</option>
-            <option value="rascunho">Rascunhos</option>
-          </select>
-
-          <select
-            value={riskFilter}
-            onChange={(e) =>
-              setRiskFilter(
-                e.target.value as "" | "alto" | "moderado" | "baixo"
-              )
-            }
-            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-          >
-            <option value="">Todos os riscos</option>
-            <option value="alto">Alto risco</option>
-            <option value="moderado">Moderado</option>
-            <option value="baixo">Baixo</option>
-          </select>
-
+        {isAdmin ? (
           <button
             type="button"
-            onClick={() => {
-              setQuery("");
-              setSelectedCategory("");
-              setReviewFilter("");
-              setRiskFilter("");
-            }}
-            className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            onClick={openCreateDrawer}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            {hasFilters ? "Limpar" : "Filtros"}
+            <Plus className="h-4 w-4" />
+            Novo modelo
           </button>
-        </div>
+        ) : null}
+      </div>
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-sm font-medium text-slate-400">
-            {filteredTemplates.length} de {items.length} modelos
-          </span>
+      <div className="grid gap-5 lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] lg:items-start">
+        <aside className={`min-w-0 lg:sticky lg:top-24 ${selected ? "hidden lg:block" : ""}`}>
+          <section className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+            <div className="space-y-3 border-b border-slate-200 p-3">
+              <label className="relative block">
+                <span className="sr-only">Buscar modelo de prescrição</span>
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar diagnóstico ou medicamento"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-9 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-600 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    aria-label="Limpar busca"
+                    className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </label>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-              {favorites.length} favoritos
-            </span>
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory("");
+                    setOnlyFavorites(false);
+                  }}
+                  aria-pressed={!selectedCategory && !onlyFavorites}
+                  className={chipClass(!selectedCategory && !onlyFavorites)}
+                >
+                  Todos
+                  <span className={!selectedCategory && !onlyFavorites ? "text-white/70" : "text-slate-400"}>{items.length}</span>
+                </button>
+                {favoriteIds.length ? (
+                  <button
+                    type="button"
+                    onClick={() => setOnlyFavorites((current) => !current)}
+                    aria-pressed={onlyFavorites}
+                    className={chipClass(onlyFavorites)}
+                  >
+                    <Star className={`h-3 w-3 ${onlyFavorites ? "fill-current" : ""}`} />
+                    Favoritos
+                    <span className={onlyFavorites ? "text-white/70" : "text-slate-400"}>{favoriteIds.length}</span>
+                  </button>
+                ) : null}
+                {categories.map(([label, count]) => {
+                  const active = selectedCategory === label;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setSelectedCategory(active ? "" : label)}
+                      aria-pressed={active}
+                      className={chipClass(active)}
+                    >
+                      {label}
+                      <span className={active ? "text-white/70" : "text-slate-400"}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-              {
-                items.filter(
-                  (item) => (item.review_status || "rascunho") === "revisado"
-                ).length
-              }{" "}
-              revisados
-            </span>
+              {isAdmin ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={reviewFilter}
+                    onChange={(e) => setReviewFilter(e.target.value as "" | "revisado" | "pendente" | "rascunho")}
+                    aria-label="Filtrar por revisão"
+                    className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 outline-none focus:border-cyan-600"
+                  >
+                    <option value="">Todas as revisões</option>
+                    <option value="revisado">Só revisados</option>
+                    <option value="pendente">Pendentes</option>
+                    <option value="rascunho">Rascunhos</option>
+                  </select>
+                  <select
+                    value={riskFilter}
+                    onChange={(e) => setRiskFilter(e.target.value as "" | "alto" | "moderado" | "baixo")}
+                    aria-label="Filtrar por risco"
+                    className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 outline-none focus:border-cyan-600"
+                  >
+                    <option value="">Todos os riscos</option>
+                    <option value="alto">Alto risco</option>
+                    <option value="moderado">Moderado</option>
+                    <option value="baixo">Baixo</option>
+                  </select>
+                </div>
+              ) : null}
 
-            {selectedCategory ? (
-              <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
-                {formatLabel(selectedCategory)}
+              {hasFilters ? (
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>
+                    {filteredTemplates.length} de {items.length} modelos
+                  </span>
+                  <button type="button" onClick={clearFilters} className="font-semibold text-cyan-800 hover:text-cyan-950">
+                    Limpar filtros
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            {filteredTemplates.length === 0 ? (
+              <div className="px-4 py-10 text-center">
+                <p className="text-sm font-semibold text-slate-800">Nenhum modelo encontrado</p>
+                <p className="mt-1 text-xs text-slate-500">Tente outro termo ou mude a categoria.</p>
+              </div>
+            ) : (
+              <nav aria-label="Lista de modelos" className="lg:max-h-[calc(100vh-17rem)] lg:overflow-y-auto">
+                {groupedTemplates.map(([label, groupItems]) => (
+                  <div key={label}>
+                    <p className="sticky top-0 z-[1] border-b border-slate-100 bg-slate-50/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 backdrop-blur">
+                      {label} · {groupItems.length}
+                    </p>
+                    <ul>
+                      {groupItems.map((item) => {
+                        const active = item.id === selectedId;
+                        const preview = previews.get(item.id);
+                        return (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              onClick={() => selectTemplate(item.id)}
+                              aria-current={active ? "true" : undefined}
+                              className={`flex w-full items-start gap-2 border-l-2 px-4 py-2.5 text-left transition ${
+                                active ? "border-cyan-700 bg-cyan-50/70" : "border-transparent hover:bg-slate-50"
+                              }`}
+                            >
+                              <span className="min-w-0 flex-1">
+                                <span className={`flex items-center gap-1.5 text-sm ${active ? "font-semibold text-slate-950" : "font-medium text-slate-800"}`}>
+                                  <span className="min-w-0 truncate">{formatClinicalTitle(item.titulo)}</span>
+                                  {favoriteIds.includes(item.id) ? (
+                                    <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" aria-label="Favorito" />
+                                  ) : null}
+                                </span>
+                                {preview ? (
+                                  <span className="mt-0.5 line-clamp-1 text-xs text-slate-500">{preview}</span>
+                                ) : null}
+                              </span>
+                              <ChevronRight className={`mt-0.5 h-4 w-4 shrink-0 ${active ? "text-cyan-700" : "text-slate-300"}`} />
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </nav>
+            )}
+          </section>
+        </aside>
+
+        <div className={`min-w-0 ${selected ? "" : "hidden lg:block"}`}>
+          {selected ? (
+            renderReader(selected)
+          ) : (
+            <section className="flex min-h-[420px] flex-col items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-white px-6 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-800">
+                <Pill className="h-5 w-5" />
               </span>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      {filteredFavorites.length > 0 ? (
-        <section className="space-y-4">
-          <div className="flex flex-col gap-2 px-1 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-600">
-                Favoritos
+              <h2 className="mt-4 text-lg font-semibold text-slate-900">Escolha um modelo</h2>
+              <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                Busque pelo diagnóstico ou pelo medicamento na lista ao lado. O modelo abre aqui, como receituário, pronto para copiar ou aplicar no formulário.
               </p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-                Mais usados no plantão
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {filteredFavorites.length} modelo
-                {filteredFavorites.length > 1 ? "s" : ""} favorito
-                {filteredFavorites.length > 1 ? "s" : ""}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            {filteredFavorites.map((item) => TemplateCard(item, true))}
-          </div>
-        </section>
-      ) : null}
-
-      {Object.keys(groupedTemplates).length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
-          Nenhum modelo encontrado para esse filtro.
+            </section>
+          )}
         </div>
-      ) : (
-        Object.entries(groupedTemplates).map(([categoria, categoryItems]) => (
-          <div key={categoria} className="space-y-4">
-            <div className="flex flex-col gap-2 px-1 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">
-                  {formatLabel(categoria)}
-                </p>
-                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-                  {formatLabel(categoria)}
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {categoryItems.length} modelo
-                  {categoryItems.length > 1 ? "s" : ""} nesta categoria
-                </p>
-              </div>
-
-              <div className="self-start rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-800">
-                {categoryItems.length}{" "}
-                {categoryItems.length === 1 ? "item" : "itens"}
-              </div>
-            </div>
-
-            <div className="grid gap-4">
-              {categoryItems.map((item) => TemplateCard(item))}
-            </div>
-          </div>
-        ))
-      )}
-
+      </div>
       {drawerOpen ? (
         <div className="fixed inset-0 z-[90] flex justify-end bg-slate-950/50 backdrop-blur-[2px]">
           <button

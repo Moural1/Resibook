@@ -263,8 +263,8 @@ export async function GET(request: NextRequest) {
         id: String(item.id),
         type: "modelo_prescricao",
         title: item.titulo || "Prescrição pronta",
-        subtitle: item.categoria || item.source_file || "Biblioteca de plantão",
-        href: `/prescricao?q=${encodeURIComponent(item.titulo || q)}`,
+        subtitle: item.categoria || "Modelo de prescrição",
+        href: `/prescricao?modelo=${item.id}`,
         badge: "Banco Resibook",
       });
     }

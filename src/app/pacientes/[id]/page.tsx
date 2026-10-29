@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import PrescriptionSheet from "@/components/prescription-sheet";
 import {
   CLINICAL_CASE_SESSION_EVENT,
   loadClinicalCaseSession,
@@ -4465,10 +4466,8 @@ function openPrintHtml(html: string) {
                   <CopyButton text={buildPrescriptionText(item)} />
                 </div>
 
-                <div className="mt-4 rounded-2xl bg-[#07183d] px-4 py-4">
-                  <pre className="whitespace-pre-wrap font-mono text-[15px] leading-7 text-slate-100">
-                    {buildPrescriptionText(item)}
-                  </pre>
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                  <PrescriptionSheet value={buildPrescriptionText(item)} />
                 </div>
               </article>
             ))}
