@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -71,7 +71,8 @@ function getCalculatorArea(calculator: ClinicalCalculator) {
   }
   if (
     category.includes("nefrologia") ||
-    category.includes("acido-base")
+    category.includes("acido-base") ||
+    category.includes("hidroeletrolit")
   ) {
     return "Rim e metabolismo";
   }
@@ -154,6 +155,11 @@ function SelectField({
         onChange={(event) => onChange(event.target.value)}
         className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-cyan-600 focus:ring-4 focus:ring-cyan-100"
       >
+        {!field.options?.some((option) => option.value === "") ? (
+          <option value="" disabled>
+            Selecione
+          </option>
+        ) : null}
         {field.options?.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -332,37 +338,35 @@ function CalculatorWorkspace({
     ...prefill,
   }));
   const prefilled = Object.keys(prefill).length > 0;
-  const [calculatedResult, setCalculatedResult] = useState<CalculatorResult | null>(null);
-  const [error, setError] = useState("");
+
+  // O resultado aparece sozinho assim que todos os campos obrigatórios estão
+  // preenchidos e válidos; não há botão "Calcular".
+  const missing = calculator.fields.filter((field) => {
+    if (field.required === false && field.type !== "boolean") return false;
+    const value = values[field.id];
+    if (field.type === "boolean") return field.required !== false && typeof value !== "boolean";
+    return value === "" || value === null || value === undefined;
+  }).length;
+  const error = missing ? "" : validateCalculatorValues(calculator, values) || "";
+  const calculatedResult = useMemo(
+    () => (missing || error ? null : calculator.calculate(values)),
+    [calculator, error, missing, values]
+  );
+  const usedRef = useRef(false);
+
+  useEffect(() => {
+    if (calculatedResult && !usedRef.current) {
+      usedRef.current = true;
+      onUsed(calculator.id);
+    }
+  }, [calculatedResult, calculator.id, onUsed]);
 
   function updateValue(fieldId: string, value: CalculatorValue) {
     setValues((current) => ({ ...current, [fieldId]: value }));
-    setCalculatedResult(null);
-    setError("");
-  }
-
-  function calculate() {
-    const validationError = validateCalculatorValues(calculator, values);
-    if (validationError) {
-      setError(validationError);
-      setCalculatedResult(null);
-      return;
-    }
-    const nextResult = calculator.calculate(values);
-    if (!nextResult) {
-      setError("Preencha todos os campos numéricos obrigatórios para calcular.");
-      setCalculatedResult(null);
-      return;
-    }
-    setError("");
-    setCalculatedResult(nextResult);
-    onUsed(calculator.id);
   }
 
   function reset() {
     setValues(getCalculatorInitialValues(calculator));
-    setCalculatedResult(null);
-    setError("");
   }
 
   const numberAndSelectFields = calculator.fields.filter(
@@ -458,15 +462,23 @@ function CalculatorWorkspace({
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-5">
-            <button
-              type="button"
-              onClick={calculate}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-5 text-sm font-semibold text-white transition hover:bg-cyan-900"
-            >
-              <Calculator className="h-4 w-4" />
-              Calcular
-            </button>
+          <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
+            {calculatedResult ? (
+              <a
+                href="#resultado-calculadora"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-5 text-sm font-semibold text-white transition hover:bg-cyan-900"
+              >
+                <Calculator className="h-4 w-4" />
+                {calculatedResult.value} {calculatedResult.label} · ver resultado
+              </a>
+            ) : (
+              <p className="inline-flex h-11 items-center gap-2 rounded-xl bg-slate-50 px-4 text-sm font-medium text-slate-500">
+                <Calculator className="h-4 w-4" />
+                {missing
+                  ? `Falta${missing === 1 ? "" : "m"} ${missing} ${missing === 1 ? "campo" : "campos"} para o resultado`
+                  : "Corrija o campo indicado"}
+              </p>
+            )}
             <button
               type="button"
               onClick={reset}
@@ -479,7 +491,11 @@ function CalculatorWorkspace({
         </div>
       </section>
 
-      {calculatedResult ? <ResultPanel result={calculatedResult} /> : null}
+      {calculatedResult ? (
+        <div id="resultado-calculadora" className="scroll-mt-24">
+          <ResultPanel result={calculatedResult} />
+        </div>
+      ) : null}
 
       <p className="px-1 text-xs text-slate-400">
         Fonte: {calculator.reference.label}
