@@ -42,3 +42,17 @@ export function isPersonalContentType(
     PERSONAL_CONTENT_TYPES.includes(value as PersonalContentType)
   );
 }
+
+/** Pasta do item no Meu Resibook. Fica em metadata.pasta, sem coluna própria. */
+export function personalFolder(item: Pick<PersonalContentItem, "metadata">) {
+  const value = item.metadata?.pasta;
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function withPersonalFolder(metadata: Record<string, unknown> | null | undefined, folder: string) {
+  const next = { ...(metadata || {}) };
+  const clean = folder.replace(/\s+/g, " ").trim().slice(0, 60);
+  if (clean) next.pasta = clean;
+  else delete next.pasta;
+  return next;
+}
