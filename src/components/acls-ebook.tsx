@@ -44,11 +44,14 @@ function EbookCover({ chapters }: { chapters: AclsEbookChapter[] }) {
               <LibraryBig className="h-5 w-5" />
               <p className="text-[11px] font-extrabold uppercase tracking-[0.3em]">Resibook Editions</p>
             </div>
-            <p className="mt-16 text-xs font-semibold uppercase tracking-[0.24em] text-blue-200/80">Manual clínico completo</p>
+            <p className="mt-16 text-xs font-semibold uppercase tracking-[0.24em] text-blue-200/80">Resumo de estudo</p>
             <h1 className="mt-4 font-serif text-6xl font-bold tracking-[-0.055em] sm:text-8xl">ACLS</h1>
             <div className="mt-7 h-px w-36 bg-gradient-to-r from-blue-300 to-transparent" />
             <p className="mt-7 max-w-xl font-serif text-xl leading-8 text-slate-200 sm:text-2xl sm:leading-10">
               Anotações essenciais para suporte avançado de vida cardiovascular.
+            </p>
+            <p className="mt-4 max-w-xl text-xs leading-5 text-blue-100/70">
+              Redação própria baseada nas diretrizes da American Heart Association (AHA). Não é material oficial da AHA nem endossado por ela.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-3">
               <Link

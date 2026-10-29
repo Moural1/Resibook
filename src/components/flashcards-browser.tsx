@@ -170,8 +170,7 @@ export default function FlashcardsBrowser({ flashcards }: Props) {
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
-                <span>{card.source_file || "Sem arquivo"}</span>
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-3 text-xs text-slate-400">
                 <span>Card #{card.card_number || "-"}</span>
               </div>
             </div>
