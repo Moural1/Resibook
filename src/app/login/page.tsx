@@ -36,7 +36,7 @@ function LoginContent() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState(
-    confirmationError ? "O link de confirmação é inválido ou expirou. Solicite um novo acesso." : ""
+    confirmationError ? "Esse link já foi usado ou expirou. Se você já confirmou o e-mail, é só entrar. Para trocar a senha, peça um novo link em “Esqueci a senha”." : ""
   );
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

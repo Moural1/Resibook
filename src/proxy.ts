@@ -10,6 +10,9 @@ const PUBLIC_ROUTES = ["/", "/login", "/signup", "/register", "/cadastro", "/aut
 const GUEST_EMAIL = "convidado@resibook.com";
 const GUEST_ALLOWED_PATHS = ["/prescricao", "/caso-rapido", "/topicos", "/cids", "/exames-evolucao", "/termos", "/privacidade", "/aceite-legal", "/suporte"];
 const BILLING_ALLOWED_PATHS = ["/assinar", "/minha-assinatura", "/api/billing", "/dados-da-conta", "/suporte"];
+// Troca de senha pelo link do e-mail (recuperação ou convite): exige sessão,
+// mas não aceite legal nem assinatura, senão a pessoa nunca chega à tela.
+const PASSWORD_RESET_PATH = "/redefinir-senha";
 const COMPLETE_ONLY_PATHS = ["/meu-resibook", "/psiquiatria", "/plantao", "/caso-rapido", "/prescricao", "/modelos-prescricao", "/exames-evolucao", "/condutas", "/flashcards-dificeis"];
 
 function isPublicRoute(pathname: string) {
@@ -136,6 +139,10 @@ export async function proxy(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/prescricao";
     return applyCookies(NextResponse.redirect(redirectUrl), pendingCookies);
+  }
+
+  if (!isGuest && isInside(pathname, [PASSWORD_RESET_PATH])) {
+    return applyCookies(response, pendingCookies);
   }
 
   if (!isGuest) {

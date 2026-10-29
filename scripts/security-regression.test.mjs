@@ -705,3 +705,18 @@ test("redirecionamento pós-login só aceita caminhos internos", async () => {
   assert.equal(safeInternalPath("/caso-rapido", "/dashboard"), "/caso-rapido");
   assert.equal(safeInternalPath("/%5Cevil.com", "/dashboard"), "/%5Cevil.com", "barra codificada continua interna");
 });
+
+test("links dos e-mails de acesso validam no servidor e levam à tela certa", () => {
+  const confirm = readFileSync(new URL("../src/app/auth/confirm/route.ts", import.meta.url), "utf8");
+  const proxy = readFileSync(new URL("../src/proxy.ts", import.meta.url), "utf8");
+  assert.match(confirm, /verifyOtp\(\{ type: rawType, token_hash: tokenHash \}\)/);
+  assert.match(confirm, /type === "recovery" \|\| type === "invite" \? "\/redefinir-senha" : "\/aceite-legal"/);
+  assert.match(confirm, /safeInternalPath\(next, fallback\)/);
+  // /redefinir-senha exige sessão, mas não aceite legal nem assinatura.
+  assert.doesNotMatch(proxy, /PUBLIC_ROUTES = \[[^\]]*"\/redefinir-senha"/);
+  assert.match(proxy, /if \(!isGuest && isInside\(pathname, \[PASSWORD_RESET_PATH\]\)\)/);
+  assert.ok(
+    proxy.indexOf("PASSWORD_RESET_PATH])") < proxy.indexOf("user_legal_acceptances"),
+    "a troca de senha precisa vir antes da checagem de aceite e assinatura"
+  );
+});
