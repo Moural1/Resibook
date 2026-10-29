@@ -384,11 +384,10 @@ export default function ExamesEvolucaoPage() {
     <div className="space-y-6">
       <ModulePageHeader
         eyebrow="Módulo assistencial"
-        title="Exames / Evolução"
-        description="Modelos clínicos para solicitação de exames, registro de evolução e apoio rápido à rotina assistencial."
+        title="Modelos"
+        description="Anamnese, exame físico e evolução prontos para copiar e adaptar no atendimento."
         badges={[
-          { label: "Exames e evolução", tone: "blue" },
-          { label: "Biblioteca clínica", tone: "slate" },
+          { label: "Modelos clínicos", tone: "blue" },
           {
             label: isAdmin ? "Gerenciamento liberado" : "Leitura e cópia",
             tone: isAdmin ? "emerald" : "cyan",

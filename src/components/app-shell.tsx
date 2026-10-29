@@ -17,7 +17,7 @@ import {
   Calculator,
   ClipboardList,
   CreditCard,
-  FlaskConical,
+  FileText,
   Gauge,
   GraduationCap,
   HeartPulse,
@@ -309,8 +309,8 @@ function SidebarContent({
     },
     {
       href: "/exames-evolucao",
-      label: "Exames / Evolução",
-      icon: FlaskConical,
+      label: "Modelos",
+      icon: FileText,
       badge: counts.exames,
     },
     {
@@ -390,8 +390,8 @@ function SidebarContent({
     },
     {
       href: "/exames-evolucao",
-      label: "Exames / Evolução",
-      icon: FlaskConical,
+      label: "Modelos",
+      icon: FileText,
       badge: null,
     },
     { href: "/topicos", label: "Tópicos", icon: Stethoscope, badge: null },

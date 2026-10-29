@@ -34,7 +34,7 @@ const UPGRADE_SOURCES: Record<string, string> = {
   "/caso-rapido": "Caso rápido",
   "/prescricao": "Prescrição clínica",
   "/modelos-prescricao": "Modelos de prescrição",
-  "/exames-evolucao": "Exames e evolução",
+  "/exames-evolucao": "Modelos",
   "/condutas": "Condutas",
   "/flashcards-dificeis": "Flashcards difíceis",
 };
