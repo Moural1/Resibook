@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { NOME_COR, COR_PRIORIDADE } from "./shift/prioridade";
-import { leituraDoCaso, prioridadeFinal } from "@/lib/shift/caso";
+import { prioridadeFinal } from "@/lib/shift/caso";
 import {
   CLINICAL_CASE_SESSION_EVENT,
   clearClinicalCaseSession,
@@ -152,7 +152,7 @@ export default function ClinicalCaseSessionBridge() {
   if (!activeCase?.complaint) return null;
 
   const query = encodeURIComponent(activeCase.complaint);
-  const prioridade = prioridadeFinal(leituraDoCaso(activeCase).prioridade, activeCase.prioridadeManual);
+  const prioridade = prioridadeFinal(activeCase.prioridadeManual);
   const vitals = Object.entries(activeCase.vitals)
     .filter(([, value]) => value.trim())
     .map(([key, value]) => `${key.toUpperCase()} ${value}`)

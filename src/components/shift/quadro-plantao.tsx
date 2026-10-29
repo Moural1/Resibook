@@ -156,7 +156,10 @@ function CartaoPaciente({
               <span className="block font-medium opacity-90">{PRIORIDADES[nivel].rotulo}</span>
             </>
           ) : (
-            "A definir"
+            <>
+              Prioridade
+              <span className="block font-medium opacity-90">a definir</span>
+            </>
           )}
         </p>
       </header>
@@ -410,7 +413,7 @@ export default function QuadroPlantao() {
                 </span>
               ) : null
             )}
-            <span className="text-slate-400">Mais grave primeiro; no mesmo nível, reavaliação vencida antes.</span>
+            <span className="text-slate-400">Prioridade a definir primeiro, depois a mais grave (definida por você); no mesmo nível, reavaliação vencida antes.</span>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {pacientes.map((paciente) => (

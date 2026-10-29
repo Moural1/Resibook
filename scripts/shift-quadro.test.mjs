@@ -38,8 +38,20 @@ test("adicionar vincula o caso ao quadro pelo leito", () => {
   assert.notEqual(ids.febre, ids.lombalgia);
 });
 
+test("prioridade vem só da escolha do médico: a definir primeiro, depois a mais grave", () => {
+  let { quadro, ids } = montar();
+  const febre = quadro.pacientes.find((p) => p.id === ids.febre);
+  assert.equal(Q.prioridadePaciente(febre), null, "sinais vitais graves não definem prioridade sozinhos");
+  quadro = Q.atualizarCaso(quadro, ids.lombalgia, { ...quadro.pacientes.find((p) => p.id === ids.lombalgia).caso, prioridadeManual: "verde" }, AGORA);
+  quadro = Q.atualizarCaso(quadro, ids.cefaleia, { ...quadro.pacientes.find((p) => p.id === ids.cefaleia).caso, prioridadeManual: "amarelo" }, AGORA);
+  assert.deepEqual(Q.ordenarPacientes(quadro.pacientes, AGORA).map((p) => p.caso.complaint), ["Febre", "Cefaleia", "Lombalgia"]);
+});
+
 test("ordena pelo mais grave e, no mesmo nível, pela reavaliação vencida", () => {
   let { quadro, ids } = montar();
+  for (const [id, nivel] of [[ids.febre, "vermelho"], [ids.lombalgia, "verde"], [ids.cefaleia, "verde"]]) {
+    quadro = Q.atualizarCaso(quadro, id, { ...quadro.pacientes.find((p) => p.id === id).caso, prioridadeManual: nivel }, AGORA);
+  }
   quadro = Q.agendarReavaliacao(quadro, ids.cefaleia, 15, AGORA - 30 * 60_000); // venceu há 15 min
   quadro = Q.agendarReavaliacao(quadro, ids.lombalgia, 60, AGORA);
   const ordem = Q.ordenarPacientes(quadro.pacientes, AGORA).map((p) => p.caso.complaint);
@@ -100,6 +112,9 @@ test("expira pacientes sem atualização há mais de 12 h", () => {
 
 test("passagem SBAR de todos, do mais grave ao mais leve, com pendências e timer", () => {
   let { quadro, ids } = montar();
+  for (const [id, nivel] of [[ids.febre, "vermelho"], [ids.lombalgia, "verde"], [ids.cefaleia, "verde"]]) {
+    quadro = Q.atualizarCaso(quadro, id, { ...quadro.pacientes.find((p) => p.id === id).caso, prioridadeManual: nivel }, AGORA);
+  }
   quadro = Q.adicionarPendencia(quadro, ids.febre, "hemoculturas", AGORA);
   quadro = Q.agendarReavaliacao(quadro, ids.febre, 30, AGORA);
   const texto = Q.textoPassagem(quadro, AGORA);
@@ -111,4 +126,5 @@ test("passagem SBAR de todos, do mais grave ao mais leve, com pendências e time
   assert.match(texto, /A: SV PA 90x60, FC 120, FR 24, TEMP 39,5, SPO2 93 \| NEWS2 14, qSOFA 3, IC 1,33/);
   assert.match(texto, /R: reavaliar às \d\d:\d\d \(em 30 min\) \| próximo passo: revisar sinais de alarme \| pendências: hemoculturas/);
   assert.match(Q.textoPassagem(Q.quadroVazio(), AGORA), /Nenhum paciente no quadro\./);
+  assert.match(Q.textoPassagem(montar().quadro, AGORA), /1\) Leito 2 · Febre · prioridade a definir/);
 });

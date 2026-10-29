@@ -5,7 +5,7 @@ import {
   type LeituraTriagem,
   type NivelPrioridade,
 } from "@/lib/shift/triagem";
-import { COR_PRIORIDADE, NOME_COR } from "./prioridade";
+import { COR_PRIORIDADE, NOME_COR, NOME_GRAVIDADE } from "./prioridade";
 
 const FAIXA_NEWS2: Record<string, string> = {
   baixo: "baixo risco",
@@ -27,7 +27,8 @@ function Escore({ icone: Icone, nome, valor, detalhe }: { icone: typeof Gauge; n
   );
 }
 
-/* Prioridade sugerida, escolha manual, escores e alertas do caso. */
+/* Prioridade escolhida pelo médico, escores e alertas do caso. O sistema
+   não sugere prioridade: só lê os valores e mostra alertas. */
 export default function PainelTriagem({
   leitura,
   manual,
@@ -37,40 +38,50 @@ export default function PainelTriagem({
   manual: NivelPrioridade | null;
   onManual: (nivel: NivelPrioridade | null) => void;
 }) {
-  const final = manual ?? leitura.prioridade;
-  const cor = final ? COR_PRIORIDADE[final] : null;
+  const cor = manual ? COR_PRIORIDADE[manual] : null;
 
   return (
     <section id="leitura-caso" aria-label="Prioridade e alertas" className="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${cor ? cor.faixa : "bg-slate-100 text-slate-700"}`}>
-        <div>
-          <p className="text-xs font-semibold opacity-90">{manual ? "Prioridade escolhida" : "Prioridade sugerida"}</p>
-          <p className="text-xl font-semibold">{final ? `${NOME_COR[final]} · ${PRIORIDADES[final].rotulo}` : "Preencha os sinais vitais"}</p>
+      <div className={`px-4 py-3 ${cor ? cor.faixa : "bg-slate-100 text-slate-700"}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold opacity-90">Prioridade de atendimento · definida por você</p>
+            <p className="text-xl font-semibold">{manual ? `${NOME_COR[manual]} · ${PRIORIDADES[manual].rotulo}` : "A definir"}</p>
+          </div>
+          {manual ? (
+            <button
+              type="button"
+              onClick={() => onManual(null)}
+              className="h-8 rounded-lg border border-white/40 bg-white/15 px-2.5 text-xs font-semibold transition hover:bg-white/25"
+            >
+              Limpar
+            </button>
+          ) : null}
         </div>
-        <label className="flex items-center gap-2 text-xs font-semibold">
-          <span className="opacity-90">Ajustar</span>
-          <select
-            value={manual ?? ""}
-            onChange={(event) => onManual((event.target.value || null) as NivelPrioridade | null)}
-            className="h-9 rounded-lg border border-white/40 bg-white px-2 text-sm font-medium text-slate-800 outline-none"
-          >
-            <option value="">Usar sugestão</option>
-            {ORDEM_PRIORIDADE.map((nivel) => (
-              <option key={nivel} value={nivel}>
-                {NOME_COR[nivel]} · {PRIORIDADES[nivel].rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div role="radiogroup" aria-label="Escolher prioridade" className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          {ORDEM_PRIORIDADE.map((nivel) => {
+            const ativo = manual === nivel;
+            return (
+              <button
+                key={nivel}
+                type="button"
+                role="radio"
+                aria-checked={ativo}
+                onClick={() => onManual(nivel)}
+                className={`flex h-9 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold transition ${
+                  ativo ? "border-white bg-white text-slate-900 shadow-sm" : "border-slate-300/60 bg-white/70 text-slate-700 hover:bg-white"
+                }`}
+              >
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${COR_PRIORIDADE[nivel].ponto}`} aria-hidden="true" />
+                {NOME_COR[nivel]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="space-y-3 p-4">
-        {final ? <p className="text-sm leading-6 text-slate-700">{PRIORIDADES[final].descricao}</p> : null}
-        {manual && leitura.prioridade && manual !== leitura.prioridade ? (
-          <p className="text-xs text-slate-500">
-            Sugestão pelos dados: {NOME_COR[leitura.prioridade]} · {PRIORIDADES[leitura.prioridade].rotulo}.
-          </p>
-        ) : null}
+        {manual ? <p className="text-sm leading-6 text-slate-700">{PRIORIDADES[manual].descricao}</p> : null}
 
         {leitura.news2 || leitura.qsofa || leitura.indiceChoque !== null ? (
           <div className="grid grid-cols-3 gap-2">
@@ -109,7 +120,7 @@ export default function PainelTriagem({
                 <span className="min-w-0 text-sm leading-6">
                   <span className={`font-semibold ${COR_PRIORIDADE[item.nivel].texto}`}>{item.titulo}</span>
                   <span className="text-slate-700"> — {item.detalhe}</span>
-                  <span className="sr-only"> (nível {NOME_COR[item.nivel]})</span>
+                  <span className="sr-only"> (gravidade: {NOME_GRAVIDADE[item.nivel]})</span>
                 </span>
               </li>
             ))}
@@ -128,7 +139,7 @@ export default function PainelTriagem({
           </p>
         ))}
         <p className="text-[11px] leading-5 text-slate-400">
-          Sugestão por regras fixas (cores no padrão de classificação de risco). Não substitui o protocolo de acolhimento do seu serviço.
+          Os alertas leem os valores preenchidos por regras fixas e não classificam o paciente. A prioridade é sua, conforme o protocolo de acolhimento do seu serviço.
         </p>
       </div>
     </section>

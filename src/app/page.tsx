@@ -53,8 +53,8 @@ const NAV_LINKS = [
 
 const SHIFT_STEPS: { title: string; description: string; icon: IconType }[] = [
   {
-    title: "Caso e prioridade",
-    description: "Digite a queixa e os sinais vitais: prioridade sugerida, red flags clicáveis e conduta já contextualizados.",
+    title: "Caso e alertas",
+    description: "Digite a queixa e os sinais vitais: escores, alertas e red flags clicáveis na hora, conduta contextualizada e a prioridade definida por você.",
     icon: Search,
   },
   {

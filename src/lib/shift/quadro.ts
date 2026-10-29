@@ -181,14 +181,16 @@ export function statusReavaliacao(paciente: Pick<PacienteQuadro, "reavaliarEm">,
 }
 
 export function prioridadePaciente(paciente: PacienteQuadro): NivelPrioridade | null {
-  return prioridadeFinal(leituraDoCaso(paciente.caso).prioridade, paciente.caso.prioridadeManual);
+  return prioridadeFinal(paciente.caso.prioridadeManual);
 }
 
+/* Sem prioridade definida vem antes de todos: falta a avaliação do médico. */
 function rank(nivel: NivelPrioridade | null) {
-  return nivel ? ORDEM_PRIORIDADE.indexOf(nivel) : ORDEM_PRIORIDADE.length;
+  return nivel ? ORDEM_PRIORIDADE.indexOf(nivel) : -1;
 }
 
-/* Mais grave primeiro; no mesmo nível, reavaliação vencida e depois a mais próxima. */
+/* Prioridade a definir primeiro, depois a mais grave; no mesmo nível,
+   reavaliação vencida e depois a mais próxima. */
 export function ordenarPacientes(pacientes: PacienteQuadro[], agora = Date.now()) {
   const chaveTempo = (p: PacienteQuadro) => {
     const status = statusReavaliacao(p, agora);
@@ -247,7 +249,7 @@ export function textoPassagem(quadro: Quadro, agora = Date.now()) {
   const pacientes = ordenarPacientes(quadro.pacientes, agora);
   const cabecalho = [
     `PASSAGEM DE PLANTÃO - RESIBOOK (${pacientes.length} ${pacientes.length === 1 ? "paciente" : "pacientes"}) - ${horario(new Date(agora).toISOString())}`,
-    "Ordem: mais grave primeiro.",
+    "Ordem: prioridade a definir, depois a mais grave.",
   ];
   const blocos = pacientes.map((p, index) => {
     const caso = p.caso;

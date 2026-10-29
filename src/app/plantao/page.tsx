@@ -116,9 +116,9 @@ export default function PlantaoPage() {
       <ModulePageHeader
         eyebrow="Resibook Shift"
         title="Central de plantão"
-        description="O caso ativo no centro: prioridade sugerida pelos sinais vitais, etapas do atendimento e o kit da queixa com conduta, calculadoras e fluxogramas."
+        description="O caso ativo no centro: alertas dos sinais vitais, prioridade definida por você, etapas do atendimento e o kit da queixa com conduta, calculadoras e fluxogramas."
         badges={[
-          { label: "Prioridade automática", tone: "cyan" },
+          { label: "Alertas automáticos", tone: "cyan" },
           { label: "Etapas do atendimento", tone: "emerald" },
         ]}
         actions={

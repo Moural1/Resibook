@@ -1,8 +1,8 @@
 import { Check, CheckCheck } from "lucide-react";
 import type { SinalAlarme } from "@/lib/shift/queixas";
-import { COR_PRIORIDADE, NOME_COR } from "./prioridade";
+import { COR_PRIORIDADE, NOME_GRAVIDADE } from "./prioridade";
 
-/* Sinais de alarme da queixa como botões: marcar um sobe a prioridade. */
+/* Sinais de alarme da queixa como botões: marcar um gera um alerta no caso. */
 export default function SinaisAlarme({
   sinais,
   marcados,
@@ -63,7 +63,7 @@ export default function SinaisAlarme({
                   <span className={ativo ? `font-semibold ${cor.texto}` : "text-slate-800"}>{sinal.texto}</span>
                   {ativo && sinal.acao ? <span className="mt-0.5 block text-xs text-slate-600">{sinal.acao}</span> : null}
                 </span>
-                <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${cor.ponto}`} title={`Sugere ${NOME_COR[sinal.nivel].toLowerCase()}`} aria-hidden="true" />
+                <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${cor.ponto}`} title={`Gravidade: ${NOME_GRAVIDADE[sinal.nivel]}`} aria-hidden="true" />
               </button>
             </li>
           );

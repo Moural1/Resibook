@@ -123,7 +123,7 @@ function ComecarCaso() {
     <section className="rounded-[24px] border border-slate-200 bg-white p-4 md:p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Novo atendimento</p>
       <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Qual é a queixa?</h2>
-      <p className="mt-1 text-sm text-slate-500">Comece pela queixa: a prioridade, os sinais de alarme e o kit se montam a partir dela.</p>
+      <p className="mt-1 text-sm text-slate-500">Comece pela queixa: os sinais de alarme e o kit se montam a partir dela. A prioridade é você quem define.</p>
       <form
         className="mt-4 flex flex-col gap-2 sm:flex-row"
         onSubmit={(event) => {
@@ -165,7 +165,7 @@ function ComecarCaso() {
 function CasoAtivo({ caso }: { caso: ClinicalCaseSession }) {
   const leitura = useMemo(() => leituraDoCaso(caso), [caso]);
   const etapas = useMemo(() => etapasDoCaso(caso), [caso]);
-  const prioridade = prioridadeFinal(leitura.prioridade, caso.prioridadeManual);
+  const prioridade = prioridadeFinal(caso.prioridadeManual);
   const cor = prioridade ? COR_PRIORIDADE[prioridade] : null;
   const vitais = formatCaseVitals(caso);
 
