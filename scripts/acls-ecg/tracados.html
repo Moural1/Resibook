@@ -1,0 +1,69 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#fff}svg{display:block;margin:0 0 20px}</style></head><body>
+<!-- Traçados sintéticos do eBook ACLS: papel de 25 mm/s e 10 mm/mV. Gerados por render.mjs. -->
+<script>
+const PX_MM = 5, MM_S = 25, MM_MV = 10;
+const PX_S = PX_MM * MM_S, PX_MV = PX_MM * MM_MV;
+function rng(seed){ let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+const g = (t, c, w, a) => a * Math.exp(-((t - c) ** 2) / (2 * w * w));
+// Batimento: p = centro da onda P (ou null), q = início do QRS
+function beat(t, { p = null, q, wide = false, tInv = false, pAmp = 0.15, rAmp = 1.1 }) {
+  let v = 0;
+  if (p !== null) v += g(t, p, 0.025, pAmp);
+  if (q === null || q === undefined) return v;
+  if (wide) {
+    v += g(t, q + 0.05, 0.035, rAmp * 0.9) + g(t, q + 0.12, 0.04, -rAmp * 0.55);
+    v += g(t, q + 0.36, 0.07, tInv ? -0.35 : 0.3);
+  } else {
+    v += g(t, q, 0.008, -0.1) + g(t, q + 0.025, 0.011, rAmp) + g(t, q + 0.05, 0.011, -0.25);
+    v += g(t, q + 0.3, 0.05, tInv ? -0.25 : 0.28);
+  }
+  return v;
+}
+function sumBeats(t, beats) { let v = 0; for (const b of beats) if (Math.abs(t - (b.q ?? b.p)) < 1) v += beat(t, b); return v; }
+
+const RHYTHMS = {
+  // Bradicardia sinusal ~45 bpm
+  "image-06": { w: 602, h: 152, f: (D) => { const b = []; for (let x = 0.3; x < D; x += 1.33) b.push({ p: x, q: x + 0.16 }); return (t) => sumBeats(t, b); } },
+  // BAV 1º grau: PR 0,32 s
+  "image-05": { w: 602, h: 124, f: (D) => { const b = []; for (let x = 0.2; x < D; x += 0.9) b.push({ p: x, q: x + 0.32 }); return (t) => sumBeats(t, b); } },
+  // Mobitz I: PR alonga até um P bloqueado
+  "image-07": { w: 602, h: 173, f: (D) => { const b = []; const prs = [0.16, 0.27, 0.35, null]; let i = 0; for (let x = 0.15; x < D; x += 0.72, i++) { const pr = prs[i % 4]; b.push({ p: x, q: pr === null ? null : x + pr }); } return (t) => sumBeats(t, b); } },
+  // Mobitz II: PR fixo, 1 em cada 3 P bloqueado
+  "image-08": { w: 602, h: 151, f: (D) => { const b = []; let i = 0; for (let x = 0.15; x < D; x += 0.75, i++) b.push({ p: x, q: i % 3 === 2 ? null : x + 0.18 }); return (t) => sumBeats(t, b); } },
+  // BAVT: P a 85 bpm dissociado de escape ventricular largo a 38 bpm
+  "image-09": { w: 602, h: 124, f: (D) => { const b = []; for (let x = 0.1; x < D; x += 0.7) b.push({ p: x, q: null }); for (let x = 0.55; x < D; x += 1.58) b.push({ q: x, wide: true, tInv: true }); return (t) => sumBeats(t, b); } },
+  // Taquicardia sinusal ~125 bpm
+  "image-10": { w: 213, h: 111, f: (D) => { const b = []; for (let x = 0.12; x < D; x += 0.48) b.push({ p: x, q: x + 0.13 }); return (t) => sumBeats(t, b); } },
+  // Flutter: ondas F a 300/min, condução 4:1
+  "image-11": { w: 338, h: 106, f: (D) => { const b = []; for (let x = 0.25; x < D; x += 0.8) b.push({ q: x, rAmp: 1.0 }); const saw = (t) => { const ph = (t % 0.2) / 0.2; return ph < 0.75 ? 0.12 - (ph / 0.75) * 0.3 : -0.18 + ((ph - 0.75) / 0.25) * 0.3; }; return (t) => saw(t) + sumBeats(t, b); } },
+  // TPSV ~180 bpm, sem P visível
+  "image-12": { w: 469, h: 154, f: (D) => { const b = []; for (let x = 0.1; x < D; x += 0.33) b.push({ q: x }); return (t) => sumBeats(t, b).valueOf(); } },
+  // TV monomórfica ~170 bpm
+  "image-13": { w: 576, h: 192, f: (D) => { const b = []; for (let x = 0.05; x < D; x += 0.35) b.push({ q: x, wide: true, rAmp: 1.5, tInv: true }); return (t) => sumBeats(t, b); } },
+  // Torsades: amplitude que cresce e diminui, eixo girando
+  "image-14": { w: 602, h: 179, f: () => (t) => 1.1 * Math.sin(2 * Math.PI * t / 2.4) * Math.sin(2 * Math.PI * 4.2 * t) + 0.12 * Math.sin(2 * Math.PI * 8.4 * t + 1) },
+  // FA: RR irregular, linha de base fibrilatória, sem P
+  "image-15": { w: 602, h: 96, f: (D) => { const r = rng(7); const b = []; for (let x = 0.2; x < D; x += 0.42 + r() * 0.55) b.push({ q: x, rAmp: 0.9 }); return (t) => 0.05 * Math.sin(2 * Math.PI * 6.3 * t) + 0.04 * Math.sin(2 * Math.PI * 8.9 * t + 1.3) + 0.03 * Math.sin(2 * Math.PI * 11.7 * t + 0.4) + sumBeats(t, b); } },
+  // FV grossa, caótica
+  "image-16": { w: 602, h: 181, f: () => { const r = rng(11); const comps = Array.from({ length: 7 }, () => ({ f: 3.5 + r() * 4.5, a: 0.15 + r() * 0.3, ph: r() * 6.28 })); return (t) => comps.reduce((s, c) => s + c.a * Math.sin(2 * Math.PI * c.f * t + c.ph), 0) * (0.75 + 0.25 * Math.sin(2 * Math.PI * t / 1.7)); } },
+  // TV sem pulso ~200 bpm
+  "image-25": { w: 519, h: 174, f: (D) => { const b = []; for (let x = 0.05; x < D; x += 0.3) b.push({ q: x, wide: true, rAmp: 1.6, tInv: true }); return (t) => sumBeats(t, b); } },
+  // Assistolia: linha quase reta
+  "image-26": { w: 602, h: 175, f: () => { const r = rng(3); const comps = Array.from({ length: 3 }, () => ({ f: 0.2 + r() * 0.5, a: 0.015 + r() * 0.02, ph: r() * 6.28 })); return (t) => comps.reduce((s, c) => s + c.a * Math.sin(2 * Math.PI * c.f * t + c.ph), 0); } },
+  // AESP: ritmo organizado (sinusal) sem pulso
+  "image-27": { w: 602, h: 197, f: (D) => { const b = []; for (let x = 0.2; x < D; x += 0.82) b.push({ p: x, q: x + 0.16 }); return (t) => sumBeats(t, b); } },
+  // AESP: ritmo idioventricular lento
+  "image-28": { w: 602, h: 140, f: (D) => { const b = []; for (let x = 0.4; x < D; x += 1.5) b.push({ q: x, wide: true, rAmp: 0.9 }); return (t) => sumBeats(t, b); } },
+};
+
+for (const [id, cfg] of Object.entries(RHYTHMS)) {
+  const { w, h } = cfg; const D = w / PX_S; const fn = cfg.f(D);
+  const base = h * 0.6;
+  let grid = "";
+  for (let x = 0; x <= w; x += PX_MM) grid += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="${(x / PX_MM) % 5 === 0 ? "#f0a8b0" : "#fbd9dd"}" stroke-width="${(x / PX_MM) % 5 === 0 ? 0.9 : 0.5}"/>`;
+  for (let y = 0; y <= h; y += PX_MM) grid += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="${(y / PX_MM) % 5 === 0 ? "#f0a8b0" : "#fbd9dd"}" stroke-width="${(y / PX_MM) % 5 === 0 ? 0.9 : 0.5}"/>`;
+  let d = "";
+  for (let x = 0; x <= w; x += 0.5) { const y = base - fn(x / PX_S) * PX_MV; d += (x === 0 ? "M" : "L") + x.toFixed(1) + " " + Math.max(2, Math.min(h - 2, y)).toFixed(2) + " "; }
+  document.body.insertAdjacentHTML("beforeend", `<svg id="${id}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg"><rect width="${w}" height="${h}" fill="#fff7f8"/>${grid}<path d="${d}" fill="none" stroke="#111827" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>`);
+}
+</script></body></html>
