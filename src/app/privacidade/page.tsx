@@ -1,4 +1,17 @@
+import Link from "next/link";
+import { SELLER } from "@/lib/legal/seller";
 import { PRIVACY_EMAIL } from "@/lib/support";
+
+const linkClass = "font-semibold text-emerald-700 underline-offset-2 hover:underline";
+
+const PROVIDERS = [
+  { name: "Supabase", role: "banco de dados, autenticação e armazenamento das contas e registros" },
+  { name: "Vercel", role: "hospedagem do site e métricas agregadas de uso, sem cookies" },
+  { name: "Mercado Pago", role: "processamento das assinaturas e pagamentos com cartão" },
+  { name: "Resend", role: "envio dos e-mails de confirmação de cadastro e de troca de senha" },
+  { name: "ImprovMX", role: "encaminhamento das mensagens enviadas aos e-mails de contato" },
+  { name: "OpenAI", role: "recursos de IA, somente com o texto desidentificado enviado pelo usuário" },
+];
 
 export default function PoliticaDePrivacidadePage() {
   return (
@@ -14,253 +27,234 @@ export default function PoliticaDePrivacidadePage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Última atualização: 03/07/2026
+            Última atualização: 29/10/2026
           </p>
         </div>
 
         <div className="mt-6 space-y-6 text-sm leading-7 text-slate-700">
-          <section>
+          <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <h2 className="text-xl font-semibold text-slate-900">
-              1. Objetivo desta política
+              1. Quem trata os dados
             </h2>
             <p className="mt-2">
-              Esta Política de Privacidade explica como o ResiBook trata dados
-              pessoais e dados sensíveis inseridos no sistema por seus usuários,
-              especialmente informações relacionadas a pacientes, prontuários,
-              prescrições e evoluções clínicas.
+              O ResiBook é oferecido por {SELLER.name}, {SELLER.city}, que atua
+              como <strong>controlador</strong> dos dados da conta do usuário e
+              como <strong>encarregado</strong> pelo tratamento de dados pessoais
+              (LGPD, art. 41). Identificação completa nos{" "}
+              <Link href="/termos#fornecedor" className={linkClass}>Termos de Uso</Link>.
+              Contato do encarregado:{" "}
+              <a href={`mailto:${PRIVACY_EMAIL}`} className={linkClass}>{PRIVACY_EMAIL}</a>.
+            </p>
+            <p className="mt-2">
+              Nos <strong>dados de pacientes</strong> que o usuário registra, o
+              usuário (profissional de saúde) é o controlador e o ResiBook atua
+              como <strong>operador</strong>: armazena e protege esses dados em
+              nome do usuário, apenas para as finalidades do sistema.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              2. Dados que podem ser tratados
+              2. Dados tratados
+            </h2>
+            <p className="mt-2 font-semibold text-slate-900">Da conta do usuário</p>
+            <ul className="mt-1 list-disc space-y-1 pl-6">
+              <li>nome, e-mail e senha (guardada de forma cifrada, nunca em texto);</li>
+              <li>aceite dos Termos e da Política, com data e versão;</li>
+              <li>plano, situação da assinatura e datas de cobrança;</li>
+              <li>no Pix manual: nome de identificação, valor e situação da conferência;</li>
+              <li>registros de acesso (e-mail, data, hora e navegador);</li>
+              <li>marcações de estudo, como flashcards e agendamento de revisões.</li>
+            </ul>
+            <p className="mt-3 font-semibold text-slate-900">Registrados pelo usuário sobre pacientes</p>
+            <ul className="mt-1 list-disc space-y-1 pl-6">
+              <li>dados cadastrais, como nome, idade, sexo, telefone e convênio, quando preenchidos;</li>
+              <li>dados de saúde: queixa, história, exame físico, hipóteses, condutas, evoluções e prescrições.</li>
+            </ul>
+            <p className="mt-3 font-semibold text-slate-900">Técnicos</p>
+            <ul className="mt-1 list-disc space-y-1 pl-6">
+              <li>métricas agregadas de páginas visitadas, sem cookies e sem parâmetros de busca;</li>
+              <li>registros de erro do navegador, com e-mails, documentos e identificadores removidos.</li>
+            </ul>
+            <p className="mt-2">
+              O ResiBook não recebe nem armazena dados de cartão: eles são
+              coletados diretamente pelo Mercado Pago.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              3. Para que e com qual base legal
+            </h2>
+            <ul className="mt-2 list-disc space-y-1 pl-6">
+              <li>
+                <strong>Prestar o serviço contratado</strong> (login, separação
+                de dados por usuário, assinatura, suporte): execução de contrato
+                (LGPD, art. 7º, V).
+              </li>
+              <li>
+                <strong>Segurança e prevenção de fraude</strong> (registros de
+                acesso, bloqueio de contas, erros técnicos): legítimo interesse
+                (art. 7º, IX) e guarda de registros de acesso exigida pelo Marco
+                Civil da Internet (Lei 12.965/2014, art. 15).
+              </li>
+              <li>
+                <strong>Obrigações fiscais e legais</strong> sobre pagamentos:
+                cumprimento de obrigação legal (art. 7º, II).
+              </li>
+              <li>
+                <strong>Dados de saúde de pacientes</strong>: tratados por
+                decisão do profissional, que define a base legal, em geral a
+                tutela da saúde por profissional de saúde (art. 11, II, f).
+              </li>
+            </ul>
+            <p className="mt-2">
+              Os dados não são vendidos, não são usados para publicidade e não
+              são usados para treinar modelos de IA.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              4. Com quem os dados são compartilhados
             </h2>
             <p className="mt-2">
-              O ResiBook pode armazenar os seguintes tipos de informação:
+              Somente com os fornecedores técnicos necessários para o sistema
+              funcionar, cada um limitado à sua função:
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-6">
-              <li>dados de conta do usuário, como e-mail de login;</li>
-              <li>plano contratado, situação da assinatura e datas de cobrança;</li>
-              <li>dados cadastrais de pacientes, como nome, idade, sexo e telefone;</li>
-              <li>dados de plano de saúde ou carteirinha, quando preenchidos;</li>
-              <li>dados clínicos, como queixa, HMA, HPP e medicamentos em uso;</li>
-              <li>exame físico, hipótese diagnóstica, condutas e observações;</li>
-              <li>evoluções, anotações, prescrições e documentos vinculados;</li>
-              <li>logs de acesso, como e-mail, data, hora e navegador utilizado;</li>
-              <li>marcações pessoais do usuário, como flashcards difíceis e o agendamento das revisões;</li>
-              <li>métricas agregadas de uso (páginas visitadas, sem cookies, sem parâmetros de busca e com identificadores mascarados);</li>
-              <li>registros técnicos de erro do navegador, com e-mails, documentos e identificadores removidos.</li>
-              <li>casos clínicos desidentificados enviados voluntariamente a recursos de IA.</li>
+              {PROVIDERS.map((provider) => (
+                <li key={provider.name}>
+                  <strong>{provider.name}:</strong> {provider.role};
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2">
+              Alguns desses fornecedores mantêm servidores fora do Brasil. A
+              transferência internacional ocorre para executar o serviço
+              contratado e com fornecedores que adotam cláusulas contratuais e
+              padrões de segurança compatíveis com a LGPD (art. 33).
+            </p>
+            <p className="mt-2">
+              Os dados também podem ser fornecidos a autoridades quando houver
+              ordem judicial ou obrigação legal.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              5. Inteligência artificial
+            </h2>
+            <p className="mt-2">
+              Quando o usuário usa um recurso de IA, somente o texto do caso que
+              ele escreveu é enviado ao provedor, sem o nome do paciente. O
+              sistema bloqueia padrões de CPF, CNS, telefone e e-mail, mas o
+              usuário continua responsável por remover outros identificadores.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              6. Segurança
+            </h2>
+            <ul className="mt-2 list-disc space-y-1 pl-6">
+              <li>conexão cifrada (HTTPS) em todo o site;</li>
+              <li>login individual e confirmação de e-mail no cadastro;</li>
+              <li>separação dos dados por usuário com regras no próprio banco de dados (Row Level Security);</li>
+              <li>acesso administrativo restrito à conta do responsável pelo sistema;</li>
+              <li>bloqueio de contas em caso de uso indevido.</li>
+            </ul>
+            <p className="mt-2">
+              Em caso de incidente de segurança que possa causar risco ou dano
+              relevante, os titulares afetados e a Autoridade Nacional de
+              Proteção de Dados (ANPD) serão comunicados (LGPD, art. 48).
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              7. Cookies
+            </h2>
+            <p className="mt-2">
+              O ResiBook usa apenas cookies essenciais de sessão, necessários
+              para manter o login. Não usa cookies de publicidade nem de
+              rastreamento.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              8. Por quanto tempo os dados ficam guardados
+            </h2>
+            <ul className="mt-2 list-disc space-y-1 pl-6">
+              <li>dados da conta e registros do usuário: enquanto a conta existir;</li>
+              <li>após o pedido de exclusão da conta: apagados em até 30 dias;</li>
+              <li>registros de acesso: no mínimo 6 meses, como exige o Marco Civil da Internet;</li>
+              <li>dados de pagamento: pelo prazo exigido pela legislação fiscal.</li>
+            </ul>
+            <p className="mt-2">
+              Antes de excluir a conta, o usuário pode baixar uma cópia completa
+              dos seus dados em Dados da conta. Registros clínicos podem ter
+              prazos de guarda próprios definidos pelas normas profissionais,
+              que são responsabilidade do usuário.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              9. Seus direitos
+            </h2>
+            <p className="mt-2">
+              O titular pode pedir, a qualquer momento: confirmação de que há
+              tratamento, acesso, correção, anonimização, bloqueio ou eliminação
+              de dados desnecessários, portabilidade, informação sobre
+              compartilhamento, revogação de consentimento e exclusão da conta
+              (LGPD, art. 18).
+            </p>
+            <p className="mt-2">
+              Peça pelo e-mail{" "}
+              <a href={`mailto:${PRIVACY_EMAIL}`} className={linkClass}>{PRIVACY_EMAIL}</a>,
+              a partir do e-mail da conta. A resposta é dada em até 15 dias. O
+              titular também pode reclamar à ANPD.
+            </p>
+            <p className="mt-2">
+              Pedidos de pacientes sobre dados registrados por um profissional
+              são encaminhados a esse profissional, que é o controlador desses
+              dados.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">
+              10. Responsabilidade do usuário
+            </h2>
+            <ul className="mt-2 list-disc space-y-1 pl-6">
+              <li>manter sigilo da senha e não compartilhar a conta;</li>
+              <li>cadastrar apenas dados de pacientes necessários e adequados;</li>
+              <li>não colocar dados identificáveis de pacientes em conteúdos compartilhados;</li>
+              <li>guardar em local seguro arquivos exportados ou impressos;</li>
+              <li>cumprir os deveres éticos e legais da profissão.</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              3. Dados pessoais sensíveis
+              11. Alterações desta política
             </h2>
             <p className="mt-2">
-              Informações de saúde são consideradas dados pessoais sensíveis.
-              Por isso, o usuário deve cadastrar tais informações apenas quando
-              houver fundamento adequado, autorização, dever profissional,
-              finalidade assistencial, organizacional ou justificativa legal
-              compatível.
+              Esta política pode ser atualizada. Quando houver mudança
+              relevante, o novo texto será apresentado no próximo acesso para
+              aceite.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">
-              4. Finalidades do tratamento
+              12. Contato
             </h2>
             <p className="mt-2">
-              Os dados podem ser utilizados para:
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-6">
-              <li>permitir login e autenticação de usuários;</li>
-              <li>organizar pacientes por usuário;</li>
-              <li>registrar prontuários, evoluções, prescrições e condutas;</li>
-              <li>permitir impressão/exportação de documentos clínicos;</li>
-              <li>separar dados privados de cada usuário;</li>
-              <li>melhorar a navegação e segurança do sistema;</li>
-              <li>registrar acessos para auditoria básica;</li>
-              <li>bloquear usuários quando necessário.</li>
-              <li>processar a contratação e controlar o acesso ao plano escolhido.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              5. Separação de dados por usuário
-            </h2>
-            <p className="mt-2">
-              O ResiBook utiliza autenticação e regras de segurança no banco de
-              dados para que pacientes, prescrições e evoluções fiquem
-              vinculados ao usuário que os cadastrou.
-            </p>
-            <p className="mt-2">
-              Usuários comuns não devem visualizar pacientes, prescrições ou
-              evoluções cadastrados por outros usuários.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              6. Conteúdos compartilhados
-            </h2>
-            <p className="mt-2">
-              Algumas bases do sistema podem ser compartilhadas entre usuários,
-              como CIDs, tópicos médicos, modelos de exames, modelos de
-              prescrição e flashcards gerais. Esses conteúdos não devem conter
-              dados identificáveis de pacientes.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              7. Medidas de segurança
-            </h2>
-            <p className="mt-2">
-              O ResiBook adota medidas técnicas e organizacionais para proteger
-              os dados, incluindo:
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-6">
-              <li>login individual por usuário;</li>
-              <li>controle de sessão;</li>
-              <li>separação de dados por identificador do usuário;</li>
-              <li>Row Level Security no banco de dados;</li>
-              <li>restrição de acesso ao usuário convidado;</li>
-              <li>logs de acesso;</li>
-              <li>bloqueio administrativo de usuários;</li>
-              <li>conexão segura por HTTPS no ambiente de hospedagem.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              8. Compartilhamento de dados
-            </h2>
-            <p className="mt-2">
-              O ResiBook não tem como finalidade vender, divulgar ou compartilhar
-              dados de pacientes com terceiros. Os dados podem ser processados
-              por serviços técnicos necessários ao funcionamento do sistema,
-              como hospedagem, autenticação e banco de dados.
-            </p>
-            <p className="mt-2">
-              O usuário é responsável por qualquer exportação, impressão,
-              compartilhamento externo ou uso clínico dos dados que cadastrar.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              9. Backup e exportação
-            </h2>
-            <p className="mt-2">
-              O sistema pode permitir exportação ou backup dos dados. O usuário
-              deve armazenar arquivos exportados em local seguro, especialmente
-              quando contiverem dados clínicos ou informações identificáveis de
-              pacientes.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              9.1. Processamento por inteligência artificial
-            </h2>
-            <p className="mt-2">
-              Quando o recurso de IA estiver habilitado, o texto desidentificado
-              do caso poderá ser enviado ao provedor técnico configurado para gerar
-              a resposta. O sistema bloqueia padrões de CPF, CNS, telefone e e-mail,
-              mas o usuário continua responsável por remover outros identificadores.
-            </p>
-            <p className="mt-2">
-              Para processar assinaturas, o e-mail da conta, o plano escolhido e
-              uma referência interna do usuário são enviados ao Mercado Pago. Os
-              dados do cartão e demais dados financeiros são coletados e tratados
-              diretamente pelo provedor de pagamento, não pelo ResiBook.
-            </p>
-            <p className="mt-2">
-              No Pix manual, o ResiBook registra usuário, plano, valor, e-mail,
-              nome de identificação e situação da conferência. O comprovante é
-              enviado pelo canal de suporte e deve conter apenas os dados
-              necessários para confirmar o pagamento.
-            </p>
-            <p className="mt-2">
-              O vínculo interno com um paciente, quando utilizado, serve apenas para
-              organização e validação de acesso e não inclui automaticamente o nome
-              do paciente no texto enviado à IA.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              10. Retenção e exclusão
-            </h2>
-            <p className="mt-2">
-              Os dados podem permanecer armazenados enquanto a conta estiver
-              ativa ou enquanto forem necessários para as finalidades do sistema.
-              O usuário pode solicitar exclusão ou correção de dados, observadas
-              eventuais obrigações profissionais, legais ou éticas relacionadas
-              a registros médicos.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              11. Direitos dos titulares
-            </h2>
-            <p className="mt-2">
-              Nos termos da legislação aplicável, titulares de dados podem ter
-              direitos como confirmação de tratamento, acesso, correção,
-              anonimização, bloqueio, eliminação, informação sobre
-              compartilhamento e revogação de consentimento quando aplicável.
-            </p>
-            <p className="mt-2">
-              Solicitações relacionadas a dados de pacientes devem ser avaliadas
-              considerando a responsabilidade profissional do usuário que
-              cadastrou as informações.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              12. Responsabilidade do usuário
-            </h2>
-            <p className="mt-2">
-              O usuário é responsável por:
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-6">
-              <li>manter sigilo de sua senha;</li>
-              <li>não compartilhar sua conta;</li>
-              <li>cadastrar apenas dados necessários e adequados;</li>
-              <li>revisar informações antes de imprimir ou exportar;</li>
-              <li>guardar arquivos exportados em local seguro;</li>
-              <li>cumprir deveres éticos, profissionais e legais aplicáveis.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              13. Alterações desta política
-            </h2>
-            <p className="mt-2">
-              Esta Política de Privacidade poderá ser atualizada periodicamente
-              para refletir mudanças no sistema, melhorias de segurança,
-              alterações legais ou novas funcionalidades.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-slate-900">
-              14. Contato
-            </h2>
-            <p className="mt-2">
-              Dúvidas, solicitações de privacidade ou pedidos relacionados a
-              dados pessoais, incluindo acesso, correção, portabilidade ou
-              exclusão, devem ser enviados para{" "}
-              <a href={`mailto:${PRIVACY_EMAIL}`} className="font-semibold text-emerald-700 underline-offset-2 hover:underline">
-                {PRIVACY_EMAIL}
-              </a>
-              .
+              Encarregado pelo tratamento de dados:{" "}
+              <a href={`mailto:${PRIVACY_EMAIL}`} className={linkClass}>{PRIVACY_EMAIL}</a>.
             </p>
           </section>
         </div>
