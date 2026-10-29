@@ -7,28 +7,30 @@ import { createClient } from "@/lib/supabase/client";
 import CopyButton from "../../components/copy-button";
 import ModulePageHeader from "@/components/module-page-header";
 import ClinicalText from "@/components/clinical-text";
+import RelatedFlashcards from "@/components/related-flashcards";
 import { canonicalArea, formatClinicalTitle, isTechnicalSourceLabel } from "@/lib/clinical-text";
+import { relatedCardsForTopic, templatesForTopic, type LinkTemplate } from "@/lib/clinical-links";
 import NoResultSearchLogger from "@/components/no-result-search-logger";
 import ResibookGuard from "@/components/resibook-guard";
-import { getSearchScore } from "@/lib/search";
-import {
-  findQuickComplaint,
-  QUICK_COMPLAINTS,
-  type QuickComplaint,
-} from "@/lib/clinical-quick-complaints";
+import { getSearchScore, rankSearchResults } from "@/lib/search";
+import { findQuickComplaint, QUICK_COMPLAINTS } from "@/lib/clinical-quick-complaints";
 import {
   ArrowLeft,
-  ArrowUpRight,
+  ArrowRight,
+  BookOpen,
+  Building2,
   ChevronDown,
-  ClipboardList,
+  ChevronRight,
   FileText,
+  FlaskConical,
   Gauge,
   Lock,
+  Pill,
   Search,
-  ShieldAlert,
-  Stethoscope,
+  Siren,
   Tags,
   Trash2,
+  X,
 } from "lucide-react";
 
 type Flashcard = {
@@ -45,6 +47,29 @@ type MarkRow = {
   flashcard_id: string;
   dificil: boolean | null;
 };
+
+// Conduta por problema clínico: vem dos temas (topicos_medicos), na ordem em
+// que se decide no atendimento.
+type Tema = {
+  id: number;
+  area: string;
+  titulo: string;
+  resumo: string | null;
+  exames: string | null;
+  tratamento: string | null;
+  conduta_urgencia: string | null;
+  internacao_referencia: string | null;
+  tags: string | null;
+};
+
+type Tab = "temas" | "marcados";
+
+const CONDUCT_SECTIONS = [
+  { key: "conduta_urgencia", title: "Na urgência", icon: Siren, tone: "rose" },
+  { key: "tratamento", title: "Tratamento", icon: Pill, tone: "plain" },
+  { key: "internacao_referencia", title: "Internação e encaminhamento", icon: Building2, tone: "amber" },
+  { key: "exames", title: "Exames", icon: FlaskConical, tone: "plain" },
+] as const;
 
 const GUEST_EMAIL = "convidado@resibook.com";
 
@@ -112,16 +137,6 @@ function buildPreview(value?: string | null) {
   return firstLine.length > 170 ? `${firstLine.slice(0, 170).trim()}...` : firstLine;
 }
 
-function findComplaintForQuery(query: string) {
-  return findQuickComplaint(query);
-}
-
-function buildModuleHref(path: string, query: string) {
-  const clean = query.trim();
-
-  return clean ? `${path}?q=${encodeURIComponent(clean)}` : path;
-}
-
 function rankConductsByClinicalSearch(items: Flashcard[], query: string) {
   if (!query.trim()) return items;
 
@@ -160,214 +175,6 @@ function looksLikeHeading(line: string) {
 
 function renderConductBody(value?: string | null) {
   return <ClinicalText value={value} emptyText="Sem conduta preenchida." size="lg" />;
-}
-
-function PlantaoCommandCenter({
-  query,
-  selectedArea,
-  total,
-  showing,
-  activeComplaint,
-  onPickComplaint,
-  onClear,
-}: {
-  query: string;
-  selectedArea: string;
-  total: number;
-  showing: number;
-  activeComplaint: QuickComplaint | null;
-  onPickComplaint: (complaint: QuickComplaint) => void;
-  onClear: () => void;
-}) {
-  const workingQuery = activeComplaint?.title || query.trim();
-  const relatedTerms = activeComplaint?.terms.slice(0, 8) || [];
-  const hasContext = Boolean(workingQuery);
-  const moduleLinks = [
-    {
-      href: buildModuleHref("/caso-rapido", workingQuery),
-      label: "Caso rápido",
-      description: "Montar abordagem inicial.",
-      icon: Gauge,
-    },
-    {
-      href: buildModuleHref("/prescricao", workingQuery),
-      label: "Prescrição",
-      description: "Abrir modelos e histórico.",
-      icon: ClipboardList,
-    },
-    {
-      href: buildModuleHref("/exames-evolucao", workingQuery),
-      label: "Exames / evolução",
-      description: "Buscar blocos reutilizáveis.",
-      icon: FileText,
-    },
-    {
-      href: buildModuleHref("/cids", workingQuery),
-      label: "CID",
-      description: "Consultar código relacionado.",
-      icon: Tags,
-    },
-  ];
-
-  return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f8fafc_100%)] p-5 md:p-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Plantão mode
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
-              Da queixa ao próximo passo
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Selecione uma queixa, revise as condutas marcadas e salte para
-              prescrição, exames ou CID mantendo o contexto da busca.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
-            <PlantaoStat label="Total" value={total} />
-            <PlantaoStat label="Exibindo" value={showing} />
-            <PlantaoStat label="Área" value={selectedArea ? "1" : "Todas"} />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 p-4 md:p-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Queixa em foco
-              </p>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
-                {activeComplaint?.title || (query ? query : "Escolha uma entrada rápida")}
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                {activeComplaint?.description ||
-                  "Use os atalhos abaixo ou digite no campo de busca para iniciar o fluxo."}
-              </p>
-            </div>
-
-            {hasContext ? (
-              <button
-                type="button"
-                onClick={onClear}
-                className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Limpar fluxo
-              </button>
-            ) : null}
-          </div>
-
-          {relatedTerms.length > 0 ? (
-            <div className="mt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Termos relacionados
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {relatedTerms.map((term) => (
-                  <span
-                    key={term}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600"
-                  >
-                    {term}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {moduleLinks.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="group rounded-2xl border border-slate-200 bg-white p-3 transition hover:border-slate-300 hover:shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-slate-500" />
-                  </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-950">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    {item.description}
-                  </p>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="rounded-[24px] border border-slate-200 bg-white p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600">
-              <ShieldAlert className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-950">
-                Checklist mental antes de copiar
-              </p>
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                Sinais vitais, gravidade, alergias, gestação, função renal/hepática,
-                medicações em uso e critérios de encaminhamento.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-2">
-            {QUICK_COMPLAINTS.slice(0, 6).map((complaint) => (
-              <button
-                key={complaint.title}
-                type="button"
-                onClick={() => onPickComplaint(complaint)}
-                className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
-                  activeComplaint?.title === complaint.title
-                    ? "border-slate-300 bg-slate-100"
-                    : "border-slate-200 bg-slate-50/70 hover:bg-white"
-                }`}
-              >
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-slate-900">
-                    {complaint.title}
-                  </span>
-                  <span className="mt-0.5 block truncate text-xs text-slate-500">
-                    {complaint.description}
-                  </span>
-                </span>
-                <Stethoscope className="h-4 w-4 shrink-0 text-slate-400" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function PlantaoStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-1 text-base font-semibold text-slate-950">{value}</p>
-    </div>
-  );
 }
 
 function ConductItem({
@@ -454,14 +261,28 @@ function ConductItem({
   );
 }
 
+function buildConductSheet(tema: Tema) {
+  return [
+    tema.titulo,
+    ...CONDUCT_SECTIONS.filter((section) => tema[section.key]).map((section) => `${section.title.toUpperCase()}\n${tema[section.key]}`),
+  ].join("\n\n");
+}
+
 export default function CondutasPage() {
   const supabase = createClient();
   const searchParams = useSearchParams();
 
+  const [tab, setTab] = useState<Tab>("temas");
+  const [temas, setTemas] = useState<Tema[]>([]);
+  const [allCards, setAllCards] = useState<Omit<Flashcard, "dificil">[]>([]);
+  const [templates, setTemplates] = useState<LinkTemplate[]>([]);
+  const [selectedTemaId, setSelectedTemaId] = useState<number | null>(null);
+  const [temaQuery, setTemaQuery] = useState("");
+  const [temaArea, setTemaArea] = useState("");
+
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
-  const [sessionReady, setSessionReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingIds, setSavingIds] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -470,28 +291,30 @@ export default function CondutasPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // ?busca= / ?q= (dashboard, Caso rápido, busca global), ?t= (Tópicos) e
+  // ?aba=marcados (lista antiga de cards marcados).
   useEffect(() => {
     const urlQuery = searchParams.get("busca") || searchParams.get("q") || "";
-
+    const urlTema = Number(searchParams.get("t"));
+    if (searchParams.get("aba") === "marcados") setTab("marcados");
     if (urlQuery) {
+      setTemaQuery(urlQuery);
       setQuery(urlQuery);
       setExpandedId(null);
     }
+    if (Number.isInteger(urlTema) && urlTema > 0) setSelectedTemaId(urlTema);
   }, [searchParams]);
 
-  async function loadCards() {
+  async function loadData() {
     setLoading(true);
     setError("");
     setSuccess("");
 
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
     if (sessionError) {
       setError(sessionError.message);
-      setCards([]);
       setLoading(false);
-      setSessionReady(true);
       return;
     }
 
@@ -502,66 +325,98 @@ export default function CondutasPage() {
 
     setCurrentUserId(userId);
     setIsGuest(guest);
-    setSessionReady(true);
 
-    if (!userId || guest) {
-      setCards([]);
-      setLoading(false);
-      return;
-    }
-
-    const [cardsRes, marksRes] = await Promise.all([
+    const [temasRes, cardsRes, templatesRes, marksRes] = await Promise.all([
+      supabase
+        .from("topicos_medicos")
+        .select("id, area, titulo, resumo, exames, tratamento, conduta_urgencia, internacao_referencia, tags")
+        .order("area", { ascending: true })
+        .order("titulo", { ascending: true }),
       supabase
         .from("flashcards")
         .select("id, area, materia, tipo, frente, verso")
         .order("area", { ascending: true, nullsFirst: false })
         .order("materia", { ascending: true, nullsFirst: false }),
-
-      supabase
-        .from("flashcard_user_marks")
-        .select("flashcard_id, dificil")
-        .eq("user_id", userId)
-        .eq("dificil", true),
+      supabase.from("prescription_templates").select("id, titulo, categoria"),
+      userId && !guest
+        ? supabase.from("flashcard_user_marks").select("flashcard_id, dificil").eq("user_id", userId).eq("dificil", true)
+        : Promise.resolve({ data: [] as MarkRow[], error: null }),
     ]);
 
-    if (cardsRes.error) {
-      setError(cardsRes.error.message);
-      setCards([]);
-      setLoading(false);
-      return;
-    }
+    const firstError = temasRes.error || cardsRes.error || marksRes.error;
+    if (firstError) setError(firstError.message);
 
-    if (marksRes.error) {
-      setError(marksRes.error.message);
-    }
+    setTemas((temasRes.data as Tema[]) || []);
+    setTemplates((templatesRes.data as LinkTemplate[]) || []);
+
+    const rows = ((cardsRes.data || []) as Omit<Flashcard, "dificil">[]).map((item) => ({ ...item, id: String(item.id) }));
+    setAllCards(rows);
 
     const difficultIds = new Set(
-      ((marksRes.data || []) as MarkRow[])
-        .filter((item) => item.dificil === true)
-        .map((item) => String(item.flashcard_id))
+      ((marksRes.data || []) as MarkRow[]).filter((item) => item.dificil === true).map((item) => String(item.flashcard_id))
     );
-
-    const mapped = ((cardsRes.data || []) as Omit<Flashcard, "dificil">[])
-      .map((item) => ({
-        ...item,
-        id: String(item.id),
-        dificil: difficultIds.has(String(item.id)),
-      }))
-      .filter((item) => item.dificil);
-
-    setCards(mapped);
+    setCards(rows.filter((item) => difficultIds.has(item.id)).map((item) => ({ ...item, dificil: true })));
     setLoading(false);
   }
 
   useEffect(() => {
-    loadCards();
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const temaAreas = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tema of temas) counts.set(tema.area, (counts.get(tema.area) || 0) + 1);
+    return Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
+  }, [temas]);
+
+  const filteredTemas = useMemo(() => {
+    const byArea = temas.filter((tema) => !temaArea || tema.area === temaArea);
+    return rankSearchResults(byArea, temaQuery, (tema) => [
+      { value: tema.titulo, weight: 10 },
+      { value: tema.tags, weight: 7 },
+      { value: tema.conduta_urgencia, weight: 4 },
+      { value: tema.tratamento, weight: 4 },
+      { value: tema.resumo, weight: 3 },
+      { value: tema.internacao_referencia, weight: 2 },
+      { value: tema.exames, weight: 1 },
+    ]);
+  }, [temas, temaArea, temaQuery]);
+
+  const groupedTemas = useMemo(() => {
+    const groups = new Map<string, Tema[]>();
+    for (const tema of filteredTemas) groups.set(tema.area, [...(groups.get(tema.area) || []), tema]);
+    return Array.from(groups.entries());
+  }, [filteredTemas]);
+
+  const selectedTema = temas.find((tema) => tema.id === selectedTemaId) ?? null;
+  const temaCards = useMemo(() => (selectedTema ? relatedCardsForTopic(selectedTema, allCards, 4) : []), [selectedTema, allCards]);
+  const temaTemplates = useMemo(() => (selectedTema ? templatesForTopic(selectedTema, templates) : []), [selectedTema, templates]);
+  const activeComplaint = useMemo(() => findQuickComplaint(temaQuery), [temaQuery]);
+
+  function selectTema(id: number | null) {
+    setSelectedTemaId(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("t", String(id));
+    else url.searchParams.delete("t");
+    url.searchParams.delete("busca");
+    url.searchParams.delete("q");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    if (id && window.matchMedia("(max-width: 1023px)").matches) window.scrollTo({ top: 0 });
+  }
+
+  function changeTab(next: Tab) {
+    setTab(next);
+    const url = new URL(window.location.href);
+    if (next === "marcados") url.searchParams.set("aba", "marcados");
+    else url.searchParams.delete("aba");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }
+
   const areas = useMemo(() => {
-    return Array.from(
-      new Set(cards.map((item) => canonicalArea(item.area)).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return Array.from(new Set(cards.map((item) => canonicalArea(item.area)).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, "pt-BR")
+    );
   }, [cards]);
 
   const filtered = useMemo(() => {
@@ -572,16 +427,6 @@ export default function CondutasPage() {
 
     return rankConductsByClinicalSearch(filteredByArea, query);
   }, [cards, query, selectedArea]);
-
-  const activeComplaint = useMemo(() => {
-    return findComplaintForQuery(query);
-  }, [query]);
-
-  function pickComplaint(complaint: QuickComplaint) {
-    setQuery(complaint.title);
-    setSelectedArea("");
-    setExpandedId(null);
-  }
 
   async function removeDificil(id: string) {
     if (!currentUserId) {
@@ -612,202 +457,392 @@ export default function CondutasPage() {
     } else {
       setCards((current) => current.filter((item) => item.id !== id));
       setExpandedId((current) => (current === id ? null : current));
-      setSuccess("Conduta removida da lista.");
+      setSuccess("Card removido da lista de marcados.");
     }
 
     setSavingIds((current) => current.filter((item) => item !== id));
   }
 
-  if (!loading && sessionReady && isGuest) {
-    return (
-      <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
-        <div className="mx-auto max-w-xl text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
-            <Lock className="h-5 w-5" />
-          </div>
-
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
-            Acesso restrito
-          </h1>
-
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            O modo convidado não pode acessar condutas individuais nem marcações
-            salvas na sua revisão.
-          </p>
-
-          <Link
-            href="/topicos"
-            className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white"
-          >
-            Ir para tópicos
-          </Link>
-        </div>
-      </section>
-    );
-  }
+  const continueLinks = selectedTema
+    ? [
+        { href: `/caso-rapido?busca=${encodeURIComponent(selectedTema.titulo)}`, label: "Caso rápido", icon: Gauge },
+        { href: `/exames-evolucao?q=${encodeURIComponent(selectedTema.titulo)}`, label: "Exames e evolução", icon: FileText },
+        { href: `/cids?q=${encodeURIComponent(selectedTema.titulo)}`, label: "CID", icon: Tags },
+        { href: `/topicos?t=${selectedTema.id}`, label: "Tópico completo", icon: BookOpen },
+      ]
+    : [];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="space-y-5">
       <ModulePageHeader
         eyebrow="Consulta rápida"
-        title="Condutas médicas"
-        description="Abra apenas a conduta que precisa revisar e encontre o manejo sem perder tempo em blocos extensos."
-        badges={[
-          { label: "Uso no plantão", tone: "cyan" },
-          { label: "Leitura objetiva", tone: "emerald" },
-        ]}
+        title="Condutas"
+        description="Manejo por problema clínico: o que fazer na urgência, o tratamento e quando internar ou encaminhar, com a prescrição pronta e os flashcards do tema."
+        badges={[{ label: "Uso no plantão", tone: "cyan" }]}
         metrics={[
-          { label: "Condutas", value: cards.length },
-          { label: "Exibindo", value: filtered.length },
-          { label: "Áreas", value: areas.length },
+          { label: "Temas", value: temas.length },
+          { label: "Áreas", value: temaAreas.length },
+          { label: "Cards marcados", value: isGuest ? "-" : cards.length },
         ]}
         error={error}
         success={success}
-        actions={
-          <Link
-            href="/flashcards"
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Flashcards
-          </Link>
-        }
       />
 
       <NoResultSearchLogger
-        term={query}
-        resultCount={filtered.length}
+        term={tab === "temas" ? temaQuery : query}
+        resultCount={tab === "temas" ? filteredTemas.length : filtered.length}
         loading={loading}
         context="condutas"
       />
       <ResibookGuard context="conduta" />
 
-      <PlantaoCommandCenter
-        query={query}
-        selectedArea={selectedArea}
-        total={cards.length}
-        showing={filtered.length}
-        activeComplaint={activeComplaint}
-        onPickComplaint={pickComplaint}
-        onClear={() => {
-          setQuery("");
-          setSelectedArea("");
-          setExpandedId(null);
-        }}
-      />
-
-      <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-        <div className="grid gap-3 md:grid-cols-[1fr_240px_auto]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por doença, exame, medicação ou manejo..."
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-            />
-          </div>
-
-          <select
-            value={selectedArea}
-            onChange={(event) => setSelectedArea(event.target.value)}
-            className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
-          >
-            <option value="">Todas as áreas</option>
-            {areas.map((area) => (
-              <option key={area} value={area}>
-                {formatLabel(area)}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setSelectedArea("");
-              setExpandedId(null);
-            }}
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Limpar
-          </button>
-        </div>
-      </section>
-
-      <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-        <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Queixas rápidas
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              Atalhos que já preenchem a busca por síndromes comuns do PA.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          {QUICK_COMPLAINTS.map((complaint) => (
+      <div role="tablist" aria-label="Condutas" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        {([
+          ["temas", "Por problema clínico", temas.length],
+          ["marcados", "Meus cards marcados", isGuest ? null : cards.length],
+        ] as const).map(([value, label, count]) => {
+          const active = tab === value;
+          return (
             <button
-              key={complaint.title}
+              key={value}
               type="button"
-              onClick={() => pickComplaint(complaint)}
-              className={`shrink-0 rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
-                activeComplaint?.title === complaint.title
-                  ? "border-slate-300 bg-slate-900 text-white"
-                  : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
+              role="tab"
+              aria-selected={active}
+              onClick={() => changeTab(value)}
+              className={`inline-flex h-9 items-center gap-2 rounded-lg px-3.5 text-sm font-semibold transition ${
+                active ? "bg-cyan-800 text-white" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {complaint.title}
+              {label}
+              {count !== null ? <span className={active ? "opacity-70" : "text-slate-400"}>{count}</span> : null}
             </button>
-          ))}
-        </div>
-      </section>
+          );
+        })}
+      </div>
 
-      {loading ? (
-        <section className="rounded-[24px] border border-slate-200 bg-white px-4 py-12 text-center text-sm font-medium text-slate-500 shadow-sm">
-          Carregando condutas médicas...
-        </section>
-      ) : filtered.length === 0 ? (
-        <section className="rounded-[24px] border border-dashed border-slate-300 bg-white px-4 py-12 text-center shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">
-            {cards.length === 0 ? "Sua lista de condutas está vazia" : "Nenhuma conduta encontrada"}
-          </h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
-            {cards.length === 0
-              ? "As condutas vêm dos flashcards que você marca como difíceis. Abra os Flashcards, marque os temas que quer ter à mão no plantão e eles aparecem aqui."
-              : "Nenhuma conduta corresponde a essa busca. Tente outro termo ou limpe os filtros."}
+      {tab === "temas" ? (
+        <div className="grid gap-5 lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] lg:items-start">
+          <aside className={`min-w-0 lg:sticky lg:top-24 ${selectedTema ? "hidden lg:block" : ""}`}>
+            <section className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+              <div className="space-y-3 border-b border-slate-200 p-3">
+                <label className="relative block">
+                  <span className="sr-only">Buscar conduta</span>
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={temaQuery}
+                    onChange={(event) => setTemaQuery(event.target.value)}
+                    placeholder="Doença, queixa ou medicamento"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-9 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-600 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                  />
+                  {temaQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setTemaQuery("")}
+                      aria-label="Limpar busca"
+                      className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </label>
+
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Queixas do PA</p>
+                  <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                    {QUICK_COMPLAINTS.map((complaint) => {
+                      const active = activeComplaint?.title === complaint.title;
+                      return (
+                        <button
+                          key={complaint.title}
+                          type="button"
+                          onClick={() => setTemaQuery(active ? "" : complaint.title)}
+                          aria-pressed={active}
+                          className={`inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-xs font-semibold transition ${
+                            active ? "border-cyan-800 bg-cyan-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {complaint.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                  {[["", "Todas", temas.length] as const, ...temaAreas.map(([area, count]) => [area, area, count] as const)].map(
+                    ([value, label, count]) => {
+                      const active = temaArea === value;
+                      return (
+                        <button
+                          key={value || "todas"}
+                          type="button"
+                          onClick={() => setTemaArea(value)}
+                          aria-pressed={active}
+                          className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition ${
+                            active ? "border-cyan-800 bg-cyan-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {label}
+                          <span className={active ? "opacity-70" : "text-slate-400"}>{count}</span>
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+
+              {loading ? (
+                <p className="px-4 py-10 text-center text-sm text-slate-500">Carregando condutas...</p>
+              ) : filteredTemas.length === 0 ? (
+                <div className="px-4 py-10 text-center">
+                  <p className="text-sm font-semibold text-slate-800">Nenhuma conduta encontrada</p>
+                  <p className="mt-1 text-xs text-slate-500">Tente outro termo ou mude a área.</p>
+                </div>
+              ) : (
+                <nav aria-label="Lista de condutas" className="lg:max-h-[calc(100vh-19rem)] lg:overflow-y-auto">
+                  {groupedTemas.map(([area, items]) => (
+                    <div key={area}>
+                      <p className="sticky top-0 z-[1] border-b border-slate-100 bg-slate-50/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 backdrop-blur">
+                        {area} · {items.length}
+                      </p>
+                      <ul>
+                        {items.map((tema) => {
+                          const active = tema.id === selectedTemaId;
+                          return (
+                            <li key={tema.id}>
+                              <button
+                                type="button"
+                                onClick={() => selectTema(tema.id)}
+                                aria-current={active ? "true" : undefined}
+                                className={`flex w-full items-start gap-2 border-l-2 px-4 py-2.5 text-left transition ${
+                                  active ? "border-cyan-700 bg-cyan-50/70" : "border-transparent hover:bg-slate-50"
+                                }`}
+                              >
+                                <span className="min-w-0 flex-1">
+                                  <span className={`block text-sm ${active ? "font-semibold text-slate-950" : "font-medium text-slate-800"}`}>
+                                    {tema.titulo}
+                                  </span>
+                                  {tema.conduta_urgencia ? (
+                                    <span className="mt-0.5 line-clamp-1 text-xs text-slate-500">{tema.conduta_urgencia}</span>
+                                  ) : null}
+                                </span>
+                                <ChevronRight className={`mt-0.5 h-4 w-4 shrink-0 ${active ? "text-cyan-700" : "text-slate-300"}`} />
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </nav>
+              )}
+            </section>
+          </aside>
+
+          <div className={`min-w-0 ${selectedTema ? "" : "hidden lg:block"}`}>
+            {selectedTema ? (
+              <article className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
+                <header className="border-b border-slate-200 p-5 md:p-7">
+                  <button
+                    type="button"
+                    onClick={() => selectTema(null)}
+                    className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-800 lg:hidden"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Voltar à lista
+                  </button>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-800">{selectedTema.area}</p>
+                  <h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{selectedTema.titulo}</h2>
+                  {selectedTema.resumo ? (
+                    <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-600">{selectedTema.resumo}</p>
+                  ) : null}
+
+                  <div className="mt-5 flex flex-wrap items-center gap-2">
+                    {temaTemplates[0] ? (
+                      <Link
+                        href={`/prescricao?modelo=${temaTemplates[0].id}`}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900"
+                      >
+                        <Pill className="h-4 w-4" />
+                        Prescrição pronta
+                      </Link>
+                    ) : null}
+                    <CopyButton text={buildConductSheet(selectedTema)} label="Copiar conduta" copiedLabel="Copiada" />
+                  </div>
+                </header>
+
+                <div className="divide-y divide-slate-100">
+                  {CONDUCT_SECTIONS.filter((section) => selectedTema[section.key]).map((section) => (
+                    <section
+                      key={section.key}
+                      className={`px-5 py-5 md:px-7 ${section.tone === "rose" ? "bg-rose-50/50" : section.tone === "amber" ? "bg-amber-50/50" : ""}`}
+                    >
+                      <h3
+                        className={`flex items-center gap-2 text-sm font-semibold ${
+                          section.tone === "rose" ? "text-rose-800" : section.tone === "amber" ? "text-amber-800" : "text-slate-900"
+                        }`}
+                      >
+                        <section.icon className="h-4 w-4" />
+                        {section.title}
+                      </h3>
+                      <div className="mt-2.5">
+                        <ClinicalText value={selectedTema[section.key]} />
+                      </div>
+                    </section>
+                  ))}
+                </div>
+
+                {temaTemplates.length ? (
+                  <div className="border-t border-slate-200 px-5 py-5 md:px-7">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                      <Pill className="h-4 w-4" />
+                      Modelos de prescrição do tema
+                    </h3>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {temaTemplates.map((template) => (
+                        <Link
+                          key={template.id}
+                          href={`/prescricao?modelo=${template.id}`}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-sm font-semibold text-cyan-900 transition hover:border-cyan-700/40"
+                        >
+                          {formatClinicalTitle(template.titulo)}
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {temaCards.length ? (
+                  <div className="border-t border-slate-200 px-5 py-5 md:px-7">
+                    <RelatedFlashcards cards={temaCards} moreHref={`/flashcards?tema=${selectedTema.id}`} />
+                  </div>
+                ) : null}
+
+                <div className="border-t border-slate-200 px-5 py-4 md:px-7">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Continuar com este tema</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {continueLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        <link.icon className="h-4 w-4 text-slate-500" />
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                <footer className="border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-500 md:px-7">
+                  Conteúdo de apoio: confira doses, alergias e protocolos do serviço antes de aplicar.
+                </footer>
+              </article>
+            ) : (
+              <section className="flex min-h-[420px] flex-col items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-white px-6 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-800">
+                  <Siren className="h-5 w-5" />
+                </span>
+                <h2 className="mt-4 text-lg font-semibold text-slate-900">Escolha um problema clínico</h2>
+                <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                  Busque pela doença ou pela queixa na lista ao lado. A conduta abre aqui, com urgência, tratamento, internação, prescrição pronta e flashcards do tema.
+                </p>
+              </section>
+            )}
+          </div>
+        </div>
+      ) : isGuest ? (
+        <section className="rounded-[20px] border border-amber-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+            <Lock className="h-5 w-5" />
+          </div>
+          <h2 className="mt-4 text-lg font-semibold text-slate-900">Disponível com conta própria</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-600">
+            O modo convidado não guarda marcações de flashcards. As condutas por problema clínico continuam abertas na outra aba.
           </p>
-          {cards.length === 0 ? (
-            <Link
-              href="/flashcards"
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Abrir Flashcards
-            </Link>
-          ) : null}
         </section>
       ) : (
-        <section className="space-y-3">
-          {filtered.map((item) => {
-            const savingItem = savingIds.includes(item.id);
-            const expanded = expandedId === item.id;
+        <div className="space-y-4">
+          <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm text-slate-600">
+              Cards que você marcou como difíceis nos Flashcards, para ter à mão no plantão.
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_240px_auto]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Buscar nos cards marcados"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-600 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                />
+              </div>
+              <select
+                value={selectedArea}
+                onChange={(event) => setSelectedArea(event.target.value)}
+                aria-label="Filtrar por área"
+                className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-cyan-600 focus:bg-white"
+              >
+                <option value="">Todas as áreas</option>
+                {areas.map((area) => (
+                  <option key={area} value={area}>
+                    {formatLabel(area)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setSelectedArea("");
+                  setExpandedId(null);
+                }}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Limpar
+              </button>
+            </div>
+          </section>
 
-            return (
-              <ConductItem
-                key={item.id}
-                item={item}
-                expanded={expanded}
-                saving={savingItem}
-                onToggle={() =>
-                  setExpandedId((current) => (current === item.id ? null : item.id))
-                }
-                onRemove={() => removeDificil(item.id)}
-              />
-            );
-          })}
-        </section>
+          {loading ? (
+            <section className="rounded-[20px] border border-slate-200 bg-white px-4 py-12 text-center text-sm font-medium text-slate-500 shadow-sm">
+              Carregando cards marcados...
+            </section>
+          ) : filtered.length === 0 ? (
+            <section className="rounded-[20px] border border-dashed border-slate-300 bg-white px-4 py-12 text-center shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {cards.length === 0 ? "Nenhum card marcado ainda" : "Nenhum card encontrado"}
+              </h2>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                {cards.length === 0
+                  ? "Nos Flashcards, marque como difícil o que quer ter à mão no plantão. Os cards marcados aparecem aqui."
+                  : "Nenhum card marcado corresponde a essa busca. Tente outro termo ou limpe os filtros."}
+              </p>
+              {cards.length === 0 ? (
+                <Link
+                  href="/flashcards"
+                  className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-cyan-800 px-5 text-sm font-semibold text-white transition hover:bg-cyan-900"
+                >
+                  Abrir Flashcards
+                </Link>
+              ) : null}
+            </section>
+          ) : (
+            <section className="space-y-3">
+              {filtered.map((item) => (
+                <ConductItem
+                  key={item.id}
+                  item={item}
+                  expanded={expandedId === item.id}
+                  saving={savingIds.includes(item.id)}
+                  onToggle={() => setExpandedId((current) => (current === item.id ? null : item.id))}
+                  onRemove={() => removeDificil(item.id)}
+                />
+              ))}
+            </section>
+          )}
+        </div>
       )}
     </div>
   );
