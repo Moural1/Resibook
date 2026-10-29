@@ -6167,7 +6167,7 @@ TC de controle antes de iniciar antitrombótico
 
 ✔ Idade ≥18 anos.
 
-O benefício é dependente do tempo: o tratamento não deve ser atrasado aguardando melhora espontânea nem exames que não sejam indispensáveis. ([professional.heart.org][1])
+O benefício é dependente do tempo: o tratamento não deve ser atrasado aguardando melhora espontânea nem exames que não sejam indispensáveis. (diretriz AHA/ASA)
 
 ---
 
@@ -6190,7 +6190,7 @@ Pode haver indicação em pacientes selecionados por neuroimagem avançada, como
 * incompatibilidade DWI–FLAIR na ressonância;
 * tecido cerebral potencialmente salvável em estudo de perfusão.
 
-Não trombolisar automaticamente apenas porque o paciente acordou com sintomas: é necessária seleção conforme protocolo de AVC. ([professional.heart.org][1])
+Não trombolisar automaticamente apenas porque o paciente acordou com sintomas: é necessária seleção conforme protocolo de AVC. (diretriz AHA/ASA)
 
 ---
 
@@ -6230,7 +6230,7 @@ Infusão:
 
 **56,7 mg em 60 minutos**
 
-A alteplase pode ser usada dentro de 3 horas e, em pacientes selecionados, entre 3 e 4,5 horas. ([professional.heart.org][1])
+A alteplase pode ser usada dentro de 3 horas e, em pacientes selecionados, entre 3 e 4,5 horas. (diretriz AHA/ASA)
 
 ---
 
@@ -6257,7 +6257,7 @@ Dose máxima:
 |   90 kg |     **22,5 mg** |
 | ≥100 kg |       **25 mg** |
 
-Pode ser utilizada conforme protocolo institucional, especialmente em pacientes também candidatos à trombectomia mecânica. Não utilizar o esquema de tenecteplase do IAM no AVC. ([professional.heart.org][1])
+Pode ser utilizada conforme protocolo institucional, especialmente em pacientes também candidatos à trombectomia mecânica. Não utilizar o esquema de tenecteplase do IAM no AVC. (diretriz AHA/ASA)
 
 ---
 
@@ -6277,7 +6277,7 @@ Manter:
 
 **<180/105 mmHg**
 
-durante pelo menos **24 horas**. ([AHA Journals][2])
+durante pelo menos **24 horas**. (diretriz AHA)
 
 ---
 
@@ -6345,7 +6345,7 @@ Máximo usual:
 * troponina;
 * radiografia de tórax.
 
-Se houver uso de anticoagulante, coagulopatia conhecida, trombocitopenia ou outra suspeita clínica, aguardar os exames pertinentes. ([professional.heart.org][1])
+Se houver uso de anticoagulante, coagulopatia conhecida, trombocitopenia ou outra suspeita clínica, aguardar os exames pertinentes. (diretriz AHA/ASA)
 
 ---
 
@@ -6393,7 +6393,7 @@ Se houver uso de anticoagulante, coagulopatia conhecida, trombocitopenia ou outr
 
 ❌ Dose terapêutica de heparina de baixo peso molecular nas últimas **24 horas**.
 
-❌ Uso recente de anticoagulante oral direto com efeito anticoagulante presumidamente ativo, salvo exclusão laboratorial validada ou reversão conforme protocolo especializado. A AHA contraindica alteplase após dose terapêutica plena de HBPM nas 24 horas anteriores. ([professional.heart.org][1])
+❌ Uso recente de anticoagulante oral direto com efeito anticoagulante presumidamente ativo, salvo exclusão laboratorial validada ou reversão conforme protocolo especializado. A AHA contraindica alteplase após dose terapêutica plena de HBPM nas 24 horas anteriores. (diretriz AHA/ASA)
 
 ---
 
@@ -6418,7 +6418,7 @@ Se houver uso de anticoagulante, coagulopatia conhecida, trombocitopenia ou outr
 * Idade avançada.
 * Demência ou incapacidade funcional prévia.
 
-**NIHSS baixo não exclui trombólise quando o déficit é incapacitante**, como afasia, hemianopsia, perda funcional da mão dominante ou incapacidade para deambular. Para déficit leve e não incapacitante, a alteplase não é recomendada rotineiramente. ([professional.heart.org][1])
+**NIHSS baixo não exclui trombólise quando o déficit é incapacitante**, como afasia, hemianopsia, perda funcional da mão dominante ou incapacidade para deambular. Para déficit leve e não incapacitante, a alteplase não é recomendada rotineiramente. (diretriz AHA/ASA)
 
 ---
 
@@ -6432,7 +6432,7 @@ Paciente elegível para trombólise IV e com suspeita de oclusão de grande vaso
 
 ✔ Não aguardar resposta clínica ao trombolítico antes de encaminhar para procedimento endovascular.
 
-✔ A trombólise não substitui a trombectomia quando esta estiver indicada. ([professional.heart.org][1])
+✔ A trombólise não substitui a trombectomia quando esta estiver indicada. (diretriz AHA/ASA)
 
 ---
 
@@ -6463,7 +6463,7 @@ Paciente elegível para trombólise IV e com suspeita de oclusão de grande vaso
 
 ✔ Realizar TC ou RNM de controle após **24 horas** antes de iniciar antitrombótico.
 
-O risco do uso de antitrombóticos nas primeiras 24 horas é incerto; a PA deve permanecer abaixo de 180/105 mmHg. ([professional.heart.org][1])
+O risco do uso de antitrombóticos nas primeiras 24 horas é incerto; a PA deve permanecer abaixo de 180/105 mmHg. (diretriz AHA/ASA)
 
 ---
 
@@ -6506,7 +6506,7 @@ Pode ocorrer após alteplase, principalmente em pacientes que utilizam IECA.
 * administrar tratamento para angioedema conforme gravidade;
 * preparar intubação precoce se houver progressão.
 
-A equipe deve estar preparada para tratar hemorragia e angioedema com comprometimento da via aérea. ([professional.heart.org][1])
+A equipe deve estar preparada para tratar hemorragia e angioedema com comprometimento da via aérea. (diretriz AHA/ASA)
 
 ---
 
