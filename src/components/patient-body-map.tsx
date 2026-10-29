@@ -9,6 +9,7 @@ import {
   Info,
   ScanLine,
 } from "lucide-react";
+import { abnormalExamSegments, matchExamRegions, matchRegions, type RegionId } from "@/lib/body-map-regions";
 
 type PatientBodyMapInput = {
   gestante?: boolean | null;
@@ -51,18 +52,6 @@ type Props = {
 };
 
 type BodyView = "front" | "back";
-type RegionId =
-  | "head"
-  | "chest"
-  | "abdomen"
-  | "pelvis"
-  | "leftArm"
-  | "rightArm"
-  | "leftLeg"
-  | "rightLeg"
-  | "spine"
-  | "kidneys";
-
 type Region = {
   id: RegionId;
   label: string;
@@ -95,78 +84,12 @@ const REGIONS: Region[] = [
   { id: "kidneys", label: "Região renal", view: "back", x: 59, y: 42 },
 ];
 
-const REGION_PATTERNS: Array<{ region: RegionId | RegionId[]; patterns: RegExp[] }> = [
-  {
-    region: ["leftLeg", "rightLeg"],
-    patterns: [/\bmmii\b|membros inferiores|ambas as pernas|\bpernas\b|bilateral(mente)? em (mmii|membros inferiores)/i],
-  },
-  {
-    region: ["leftArm", "rightArm"],
-    patterns: [/\bmmss\b|membros superiores|ambos os bra[cç]os/i],
-  },
-  {
-    region: "head",
-    patterns: [
-      /cefale|cabe[cç]a|enxaquec|migr[aâ]n|avc|convuls|epilep|vertig|tontur|neurol|pupila|facial/i,
-    ],
-  },
-  {
-    region: "chest",
-    patterns: [
-      /tor[aá]c|peito|card[ií]|coron|arrit|insufici[eê]ncia card|dispne|asma|dpoc|pneum|pulm|sibil|tosse|respirat/i,
-    ],
-  },
-  {
-    region: "abdomen",
-    patterns: [
-      /abdom|epigastr|gastr|[uú]lcera|hepat|f[ií]gad|pancre|intestinal|diarre|v[oô]mit|n[aá]use|colec|apend/i,
-    ],
-  },
-  {
-    region: "pelvis",
-    patterns: [
-      /p[eé]lv|gesta|gravidez|uter|ovar|ginecol|inguinal|bexiga|dis[uú]ria|urin[aá]r|pr[oó]stat/i,
-    ],
-  },
-  {
-    region: "spine",
-    patterns: [/lomb|coluna|dorsal|cervicalgia|ciatal|vertebr|dorso/i],
-  },
-  {
-    region: "kidneys",
-    patterns: [/renal|rim|rins|creatinin|di[aá]lise|nefro|flanco/i],
-  },
-  {
-    region: "leftArm",
-    patterns: [/(bra[cç]o|m[aã]o|ombro|cotovelo|membro superior).{0,20}(esquerd|e\b)/i],
-  },
-  {
-    region: "rightArm",
-    patterns: [/(bra[cç]o|m[aã]o|ombro|cotovelo|membro superior).{0,20}(direit|d\b)/i],
-  },
-  {
-    region: "leftLeg",
-    patterns: [/(perna|p[eé]|joelho|coxa|tornozelo|membro inferior).{0,20}(esquerd|e\b)/i],
-  },
-  {
-    region: "rightLeg",
-    patterns: [/(perna|p[eé]|joelho|coxa|tornozelo|membro inferior).{0,20}(direit|d\b)/i],
-  },
-];
-
 function cleanText(value?: string | null) {
   return (value || "").replace(/\s+/g, " ").trim();
 }
 
 function shorten(value: string, length = 130) {
   return value.length > length ? `${value.slice(0, length).trim()}…` : value;
-}
-
-function matchRegions(value: string) {
-  const regions = REGION_PATTERNS.filter(({ patterns }) =>
-    patterns.some((pattern) => pattern.test(value))
-  ).flatMap(({ region }) => region);
-  return [...new Set(regions)];
 }
 
 function buildFindings(
@@ -243,28 +166,37 @@ function buildFindings(
       });
     });
 
-  const baseRecords = [
-    {
-      id: "base-complaint",
-      label: "Queixa registrada",
-      value: patient.queixa_principal || patient.queixa,
-    },
-    { id: "base-exam", label: "Exame físico base", value: patient.exame_fisico },
-    { id: "base-hypothesis", label: "Hipótese diagnóstica base", value: patient.hipotese_diagnostica },
-    { id: "base-history", label: "Antecedente registrado", value: patient.hpp || patient.comorbidades },
+  // A queixa é o motivo do atendimento: aparece em destaque. No exame físico
+  // só contam os trechos com alteração ("MMII sem edema" não marca as pernas).
+  const baseRecords: Array<{
+    id: string;
+    label: string;
+    value?: string | null;
+    exam?: boolean;
+    priority: Finding["priority"];
+  }> = [
+    { id: "base-complaint", label: "Queixa principal", value: patient.queixa_principal || patient.queixa, priority: "attention" },
+    { id: "base-hma", label: "História da doença atual", value: patient.hma, priority: "information" },
+    { id: "base-exam", label: "Alteração no exame físico", value: patient.exame_fisico, exam: true, priority: "attention" },
+    { id: "base-hypothesis", label: "Hipótese diagnóstica", value: patient.hipotese_diagnostica, priority: "information" },
+    { id: "base-history", label: "Antecedente registrado", value: patient.hpp || patient.comorbidades, priority: "information" },
   ];
 
   baseRecords.forEach((record) => {
     const content = cleanText(record.value);
     if (!content) return;
-    matchRegions(content).forEach((region) => {
+    const regions = record.exam ? matchExamRegions(content) : matchRegions(content);
+    regions.forEach((region) => {
+      const detail = record.exam
+        ? abnormalExamSegments(content).filter((segment) => matchRegions(segment).includes(region)).join("; ")
+        : content;
       addFinding({
         id: `${record.id}-${region}`,
         region,
         label: record.label,
-        detail: shorten(content),
+        detail: shorten(detail || content),
         source: "Cadastro",
-        priority: "information",
+        priority: record.priority,
       });
     });
   });
@@ -279,15 +211,13 @@ function buildFindings(
 
   if (latestConsultation) {
     const consultationText = cleanText(
-      [
-        latestConsultation.queixa_principal,
-        latestConsultation.exame_fisico,
-        latestConsultation.hipotese_diagnostica,
-      ]
-        .filter(Boolean)
-        .join(" ")
+      [latestConsultation.queixa_principal, latestConsultation.hipotese_diagnostica].filter(Boolean).join(". ")
     );
-    matchRegions(consultationText).forEach((region) => {
+    const consultationRegions = [
+      ...matchRegions(consultationText),
+      ...matchExamRegions(cleanText(latestConsultation.exame_fisico)),
+    ];
+    [...new Set(consultationRegions)].forEach((region) => {
       addFinding({
         id: `consultation-${latestConsultation.id}-${region}`,
         region,

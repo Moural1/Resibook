@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import PrescriptionSheet from "@/components/prescription-sheet";
@@ -12,12 +12,15 @@ import {
 } from "@/lib/clinical-case-session";
 import CopyButton from "../../../components/copy-button";
 import PatientBodyMap from "@/components/patient-body-map";
+import { buildPatientRecordHtml, type PrintRecordInput } from "@/lib/patient-record-print";
+import { showToast } from "@/lib/toast";
 import {
   Activity,
   AlertTriangle,
   ArrowDownToLine,
   ArrowLeft,
   ChevronRight,
+  Copy,
   MoreHorizontal,
   NotebookPen,
   CheckCircle2,
@@ -762,90 +765,8 @@ function buildPatientSummary(
   ].join("\n\n");
 }
 
-function escapeHtml(value?: string | null) {
-  return (value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function textToHtml(value?: string | null) {
-  if (!value) return "<span class='empty'>Não informado</span>";
-  return escapeHtml(value).replace(/\n/g, "<br />");
-}
-
-function buildClinicalAlertHtml(patient: Patient) {
-  const riskFlags = getRiskFlags(patient);
-
-  if (!patient.alergias && riskFlags.length === 0 && !patient.comorbidades) {
-    return "";
-  }
-
-  const allergyHtml = patient.alergias
-    ? `<div class="alert-card danger"><span>Alergias</span><strong>${textToHtml(patient.alergias)}</strong></div>`
-    : "";
-
-  const comorbHtml = patient.comorbidades
-    ? `<div class="alert-card warning"><span>Comorbidades</span><strong>${textToHtml(patient.comorbidades)}</strong></div>`
-    : "";
-
-  const riskHtml = riskFlags.length
-    ? `<div class="alert-card warning"><span>Perfil de risco</span><strong>${riskFlags
-        .map((risk) => `<em>${escapeHtml(risk)}</em>`)
-        .join("")}</strong></div>`
-    : "";
-
-  return `
-    <section class="section alert-section">
-      <div class="section-title danger-title">Alertas clínicos relevantes</div>
-      <div class="alert-grid">
-        ${allergyHtml}
-        ${comorbHtml}
-        ${riskHtml}
-      </div>
-    </section>
-  `;
-}
-
-function buildPatientIdentityRows(patient: Patient) {
-  const { birthDate, returnDate } = resolveBirthAndReturnDates(patient);
-  const carteirinha = getCarteirinha(patient);
-
-  return [
-    ["Paciente", patient.nome || "-"],
-    ["Sexo", patient.sexo || "-"],
-    ["Idade", typeof patient.idade === "number" ? `${patient.idade} anos` : "-"],
-    ["Nascimento", birthDate ? formatDateOnly(birthDate) : "-"],
-    ["Telefone", patient.telefone || "-"],
-    ["Especialidade", patient.especialidade || "-"],
-    ["Plano de saúde", patient.plano_saude || "-"],
-    ["Carteirinha", carteirinha || "-"],
-    ["Local", patient.local_atendimento || "-"],
-    ["Retorno previsto", returnDate ? formatDateOnly(returnDate) : "-"],
-  ]
-    .map(
-      ([label, value]) => `
-        <div class="field">
-          <span>${escapeHtml(label)}</span>
-          <strong>${escapeHtml(value)}</strong>
-        </div>
-      `
-    )
-    .join("");
-}
-
-function buildSectionHtml(title: string, content?: string | null, tone: "default" | "danger" | "success" = "default") {
-  return `
-    <section class="section ${tone !== "default" ? `section-${tone}` : ""}">
-      <div class="section-title">${escapeHtml(title)}</div>
-      <div class="section-body">${textToHtml(content)}</div>
-    </section>
-  `;
-}
-
-function buildProfessionalPrintHtml(
+function buildRecordPrintInput(
+  mode: PrintRecordInput["mode"],
   patient: Patient,
   prescriptions: Prescription[],
   notes: PatientNote[],
@@ -853,473 +774,77 @@ function buildProfessionalPrintHtml(
   followups: FollowupItem[],
   examRequests: ExamRequestItem[],
   consultations: ConsultationItem[]
-) {
-  const emittedAt = formatDate(new Date().toISOString());
-  const identityRows = buildPatientIdentityRows(patient);
-  const clinicalAlerts = buildClinicalAlertHtml(patient);
-
-  const consultationHtml = consultations.length
-    ? consultations
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Consulta ${index + 1}</strong>
-                  <span>${escapeHtml(item.queixa_principal || "Consulta clínica")}</span>
-                </div>
-                <time>${escapeHtml(formatDate(item.created_at))}</time>
-              </div>
-              <div class="record-body">${textToHtml(buildConsultationText(item))}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem consultas registradas.</p>`;
-
-  const problemsHtml = problems.length
-    ? problems
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Problema ${index + 1}</strong>
-                  <span>${escapeHtml(item.titulo)}</span>
-                </div>
-                <time>${escapeHtml(item.status)}</time>
-              </div>
-              <div class="record-body">${textToHtml(
-                `Tipo: ${item.tipo}${
-                  item.prioridade != null ? `\nPrioridade: ${item.prioridade}` : ""
-                }${item.observacoes ? `\n\n${item.observacoes}` : ""}`
-              )}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem problemas registrados.</p>`;
-
-  const followupsHtml = followups.length
-    ? followups
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Retorno ${index + 1}</strong>
-                  <span>${escapeHtml(item.motivo || "Retorno clínico")}</span>
-                </div>
-                <time>${escapeHtml(item.status)}</time>
-              </div>
-              <div class="record-body">${textToHtml(
-                `Previsto: ${formatDateOnly(item.retorno_previsto_em)}${
-                  item.realizado_em ? `\nRealizado: ${formatDateOnly(item.realizado_em)}` : ""
-                }${item.observacoes ? `\n\n${item.observacoes}` : ""}`
-              )}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem retornos registrados.</p>`;
-
-  const examsHtml = examRequests.length
-    ? examRequests
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Exame ${index + 1}</strong>
-                  <span>${escapeHtml(item.nome_exame)}</span>
-                </div>
-                <time>${escapeHtml(item.status)}</time>
-              </div>
-              <div class="record-body">${textToHtml(
-                `${item.indicacao ? `Indicação: ${item.indicacao}\n\n` : ""}${
-                  item.resultado_resumido ? `Resultado: ${item.resultado_resumido}\n\n` : ""
-                }${item.impacto_clinico ? `Impacto clínico: ${item.impacto_clinico}` : ""}`
-              )}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem exames registrados.</p>`;
-
-  const noteHtml = notes.length
-    ? notes
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Evolução ${index + 1}</strong>
-                  <span>${escapeHtml(item.titulo || item.tipo || "Evolução clínica")}</span>
-                </div>
-                <time>${escapeHtml(formatDate(item.created_at))}</time>
-              </div>
-              <div class="record-body">${textToHtml(item.conteudo)}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem evoluções registradas.</p>`;
-
-  const prescriptionHtml = prescriptions.length
-    ? prescriptions
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Prescrição ${index + 1}</strong>
-                  <span>${escapeHtml(item.medicamento || "Prescrição clínica")}</span>
-                </div>
-                <time>${escapeHtml(formatDate(item.created_at))}</time>
-              </div>
-              <div class="record-body">${textToHtml(buildPrescriptionText(item))}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem prescrições vinculadas.</p>`;
-
-  return `
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-      <head>
-        <meta charset="UTF-8" />
-        <title>Prontuário - ${escapeHtml(patient.nome || "Paciente")}</title>
-        <style>
-          @page { size: A4; margin: 12mm; }
-          * { box-sizing: border-box; }
-          html, body {
-            margin: 0;
-            padding: 0;
-            background: #eef3f8;
-            color: #0f172a;
-            font-family: Arial, Helvetica, sans-serif;
-          }
-          body { padding: 18px; }
-          .sheet {
-            max-width: 900px;
-            margin: 0 auto;
-            background: #ffffff;
-            border: 1px solid #d9e3ef;
-            border-radius: 22px;
-            overflow: hidden;
-            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
-          }
-          .hero {
-            padding: 28px 32px;
-            background: linear-gradient(135deg, #06183d 0%, #0b2f6f 60%, #0f766e 100%);
-            color: #ffffff;
-          }
-          .brand-row {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 20px;
-          }
-          .brand-label {
-            margin: 0;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.28em;
-            text-transform: uppercase;
-            color: #a7f3d0;
-          }
-          .brand-title {
-            margin: 8px 0 0;
-            font-size: 26px;
-            font-weight: 900;
-            letter-spacing: -0.03em;
-          }
-          .doc-meta {
-            text-align: right;
-            font-size: 12px;
-            line-height: 1.7;
-            color: rgba(255,255,255,0.85);
-          }
-          .patient-name {
-            margin: 28px 0 0;
-            font-size: 34px;
-            line-height: 1.08;
-            font-weight: 900;
-            letter-spacing: -0.04em;
-          }
-          .patient-subtitle {
-            margin: 10px 0 0;
-            font-size: 13px;
-            color: rgba(255,255,255,0.86);
-          }
-          .content { padding: 26px 32px 32px; }
-          .identity-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-          }
-          .field {
-            border: 1px solid #e4edf7;
-            border-radius: 14px;
-            padding: 12px;
-            background: #f8fafc;
-          }
-          .field span {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 9px;
-            font-weight: 900;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            color: #64748b;
-          }
-          .field strong {
-            display: block;
-            font-size: 13px;
-            line-height: 1.45;
-            color: #0f172a;
-          }
-          .section {
-            margin-bottom: 16px;
-            border: 1px solid #e1eaf5;
-            border-radius: 18px;
-            overflow: hidden;
-            background: #ffffff;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .section-title {
-            padding: 12px 16px;
-            border-bottom: 1px solid #e1eaf5;
-            background: #f8fafc;
-            color: #0b1f52;
-            font-size: 11px;
-            font-weight: 900;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-          }
-          .section-body {
-            padding: 16px;
-            font-size: 13.5px;
-            line-height: 1.75;
-            color: #1f2937;
-          }
-          .section-danger .section-title,
-          .danger-title {
-            background: #fff1f2;
-            color: #be123c;
-            border-bottom-color: #fecdd3;
-          }
-          .section-success .section-title {
-            background: #ecfdf5;
-            color: #047857;
-            border-bottom-color: #bbf7d0;
-          }
-          .alert-section {
-            border-color: #fecdd3;
-            background: #fff7f8;
-          }
-          .alert-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
-            padding: 14px;
-          }
-          .alert-card {
-            border-radius: 14px;
-            padding: 13px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-          }
-          .alert-card.danger { border-color: #fecdd3; background: #fff1f2; }
-          .alert-card.warning { border-color: #fde68a; background: #fffbeb; }
-          .alert-card span {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 9px;
-            font-weight: 900;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            color: #64748b;
-          }
-          .alert-card.danger span { color: #be123c; }
-          .alert-card.warning span { color: #92400e; }
-          .alert-card strong {
-            display: block;
-            font-size: 13px;
-            line-height: 1.55;
-            color: #0f172a;
-          }
-          .alert-card em {
-            display: inline-block;
-            margin: 0 6px 6px 0;
-            border-radius: 999px;
-            padding: 5px 9px;
-            border: 1px solid #fde68a;
-            background: #ffffff;
-            color: #92400e;
-            font-style: normal;
-            font-size: 11px;
-            font-weight: 700;
-          }
-          .record-card {
-            margin-bottom: 12px;
-            border: 1px solid #e5edf6;
-            border-radius: 15px;
-            padding: 14px;
-            background: #fbfdff;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .record-card:last-child { margin-bottom: 0; }
-          .record-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 14px;
-            margin-bottom: 9px;
-          }
-          .record-head strong {
-            display: block;
-            font-size: 13.5px;
-            color: #0f172a;
-          }
-          .record-head span {
-            display: block;
-            margin-top: 3px;
-            font-size: 11px;
-            color: #64748b;
-          }
-          .record-head time {
-            font-size: 11px;
-            color: #64748b;
-            white-space: nowrap;
-          }
-          .record-body {
-            border: 1px solid #e9eff6;
-            border-radius: 12px;
-            background: #ffffff;
-            padding: 12px;
-            font-size: 13px;
-            line-height: 1.7;
-            color: #1f2937;
-          }
-          .signature-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 36px;
-            margin-top: 34px;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .signature-box {
-            text-align: center;
-            font-size: 12px;
-            color: #475569;
-          }
-          .signature-line {
-            border-top: 1px solid #1e293b;
-            margin-bottom: 9px;
-            height: 1px;
-          }
-          .signature-box small {
-            display: block;
-            margin-top: 4px;
-            color: #64748b;
-          }
-          .footer {
-            margin-top: 22px;
-            padding-top: 14px;
-            border-top: 1px solid #e6edf5;
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            font-size: 10.5px;
-            color: #64748b;
-          }
-          .empty {
-            color: #94a3b8;
-            font-style: italic;
-          }
-          @media print {
-            html, body { background: #ffffff; }
-            body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .sheet { max-width: none; box-shadow: none; border: none; border-radius: 0; }
-            .section, .record-card { break-inside: avoid; page-break-inside: avoid; }
-          }
-        </style>
-      </head>
-      <body>
-        <main class="sheet">
-          <header class="hero">
-            <div class="brand-row">
-              <div>
-                <p class="brand-label">ResiBook</p>
-                <h1 class="brand-title">Prontuário clínico</h1>
-              </div>
-              <div class="doc-meta">
-                <div><strong>Documento:</strong> Prontuário médico</div>
-                <div><strong>Emitido em:</strong> ${escapeHtml(emittedAt)}</div>
-              </div>
-            </div>
-            <h2 class="patient-name">${escapeHtml(patient.nome || "Paciente")}</h2>
-            <p class="patient-subtitle">
-              ${escapeHtml(patient.especialidade || "Sem especialidade")}
-              ${typeof patient.idade === "number" ? ` • ${escapeHtml(String(patient.idade))} anos` : ""}
-              ${patient.sexo ? ` • ${escapeHtml(patient.sexo)}` : ""}
-            </p>
-          </header>
-
-          <section class="content">
-            <section class="section">
-              <div class="section-title">Identificação</div>
-              <div class="section-body">
-                <div class="identity-grid">${identityRows}</div>
-              </div>
-            </section>
-
-            ${clinicalAlerts}
-
-            ${buildSectionHtml("Queixa base", patient.queixa)}
-            ${buildSectionHtml("HMA base", patient.hma)}
-            ${buildSectionHtml("HPP", patient.hpp)}
-            ${buildSectionHtml("Medicamentos em uso", patient.medicamentos_em_uso)}
-            ${buildSectionHtml("Exame físico base", patient.exame_fisico)}
-            ${buildSectionHtml("Hipótese diagnóstica base", patient.hipotese_diagnostica)}
-            ${buildSectionHtml("Conduta médica base", patient.conduta_medica, "success")}
-            ${buildSectionHtml("Observações gerais", patient.observacoes)}
-
-            <section class="section"><div class="section-title">Consultas</div><div class="section-body">${consultationHtml}</div></section>
-            <section class="section"><div class="section-title">Problemas do paciente</div><div class="section-body">${problemsHtml}</div></section>
-            <section class="section"><div class="section-title">Retornos</div><div class="section-body">${followupsHtml}</div></section>
-            <section class="section"><div class="section-title">Exames do paciente</div><div class="section-body">${examsHtml}</div></section>
-            <section class="section"><div class="section-title">Evoluções / anotações</div><div class="section-body">${noteHtml}</div></section>
-            <section class="section"><div class="section-title">Prescrições vinculadas</div><div class="section-body">${prescriptionHtml}</div></section>
-
-            <div class="signature-grid">
-              <div class="signature-box">
-                <div class="signature-line"></div>
-                Assinatura / carimbo
-                <small>${escapeHtml(patient.crm_medico || "")}</small>
-              </div>
-              <div class="signature-box">
-                <div class="signature-line"></div>
-                Data
-                <small>${escapeHtml(patient.local_atendimento || "")}</small>
-              </div>
-            </div>
-
-            <div class="footer">
-              <div>ResiBook • Prontuário clínico</div>
-              <div>${escapeHtml(patient.nome || "Paciente")}</div>
-            </div>
-          </section>
-        </main>
-      </body>
-    </html>
-  `;
+): PrintRecordInput {
+  const { birthDate, returnDate } = resolveBirthAndReturnDates(patient);
+  return {
+    mode,
+    emittedAt: formatDate(new Date().toISOString()),
+    patient: {
+      nome: patient.nome || "Paciente",
+      sexo: patient.sexo,
+      idade: patient.idade,
+      nascimento: birthDate ? formatDateOnly(birthDate) : undefined,
+      telefone: patient.telefone,
+      especialidade: patient.especialidade,
+      plano: patient.plano_saude,
+      carteirinha: getCarteirinha(patient),
+      local: patient.local_atendimento,
+      retorno: returnDate ? formatDateOnly(returnDate) : undefined,
+      cadastro: patient.created_at ? formatDateOnly(patient.created_at) : undefined,
+      crm: patient.crm_medico,
+      alergias: patient.alergias,
+      comorbidades: patient.comorbidades,
+      riscos: getRiskFlags(patient),
+      queixa: patient.queixa_principal || patient.queixa,
+      hma: patient.hma,
+      hpp: patient.hpp,
+      medicamentos: patient.medicamentos_em_uso,
+      exameFisico: patient.exame_fisico,
+      hipotese: patient.hipotese_diagnostica,
+      conduta: patient.conduta_medica,
+      observacoes: patient.observacoes,
+    },
+    consultations: consultations.map((item) => ({
+      date: formatDate(item.created_at),
+      queixa: item.queixa_principal,
+      hma: item.hma,
+      exameFisico: item.exame_fisico,
+      hipotese: item.hipotese_diagnostica,
+      conduta: item.conduta_medica,
+      observacoes: item.observacoes,
+      retorno: item.retorno_previsto_em ? formatDateOnly(item.retorno_previsto_em) : undefined,
+    })),
+    problems: problems.map((item) => ({
+      titulo: item.titulo,
+      tipo: item.tipo,
+      status: item.status,
+      prioridade: item.prioridade,
+      observacoes: item.observacoes,
+    })),
+    notes: notes.map((item) => ({ date: formatDate(item.created_at), titulo: item.titulo || item.tipo, conteudo: item.conteudo })),
+    exams: examRequests.map((item) => ({
+      nome: item.nome_exame,
+      status: item.status,
+      indicacao: item.indicacao,
+      resultado: item.resultado_resumido,
+      impacto: item.impacto_clinico,
+    })),
+    followups: followups.map((item) => ({
+      previsto: formatDateOnly(item.retorno_previsto_em),
+      realizado: item.realizado_em ? formatDateOnly(item.realizado_em) : undefined,
+      motivo: item.motivo,
+      status: item.status,
+      observacoes: item.observacoes,
+    })),
+    prescriptions: prescriptions.map((item) => ({
+      date: formatDate(item.created_at),
+      titulo: item.medicamento || "Prescrição",
+      texto: [item.posologia, item.via ? `Via: ${item.via}` : "", item.duracao ? `Duração: ${item.duracao}` : "", item.orientacoes ? `Orientações: ${item.orientacoes}` : ""]
+        .filter(Boolean)
+        .join("\n"),
+    })),
+  };
 }
-
 
 function InfoBlock({
   title,
@@ -1501,6 +1026,25 @@ export default function PatientDetailPage() {
   }, [params]);
 
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  // Menu "Mais": fecha ao clicar fora ou com Esc.
+  useEffect(() => {
+    if (!moreOpen) return;
+    function handlePointer(event: MouseEvent) {
+      if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false);
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setMoreOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [moreOpen]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [notes, setNotes] = useState<PatientNote[]>([]);
   const [problems, setProblems] = useState<ProblemItem[]>([]);
@@ -2469,347 +2013,6 @@ setSuccess("Problema atualizado com sucesso.");
   }
 
   
-function buildSummaryPrintHtml(
-  patient: Patient,
-  prescriptions: Prescription[],
-  notes: PatientNote[],
-  consultations: ConsultationItem[]
-) {
-  const emittedAt = formatDate(new Date().toISOString());
-  const topPrescriptions = prescriptions.slice(0, 6);
-  const topNotes = notes.slice(0, 6);
-  const topConsultations = consultations.slice(0, 4);
-  const identityRows = buildPatientIdentityRows(patient);
-  const clinicalAlerts = buildClinicalAlertHtml(patient);
-
-  const prescriptionHtml = topPrescriptions.length
-    ? topPrescriptions
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Prescrição ${index + 1}</strong>
-                  <span>${escapeHtml(item.medicamento || "Prescrição clínica")}</span>
-                </div>
-                <time>${escapeHtml(formatDate(item.created_at))}</time>
-              </div>
-              <div class="record-body">${textToHtml(buildPrescriptionText(item))}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem prescrições vinculadas.</p>`;
-
-  const noteHtml = topNotes.length
-    ? topNotes
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Evolução ${index + 1}</strong>
-                  <span>${escapeHtml(item.titulo || item.tipo || "Evolução clínica")}</span>
-                </div>
-                <time>${escapeHtml(formatDate(item.created_at))}</time>
-              </div>
-              <div class="record-body">${textToHtml(item.conteudo)}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem evoluções registradas.</p>`;
-
-  const consultationHtml = topConsultations.length
-    ? topConsultations
-        .map(
-          (item, index) => `
-            <article class="record-card">
-              <div class="record-head">
-                <div>
-                  <strong>Consulta ${index + 1}</strong>
-                  <span>${escapeHtml(item.queixa_principal || "Consulta clínica")}</span>
-                </div>
-                <time>${escapeHtml(formatDate(item.created_at))}</time>
-              </div>
-              <div class="record-body">${textToHtml(buildConsultationText(item))}</div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="empty">Sem consultas registradas.</p>`;
-
-  return `
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-      <head>
-        <meta charset="UTF-8" />
-        <title>Resumo - ${escapeHtml(patient.nome || "Paciente")}</title>
-        <style>
-          @page { size: A4; margin: 12mm; }
-          * { box-sizing: border-box; }
-          html, body {
-            margin: 0;
-            padding: 0;
-            background: #eef3f8;
-            color: #0f172a;
-            font-family: Arial, Helvetica, sans-serif;
-          }
-          body { padding: 18px; }
-          .sheet {
-            max-width: 860px;
-            margin: 0 auto;
-            background: #ffffff;
-            border: 1px solid #d9e3ef;
-            border-radius: 22px;
-            overflow: hidden;
-            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
-          }
-          .hero {
-            padding: 26px 30px;
-            background: linear-gradient(135deg, #06183d 0%, #0b2f6f 65%, #0f766e 100%);
-            color: #ffffff;
-          }
-          .brand-row {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 20px;
-          }
-          .brand-label {
-            margin: 0;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.28em;
-            text-transform: uppercase;
-            color: #a7f3d0;
-          }
-          .brand-title {
-            margin: 8px 0 0;
-            font-size: 25px;
-            font-weight: 900;
-            letter-spacing: -0.03em;
-          }
-          .doc-meta {
-            text-align: right;
-            font-size: 12px;
-            line-height: 1.7;
-            color: rgba(255,255,255,0.85);
-          }
-          .patient-name {
-            margin: 25px 0 0;
-            font-size: 32px;
-            line-height: 1.08;
-            font-weight: 900;
-            letter-spacing: -0.04em;
-          }
-          .patient-subtitle {
-            margin: 10px 0 0;
-            font-size: 13px;
-            color: rgba(255,255,255,0.86);
-          }
-          .content { padding: 24px 30px 30px; }
-          .identity-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-          }
-          .field {
-            border: 1px solid #e4edf7;
-            border-radius: 14px;
-            padding: 12px;
-            background: #f8fafc;
-          }
-          .field span {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 9px;
-            font-weight: 900;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            color: #64748b;
-          }
-          .field strong {
-            display: block;
-            font-size: 13px;
-            line-height: 1.45;
-            color: #0f172a;
-          }
-          .section {
-            margin-bottom: 15px;
-            border: 1px solid #e1eaf5;
-            border-radius: 18px;
-            overflow: hidden;
-            background: #ffffff;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .section-title {
-            padding: 12px 16px;
-            border-bottom: 1px solid #e1eaf5;
-            background: #f8fafc;
-            color: #0b1f52;
-            font-size: 11px;
-            font-weight: 900;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-          }
-          .section-body {
-            padding: 16px;
-            font-size: 13.5px;
-            line-height: 1.75;
-            color: #1f2937;
-          }
-          .section-success .section-title {
-            background: #ecfdf5;
-            color: #047857;
-            border-bottom-color: #bbf7d0;
-          }
-          .danger-title {
-            background: #fff1f2;
-            color: #be123c;
-            border-bottom-color: #fecdd3;
-          }
-          .alert-section { border-color: #fecdd3; background: #fff7f8; }
-          .alert-grid { display: grid; gap: 10px; padding: 14px; }
-          .alert-card {
-            border-radius: 14px;
-            padding: 13px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-          }
-          .alert-card.danger { border-color: #fecdd3; background: #fff1f2; }
-          .alert-card.warning { border-color: #fde68a; background: #fffbeb; }
-          .alert-card span {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 9px;
-            font-weight: 900;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            color: #64748b;
-          }
-          .alert-card.danger span { color: #be123c; }
-          .alert-card.warning span { color: #92400e; }
-          .alert-card strong {
-            display: block;
-            font-size: 13px;
-            line-height: 1.55;
-            color: #0f172a;
-          }
-          .alert-card em {
-            display: inline-block;
-            margin: 0 6px 6px 0;
-            border-radius: 999px;
-            padding: 5px 9px;
-            border: 1px solid #fde68a;
-            background: #ffffff;
-            color: #92400e;
-            font-style: normal;
-            font-size: 11px;
-            font-weight: 700;
-          }
-          .record-card {
-            margin-bottom: 12px;
-            border: 1px solid #e5edf6;
-            border-radius: 15px;
-            padding: 14px;
-            background: #fbfdff;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .record-card:last-child { margin-bottom: 0; }
-          .record-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 14px;
-            margin-bottom: 9px;
-          }
-          .record-head strong { display: block; font-size: 13.5px; color: #0f172a; }
-          .record-head span { display: block; margin-top: 3px; font-size: 11px; color: #64748b; }
-          .record-head time { font-size: 11px; color: #64748b; white-space: nowrap; }
-          .record-body {
-            border: 1px solid #e9eff6;
-            border-radius: 12px;
-            background: #ffffff;
-            padding: 12px;
-            font-size: 13px;
-            line-height: 1.7;
-            color: #1f2937;
-          }
-          .footer {
-            margin-top: 22px;
-            padding-top: 14px;
-            border-top: 1px solid #e6edf5;
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            font-size: 10.5px;
-            color: #64748b;
-          }
-          .empty { color: #94a3b8; font-style: italic; }
-          @media print {
-            html, body { background: #ffffff; }
-            body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .sheet { max-width: none; box-shadow: none; border: none; border-radius: 0; }
-            .section, .record-card { break-inside: avoid; page-break-inside: avoid; }
-          }
-        </style>
-      </head>
-      <body>
-        <main class="sheet">
-          <header class="hero">
-            <div class="brand-row">
-              <div>
-                <p class="brand-label">ResiBook</p>
-                <h1 class="brand-title">Resumo clínico</h1>
-              </div>
-              <div class="doc-meta">
-                <div><strong>Documento:</strong> Resumo do paciente</div>
-                <div><strong>Emitido em:</strong> ${escapeHtml(emittedAt)}</div>
-              </div>
-            </div>
-            <h2 class="patient-name">${escapeHtml(patient.nome || "Paciente")}</h2>
-            <p class="patient-subtitle">
-              ${escapeHtml(patient.especialidade || "Sem especialidade")}
-              ${typeof patient.idade === "number" ? ` • ${escapeHtml(String(patient.idade))} anos` : ""}
-              ${patient.sexo ? ` • ${escapeHtml(patient.sexo)}` : ""}
-            </p>
-          </header>
-
-          <section class="content">
-            <section class="section">
-              <div class="section-title">Identificação</div>
-              <div class="section-body">
-                <div class="identity-grid">${identityRows}</div>
-              </div>
-            </section>
-
-            ${clinicalAlerts}
-
-            ${buildSectionHtml("Queixa base", patient.queixa)}
-            ${buildSectionHtml("HMA base", patient.hma)}
-            ${buildSectionHtml("HPP", patient.hpp)}
-            ${buildSectionHtml("Medicamentos em uso", patient.medicamentos_em_uso)}
-            ${buildSectionHtml("Hipótese diagnóstica base", patient.hipotese_diagnostica)}
-            ${buildSectionHtml("Conduta médica base", patient.conduta_medica, "success")}
-
-            <section class="section"><div class="section-title">Últimas consultas</div><div class="section-body">${consultationHtml}</div></section>
-            <section class="section"><div class="section-title">Últimas evoluções</div><div class="section-body">${noteHtml}</div></section>
-            <section class="section"><div class="section-title">Prescrições recentes</div><div class="section-body">${prescriptionHtml}</div></section>
-
-            <div class="footer">
-              <div>ResiBook • Resumo clínico</div>
-              <div>${escapeHtml(patient.nome || "Paciente")}</div>
-            </div>
-          </section>
-        </main>
-      </body>
-    </html>
-  `;
-}
-
-
 function openPrintHtml(html: string) {
     const printWindow = window.open("", "_blank", "width=1100,height=800");
     if (!printWindow) {
@@ -2832,14 +2035,8 @@ function openPrintHtml(html: string) {
   function handlePrintProfessional() {
     if (!patient) return;
 
-    const html = buildProfessionalPrintHtml(
-      patient,
-      prescriptions,
-      notes,
-      problems,
-      followups,
-      examRequests,
-      consultations
+    const html = buildPatientRecordHtml(
+      buildRecordPrintInput("complete", patient, prescriptions, notes, problems, followups, examRequests, consultations)
     );
 
     openPrintHtml(html);
@@ -2848,11 +2045,8 @@ function openPrintHtml(html: string) {
   function handlePrintSummary() {
     if (!patient) return;
 
-    const html = buildSummaryPrintHtml(
-      patient,
-      prescriptions,
-      notes,
-      consultations
+    const html = buildPatientRecordHtml(
+      buildRecordPrintInput("summary", patient, prescriptions, notes, problems, followups, examRequests, consultations)
     );
 
     openPrintHtml(html);
@@ -2913,7 +2107,7 @@ function openPrintHtml(html: string) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+      <section className="relative z-10 rounded-[24px] border border-slate-200 bg-white shadow-sm">
         <div className="p-5 md:p-6">
           <nav aria-label="Caminho" className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
             <Link href="/pacientes" className="inline-flex items-center gap-1 transition hover:text-slate-800">
@@ -2992,41 +2186,66 @@ function openPrintHtml(html: string) {
                 <Pill className="h-4 w-4 text-cyan-800" />
                 Nova prescrição
               </Link>
-              <details className="group relative">
-                <summary className="inline-flex h-11 cursor-pointer list-none items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+              <div ref={moreRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen((current) => !current)}
+                  aria-haspopup="menu"
+                  aria-expanded={moreOpen}
+                  className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
                   <MoreHorizontal className="h-4 w-4" />
                   Mais
-                </summary>
-                <div className="absolute left-0 z-30 mt-2 w-60 sm:left-auto sm:right-0 space-y-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg [&>button]:flex [&>button]:w-full [&>button]:items-center [&>button]:gap-2 [&>button]:rounded-lg [&>button]:border-0 [&>button]:px-3 [&>button]:py-2 [&>button]:text-left [&>button]:text-sm [&>button]:font-medium [&>button]:text-slate-700 [&>button:hover]:bg-slate-50">
-                  <CopyButton
-                    label="Copiar resumo do prontuário"
-                    text={buildPatientSummary(
-                      patient,
-                      prescriptions,
-                      notes,
-                      problems,
-                      followups,
-                      examRequests,
-                      consultations
-                    )}
-                  />
-                  <button type="button" onClick={handlePrintSummary}>
-                    <ArrowDownToLine className="h-4 w-4 text-slate-500" />
-                    Resumo em PDF
-                  </button>
-                  <button type="button" onClick={handlePrintProfessional}>
-                    <FileText className="h-4 w-4 text-slate-500" />
-                    Prontuário completo em PDF
-                  </button>
-                  <Link
-                    href={`/prescricao?q=${encodeURIComponent(patient.nome)}`}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                </button>
+                {moreOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute right-0 z-40 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
                   >
-                    <Pill className="h-4 w-4 text-slate-500" />
-                    Ver prescrições salvas
-                  </Link>
-                </div>
-              </details>
+                    {[
+                      {
+                        label: "Copiar resumo do prontuário",
+                        icon: Copy,
+                        action: async () => {
+                          try {
+                            await navigator.clipboard.writeText(
+                              buildPatientSummary(patient, prescriptions, notes, problems, followups, examRequests, consultations)
+                            );
+                            showToast({ title: "Resumo copiado", description: patient.nome, variant: "success" });
+                          } catch {
+                            showToast({ title: "Não foi possível copiar", description: "Tente novamente.", variant: "error" });
+                          }
+                        },
+                      },
+                      { label: "Resumo em PDF", icon: ArrowDownToLine, action: handlePrintSummary },
+                      { label: "Prontuário completo em PDF", icon: FileText, action: handlePrintProfessional },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          void item.action();
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                      >
+                        <item.icon className="h-4 w-4 shrink-0 text-slate-500" />
+                        {item.label}
+                      </button>
+                    ))}
+                    <Link
+                      role="menuitem"
+                      href={`/prescricao?q=${encodeURIComponent(patient.nome)}`}
+                      onClick={() => setMoreOpen(false)}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <Pill className="h-4 w-4 shrink-0 text-slate-500" />
+                      Ver prescrições salvas
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 
