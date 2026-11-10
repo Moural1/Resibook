@@ -70,6 +70,19 @@ const CENTOR: CalculadoraKit = {
   campos: ["age"],
 };
 
+const DENGUE: CalculadoraKit = {
+  id: "dengue-classificacao",
+  nome: "Dengue A–D",
+  motivo: "Classificar marcando os achados e calcular a hidratação",
+  campos: [],
+};
+const PROVA_DO_LACO: CalculadoraKit = {
+  id: "prova-do-laco",
+  nome: "Prova do laço",
+  motivo: "Pressão do manguito e leitura das petéquias",
+  campos: ["sbp", "dbp"],
+};
+
 const ENAMED_EMERGENCIA = "emergencia-pcr-choque-sepse-intoxicacoes";
 
 export const QUEIXAS_SHIFT: Record<string, QueixaShift> = {
@@ -150,9 +163,10 @@ export const QUEIXAS_SHIFT: Record<string, QueixaShift> = {
       { id: "fb-dengue", texto: "Alarme de dengue: dor abdominal intensa, vômitos persistentes, sangramento de mucosa, letargia", nivel: "laranja", acao: "Dengue grupo C: hidratação venosa e internação." },
       { id: "fb-lactente", texto: "Lactente com menos de 3 meses", nivel: "laranja", acao: "Avaliação para infecção bacteriana grave." },
     ],
-    calculadoras: [QSOFA, NEWS2],
+    calculadoras: [QSOFA, NEWS2, DENGUE, PROVA_DO_LACO],
     fluxos: [
       { colecao: "enamed", area: "clinica-medica", bloco: ENAMED_EMERGENCIA, titulo: "Sepse x choque séptico" },
+      { colecao: "temas", area: "clinica", tema: "dengue", titulo: "Dengue: manejo do MS" },
       { colecao: "enamed", area: "clinica-medica", bloco: "apostas-clinica-medica", titulo: "Sepse — tempo do antibiótico" },
       { colecao: "enamed", area: "clinica-medica", bloco: "algoritmos-clinica-medica", titulo: "Dengue — grupos C e D" },
     ],

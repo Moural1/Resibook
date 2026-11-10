@@ -45,6 +45,8 @@ export type Tema = {
   pegadinhas?: string[];
   /* Protocolo oficial transcrito (ex.: manual do Ministério da Saúde). */
   fonte?: { titulo: string; url: string; nota?: string };
+  /* Calculadoras do tema (ids de src/lib/clinical-calculators.ts). */
+  calculadoras?: { id: string; nome: string; descricao: string }[];
 };
 
 export type AreaFluxos = {
