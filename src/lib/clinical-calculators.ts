@@ -75,6 +75,17 @@ function checkbox(
   return { id, label, type: "boolean", defaultValue: "", help, group, required: true };
 }
 
+/* Item de lista para marcar: começa desmarcado e não precisa de resposta.
+   Na tela vira um cartão de toque único em vez do par Não/Sim. */
+function checkboxOptional(
+  id: string,
+  label: string,
+  help?: string,
+  group?: string
+): CalculatorField {
+  return { id, label, type: "boolean", defaultValue: false, help, group, required: false };
+}
+
 function numberField(
   id: string,
   label: string,
@@ -1849,6 +1860,240 @@ const bishopScore: ClinicalCalculator = {
   },
 };
 
+/* Dengue (Ministério da Saúde, "Dengue: diagnóstico e manejo clínico – adulto
+   e criança", 6ª edição, 2024). Classificação só marcando o que o paciente
+   tem; os critérios e volumes são os mesmos de src/lib/fluxos/dengue.ts. */
+const DENGUE_MS_REFERENCIA = {
+  label: "Ministério da Saúde. Dengue: diagnóstico e manejo clínico – adulto e criança, 6ª ed., 2024",
+  url: "https://bvsms.saude.gov.br/bvs/publicacoes/dengue_diagnostico_manejo_clinico_6ed.pdf",
+};
+
+const DENGUE_GRAVIDADE = "Sinais de gravidade (Grupo D)";
+const DENGUE_ALARME = "Sinais de alarme (Grupo C)";
+const DENGUE_GRUPO_B = "Sangramento de pele, condição especial, risco social ou comorbidade (Grupo B)";
+
+const dengueGravidade = [
+  ["dgChoque", "Sinais de choque", "Taquicardia; extremidades frias; pulso fraco e filiforme; enchimento capilar > 2 s; PA convergente < 20 mmHg; taquipneia; oligúria < 1,5 mL/kg/h; hipotensão e cianose (fase tardia).", "choque"],
+  ["dgDesconforto", "Acúmulo de líquidos com insuficiência respiratória", undefined, "acúmulo de líquidos com insuficiência respiratória"],
+  ["dgSangramento", "Sangramento grave", "Hematêmese, melena, metrorragia volumosa, sangramento do SNC.", "sangramento grave"],
+  ["dgOrgaos", "Comprometimento grave de órgãos", "AST/ALT > 1.000, alteração da consciência, miocardite ou outro órgão.", "disfunção grave de órgão"],
+] as const;
+
+const dengueAlarme = [
+  ["daDorAbdominal", "Dor abdominal intensa e contínua", "Referida ou à palpação.", "dor abdominal intensa e contínua"],
+  ["daVomitos", "Vômitos persistentes", undefined, "vômitos persistentes"],
+  ["daLiquidos", "Acúmulo de líquidos", "Ascite, derrame pleural ou pericárdico.", "acúmulo de líquidos"],
+  ["daHipotensaoPostural", "Hipotensão postural e/ou lipotimia", undefined, "hipotensão postural/lipotimia"],
+  ["daHepatomegalia", "Hepatomegalia > 2 cm abaixo do rebordo costal", undefined, "hepatomegalia > 2 cm"],
+  ["daMucosa", "Sangramento de mucosa", "Gengivorragia, epistaxe, metrorragia, hematúria.", "sangramento de mucosa"],
+  ["daLetargia", "Letargia e/ou irritabilidade", undefined, "letargia/irritabilidade"],
+  ["daHematocrito", "Aumento progressivo do hematócrito", undefined, "hematócrito em ascensão"],
+] as const;
+
+const dengueGrupoB = [
+  ["dbPele", "Sangramento de pele espontâneo ou prova do laço positiva", "Petéquias, equimoses. Sangramento de mucosa é sinal de alarme, não Grupo B.", "sangramento de pele/prova do laço positiva"],
+  ["dbLactente", "Lactente (< 24 meses)", undefined, "lactente < 24 meses"],
+  ["dbGestante", "Gestante", undefined, "gestante"],
+  ["dbIdoso", "Idade > 65 anos", undefined, "idade > 65 anos"],
+  ["dbComorbidade", "Comorbidade", "HAS ou outra doença cardiovascular grave, diabetes, DPOC, asma, obesidade, doença hematológica crônica, DRC, doença ácido-péptica, hepatopatia ou doença autoimune.", "comorbidade"],
+  ["dbRiscoSocial", "Risco social", "Dificuldade de acesso, de seguimento ou de cuidado em casa.", "risco social"],
+] as const;
+
+function marcados(values: CalculatorValues, lista: ReadonlyArray<readonly [string, string, string | undefined, string]>) {
+  return lista.filter(([id]) => yes(values, id)).map(([, , , resumo]) => resumo);
+}
+
+function mL(valor: number) {
+  return `${Math.round(valor).toLocaleString("pt-BR")} mL`;
+}
+
+function hidratacaoOral(peso: number, faixa: string) {
+  const porKg = faixa === "crianca" ? (peso <= 10 ? 130 : peso <= 20 ? 100 : 80) : 60;
+  const total = peso * porKg;
+  return `Hidratação oral: ${porKg} mL/kg/dia = ${mL(total)}/dia, ${mL(total / 3)} nas primeiras 4 a 6 h; ${
+    faixa === "crianca" ? "1/3 com SRO e 2/3 com água, sucos e chás" : "1/3 com sais de reidratação oral e 2/3 com líquidos caseiros"
+  }. Manter durante a febre e até 24 a 48 h após a defervescência.`;
+}
+
+const dengueClassificacao: ClinicalCalculator = {
+  id: "dengue-classificacao",
+  name: "Dengue: classificação de risco e estadiamento (grupos A a D)",
+  shortName: "Dengue A–D",
+  category: "Infectologia: dengue",
+  description:
+    "Marque só o que o paciente tem: o grupo (A, B, C ou D), a cor de prioridade, a conduta do MS e, com o peso, os volumes de hidratação.",
+  fields: [
+    selectField("faixa", "Paciente", [
+      { label: "Adulto (13 anos ou mais)", value: "adulto" },
+      { label: "Criança (menos de 13 anos)", value: "crianca" },
+    ]),
+    numberField("peso", "Peso (opcional)", "kg", 1, 250, 0.1, "Com o peso, o resultado traz os volumes de hidratação do grupo.", false),
+    ...dengueGravidade.map(([id, label, help]) => checkboxOptional(id, label, help, DENGUE_GRAVIDADE)),
+    ...dengueAlarme.map(([id, label, help]) => checkboxOptional(id, label, help, DENGUE_ALARME)),
+    ...dengueGrupoB.map(([id, label, help]) => checkboxOptional(id, label, help, DENGUE_GRUPO_B)),
+  ],
+  reference: DENGUE_MS_REFERENCIA,
+  calculate(values) {
+    const faixa = selected(values, "faixa") || "adulto";
+    const peso = num(values, "peso");
+    const gravidade = marcados(values, dengueGravidade);
+    const alarme = marcados(values, dengueAlarme);
+    const grupoB = marcados(values, dengueGrupoB);
+    const grupo = gravidade.length ? "D" : alarme.length ? "C" : grupoB.length ? "B" : "A";
+
+    const grupos = {
+      A: {
+        cor: "azul",
+        classificacao: "Grupo A (azul): por ordem de chegada",
+        interpretacao: "Sem sinal de alarme ou de gravidade, sem sangramento de pele, condição especial, risco social ou comorbidade.",
+        conduta:
+          "Acompanhamento ambulatorial. Exames a critério médico. Paracetamol e/ou dipirona; não usar AAS, anti-inflamatórios nem corticoides. Retorno no dia em que a febre melhorar (ou no 5º dia, se não houver defervescência) e imediato se surgir sinal de alarme. Entregar o cartão de acompanhamento. Notificar.",
+        hidratacao: peso ? hidratacaoOral(peso, faixa) : null,
+      },
+      B: {
+        cor: "verde",
+        classificacao: "Grupo B (verde): prioridade não urgente",
+        interpretacao: `Sem sinal de alarme, com: ${grupoB.join("; ")}.`,
+        conduta:
+          "Hemograma completo obrigatório (resultado em até 2 h, no máximo 4 h). Leito de observação até o resultado e a reavaliação, com hidratação oral. Hemoconcentração ou sinal de alarme: conduzir como Grupo C. Hematócrito normal: ambulatorial com reavaliação clínica e laboratorial diária até 48 h após a queda da febre. Notificar.",
+        hidratacao: peso ? hidratacaoOral(peso, faixa) : null,
+      },
+      C: {
+        cor: "amarelo",
+        classificacao: "Grupo C (amarelo): urgência, atendimento o mais rápido possível",
+        interpretacao: `Sinal de alarme presente, sem sinal de gravidade: ${alarme.join("; ")}.`,
+        conduta:
+          "Reposição venosa imediata em qualquer ponto de atenção, mesmo sem exames. Hemograma, albumina e transaminases; radiografia de tórax e USG de abdome. Reavaliar após 1 h (sinais vitais, PA, diurese desejável 1 mL/kg/h) e hematócrito 2 h após cada etapa; repetir a expansão até 3 vezes. Sem melhora: conduzir como Grupo D. Leito de internação, mínimo de 48 h.",
+        hidratacao: peso
+          ? `Expansão: SF 0,9% 10 mL/kg na 1ª hora = ${mL(peso * 10)}; manter 10 mL/kg/h (${mL(peso * 10)}/h) na 2ª hora até o hematócrito, no máximo 20 mL/kg (${mL(peso * 20)}) em 2 h por fase. Se melhorar, manutenção: 25 mL/kg em 6 h = ${mL(peso * 25)} (≈ ${mL((peso * 25) / 6)}/h) e depois 25 mL/kg em 8 h = ${mL(peso * 25)} (≈ ${mL((peso * 25) / 8)}/h).`
+          : null,
+      },
+      D: {
+        cor: "vermelho",
+        classificacao: "Grupo D (vermelho): emergência, atendimento imediato",
+        interpretacao: `Dengue grave: ${gravidade.join("; ")}${alarme.length ? `. Também com sinais de alarme: ${alarme.join("; ")}` : ""}.`,
+        conduta:
+          "Expansão rápida imediata, em qualquer nível e durante a transferência, mesmo sem exames; oxigênio, monitorização contínua e leito de UTI (mínimo de 48 h). Reavaliar a cada 15 a 30 min e hematócrito a cada 2 h. Com melhora, voltar à expansão do Grupo C. Choque persistente com hematócrito subindo: albumina 0,5 a 1 g/kg (ou coloide 10 mL/kg/h); hematócrito caindo: investigar sangramento e coagulação.",
+        hidratacao: peso
+          ? `Expansão: SF 0,9% 20 mL/kg em até 20 minutos = ${mL(peso * 20)}, até 3 vezes (no máximo ${mL(peso * 60)}). Albumina, se indicada: ${(peso * 0.5).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} a ${(peso * 1).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} g.`
+          : null,
+      },
+    }[grupo];
+
+    const recomendacao = [grupos.conduta, grupos.hidratacao ?? "Informe o peso para calcular os volumes de hidratação."].join(" ");
+    const breakdown = [
+      ...gravidade.map((item) => `Gravidade: ${item}`),
+      ...alarme.map((item) => `Alarme: ${item}`),
+      ...grupoB.map((item) => `Grupo B: ${item}`),
+    ];
+    if (peso) breakdown.push(`Peso ${peso.toLocaleString("pt-BR")} kg (${faixa === "crianca" ? "criança" : "adulto"})`);
+
+    return result(
+      grupo,
+      `grupo · ${grupos.cor}`,
+      grupos.classificacao,
+      grupos.interpretacao,
+      recomendacao,
+      "Classificação dinâmica: o paciente pode mudar de grupo em poucas horas; reestadiar a cada reavaliação, sobretudo na defervescência (3º ao 7º dia). Os volumes usam o peso informado; em cardiopatas com insuficiência cardíaca, idosos, gestantes e obesos, seguir os ajustes do manual e vigiar sobrecarga hídrica.",
+      `Dengue: ${grupos.classificacao}. ${grupos.interpretacao} Conduta: ${recomendacao}`,
+      breakdown.length ? breakdown : ["Nenhum critério marcado"]
+    );
+  },
+};
+
+const provaDoLaco: ClinicalCalculator = {
+  id: "prova-do-laco",
+  name: "Prova do laço (dengue)",
+  shortName: "Prova do laço",
+  category: "Infectologia: dengue",
+  description: "Pressão em que o manguito deve ficar, por quanto tempo e se a prova é positiva pelo número de petéquias.",
+  fields: [
+    selectField("faixa", "Paciente", [
+      { label: "Adulto", value: "adulto" },
+      { label: "Criança", value: "crianca" },
+    ]),
+    numberField("sbp", "PA sistólica", "mmHg", 40, 300),
+    {
+      ...numberField("dbp", "PA diastólica", "mmHg", 20, 200),
+      validate: (value, values) =>
+        num(values, "sbp") !== null && value >= Number(values.sbp) ? "A PA diastólica deve ser menor que a sistólica." : null,
+    },
+    numberField("petequias", "Petéquias no quadrado de 2,5 cm (opcional)", "petéquias", 0, 500, 1, "Deixe em branco para ver só como fazer a prova.", false),
+  ],
+  reference: DENGUE_MS_REFERENCIA,
+  calculate(values) {
+    const sbp = num(values, "sbp");
+    const dbp = num(values, "dbp");
+    if (sbp === null || dbp === null) return null;
+    const crianca = selected(values, "faixa") === "crianca";
+    const media = Math.round((sbp + dbp) / 2);
+    const minutos = crianca ? 3 : 5;
+    const corte = crianca ? 10 : 20;
+    const petequias = num(values, "petequias");
+    const como = `Insuflar o manguito a ${media} mmHg por ${minutos} minutos e contar as petéquias num quadrado de 2,5 cm de lado no antebraço (observar também o antebraço todo, o dorso das mãos e os dedos). Positiva com ${corte} ou mais petéquias${crianca ? " na criança" : " no adulto"}.`;
+    const positiva = petequias !== null && petequias >= corte;
+    const classificacao =
+      petequias === null ? "Pronta para realizar" : positiva ? "Prova do laço positiva" : "Prova do laço negativa";
+    const interpretacao =
+      petequias === null
+        ? `PA média (${sbp} + ${dbp}) / 2 = ${media} mmHg.`
+        : `${petequias} petéquia${petequias === 1 ? "" : "s"} para corte de ${corte}${crianca ? " (criança)" : " (adulto)"}.`;
+    const recomendacao =
+      petequias === null
+        ? como
+        : positiva
+          ? "Sangramento induzido de pele: sem sinal de alarme, o paciente é Grupo B (hemograma obrigatório e observação). Não é sinal de alarme."
+          : "Negativa não afasta dengue nem gravidade; seguir a classificação pelos sinais de alarme e de gravidade.";
+    return result(
+      String(media),
+      "mmHg no manguito",
+      classificacao,
+      interpretacao,
+      recomendacao,
+      "Frequentemente negativa na obesidade e no choque. Revisão da Opas/OMS (2022) mostrou baixo valor preditivo para formas graves e para internação; não fazer se já houver petéquias espontâneas.",
+      `Prova do laço: PA ${sbp}x${dbp} mmHg, manguito a ${media} mmHg por ${minutos} min. ${
+        petequias === null ? "" : `${petequias} petéquias (corte ${corte}): ${positiva ? "positiva" : "negativa"}.`
+      }`.trim(),
+      [`PA média ${media} mmHg`, `${minutos} min`, `Corte ≥ ${corte} petéquias`]
+    );
+  },
+};
+
+const dengueAltaCriterios = [
+  ["altaHemodinamica", "Estabilização hemodinâmica por 48 horas"],
+  ["altaFebre", "Ausência de febre por 24 horas"],
+  ["altaClinica", "Melhora visível do quadro clínico"],
+  ["altaHematocrito", "Hematócrito normal e estável por 24 horas"],
+  ["altaPlaquetas", "Plaquetas em elevação"],
+] as const;
+
+const dengueAlta: ClinicalCalculator = {
+  id: "dengue-alta",
+  name: "Dengue: critérios de alta hospitalar",
+  shortName: "Alta na dengue",
+  category: "Infectologia: dengue",
+  description: "Marque os critérios cumpridos: a alta exige os cinco.",
+  fields: dengueAltaCriterios.map(([id, label]) => checkboxOptional(id, label, undefined, "Critérios cumpridos")),
+  reference: DENGUE_MS_REFERENCIA,
+  calculate(values) {
+    const cumpridos = dengueAltaCriterios.filter(([id]) => yes(values, id));
+    const faltam = dengueAltaCriterios.filter(([id]) => !yes(values, id)).map(([, label]) => label.toLowerCase());
+    const apto = faltam.length === 0;
+    return result(
+      `${cumpridos.length}/5`,
+      "critérios",
+      apto ? "Apto à alta" : "Manter internado",
+      apto ? "Os cinco critérios de alta do Ministério da Saúde estão presentes." : `Falta: ${faltam.join("; ")}.`,
+      apto
+        ? "Alta com retorno para reavaliação clínica e laboratorial como no Grupo B; preencher e entregar o cartão de acompanhamento."
+        : "Manter a internação e reavaliar; a alta exige todos os critérios.",
+      "Os critérios valem para pacientes internados (grupos C e D). Confirmar também a ausência de sinais de alarme e a capacidade de seguimento ambulatorial.",
+      `Dengue, critérios de alta: ${cumpridos.length}/5. ${apto ? "Apto à alta, com retorno como Grupo B." : `Manter internado. Falta: ${faltam.join("; ")}.`}`,
+      cumpridos.map(([, label]) => label)
+    );
+  },
+};
+
 export const clinicalCalculators: ClinicalCalculator[] = [
   curb65,
   qsofa,
@@ -1871,6 +2116,9 @@ export const clinicalCalculators: ClinicalCalculator[] = [
   centor,
   preeclampsiaAspirinRisk,
   bishopScore,
+  dengueClassificacao,
+  provaDoLaco,
+  dengueAlta,
   bmi,
 ];
 

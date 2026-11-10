@@ -179,6 +179,39 @@ function BooleanField({
   value: CalculatorValue;
   onChange: (value: CalculatorValue) => void;
 }) {
+  /* Item opcional: basta marcar o que está presente (um toque liga e desliga). */
+  if (field.required === false) {
+    const checked = value === true;
+    return (
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition ${
+          checked
+            ? "border-cyan-700 bg-cyan-50 ring-1 ring-cyan-700/30"
+            : "border-slate-200 bg-white hover:border-cyan-200 hover:bg-cyan-50/40"
+        }`}
+      >
+        <span
+          aria-hidden="true"
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+            checked ? "border-cyan-800 bg-cyan-800 text-white" : "border-slate-300 bg-white"
+          }`}
+        >
+          {checked ? <Check className="h-3.5 w-3.5" /> : null}
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold leading-5 text-slate-800">{field.label}</span>
+          {field.help ? (
+            <span className="mt-1 block text-xs leading-5 text-slate-500">{field.help}</span>
+          ) : null}
+        </span>
+      </button>
+    );
+  }
+
   const answered = typeof value === "boolean";
   return (
     <fieldset className={`rounded-xl border p-3.5 transition ${answered ? "border-slate-200 bg-white" : "border-amber-200 bg-amber-50/40"}`}>

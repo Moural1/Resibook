@@ -476,3 +476,54 @@ test("novas calculadoras: HEART, PERC, Child-Pugh, cálcio, sódio, osmolaridade
   assert.equal(bishop.classification, "Colo favorável");
   assert.equal(calculateClinicalScore("bishop", { dilation: "0", effacement: "0", station: "0", consistency: "0", position: "0" }).classification, "Colo desfavorável");
 });
+
+test("dengue: classificação por marcação segue a hierarquia D > C > B > A do MS", () => {
+  const base = { faixa: "adulto", peso: "" };
+  assert.equal(calculateClinicalScore("dengue-classificacao", base).value, "A");
+  assert.equal(calculateClinicalScore("dengue-classificacao", { ...base, dbPele: true }).value, "B");
+  assert.equal(calculateClinicalScore("dengue-classificacao", { ...base, dbPele: true, daMucosa: true }).value, "C");
+  const grave = calculateClinicalScore("dengue-classificacao", { ...base, daVomitos: true, dgChoque: true });
+  assert.equal(grave.value, "D");
+  assert.match(grave.classification, /vermelho/);
+});
+
+test("dengue: volumes de hidratação pelo peso e pela faixa etária", () => {
+  const adultoA = calculateClinicalScore("dengue-classificacao", { faixa: "adulto", peso: 70 });
+  assert.match(adultoA.recommendation, /60 mL\/kg\/dia = 4\.200 mL\/dia, 1\.400 mL nas primeiras 4 a 6 h/);
+  const crianca = calculateClinicalScore("dengue-classificacao", { faixa: "crianca", peso: 15, dbLactente: false });
+  assert.match(crianca.recommendation, /100 mL\/kg\/dia = 1\.500 mL\/dia/);
+  const lactente = calculateClinicalScore("dengue-classificacao", { faixa: "crianca", peso: 8, dbLactente: true });
+  assert.equal(lactente.value, "B");
+  assert.match(lactente.recommendation, /130 mL\/kg\/dia = 1\.040 mL\/dia/);
+  const c = calculateClinicalScore("dengue-classificacao", { faixa: "adulto", peso: 60, daDorAbdominal: true });
+  assert.match(c.recommendation, /10 mL\/kg na 1ª hora = 600 mL/);
+  assert.match(c.recommendation, /25 mL\/kg em 6 h = 1\.500 mL/);
+  const d = calculateClinicalScore("dengue-classificacao", { faixa: "adulto", peso: 60, dgSangramento: true });
+  assert.match(d.recommendation, /20 mL\/kg em até 20 minutos = 1\.200 mL/);
+});
+
+test("dengue: itens de marcar começam desmarcados e não bloqueiam o resultado", () => {
+  const calc = clinicalCalculators.find(({ id }) => id === "dengue-classificacao");
+  const initial = getCalculatorInitialValues(calc);
+  assert.equal(initial.dgChoque, false);
+  assert.equal(validateCalculatorValues(calc, initial), null);
+});
+
+test("prova do laço: PA média, tempo e corte por faixa etária", () => {
+  const adulto = calculateClinicalScore("prova-do-laco", { faixa: "adulto", sbp: 100, dbp: 60, petequias: "" });
+  assert.equal(adulto.value, "80");
+  assert.match(adulto.recommendation, /80 mmHg por 5 minutos/);
+  assert.equal(calculateClinicalScore("prova-do-laco", { faixa: "adulto", sbp: 100, dbp: 60, petequias: 19 }).classification, "Prova do laço negativa");
+  assert.equal(calculateClinicalScore("prova-do-laco", { faixa: "adulto", sbp: 100, dbp: 60, petequias: 20 }).classification, "Prova do laço positiva");
+  assert.equal(calculateClinicalScore("prova-do-laco", { faixa: "crianca", sbp: 90, dbp: 50, petequias: 10 }).classification, "Prova do laço positiva");
+  const calc = clinicalCalculators.find(({ id }) => id === "prova-do-laco");
+  assert.ok(validateCalculatorValues(calc, { faixa: "adulto", sbp: 90, dbp: 95, petequias: "" }));
+});
+
+test("dengue: alta só com os cinco critérios", () => {
+  const todos = { altaHemodinamica: true, altaFebre: true, altaClinica: true, altaHematocrito: true, altaPlaquetas: true };
+  assert.equal(calculateClinicalScore("dengue-alta", todos).classification, "Apto à alta");
+  const parcial = calculateClinicalScore("dengue-alta", { ...todos, altaPlaquetas: false });
+  assert.equal(parcial.value, "4/5");
+  assert.equal(parcial.classification, "Manter internado");
+});

@@ -13,6 +13,11 @@ export const DENGUE: Tema = {
     url: "https://bvsms.saude.gov.br/bvs/publicacoes/dengue_diagnostico_manejo_clinico_6ed.pdf",
     nota: "Transcrição do fluxograma e das condutas do manual vigente. Confira o protocolo local e a nota técnica mais recente durante epidemias.",
   },
+  calculadoras: [
+    { id: "dengue-classificacao", nome: "Classificar e estadiar (A a D)", descricao: "Marque os achados: grupo, conduta e volumes de hidratação pelo peso." },
+    { id: "prova-do-laco", nome: "Prova do laço", descricao: "Pressão do manguito, tempo e leitura pelo número de petéquias." },
+    { id: "dengue-alta", nome: "Critérios de alta", descricao: "Marque os cinco critérios do MS antes da alta." },
+  ],
   revisar: [
     "Notificar todo caso suspeito de dengue.",
     "A hidratação começa logo após a classificação, enquanto o paciente aguarda exames: oral nos grupos A e B, venosa nos grupos C e D.",

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft, ArrowRight, ExternalLink, Landmark, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calculator, ExternalLink, Landmark, Zap } from "lucide-react";
 import ModulePageHeader from "@/components/module-page-header";
 import Fluxograma from "@/components/fluxos/fluxograma";
 import {
@@ -79,6 +79,7 @@ export default async function TemaFluxoPage({ params }: Props) {
       <nav aria-label="Seções do tema" className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-medium text-slate-500">Ir para:</span>
         {[
+          tema.calculadoras?.length ? ["#secao-calculadoras", "Calculadoras"] : null,
           tema.algoritmos?.length ? ["#secao-algoritmos", tema.algoritmos.length === 1 ? "Algoritmo" : "Algoritmos"] : null,
           tema.linhasDoTempo?.length ? ["#secao-linha-do-tempo", "Linha do tempo"] : null,
           tema.graficos?.length ? ["#secao-esquema", "Esquema"] : null,
@@ -112,6 +113,26 @@ export default async function TemaFluxoPage({ params }: Props) {
             </a>
           </div>
         </aside>
+      ) : null}
+
+      {tema.calculadoras?.length ? (
+        <Secao id="calculadoras" titulo="Calculadoras">
+          <div className="grid gap-3 md:grid-cols-3">
+            {tema.calculadoras.map((calculadora) => (
+              <Link
+                key={calculadora.id}
+                href={`/calculadoras?calculadora=${encodeURIComponent(calculadora.id)}`}
+                className="group flex items-start gap-3 rounded-xl border border-cyan-100 bg-cyan-50/60 p-4 transition hover:border-cyan-700/40 hover:bg-cyan-50"
+              >
+                <Calculator className="mt-0.5 h-5 w-5 shrink-0 text-cyan-800" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-slate-900 group-hover:text-cyan-900">{calculadora.nome}</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-600">{calculadora.descricao}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </Secao>
       ) : null}
 
       {tema.revisar?.length ? <PontoDeRevisao itens={tema.revisar} /> : null}
