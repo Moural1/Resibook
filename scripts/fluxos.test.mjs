@@ -8,7 +8,7 @@ test("fluxogramas: 5 áreas, 67 temas e 153 regras (relâmpago + raio-X)", () =>
   assert.equal(totais.areas, 5);
   assert.equal(totais.temas, 67);
   assert.equal(totais.regras, 153);
-  assert.equal(totais.algoritmos, 45);
+  assert.equal(totais.algoritmos, 49);
 });
 
 test("fluxogramas: ids únicos e todo tema tem conteúdo", () => {
@@ -115,6 +115,8 @@ test("fluxogramas: protocolos citam a fonte e mantêm as doses-chave", () => {
     "clinica/iam": ["≤ 90 min", "≤ 30 min"],
     "clinica/diarreia": ["50 a 100 mL/kg em 4 a 6 horas", "Ringer lactato 70 mL/kg"],
     "go/pre-natal": ["dTpa", "TOTG 75 g"],
+    "clinica/insonia": ["TCC-I", "mínimo de 5 h", "até 4 semanas", "25% da dose a cada 2 semanas"],
+    "clinica/dor-cronica-articular": ["Artrocentese", "≥ 6 de 10 pontos", "urato < 6 mg/dL", "Glucosamina"],
   };
   for (const [chave, trechos] of Object.entries(esperado)) {
     const [area, id] = chave.split("/");
