@@ -1,11 +1,19 @@
 import { atencao, avaliar, cenario, conduta, decisao, ramo, type AreaFluxos } from "./tipos.ts";
 import { DENGUE } from "./dengue.ts";
+import { CORRIMENTO_URETRAL, HIV, SIFILIS, TUBERCULOSE, ULCERAS_DIP } from "./protocolos-infecto.ts";
+import { PROTOCOLOS_CLINICA } from "./protocolos-clinica.ts";
 
 export const CLINICA: AreaFluxos = {
   id: "clinica",
   nome: "Clínica Médica",
   temas: [
     DENGUE,
+    ...PROTOCOLOS_CLINICA,
+    SIFILIS,
+    CORRIMENTO_URETRAL,
+    ULCERAS_DIP,
+    HIV,
+    TUBERCULOSE,
     {
       id: "anemias",
       titulo: "Anemias",
