@@ -1,9 +1,11 @@
 import { atencao, avaliar, cenario, conduta, decisao, ramo, type AreaFluxos } from "./tipos.ts";
+import { PRE_NATAL } from "./protocolos-go.ts";
 
 export const GO: AreaFluxos = {
   id: "go",
   nome: "Ginecologia e Obstetrícia",
   temas: [
+    PRE_NATAL,
     {
       id: "rastreamento-cervical",
       titulo: "Lesões e rastreamento cervical",

@@ -3,12 +3,12 @@ import test from "node:test";
 
 const { AREAS_FLUXOS, totaisFluxos, encontrarTema, vizinhos, textoDoTema } = await import("../src/lib/fluxos/index.ts");
 
-test("fluxogramas: 5 áreas, 50 temas e 153 regras (relâmpago + raio-X)", () => {
+test("fluxogramas: 5 áreas, 67 temas e 153 regras (relâmpago + raio-X)", () => {
   const totais = totaisFluxos();
   assert.equal(totais.areas, 5);
-  assert.equal(totais.temas, 50);
+  assert.equal(totais.temas, 67);
   assert.equal(totais.regras, 153);
-  assert.equal(totais.algoritmos, 25);
+  assert.equal(totais.algoritmos, 45);
 });
 
 test("fluxogramas: ids únicos e todo tema tem conteúdo", () => {
@@ -101,4 +101,27 @@ test("fluxogramas: dengue segue o manual do Ministério da Saúde (6ª ed., 2024
   // Os quatro grupos da classificação de risco com as cores oficiais.
   const risco = tema.quadros.find((quadro) => quadro.titulo.startsWith("Classificação de risco"));
   assert.deepEqual(risco.linhas.map((linha) => linha[1].split(":")[0]), ["Azul", "Verde", "Amarelo", "Vermelho"]);
+});
+
+test("fluxogramas: protocolos citam a fonte e mantêm as doses-chave", () => {
+  const esperado = {
+    "clinica/sifilis": ["2,4 milhões UI IM dose única", "7,2 milhões UI", "18 a 24 milhões UI/dia", "intervalo entre doses > 7 dias"],
+    "clinica/corrimento-uretral": ["Ceftriaxona 500 mg IM dose única + azitromicina 500 mg, 2 comprimidos VO dose única"],
+    "clinica/ulceras-genitais-dip": ["doxiciclina 100 mg 12/12 h por 14 dias", "Aciclovir 200 mg, 2 comprimidos 3x/dia por 7 a 10 dias"],
+    "clinica/hiv": ["dolutegravir 50 mg 12/12 h", "28 dias", "72 horas"],
+    "clinica/tuberculose": ["2RHZE", "270 doses", "120 doses"],
+    "clinica/sepse": ["30 mL/kg", "PAM ≥ 65 mmHg"],
+    "clinica/avc": ["0,9 mg/kg", "185/110"],
+    "clinica/iam": ["≤ 90 min", "≤ 30 min"],
+    "clinica/diarreia": ["50 a 100 mL/kg em 4 a 6 horas", "Ringer lactato 70 mL/kg"],
+    "go/pre-natal": ["dTpa", "TOTG 75 g"],
+  };
+  for (const [chave, trechos] of Object.entries(esperado)) {
+    const [area, id] = chave.split("/");
+    const achado = encontrarTema(area, id);
+    assert.ok(achado, `tema ${chave} ausente`);
+    assert.ok(achado.tema.fonte?.url?.startsWith("https://"), `${chave} sem fonte`);
+    const texto = textoDoTema(achado.tema);
+    for (const trecho of trechos) assert.ok(texto.includes(trecho), `${chave} sem "${trecho}"`);
+  }
 });
