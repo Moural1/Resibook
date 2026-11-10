@@ -1,4 +1,5 @@
 import { atencao, avaliar, cenario, conduta, decisao, ramo, type Tema } from "./tipos.ts";
+import { DOR_CRONICA, INSONIA } from "./protocolos-sono-dor.ts";
 
 /* Protocolos de urgência e de doenças crônicas, resumidos das diretrizes
    citadas em `fonte`. Conferir doses no documento original antes de
@@ -539,57 +540,6 @@ export const OBESIDADE: Tema = {
   ],
 };
 
-export const INSONIA: Tema = {
-  id: "insonia",
-  titulo: "Insônia crônica",
-  fonte: {
-    titulo: "Associação Brasileira do Sono. Consenso Brasileiro de Insônia (2019); critérios da ICSD-3 e do DSM-5.",
-    url: "https://absono.com.br",
-    nota: "Hipnóticos por tempo curto e com reavaliação.",
-  },
-  revisar: [
-    "Terapia cognitivo-comportamental para insônia (TCC-I) é a primeira linha.",
-    "Evitar benzodiazepínicos de uso prolongado, sobretudo em idosos (quedas e prejuízo cognitivo).",
-  ],
-  algoritmos: [
-    {
-      titulo: "Abordagem da insônia",
-      passos: [
-        cenario("Dificuldade para iniciar ou manter o sono, ou despertar precoce, com prejuízo diurno"),
-        avaliar("Insônia crônica: ≥ 3 noites por semana por ≥ 3 meses, apesar de oportunidade adequada para dormir"),
-        avaliar("Rastrear causas: apneia do sono, pernas inquietas, depressão, ansiedade, dor, noctúria, álcool, cafeína, medicamentos"),
-        conduta("TCC-I: controle de estímulos, restrição de sono, higiene do sono, técnicas de relaxamento e reestruturação cognitiva; diário do sono"),
-        decisao(
-          "Resposta insuficiente ou necessidade de alívio em curto prazo?",
-          ramo("Não", avaliar("Manter TCC-I e reavaliar")),
-          ramo("Sim", conduta("Medicamento por tempo curto, associado à TCC-I, escolhido pelo perfil: zolpidem, antagonistas de orexina, doxepina em dose baixa, ou antidepressivo sedativo se depressão associada"))
-        ),
-      ],
-    },
-  ],
-  quadros: [
-    {
-      titulo: "Medidas da TCC-I",
-      colunas: ["Técnica", "Como"],
-      linhas: [
-        ["Controle de estímulos", "Cama só para dormir e sexo; sair da cama se não dormir em cerca de 20 min; horário fixo para acordar"],
-        ["Restrição de sono", "Limitar o tempo na cama ao tempo real de sono e ampliar aos poucos"],
-        ["Higiene do sono", "Evitar cafeína à tarde, álcool, telas e refeições pesadas à noite; exercício regular"],
-        ["Cognitiva", "Trabalhar crenças disfuncionais sobre o sono"],
-      ],
-    },
-  ],
-  oQueCai: [
-    "Insônia crônica: ≥ 3 noites/semana por ≥ 3 meses com prejuízo diurno.",
-    "TCC-I é a primeira linha.",
-    "Benzodiazepínico prolongado aumenta quedas em idosos.",
-  ],
-  pegadinhas: [
-    "\"Hipnótico como primeira escolha\" (TCC-I primeiro).",
-    "\"Ronco e sonolência com insônia: só tratar a insônia\" (investigar apneia do sono).",
-  ],
-};
-
 export const FIBROMIALGIA: Tema = {
   id: "fibromialgia",
   titulo: "Fibromialgia",
@@ -639,64 +589,6 @@ export const FIBROMIALGIA: Tema = {
   pegadinhas: [
     "\"Diagnóstico de exclusão\" (é clínico e pode coexistir com outras doenças reumáticas).",
     "\"Opioide para dor refratária\" (não recomendado).",
-  ],
-};
-
-export const DOR_CRONICA: Tema = {
-  id: "dor-cronica-articular",
-  titulo: "Dor articular crônica e osteoartrite",
-  fonte: {
-    titulo: "Ministério da Saúde/Conitec. PCDT de Dor Crônica; recomendações OARSI e ACR para osteoartrite.",
-    url: "https://www.gov.br/conitec/pt-br/assuntos/avaliacao-de-tecnologias-em-saude/protocolos-clinicos-e-diretrizes-terapeuticas",
-  },
-  revisar: [
-    "Primeiro diferenciar dor mecânica (osteoartrite) de dor inflamatória (artrites): rigidez matinal, edema e provas inflamatórias.",
-    "Na osteoartrite, exercício e perda de peso são a base do tratamento.",
-  ],
-  algoritmos: [
-    {
-      titulo: "Dor articular crônica",
-      passos: [
-        cenario("Dor articular há mais de 3 meses"),
-        decisao(
-          "Padrão",
-          ramo(
-            "Inflamatório: rigidez matinal > 30 a 60 min, edema, melhora com movimento, provas inflamatórias altas",
-            conduta("Investigar artrite reumatoide, espondiloartrites, gota: VHS/PCR, FR, anti-CCP, ácido úrico, radiografias; encaminhar à reumatologia")
-          ),
-          ramo(
-            "Mecânico: piora com uso, rigidez matinal curta, > 45 anos",
-            conduta("Osteoartrite: diagnóstico clínico; radiografia se dúvida"),
-            conduta("Exercício (fortalecimento e aeróbico), perda de peso, educação, órtese ou bengala quando necessário"),
-            conduta("Dor: AINE tópico (joelho e mão), AINE oral pelo menor tempo e menor dose, duloxetina; infiltração de corticoide nas crises"),
-            avaliar("Dor incapacitante e falha clínica: avaliar artroplastia")
-          ),
-          ramo("Difuso, sem sinovite", conduta("Considerar fibromialgia (ver tema próprio)"))
-        ),
-        atencao("Evitar opioides fortes na osteoartrite; glucosamina e condroitina sem benefício consistente"),
-      ],
-    },
-  ],
-  quadros: [
-    {
-      titulo: "Escada analgésica (OMS) na dor crônica",
-      colunas: ["Degrau", "Opções"],
-      linhas: [
-        ["1: dor leve", "Analgésicos simples (paracetamol, dipirona) e AINE ± adjuvantes"],
-        ["2: dor moderada", "Opioide fraco (codeína, tramadol) ± degrau 1 ± adjuvantes"],
-        ["3: dor intensa", "Opioide forte (morfina, metadona, oxicodona) ± degrau 1 ± adjuvantes"],
-        ["Adjuvantes", "Antidepressivos tricíclicos ou duloxetina, gabapentinoides (dor neuropática), relaxantes musculares"],
-      ],
-    },
-  ],
-  oQueCai: [
-    "Rigidez matinal > 30 a 60 min sugere artrite inflamatória.",
-    "Osteoartrite: exercício e perda de peso são a base.",
-    "AINE tópico na osteoartrite de joelho e mão.",
-  ],
-  pegadinhas: [
-    "\"Radiografia normal exclui osteoartrite\" (diagnóstico é clínico; imagem não se correlaciona bem com dor).",
-    "\"Opioide forte de rotina na osteoartrite\" (evitar).",
   ],
 };
 
