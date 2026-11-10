@@ -1,9 +1,11 @@
 import { atencao, avaliar, cenario, conduta, decisao, ramo, type AreaFluxos } from "./tipos.ts";
+import { DENGUE } from "./dengue.ts";
 
 export const CLINICA: AreaFluxos = {
   id: "clinica",
   nome: "Clínica Médica",
   temas: [
+    DENGUE,
     {
       id: "anemias",
       titulo: "Anemias",
