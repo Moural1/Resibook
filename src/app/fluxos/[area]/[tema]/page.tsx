@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft, ArrowRight, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, Landmark, Zap } from "lucide-react";
 import ModulePageHeader from "@/components/module-page-header";
 import Fluxograma from "@/components/fluxos/fluxograma";
 import {
@@ -51,7 +51,11 @@ export default async function TemaFluxoPage({ params }: Props) {
       <ModulePageHeader
         eyebrow={area.nome}
         title={tema.titulo}
-        description="Algoritmo de decisão, quadros comparativos, o que mais cai e as pegadinhas do tema."
+        description={
+          tema.fonte
+            ? "Protocolo oficial em fluxograma: classificação, condutas por grupo, quadros de referência e pontos de prova."
+            : "Algoritmo de decisão, quadros comparativos, o que mais cai e as pegadinhas do tema."
+        }
         metrics={[
           ...(tema.questoes ? [{ label: "Questões em 4 provas", value: tema.questoes }] : []),
           { label: "Algoritmos", value: tema.algoritmos?.length ?? 0 },
@@ -89,6 +93,26 @@ export default async function TemaFluxoPage({ params }: Props) {
             </a>
           ))}
       </nav>
+
+      {tema.fonte ? (
+        <aside className="flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+          <Landmark className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" aria-hidden="true" />
+          <div className="min-w-0 space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800">Fonte oficial</p>
+            <p className="text-sm font-medium leading-6 text-slate-900">{tema.fonte.titulo}</p>
+            {tema.fonte.nota ? <p className="text-xs leading-5 text-slate-600">{tema.fonte.nota}</p> : null}
+            <a
+              href={tema.fonte.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 hover:text-emerald-950"
+            >
+              Abrir o documento original
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+          </div>
+        </aside>
+      ) : null}
 
       {tema.revisar?.length ? <PontoDeRevisao itens={tema.revisar} /> : null}
 

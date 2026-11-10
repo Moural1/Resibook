@@ -43,6 +43,8 @@ export type Tema = {
   graficos?: GraficoIntervalos[];
   oQueCai?: string[];
   pegadinhas?: string[];
+  /* Protocolo oficial transcrito (ex.: manual do Ministério da Saúde). */
+  fonte?: { titulo: string; url: string; nota?: string };
 };
 
 export type AreaFluxos = {
