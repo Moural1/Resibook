@@ -26,6 +26,26 @@ function isSectionLabel(line: string) {
   return /:$/.test(line) && line.length <= 40 && !/\d/.test(line);
 }
 const OR_RE = /^ou$/i;
+// Verbos e termos de posologia: linha que começa assim nunca é título nem nome de remédio.
+const POSOLOGY_START = /^(tomar|administrar|aplicar|diluir|fazer|realizar|repetir|infundir|manter|iniciar|usar|dose|doses|se|até|após|em|na|no|para|velocidade|volume|concentra|ampola|frasco|apresenta|exemplo|obs|bolus|seguido|infus\p{L}*|m[áa]xim\p{L}*)\b/iu;
+const DOSE_RE = /\d[\d.,]*\s?(mg|mcg|g|ml|ui|%|meq)\b/i;
+
+/** "Prednisolona 20 mg", "Adenosina (6 mg/2 mL) – 1 ampola": nome de medicamento
+ *  solto (sem número de item), que vira cabeçalho com a posologia abaixo. */
+export function isDrugLine(line: string) {
+  if (isShouting(line) || line.length > 90 || /[.:;,]$/.test(line) || line.includes(":")) return false;
+  if (!/^\p{L}/u.test(line) || POSOLOGY_START.test(line)) return false;
+  // Linha quebrada no meio da frase ("... infusão de 50 a") é continuação, não nome.
+  if (/\s(a|e|o|de|da|do|em|ou|com|por|para)$/i.test(line)) return false;
+  return DOSE_RE.test(line);
+}
+
+/** "Manejo da dispneia", "Grave", "Apresentação": título curto sem dois-pontos. */
+export function isPlainHeading(line: string) {
+  if (isShouting(line) || line.length > 45 || /\d/.test(line) || line.includes(":") || /[.;,!?)]$/.test(line)) return false;
+  if (!/^\p{Lu}/u.test(line) || line.split(" ").length > 5) return false;
+  return !/^(tomar|administrar|aplicar|diluir|fazer|realizar|repetir|infundir|manter|iniciar|usar|se|até|após|evitar|suspender|orientar|retornar)\b/i.test(line);
+}
 
 export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
   const lines = (value || "").replace(/\r\n?/g, "\n").split("\n").map((line) => line.replace(/\s+/g, " ").trim());
@@ -54,6 +74,24 @@ export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
 
     if (OR_RE.test(line)) {
       blocks.push({ kind: "or" });
+      open = null;
+      continue;
+    }
+
+    if (isDrugLine(line)) {
+      open = { kind: "item", number: "", title: line, lines: [] };
+      blocks.push(open);
+      continue;
+    }
+
+    if (/^exemplo\s*:/i.test(line)) {
+      open = { kind: "text", lines: [line] };
+      blocks.push(open);
+      continue;
+    }
+
+    if (isPlainHeading(line)) {
+      blocks.push({ kind: "label", text: line });
       open = null;
       continue;
     }
