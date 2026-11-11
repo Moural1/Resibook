@@ -61,29 +61,37 @@ function Caixa({ tipo, texto }: { tipo: NoFluxo["tipo"]; texto: string }) {
   );
 }
 
-function Ramos({ ramos }: { ramos: RamoFluxo[] }) {
+/* Mais de 4 colunas somadas (decisão dentro de decisão) espreme o texto:
+   a partir daí os ramos aninhados empilham em largura total. */
+const MAX_COLUNAS = 4;
+
+function Ramos({ ramos, colunas }: { ramos: RamoFluxo[]; colunas: number }) {
+  const total = colunas * ramos.length;
+  const empilhar = total > MAX_COLUNAS;
   const meio = 50 / ramos.length;
   return (
     <div className="relative w-full">
       {/* Barra horizontal que liga os ramos (desktop). */}
-      <span
-        className="absolute top-0 hidden h-0.5 rounded bg-cyan-700/30 md:block"
-        style={{ left: `${meio}%`, right: `${meio}%` }}
-        aria-hidden="true"
-      />
+      {empilhar ? null : (
+        <span
+          className="absolute top-0 hidden h-0.5 rounded bg-cyan-700/30 md:block"
+          style={{ left: `${meio}%`, right: `${meio}%` }}
+          aria-hidden="true"
+        />
+      )}
       <div
-        className="grid w-full gap-3 md:[grid-template-columns:repeat(var(--ramos),minmax(0,1fr))]"
+        className={`grid w-full gap-3 ${empilhar ? "" : "md:[grid-template-columns:repeat(var(--ramos),minmax(0,1fr))]"}`}
         style={{ ["--ramos" as string]: ramos.length }}
       >
         {ramos.map((ramo) => (
           <div key={ramo.rotulo} className="flex min-w-0 flex-col items-center">
-            <span className="hidden h-3 w-0.5 bg-cyan-700/30 md:block" aria-hidden="true" />
+            {empilhar ? null : <span className="hidden h-3 w-0.5 bg-cyan-700/30 md:block" aria-hidden="true" />}
             <div className="flex w-full min-w-0 flex-1 flex-col items-center rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
               <span className="w-full rounded-full bg-cyan-800 px-3 py-1.5 text-center text-xs font-semibold leading-5 text-white [overflow-wrap:anywhere]">
                 {ramo.rotulo}
               </span>
               <Conector />
-              <Passos passos={ramo.passos} />
+              <Passos passos={ramo.passos} colunas={empilhar ? colunas : total} />
             </div>
           </div>
         ))}
@@ -92,7 +100,7 @@ function Ramos({ ramos }: { ramos: RamoFluxo[] }) {
   );
 }
 
-function Passos({ passos }: { passos: NoFluxo[] }) {
+function Passos({ passos, colunas = 1 }: { passos: NoFluxo[]; colunas?: number }) {
   return (
     <div className="flex w-full flex-col items-center">
       {passos.map((no, index) => (
@@ -102,7 +110,7 @@ function Passos({ passos }: { passos: NoFluxo[] }) {
           {no.tipo === "decisao" ? (
             <>
               <Conector />
-              <Ramos ramos={no.ramos} />
+              <Ramos ramos={no.ramos} colunas={colunas} />
             </>
           ) : null}
         </div>

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ModulePageHeader from "@/components/module-page-header";
+import PrescriptionSheet from "@/components/prescription-sheet";
 import {
   PERSONAL_CONTENT_LABELS,
   PERSONAL_CONTENT_TYPES,
@@ -658,7 +659,11 @@ export default function MeuResibookPage() {
               <button type="button" onClick={() => setReading(null)} className="rounded-xl border border-slate-200 p-2" aria-label="Fechar"><X className="h-5 w-5" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 md:px-8">
-              <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-700">{reading.content}</p>
+              {reading.item_type === "prescription" ? (
+                <PrescriptionSheet value={reading.content} />
+              ) : (
+                <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-700">{reading.content}</p>
+              )}
             </div>
             <div className="flex flex-wrap gap-2 border-t border-slate-100 p-4 md:px-8">
               <Action onClick={() => copyItem(reading)} icon={Copy} label="Copiar" />
