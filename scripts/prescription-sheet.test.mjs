@@ -39,3 +39,18 @@ test("receituário: nome e quantidade do item", () => {
   assert.deepEqual(splitItemTitle("Sais de reidratação oral — SRO — 04 a 06 envelopes"), { name: "Sais de reidratação oral — SRO", quantity: "04 a 06 envelopes" });
   assert.deepEqual(splitItemTitle("Soro fisiológico 0,9% ou ringer lactato"), { name: "Soro fisiológico 0,9% ou ringer lactato", quantity: "" });
 });
+
+test("receituário: formato de guia com '1.', rótulos e dicas", () => {
+  const blocks = parsePrescriptionSheet(
+    "Terapia oral:\n1.Metronidazol 400 mg - 5 comprimidos\nTomar 5 comprimidos VO, dose única.\nBizus:\nEm caso de comprimido de 250 mg, a dose é de 8 comprimidos.\n2.Tinidazol 500 mg – 1 comprimido\nTomar 4 comprimidos VO, em dose única.\nBizu: os parceiros devem ser tratados.\nUso oral:\nHeparina 5.000 UI\n1.000 UI/h"
+  );
+  assert.deepEqual(blocks, [
+    { kind: "label", text: "Terapia oral" },
+    { kind: "item", number: "1", title: "Metronidazol 400 mg - 5 comprimidos", lines: ["Tomar 5 comprimidos VO, dose única."] },
+    { kind: "note", lines: ["Em caso de comprimido de 250 mg, a dose é de 8 comprimidos."] },
+    { kind: "item", number: "2", title: "Tinidazol 500 mg – 1 comprimido", lines: ["Tomar 4 comprimidos VO, em dose única."] },
+    { kind: "note", lines: ["os parceiros devem ser tratados."] },
+    { kind: "route", text: "Uso oral" },
+    { kind: "text", lines: ["Heparina 5.000 UI", "1.000 UI/h"] },
+  ]);
+});

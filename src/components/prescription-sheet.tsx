@@ -1,4 +1,4 @@
-import { parsePrescriptionSheet, readablePrescriptionLine, splitItemTitle } from "@/lib/prescription-sheet";
+import { parsePrescriptionSheet, readablePrescriptionLine, splitItemTitle, type SheetBlock } from "@/lib/prescription-sheet";
 
 // "-Fazer compressa..." vira item de lista com marcador discreto.
 function SheetLine({ line, className = "" }: { line: string; className?: string }) {
@@ -11,6 +11,13 @@ function SheetLine({ line, className = "" }: { line: string; className?: string 
       <span className="min-w-0">{text}</span>
     </p>
   );
+}
+
+/* Logo após "Uso oral" ou um rótulo, a 1ª linha sem ponto final costuma ser
+   o medicamento ("Prednisolona 20 mg"): destaca como nome de item. */
+function isDrugHeading(previous: SheetBlock | undefined, line: string) {
+  if (!previous || (previous.kind !== "route" && previous.kind !== "label")) return false;
+  return line.length <= 90 && !/[.:]$/.test(line) && /\d\s?(mg|mcg|g|mL|UI|%)\b/i.test(line);
 }
 
 /* Modelo de prescrição exibido como folha de receituário: vias de uso como
@@ -74,6 +81,20 @@ export default function PrescriptionSheet({
           );
         }
 
+        if (block.kind === "note") {
+          if (!block.lines.length) return null;
+          return (
+            <div key={index} className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-800">Dica</p>
+              <div className="mt-1 space-y-0.5 text-amber-950">
+                {block.lines.map((line, lineIndex) => (
+                  <SheetLine key={lineIndex} line={line} />
+                ))}
+              </div>
+            </div>
+          );
+        }
+
         if (block.kind === "label") {
           return (
             <p key={index} className="pt-1 text-[13px] font-semibold text-slate-900">
@@ -85,7 +106,11 @@ export default function PrescriptionSheet({
         return (
           <div key={index} className="space-y-0.5 text-slate-600">
             {block.lines.map((line, lineIndex) => (
-              <SheetLine key={lineIndex} line={line} />
+              <SheetLine
+                key={lineIndex}
+                line={line}
+                className={lineIndex === 0 && isDrugHeading(blocks[index - 1], line) ? "text-[15px] font-semibold text-slate-950" : ""}
+              />
             ))}
           </div>
         );

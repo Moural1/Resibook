@@ -13,17 +13,25 @@ export type SheetBlock =
   | { kind: "item"; number: string; title: string; lines: string[] }
   | { kind: "or" }
   | { kind: "label"; text: string }
+  | { kind: "note"; lines: string[] }
   | { kind: "text"; lines: string[] };
 
 const ROUTE_RE = /^USO\b/i;
-const ITEM_RE = /^(\d{1,2})\)\s*(.*)$/;
+// "1) DIPIRONA" (modelos do banco) e "1.Metronidazol" (guias); "1.000 UI" não é item.
+const ITEM_RE = /^(\d{1,2})(?:\)|\.(?!\d))\s*(.*\S.*)$/;
+// Dicas do autor ("Bizus:", "Observação: ...") viram um destaque à parte.
+const NOTE_RE = /^(bizus?|dicas?|observaç(?:ão|ões)|obs\.?)\s*:\s*(.*)$/i;
+// Rótulo curto sem números ("Terapia oral:", "Grave") fecha o item aberto.
+function isSectionLabel(line: string) {
+  return /:$/.test(line) && line.length <= 40 && !/\d/.test(line);
+}
 const OR_RE = /^ou$/i;
 
 export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
   const lines = (value || "").replace(/\r\n?/g, "\n").split("\n").map((line) => line.replace(/\s+/g, " ").trim());
   const blocks: SheetBlock[] = [];
   // Bloco aberto que recebe as próximas linhas até uma linha em branco.
-  let open: Extract<SheetBlock, { kind: "item" | "text" }> | null = null;
+  let open: Extract<SheetBlock, { kind: "item" | "text" | "note" }> | null = null;
 
   for (const line of lines) {
     if (!line) {
@@ -32,7 +40,7 @@ export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
     }
 
     if (ROUTE_RE.test(line) && line.length <= 40) {
-      blocks.push({ kind: "route", text: line });
+      blocks.push({ kind: "route", text: line.replace(/:$/, "") });
       open = null;
       continue;
     }
@@ -50,7 +58,19 @@ export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
       continue;
     }
 
-    if (open?.kind === "item") {
+    const note = line.match(NOTE_RE);
+    if (note) {
+      open = { kind: "note", lines: note[2] ? [note[2]] : [] };
+      blocks.push(open);
+      continue;
+    }
+
+    if (open?.kind === "item" && !isSectionLabel(line)) {
+      open.lines.push(line);
+      continue;
+    }
+
+    if (open?.kind === "note" && !isSectionLabel(line)) {
       open.lines.push(line);
       continue;
     }
