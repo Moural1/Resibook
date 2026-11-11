@@ -20,8 +20,10 @@ test("receituário: via, itens numerados com posologia, alternativa e rótulo", 
 test("receituário: texto vazio não gera blocos e o conteúdo não é reescrito", () => {
   assert.deepEqual(parsePrescriptionSheet(""), []);
   assert.deepEqual(parsePrescriptionSheet(null), []);
-  const [block] = parsePrescriptionSheet("Paciente: Maria\nAmoxicilina 500mg");
-  assert.deepEqual(block, { kind: "text", lines: ["Paciente: Maria", "Amoxicilina 500mg"] });
+  assert.deepEqual(parsePrescriptionSheet("Paciente: Maria\nAmoxicilina 500mg"), [
+    { kind: "text", lines: ["Paciente: Maria"] },
+    { kind: "item", number: "", title: "Amoxicilina 500mg", lines: [] },
+  ]);
 });
 
 const { readablePrescriptionLine, splitItemTitle } = await import("../src/lib/prescription-sheet.ts");
@@ -51,6 +53,25 @@ test("receituário: formato de guia com '1.', rótulos e dicas", () => {
     { kind: "item", number: "2", title: "Tinidazol 500 mg – 1 comprimido", lines: ["Tomar 4 comprimidos VO, em dose única."] },
     { kind: "note", lines: ["os parceiros devem ser tratados."] },
     { kind: "route", text: "Uso oral" },
-    { kind: "text", lines: ["Heparina 5.000 UI", "1.000 UI/h"] },
+    { kind: "item", number: "", title: "Heparina 5.000 UI", lines: ["1.000 UI/h"] },
   ]);
+});
+
+test("receituário: dica termina no medicamento, título sem dois-pontos e exemplo fecham o item", () => {
+  const tsv = parsePrescriptionSheet(
+    "Bizus:\nManobras vasovagais podem reverter o quadro.\nAdenosina (6 mg/2 mL) – 1 ampola (dose de 6 mg)\nDose inicial: 1 ampola em bolus."
+  );
+  assert.deepEqual(tsv, [
+    { kind: "note", lines: ["Manobras vasovagais podem reverter o quadro."] },
+    { kind: "item", number: "", title: "Adenosina (6 mg/2 mL) – 1 ampola (dose de 6 mg)", lines: ["Dose inicial: 1 ampola em bolus."] },
+  ]);
+  const paliativo = parsePrescriptionSheet(
+    "4. Tramadol 50 mg\nTomar 1 comprimido VO se dor.\nExemplo: paciente com dor intensa refratária.\n1. Dieta livre.\nManejo da dispneia\nSe nunca usou opioide, iniciar morfina."
+  );
+  assert.deepEqual(paliativo.map((b) => b.kind), ["item", "text", "item", "label", "text"]);
+  assert.equal(paliativo[3].text, "Manejo da dispneia");
+  const flumazenil = parsePrescriptionSheet("Flumazenil\nApresentação\nAmpola de 0,5 mg/5 mL\nDoses\nDose teste (adulto): 0,3 mg EV.");
+  assert.deepEqual(flumazenil.map((b) => b.kind), ["label", "label", "text", "label", "text"]);
+  // Modelos do banco em caixa alta não mudam de estrutura.
+  assert.deepEqual(parsePrescriptionSheet("DIPIRONA 500 MG\nREPOUSO"), [{ kind: "text", lines: ["DIPIRONA 500 MG", "REPOUSO"] }]);
 });
