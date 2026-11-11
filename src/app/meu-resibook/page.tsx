@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BookCopy,
+  BookOpen,
   Check,
   Copy,
   Edit3,
@@ -89,6 +90,17 @@ export default function MeuResibookPage() {
   const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<PersonalContentItem | null>(null);
+  // Leitura do texto completo sem abrir o editor.
+  const [reading, setReading] = useState<PersonalContentItem | null>(null);
+
+  useEffect(() => {
+    if (!reading) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setReading(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [reading]);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -583,9 +595,14 @@ export default function MeuResibookPage() {
                       {item.source_global_id ? <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">Adaptado do Banco Resibook</span> : null}
                       {item.is_primary ? <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Principal</span> : null}
                     </div>
-                    <h2 className="mt-3 text-lg font-semibold text-slate-950">{item.title}</h2>
+                    <h2 className="mt-3 text-lg font-semibold text-slate-950">
+                      <button type="button" onClick={() => setReading(item)} className="text-left hover:text-cyan-800 focus-visible:outline-none focus-visible:underline">
+                        {item.title}
+                      </button>
+                    </h2>
                     <p className="mt-2 line-clamp-6 flex-1 whitespace-pre-wrap text-sm leading-6 text-slate-600">{item.content}</p>
                     <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                      <Action onClick={() => setReading(item)} icon={BookOpen} label="Ler" />
                       <Action onClick={() => copyItem(item)} icon={Copy} label="Copiar" />
                       <Action onClick={() => openEdit(item)} icon={Edit3} label="Editar" />
                       <label className="relative inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
@@ -620,6 +637,44 @@ export default function MeuResibookPage() {
       <aside className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
         Revise conteúdo, dose, contraindicações e protocolos locais antes do uso clínico. O Resibook apoia — não substitui — o julgamento médico.
       </aside>
+
+      {reading ? (
+        <div className="fixed inset-0 z-[100] flex justify-end bg-slate-950/50" role="dialog" aria-modal="true" aria-labelledby="leitura-titulo">
+          <button type="button" className="absolute inset-0" onClick={() => setReading(null)} aria-label="Fechar leitura" />
+          <div className="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6 md:px-8">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full border border-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600">{PERSONAL_CONTENT_LABELS[reading.item_type]}</span>
+                  {personalFolder(reading) ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2.5 py-0.5 text-xs font-semibold text-cyan-800">
+                      <Folder className="h-3 w-3" />
+                      {personalFolder(reading)}
+                    </span>
+                  ) : null}
+                </div>
+                <h2 id="leitura-titulo" className="mt-3 text-2xl font-semibold text-slate-950">{reading.title}</h2>
+              </div>
+              <button type="button" onClick={() => setReading(null)} className="rounded-xl border border-slate-200 p-2" aria-label="Fechar"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 md:px-8">
+              <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-700">{reading.content}</p>
+            </div>
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 p-4 md:px-8">
+              <Action onClick={() => copyItem(reading)} icon={Copy} label="Copiar" />
+              <Action
+                onClick={() => {
+                  const item = reading;
+                  setReading(null);
+                  openEdit(item);
+                }}
+                icon={Edit3}
+                label="Editar"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {drawerOpen ? (
         <div className="fixed inset-0 z-[100] flex justify-end bg-slate-950/50">
