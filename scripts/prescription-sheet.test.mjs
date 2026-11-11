@@ -51,7 +51,7 @@ test("receituário: formato de guia com '1.', rótulos e dicas", () => {
     { kind: "item", number: "1", title: "Metronidazol 400 mg - 5 comprimidos", lines: ["Tomar 5 comprimidos VO, dose única."] },
     { kind: "note", lines: ["Em caso de comprimido de 250 mg, a dose é de 8 comprimidos."] },
     { kind: "item", number: "2", title: "Tinidazol 500 mg – 1 comprimido", lines: ["Tomar 4 comprimidos VO, em dose única."] },
-    { kind: "note", lines: ["os parceiros devem ser tratados."] },
+    { kind: "note", lines: ["Os parceiros devem ser tratados."] },
     { kind: "route", text: "Uso oral" },
     { kind: "item", number: "", title: "Heparina 5.000 UI", lines: ["1.000 UI/h"] },
   ]);
@@ -74,4 +74,12 @@ test("receituário: dica termina no medicamento, título sem dois-pontos e exemp
   assert.deepEqual(flumazenil.map((b) => b.kind), ["label", "label", "text", "label", "text"]);
   // Modelos do banco em caixa alta não mudam de estrutura.
   assert.deepEqual(parsePrescriptionSheet("DIPIRONA 500 MG\nREPOUSO"), [{ kind: "text", lines: ["DIPIRONA 500 MG", "REPOUSO"] }]);
+});
+
+test("receituário: junta linha quebrada no meio da frase e capitaliza frase nova", () => {
+  assert.deepEqual(parsePrescriptionSheet("Bizu:\nPacientes com bloqueio atrioventricular (AV)\nde qualquer grau não devem receber doses.\nBizu: deve-se evitar veias distais."), [
+    { kind: "note", lines: ["Pacientes com bloqueio atrioventricular (AV) de qualquer grau não devem receber doses."] },
+    { kind: "note", lines: ["Deve-se evitar veias distais."] },
+  ]);
+  assert.deepEqual(parsePrescriptionSheet("Corrigir o pH.\npH alvo acima de 7,2."), [{ kind: "text", lines: ["Corrigir o pH.", "pH alvo acima de 7,2."] }]);
 });

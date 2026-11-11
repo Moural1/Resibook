@@ -47,6 +47,24 @@ export function isPlainHeading(line: string) {
   return !/^(tomar|administrar|aplicar|diluir|fazer|realizar|repetir|infundir|manter|iniciar|usar|se|até|após|evitar|suspender|orientar|retornar)\b/i.test(line);
 }
 
+/** Linha extraída de PDF quebrada no meio da frase volta para a linha anterior;
+ *  frase nova que começa minúscula ("deve-se evitar...") ganha maiúscula. */
+function pushLine(lines: string[], line: string) {
+  const startsLower = /^\p{Ll}/u.test(line);
+  const previous = lines[lines.length - 1];
+  if (startsLower && previous && !/[.!?:;]$/.test(previous)) {
+    lines[lines.length - 1] = `${previous} ${line}`;
+    return;
+  }
+  lines.push(capitalizeSentence(line));
+}
+
+// "pH", "mL/kg": só capitaliza quando a primeira palavra é toda minúscula.
+function capitalizeSentence(line: string) {
+  if (!/^\p{Ll}+(?=[\s\-(,.;:]|$)/u.test(line)) return line;
+  return line.charAt(0).toLocaleUpperCase("pt-BR") + line.slice(1);
+}
+
 export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
   const lines = (value || "").replace(/\r\n?/g, "\n").split("\n").map((line) => line.replace(/\s+/g, " ").trim());
   const blocks: SheetBlock[] = [];
@@ -67,7 +85,7 @@ export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
 
     const item = line.match(ITEM_RE);
     if (item) {
-      open = { kind: "item", number: item[1], title: item[2], lines: [] };
+      open = { kind: "item", number: item[1], title: capitalizeSentence(item[2]), lines: [] };
       blocks.push(open);
       continue;
     }
@@ -79,7 +97,7 @@ export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
     }
 
     if (isDrugLine(line)) {
-      open = { kind: "item", number: "", title: line, lines: [] };
+      open = { kind: "item", number: "", title: capitalizeSentence(line), lines: [] };
       blocks.push(open);
       continue;
     }
@@ -98,33 +116,35 @@ export function parsePrescriptionSheet(value?: string | null): SheetBlock[] {
 
     const note = line.match(NOTE_RE);
     if (note) {
-      open = { kind: "note", lines: note[2] ? [note[2]] : [] };
+      open = { kind: "note", lines: [] };
+      if (note[2]) pushLine(open.lines, note[2]);
       blocks.push(open);
       continue;
     }
 
     if (open?.kind === "item" && !isSectionLabel(line)) {
-      open.lines.push(line);
+      pushLine(open.lines, line);
       continue;
     }
 
     if (open?.kind === "note" && !isSectionLabel(line)) {
-      open.lines.push(line);
+      pushLine(open.lines, line);
       continue;
     }
 
     if (/:$/.test(line) && line.length <= 70) {
-      blocks.push({ kind: "label", text: line.replace(/:$/, "") });
+      blocks.push({ kind: "label", text: capitalizeSentence(line.replace(/:$/, "")) });
       open = null;
       continue;
     }
 
     if (open?.kind === "text") {
-      open.lines.push(line);
+      pushLine(open.lines, line);
       continue;
     }
 
-    open = { kind: "text", lines: [line] };
+    open = { kind: "text", lines: [] };
+    pushLine(open.lines, line);
     blocks.push(open);
   }
 
